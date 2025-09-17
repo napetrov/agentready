@@ -288,6 +288,110 @@ export async function generatePDFReport(assessmentResult: any, repoUrl?: string)
     }
   }
 
+  // Detailed Analysis
+  if (assessmentResult.detailedAnalysis) {
+    checkNewPage(50)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Detailed Analysis', 20, yPosition)
+    yPosition += 20
+
+    const detailed = assessmentResult.detailedAnalysis
+
+    // Instruction Clarity
+    if (detailed.instructionClarity) {
+      checkNewPage(40)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Instruction Clarity Breakdown', 20, yPosition)
+      yPosition += 15
+
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      yPosition = addText(`Step-by-Step Quality: ${detailed.instructionClarity.stepByStepQuality}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Command Clarity: ${detailed.instructionClarity.commandClarity}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Environment Setup: ${detailed.instructionClarity.environmentSetup}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Error Handling: ${detailed.instructionClarity.errorHandling}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Dependency Specification: ${detailed.instructionClarity.dependencySpecification}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Overall Score: ${detailed.instructionClarity.overallScore}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition += 10
+    }
+
+    // Workflow Automation
+    if (detailed.workflowAutomation) {
+      checkNewPage(40)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Workflow Automation Breakdown', 20, yPosition)
+      yPosition += 15
+
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      yPosition = addText(`CI/CD Quality: ${detailed.workflowAutomation.ciCdQuality}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Test Automation: ${detailed.workflowAutomation.testAutomation}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Build Scripts: ${detailed.workflowAutomation.buildScripts}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Deployment Automation: ${detailed.workflowAutomation.deploymentAutomation}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Monitoring & Logging: ${detailed.workflowAutomation.monitoringLogging}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Overall Score: ${detailed.workflowAutomation.overallScore}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition += 10
+    }
+
+    // Context Efficiency
+    if (detailed.contextEfficiency) {
+      checkNewPage(40)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Context Efficiency Breakdown', 20, yPosition)
+      yPosition += 15
+
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      yPosition = addText(`Instruction File Optimization: ${detailed.contextEfficiency.instructionFileOptimization}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Code Documentation: ${detailed.contextEfficiency.codeDocumentation}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`API Documentation: ${detailed.contextEfficiency.apiDocumentation}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Context Window Usage: ${detailed.contextEfficiency.contextWindowUsage}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Overall Score: ${detailed.contextEfficiency.overallScore}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition += 10
+    }
+
+    // Risk & Compliance
+    if (detailed.riskCompliance) {
+      checkNewPage(40)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Risk & Compliance Breakdown', 20, yPosition)
+      yPosition += 15
+
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      yPosition = addText(`Security Practices: ${detailed.riskCompliance.securityPractices}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Error Handling: ${detailed.riskCompliance.errorHandling}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Input Validation: ${detailed.riskCompliance.inputValidation}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Dependency Security: ${detailed.riskCompliance.dependencySecurity}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`License Compliance: ${detailed.riskCompliance.licenseCompliance}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition = addText(`Overall Score: ${detailed.riskCompliance.overallScore}/20`, 20, yPosition, pageWidth - 40, 11)
+      yPosition += 10
+    }
+  }
+
+  // Confidence Scores
+  if (assessmentResult.confidence) {
+    checkNewPage(30)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Assessment Confidence', 20, yPosition)
+    yPosition += 15
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    yPosition = addText(`Overall Confidence: ${assessmentResult.confidence.overall}%`, 20, yPosition, pageWidth - 40, 11)
+    yPosition = addText(`Instruction Clarity: ${assessmentResult.confidence.instructionClarity}%`, 20, yPosition, pageWidth - 40, 11)
+    yPosition = addText(`Workflow Automation: ${assessmentResult.confidence.workflowAutomation}%`, 20, yPosition, pageWidth - 40, 11)
+    yPosition = addText(`Context Efficiency: ${assessmentResult.confidence.contextEfficiency}%`, 20, yPosition, pageWidth - 40, 11)
+    yPosition = addText(`Risk & Compliance: ${assessmentResult.confidence.riskCompliance}%`, 20, yPosition, pageWidth - 40, 11)
+    yPosition += 10
+  }
+
   // Key Findings
   if (assessmentResult.findings && assessmentResult.findings.length > 0) {
     checkNewPage(30)

@@ -15,6 +15,46 @@ interface AssessmentResult {
   }
   findings: string[]
   recommendations: string[]
+  detailedAnalysis?: {
+    instructionClarity: {
+      stepByStepQuality: number
+      commandClarity: number
+      environmentSetup: number
+      errorHandling: number
+      dependencySpecification: number
+      overallScore: number
+    }
+    workflowAutomation: {
+      ciCdQuality: number
+      testAutomation: number
+      buildScripts: number
+      deploymentAutomation: number
+      monitoringLogging: number
+      overallScore: number
+    }
+    contextEfficiency: {
+      instructionFileOptimization: number
+      codeDocumentation: number
+      apiDocumentation: number
+      contextWindowUsage: number
+      overallScore: number
+    }
+    riskCompliance: {
+      securityPractices: number
+      errorHandling: number
+      inputValidation: number
+      dependencySecurity: number
+      licenseCompliance: number
+      overallScore: number
+    }
+  }
+  confidence?: {
+    overall: number
+    instructionClarity: number
+    workflowAutomation: number
+    contextEfficiency: number
+    riskCompliance: number
+  }
   staticAnalysis: {
     hasReadme: boolean
     hasContributing: boolean
@@ -482,6 +522,187 @@ export default function Home() {
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Detailed Analysis */}
+          {result.detailedAnalysis && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Detailed Analysis</h3>
+              
+              {/* Instruction Clarity */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Instruction Clarity Breakdown</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Step-by-Step Quality</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.stepByStepQuality}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Command Clarity</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.commandClarity}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Environment Setup</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.environmentSetup}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Error Handling</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.errorHandling}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Dependency Specification</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.dependencySpecification}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-blue-50">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Overall Score</div>
+                    <div className="text-lg font-bold text-blue-700">{result.detailedAnalysis.instructionClarity.overallScore}/20</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow Automation */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Workflow Automation Breakdown</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">CI/CD Quality</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.ciCdQuality}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Test Automation</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.testAutomation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Build Scripts</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.buildScripts}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Deployment Automation</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.deploymentAutomation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Monitoring & Logging</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.monitoringLogging}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-green-50">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Overall Score</div>
+                    <div className="text-lg font-bold text-green-700">{result.detailedAnalysis.workflowAutomation.overallScore}/20</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Context Efficiency */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Context Efficiency Breakdown</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Instruction File Optimization</div>
+                    <div className="text-lg font-bold text-purple-600">{result.detailedAnalysis.contextEfficiency.instructionFileOptimization}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Code Documentation</div>
+                    <div className="text-lg font-bold text-purple-600">{result.detailedAnalysis.contextEfficiency.codeDocumentation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">API Documentation</div>
+                    <div className="text-lg font-bold text-purple-600">{result.detailedAnalysis.contextEfficiency.apiDocumentation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Context Window Usage</div>
+                    <div className="text-lg font-bold text-purple-600">{result.detailedAnalysis.contextEfficiency.contextWindowUsage}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-purple-50">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Overall Score</div>
+                    <div className="text-lg font-bold text-purple-700">{result.detailedAnalysis.contextEfficiency.overallScore}/20</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Risk & Compliance */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Risk & Compliance Breakdown</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Security Practices</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.securityPractices}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Error Handling</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.errorHandling}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Input Validation</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.inputValidation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Dependency Security</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.dependencySecurity}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">License Compliance</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.licenseCompliance}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-red-50">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Overall Score</div>
+                    <div className="text-lg font-bold text-red-700">{result.detailedAnalysis.riskCompliance.overallScore}/20</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Confidence Scores */}
+          {result.confidence && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Assessment Confidence</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Overall</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.overall >= 80 ? 'text-green-600' : 
+                    result.confidence.overall >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.overall}%
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Instruction Clarity</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.instructionClarity >= 80 ? 'text-green-600' : 
+                    result.confidence.instructionClarity >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.instructionClarity}%
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Workflow Automation</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.workflowAutomation >= 80 ? 'text-green-600' : 
+                    result.confidence.workflowAutomation >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.workflowAutomation}%
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Context Efficiency</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.contextEfficiency >= 80 ? 'text-green-600' : 
+                    result.confidence.contextEfficiency >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.contextEfficiency}%
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Risk & Compliance</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.riskCompliance >= 80 ? 'text-green-600' : 
+                    result.confidence.riskCompliance >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.riskCompliance}%
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

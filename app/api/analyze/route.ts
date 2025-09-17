@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyzeRepository } from '../../../lib/analyzer'
 import { generateAIAssessment } from '../../../lib/ai-assessment'
+import { generateEnhancedAIAssessment } from '../../../lib/enhanced-ai-assessment'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,8 +26,8 @@ export async function POST(request: NextRequest) {
     // Perform static analysis
     const staticAnalysis = await analyzeRepository(repoUrl)
 
-    // Generate AI assessment
-    const aiAssessment = await generateAIAssessment(staticAnalysis)
+    // Generate enhanced AI assessment
+    const aiAssessment = await generateEnhancedAIAssessment(staticAnalysis)
 
     // Combine results
     const result = {
@@ -34,6 +35,8 @@ export async function POST(request: NextRequest) {
       categories: aiAssessment.categories,
       findings: aiAssessment.findings,
       recommendations: aiAssessment.recommendations,
+      detailedAnalysis: aiAssessment.detailedAnalysis,
+      confidence: aiAssessment.confidence,
       staticAnalysis: staticAnalysis,
     }
 
