@@ -178,13 +178,15 @@ This document outlines the development process, implementation status, and futur
   - Code of conduct and template detection
   - Automated test suite quality assessment
 
-- [ ] **File Size & Context Optimization Engine**
+- [x] **File Size & Context Optimization Engine** ✅
   - File size validation against AI agent limits
   - Large file detection and flagging (>2MB, >10MB, >50MB)
   - Context consumption analysis for instruction files
   - Agent compatibility scoring (Cursor, GitHub Copilot, Claude, etc.)
   - Binary file identification and exclusion
   - Token estimation for context window optimization
+  - Critical file analysis (README, AGENTS.md, CONTRIBUTING.md)
+  - Repository structure analysis and accessibility patterns
 
 - [ ] **Documentation Portal Structure Analyzer**
   - OpenAPI/AsyncAPI specification detection
@@ -304,7 +306,79 @@ This document outlines the development process, implementation status, and futur
   - Resource requirement calculation
   - Success metric definition
 
-### Phase 4: Performance & Optimization (FUTURE)
+### Phase 4: VM-Based Instruction Testing (FUTURE)
+
+#### 4.1 VM Testing Infrastructure
+- [ ] **Environment Management System**
+  - Docker container orchestration
+  - VM lifecycle management (create, execute, cleanup)
+  - Resource allocation and monitoring
+  - Multi-platform support (Linux, macOS, Windows)
+
+- [ ] **Instruction Parser Engine**
+  - AGENTS.md step-by-step extraction
+  - README.md command sequence parsing
+  - Dependency requirement identification
+  - Environment variable detection
+
+- [ ] **Execution Engine**
+  - Automated command execution
+  - Output capture and analysis
+  - Error detection and classification
+  - Timeout and resource management
+
+#### 4.2 Test Scenarios Implementation
+- [ ] **Fresh Environment Testing**
+  - Clean slate installation testing
+  - Dependency resolution validation
+  - Build process verification
+  - Test execution confirmation
+
+- [ ] **Error Handling Testing**
+  - Missing dependency simulation
+  - Configuration error testing
+  - Recovery instruction validation
+  - Error message quality assessment
+
+- [ ] **Multi-Platform Compatibility**
+  - Cross-platform instruction testing
+  - OS-specific command validation
+  - Environment variable handling
+  - Path and permission testing
+
+#### 4.3 VM Testing Metrics & Analysis
+- [ ] **Success Rate Tracking**
+  - Setup completion percentage
+  - Build success rate
+  - Test execution success rate
+  - Overall instruction effectiveness
+
+- [ ] **Performance Metrics**
+  - Setup time measurement
+  - Build duration tracking
+  - Resource usage monitoring
+  - Efficiency scoring
+
+- [ ] **Quality Assessment**
+  - Instruction completeness scoring
+  - Error message quality evaluation
+  - Recovery guidance effectiveness
+  - User experience simulation
+
+#### 4.4 Integration with Assessment Tool
+- [ ] **VM Testing API Integration**
+  - RESTful API for VM test execution
+  - Asynchronous test processing
+  - Result aggregation and scoring
+  - Integration with existing assessment pipeline
+
+- [ ] **Enhanced Reporting**
+  - VM test results in PDF reports
+  - Visual test execution timelines
+  - Platform compatibility matrices
+  - Improvement recommendations based on test failures
+
+### Phase 5: Performance & Optimization (FUTURE)
 
 #### 4.1 Performance Improvements
 - [ ] **Caching Layer**

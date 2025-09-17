@@ -20,9 +20,13 @@ The tool implements a comprehensive methodology that evaluates both technical re
 
 **File Size & Context Optimization (Weight: 15%)**
 - **File Size Compliance**: Individual files within AI agent processing limits
-- **Large File Detection**: Identification of files exceeding agent capabilities
+- **Large File Detection**: Identification of files exceeding agent capabilities (>2MB, >10MB, >50MB)
 - **Context Consumption Analysis**: Assessment of instruction file sizes and complexity
 - **Agent Compatibility Scoring**: Evaluation against specific agent limitations
+- **Critical File Analysis**: README, AGENTS.md, CONTRIBUTING.md size optimization
+- **Binary File Identification**: Detection and exclusion of non-processable files
+- **Token Estimation**: Context window usage calculation for instruction files
+- **Repository Structure Analysis**: File organization and accessibility patterns
 
 #### AI Agent File Size & Context Limitations
 
@@ -492,6 +496,55 @@ User-Friendly Message
 ```bash
 OPENAI_API_KEY=sk-...     # Required for AI assessment
 GITHUB_TOKEN=ghp_...      # Optional for private repos
+```
+
+## 🧪 Advanced Testing Scenarios
+
+### VM-Based Instruction Testing (Future Development)
+
+For comprehensive validation of AI agent instructions, the system will implement automated VM testing scenarios that spawn isolated environments to verify instruction accuracy and completeness.
+
+#### VM Testing Framework
+- **Isolated Environment Creation**: Docker containers or lightweight VMs for each test
+- **Instruction Execution**: Automated following of AGENTS.md and README instructions
+- **Success/Failure Tracking**: Detailed logging of each step and outcome
+- **Environment Cleanup**: Automatic cleanup after test completion
+- **Multi-Platform Testing**: Linux, macOS, Windows compatibility verification
+
+#### Test Scenarios
+1. **Fresh Environment Setup**: Test instructions from scratch installation
+2. **Dependency Resolution**: Verify all required dependencies are specified
+3. **Build Process Validation**: Ensure build instructions work correctly
+4. **Test Execution**: Verify test commands run successfully
+5. **Deployment Simulation**: Test deployment instructions in isolated environment
+6. **Error Handling**: Test instructions with missing dependencies or configurations
+
+#### VM Testing Metrics
+- **Setup Success Rate**: Percentage of successful environment setups
+- **Instruction Completeness**: Coverage of all necessary steps
+- **Dependency Accuracy**: Correctness of dependency specifications
+- **Build Reliability**: Consistency of build process across environments
+- **Error Recovery**: Quality of error messages and recovery instructions
+
+#### Implementation Architecture
+```
+VM Testing Service
+├── Environment Manager
+│   ├── Docker Container Orchestration
+│   ├── VM Lifecycle Management
+│   └── Resource Allocation
+├── Instruction Parser
+│   ├── AGENTS.md Analysis
+│   ├── README.md Extraction
+│   └── Command Sequence Generation
+├── Execution Engine
+│   ├── Step-by-Step Execution
+│   ├── Output Capture
+│   └── Error Detection
+└── Results Analyzer
+    ├── Success/Failure Classification
+    ├── Performance Metrics
+    └── Recommendation Generation
 ```
 
 ### Performance Considerations
