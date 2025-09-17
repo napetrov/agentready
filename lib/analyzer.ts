@@ -1,0 +1,231 @@
+import JSZip from 'jszip'
+import axios from 'axios'
+
+export interface StaticAnalysisResult {
+  hasReadme: boolean
+  hasContributing: boolean
+  hasAgents: boolean
+  hasLicense: boolean
+  hasWorkflows: boolean
+  hasTests: boolean
+  languages: string[]
+  errorHandling: boolean
+  fileCount: number
+  readmeContent?: string
+  contributingContent?: string
+  agentsContent?: string
+  workflowFiles: string[]
+  testFiles: string[]
+}
+
+export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysisResult> {
+  try {
+    // Extract owner and repo from URL
+    const urlParts = repoUrl.replace('https://github.com/', '').split('/')
+    const owner = urlParts[0]
+    const repo = urlParts[1]
+
+    // Download repository as ZIP
+    const zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/main.zip`
+    const response = await axios.get(zipUrl, {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+    })
+
+    // Extract ZIP contents
+    const zip = await JSZip.loadAsync(response.data)
+    const files = Object.keys(zip.files)
+
+    // Analyze files
+    const analysis: StaticAnalysisResult = {
+      hasReadme: false,
+      hasContributing: false,
+      hasAgents: false,
+      hasLicense: false,
+      hasWorkflows: false,
+      hasTests: false,
+      languages: [],
+      errorHandling: false,
+      fileCount: files.length,
+      workflowFiles: [],
+      testFiles: [],
+    }
+
+    // Check for documentation files
+    for (const file of files) {
+      const fileName = file.toLowerCase()
+      
+      if (fileName.includes('readme.md')) {
+        analysis.hasReadme = true
+        try {
+          const content = await zip.files[file].async('text')
+          analysis.readmeContent = content
+        } catch (e) {
+          console.warn('Could not read README content:', e)
+        }
+      }
+      
+      if (fileName.includes('contributing.md')) {
+        analysis.hasContributing = true
+        try {
+          const content = await zip.files[file].async('text')
+          analysis.contributingContent = content
+        } catch (e) {
+          console.warn('Could not read CONTRIBUTING content:', e)
+        }
+      }
+      
+      if (fileName.includes('agents.md')) {
+        analysis.hasAgents = true
+        try {
+          const content = await zip.files[file].async('text')
+          analysis.agentsContent = content
+        } catch (e) {
+          console.warn('Could not read AGENTS content:', e)
+        }
+      }
+      
+      if (fileName.includes('license')) {
+        analysis.hasLicense = true
+      }
+    }
+
+    // Check for GitHub Actions workflows
+    const workflowFiles = files.filter(file => 
+      file.includes('.github/workflows/') && file.endsWith('.yml')
+    )
+    analysis.hasWorkflows = workflowFiles.length > 0
+    analysis.workflowFiles = workflowFiles
+
+    // Detect test files and languages
+    const languageMap = new Map<string, number>()
+    
+    for (const file of files) {
+      const fileName = file.toLowerCase()
+      
+      // Test file detection
+      if (fileName.includes('test') || fileName.includes('spec') || fileName.includes('__tests__')) {
+        analysis.hasTests = true
+        analysis.testFiles.push(file)
+      }
+      
+      // Language detection based on file extensions
+      const extension = file.split('.').pop()?.toLowerCase()
+      if (extension) {
+        const language = getLanguageFromExtension(extension)
+        if (language) {
+          languageMap.set(language, (languageMap.get(language) || 0) + 1)
+        }
+      }
+    }
+
+    // Sort languages by file count
+    analysis.languages = Array.from(languageMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([lang]) => lang)
+
+    // Check for error handling patterns
+    analysis.errorHandling = await checkErrorHandling(zip, files)
+
+    return analysis
+  } catch (error) {
+    console.error('Repository analysis error:', error)
+    throw new Error('Failed to analyze repository')
+  }
+}
+
+function getLanguageFromExtension(ext: string): string | null {
+  const languageMap: Record<string, string> = {
+    'js': 'JavaScript',
+    'ts': 'TypeScript',
+    'jsx': 'React',
+    'tsx': 'React TypeScript',
+    'py': 'Python',
+    'java': 'Java',
+    'go': 'Go',
+    'rs': 'Rust',
+    'cpp': 'C++',
+    'c': 'C',
+    'cs': 'C#',
+    'php': 'PHP',
+    'rb': 'Ruby',
+    'swift': 'Swift',
+    'kt': 'Kotlin',
+    'scala': 'Scala',
+    'r': 'R',
+    'm': 'Objective-C',
+    'sh': 'Shell',
+    'sql': 'SQL',
+    'html': 'HTML',
+    'css': 'CSS',
+    'scss': 'SCSS',
+    'sass': 'Sass',
+    'less': 'Less',
+    'json': 'JSON',
+    'yaml': 'YAML',
+    'yml': 'YAML',
+    'xml': 'XML',
+    'md': 'Markdown',
+    'txt': 'Text',
+  }
+  
+  return languageMap[ext] || null
+}
+
+async function checkErrorHandling(zip: JSZip, files: string[]): Promise<boolean> {
+  const errorHandlingPatterns = [
+    'try {',
+    'catch (',
+    'throw new',
+    'console.error',
+    'console.warn',
+    'logger.error',
+    'logger.warn',
+    'assert(',
+    'expect(',
+    'raise',
+    'except',
+    'logging.error',
+    'logging.warning',
+  ]
+
+  let hasErrorHandling = false
+  let filesChecked = 0
+  const maxFilesToCheck = 20 // Limit to avoid timeout
+
+  for (const file of files) {
+    if (filesChecked >= maxFilesToCheck) break
+    
+    // Skip non-code files
+    const fileName = file.toLowerCase()
+    if (fileName.includes('node_modules') || 
+        fileName.includes('.git') || 
+        fileName.includes('package-lock.json') ||
+        fileName.includes('yarn.lock') ||
+        fileName.includes('.png') ||
+        fileName.includes('.jpg') ||
+        fileName.includes('.gif') ||
+        fileName.includes('.svg')) {
+      continue
+    }
+
+    try {
+      const content = await zip.files[file].async('text')
+      const hasPattern = errorHandlingPatterns.some(pattern => 
+        content.includes(pattern)
+      )
+      
+      if (hasPattern) {
+        hasErrorHandling = true
+        break
+      }
+      
+      filesChecked++
+    } catch (e) {
+      // Skip files that can't be read as text
+      continue
+    }
+  }
+
+  return hasErrorHandling
+}
