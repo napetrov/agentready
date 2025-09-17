@@ -54,7 +54,7 @@ Provide a JSON response with the following structure:
           content: prompt
         }
       ],
-      temperature: 0.3,
+      // GPT-5-nano only supports default temperature (1), so we omit the temperature parameter
     })
 
     const content = response.choices[0]?.message?.content
