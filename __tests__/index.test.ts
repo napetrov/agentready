@@ -1,9 +1,15 @@
 // Simple tests that focus on basic functionality
 describe('Simple Functionality Tests', () => {
-  test('should import all modules without errors', () => {
-    expect(() => require('../lib/analyzer')).not.toThrow()
-    expect(() => require('../lib/ai-assessment')).not.toThrow()
-    expect(() => require('../lib/report-generator')).not.toThrow()
+  // Helper function to validate PDF buffer
+  function expectPdf(buf: Buffer) {
+    expect(Buffer.isBuffer(buf)).toBe(true)
+    expect(buf.length).toBeGreaterThan(0)
+    expect(buf.subarray(0, 4).toString('ascii')).toBe('%PDF')
+  }
+  test('should import all modules without errors', async () => {
+    await expect(import('../lib/analyzer')).resolves.toBeDefined()
+    await expect(import('../lib/ai-assessment')).resolves.toBeDefined()
+    await expect(import('../lib/report-generator')).resolves.toBeDefined()
   })
 
   test('should validate URL format correctly', async () => {
@@ -18,11 +24,18 @@ describe('Simple Functionality Tests', () => {
 
   test('should handle fallback assessment with missing data', async () => {
     const { generateAIAssessment } = require('../lib/ai-assessment')
+    const originalKey = process.env.OPENAI_API_KEY
+    delete process.env.OPENAI_API_KEY
     
     // Test with completely missing data
     const emptyAnalysis = {}
     
-    const result = await generateAIAssessment(emptyAnalysis)
+    let result
+    try {
+      result = await generateAIAssessment(emptyAnalysis)
+    } finally {
+      if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey
+    }
     
     expect(result).toBeDefined()
     expect(typeof result.readinessScore).toBe('number')
@@ -60,9 +73,7 @@ describe('Simple Functionality Tests', () => {
     
     const pdfBuffer = await generatePDFReport(minimalData)
     
-    expect(pdfBuffer).toBeDefined()
-    expect(Buffer.isBuffer(pdfBuffer)).toBe(true)
-    expect(pdfBuffer.length).toBeGreaterThan(0)
+    expectPdf(pdfBuffer)
   })
 
   test('should handle environment variables', () => {
@@ -70,7 +81,7 @@ describe('Simple Functionality Tests', () => {
     expect(process.env.GITHUB_TOKEN).toBeDefined()
   })
 
-  test('should have proper function signatures', () => {
+  test('should have proper function signatures', async () => {
     const { analyzeRepository } = require('../lib/analyzer')
     const { generateAIAssessment } = require('../lib/ai-assessment')
     const { generatePDFReport } = require('../lib/report-generator')
@@ -78,10 +89,21 @@ describe('Simple Functionality Tests', () => {
     expect(typeof analyzeRepository).toBe('function')
     expect(typeof generateAIAssessment).toBe('function')
     expect(typeof generatePDFReport).toBe('function')
+    
+    // Promise-like checks (no network)
+    const p1 = analyzeRepository('') // will reject but is Promise-like
+    expect(typeof p1?.then).toBe('function')
+    const p2 = generatePDFReport({} as any) // type-erased at runtime
+    expect(typeof p2?.then).toBe('function')
+    
+    // Verify the Promise rejects as expected
+    await expect(p1).rejects.toThrow('Invalid GitHub repository URL format')
   })
 
   test('should handle fallback assessment with valid data', async () => {
     const { generateAIAssessment } = require('../lib/ai-assessment')
+    const originalKey = process.env.OPENAI_API_KEY
+    delete process.env.OPENAI_API_KEY
     
     const validAnalysis = {
       hasReadme: true,
@@ -100,7 +122,12 @@ describe('Simple Functionality Tests', () => {
       agentsContent: 'Test AGENTS content'
     }
     
-    const result = await generateAIAssessment(validAnalysis)
+    let result
+    try {
+      result = await generateAIAssessment(validAnalysis)
+    } finally {
+      if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey
+    }
     
     expect(result).toBeDefined()
     expect(typeof result.readinessScore).toBe('number')
@@ -153,13 +180,13 @@ describe('Simple Functionality Tests', () => {
     
     const pdfBuffer = await generatePDFReport(comprehensiveData)
     
-    expect(pdfBuffer).toBeDefined()
-    expect(Buffer.isBuffer(pdfBuffer)).toBe(true)
-    expect(pdfBuffer.length).toBeGreaterThan(0)
+    expectPdf(pdfBuffer)
   })
 
   test('should handle edge cases in fallback assessment', async () => {
     const { generateAIAssessment } = require('../lib/ai-assessment')
+    const originalKey = process.env.OPENAI_API_KEY
+    delete process.env.OPENAI_API_KEY
     
     // Test with extreme values
     const edgeCaseAnalysis = {
@@ -179,7 +206,12 @@ describe('Simple Functionality Tests', () => {
       agentsContent: 'Short content'
     }
     
-    const result = await generateAIAssessment(edgeCaseAnalysis)
+    let result
+    try {
+      result = await generateAIAssessment(edgeCaseAnalysis)
+    } finally {
+      if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey
+    }
     
     expect(result).toBeDefined()
     expect(typeof result.readinessScore).toBe('number')
