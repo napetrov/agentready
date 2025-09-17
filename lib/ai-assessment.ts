@@ -16,6 +16,8 @@ function getOpenAI(): OpenAI {
 }
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
+const OPENAI_TEMPERATURE = 0
+const OPENAI_RESPONSE_FORMAT = { type: 'json_object' as const }
 
 export interface StaticAnalysisSummary {
   hasReadme: boolean
@@ -58,8 +60,8 @@ export async function generateAIAssessment(staticAnalysis: StaticAnalysisSummary
     
     const response = await getOpenAI().chat.completions.create({
       model: OPENAI_MODEL,
-      response_format: { type: 'json_object' },
-      temperature: 0,
+      response_format: OPENAI_RESPONSE_FORMAT,
+      temperature: OPENAI_TEMPERATURE,
       messages: [
         {
           role: 'system',
