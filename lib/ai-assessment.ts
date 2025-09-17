@@ -1,8 +1,13 @@
+import 'server-only'
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  baseURL: process.env.OPENAI_BASE_URL,           // optional: Azure / proxy / compat providers
+  timeout: Number(process.env.OPENAI_TIMEOUT_MS ?? 30000), // fail fast
 })
+
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
 
 export interface StaticAnalysisSummary {
   hasReadme: boolean
@@ -14,6 +19,9 @@ export interface StaticAnalysisSummary {
   languages: string[]
   errorHandling: boolean
   fileCount: number
+  readmeContent?: string
+  contributingContent?: string
+  agentsContent?: string
   workflowFiles: string[]
   testFiles: string[]
 }
@@ -35,8 +43,13 @@ export async function generateAIAssessment(staticAnalysis: StaticAnalysisSummary
   try {
     const prompt = createAssessmentPrompt(staticAnalysis)
     
+    if (!process.env.OPENAI_API_KEY) {
+      console.warn('OPENAI_API_KEY is not set; falling back to deterministic assessment.')
+      return generateFallbackAssessment(staticAnalysis)
+    }
+    
     const response = await openai.chat.completions.create({
-      model: 'gpt-5-nano',
+      model: OPENAI_MODEL,
       messages: [
         {
           role: 'system',
@@ -68,7 +81,6 @@ Provide a JSON response with the following structure:
           content: prompt
         }
       ],
-      // GPT-5-nano only supports default temperature (1), so we omit the temperature parameter
     })
 
     const content = response.choices[0]?.message?.content
@@ -113,9 +125,15 @@ Provide a JSON response with the following structure:
     if (!Array.isArray(assessment.findings)) {
       throw new Error('Invalid findings: must be an array')
     }
+    if (!assessment.findings.every((x: unknown) => typeof x === 'string')) {
+      throw new Error('Invalid findings: items must be strings')
+    }
     
     if (!Array.isArray(assessment.recommendations)) {
       throw new Error('Invalid recommendations: must be an array')
+    }
+    if (!assessment.recommendations.every((x: unknown) => typeof x === 'string')) {
+      throw new Error('Invalid recommendations: items must be strings')
     }
 
     return assessment
@@ -127,7 +145,7 @@ Provide a JSON response with the following structure:
   }
 }
 
-function createAssessmentPrompt(staticAnalysis: any): string {
+function createAssessmentPrompt(staticAnalysis: StaticAnalysisSummary): string {
   const {
     hasReadme,
     hasContributing,
@@ -172,13 +190,22 @@ Documentation Content:`
     prompt += `\n\nAGENTS Content (first 1000 chars):\n${agentsContent.substring(0, 1000)}`
   }
 
-  prompt += `\n\nWorkflow Files: ${(workflowFiles || []).join(', ')}`
-  prompt += `\n\nTest Files: ${(testFiles || []).slice(0, 10).join(', ')}${(testFiles || []).length > 10 ? '...' : ''}`
+  // Filter out binary/lock files from workflow and test file lists
+  const binaryExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.svg', '.ico', '.lock', '.zip', '.tar', '.gz', '.7z', '.exe', '.dll', '.dylib', '.bin']
+  const filteredWorkflowFiles = (workflowFiles || []).filter(file => 
+    !binaryExtensions.some(ext => file.toLowerCase().endsWith(ext))
+  )
+  const filteredTestFiles = (testFiles || []).filter(file => 
+    !binaryExtensions.some(ext => file.toLowerCase().endsWith(ext))
+  )
+  
+  prompt += `\n\nWorkflow Files: ${filteredWorkflowFiles.join(', ')}`
+  prompt += `\n\nTest Files: ${filteredTestFiles.slice(0, 10).join(', ')}${filteredTestFiles.length > 10 ? '...' : ''}`
 
   return prompt
 }
 
-function generateFallbackAssessment(staticAnalysis: any): AIAssessmentResult {
+function generateFallbackAssessment(staticAnalysis: StaticAnalysisSummary): AIAssessmentResult {
   const {
     hasReadme = false,
     hasContributing = false,
@@ -214,8 +241,8 @@ function generateFallbackAssessment(staticAnalysis: any): AIAssessmentResult {
 
   const totalScore = documentationScore + instructionClarityScore + workflowAutomationScore + riskComplianceScore + integrationStructureScore
 
-  const findings = []
-  const recommendations = []
+  const findings: string[] = []
+  const recommendations: string[] = []
 
   if (!hasReadme) {
     findings.push('No README.md file found')
