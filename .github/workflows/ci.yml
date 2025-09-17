@@ -34,14 +34,14 @@ jobs:
     - name: Run type checking
       run: npx tsc --noEmit
       
-    - name: Run basic tests
-      run: npm test -- __tests__/simple.test.ts
+    - name: Run tests
+      run: npm test
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key' }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || 'test-token' }}
         
     - name: Run test coverage
-      run: npm run test:coverage -- __tests__/simple.test.ts
+      run: npm run test:coverage
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key' }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || 'test-token' }}

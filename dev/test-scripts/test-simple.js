@@ -2,7 +2,7 @@
 
 /**
  * Simple test to validate the API endpoint works
- * Run with: node test-simple.js
+ * Run with: node dev/test-scripts/test-simple.js
  */
 
 const https = require('https')

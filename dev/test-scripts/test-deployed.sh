@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for deployed version
-# Usage: ./test-deployed.sh [your-vercel-url]
+# Usage: ./dev/test-scripts/test-deployed.sh [your-vercel-url]
 
 VERCEL_URL=${1:-"your-app.vercel.app"}
 TEST_REPO="https://github.com/vercel/next.js"

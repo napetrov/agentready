@@ -5,7 +5,7 @@
 ### Core Functionality
 - **GitHub Repository Analysis**: Accepts GitHub URLs and downloads repositories
 - **Static Analysis Engine**: Detects documentation, workflows, tests, and error handling
-- **AI-Powered Assessment**: Uses OpenAI GPT-4 for intelligent evaluation
+- **AI-Powered Assessment**: Uses OpenAI GPT-5-nano for intelligent evaluation
 - **Comprehensive Scoring**: 5-category scoring system (0-100 total)
 - **Report Generation**: Both JSON and PDF report outputs
 
@@ -65,7 +65,7 @@
 - ✅ TypeScript for type safety
 - ✅ API routes for analysis and reporting
 - ✅ JSZip for repository processing
-- ✅ OpenAI GPT-4 integration
+- ✅ OpenAI GPT-5-nano integration
 - ✅ jsPDF for report generation
 - ✅ Error handling and validation
 - ✅ Responsive design
@@ -132,7 +132,7 @@
 ### Backend
 - Next.js API routes
 - JSZip for repository processing
-- OpenAI GPT-4 for AI assessment
+- OpenAI GPT-5-nano for AI assessment
 - jsPDF for report generation
 - Error handling and validation
 
