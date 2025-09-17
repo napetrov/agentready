@@ -310,7 +310,7 @@ export class FileSizeAnalyzer {
     const problematicFiles = largeFiles.length + criticalFiles.filter(f => !f.isOptimal).length;
     
     // Base score from file size compliance
-    const baseScore = Math.max(0, 100 - (problematicFiles / totalFiles) * 100);
+    const baseScore = totalFiles === 0 ? 100 : Math.max(0, 100 - (problematicFiles / totalFiles) * 100);
     
     // Calculate agent-specific scores
     const cursor = this.calculateAgentScore(baseScore, largeFiles, criticalFiles, 'cursor');
