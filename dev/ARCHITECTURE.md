@@ -18,6 +18,46 @@ The tool implements a comprehensive methodology that evaluates both technical re
 - **Automation Evidence**: CI/CD workflows, automated test suites, build scripts
 - **Community Standards**: Code of conduct, issue templates, pull request templates
 
+**File Size & Context Optimization (Weight: 15%)**
+- **File Size Compliance**: Individual files within AI agent processing limits
+- **Large File Detection**: Identification of files exceeding agent capabilities
+- **Context Consumption Analysis**: Assessment of instruction file sizes and complexity
+- **Agent Compatibility Scoring**: Evaluation against specific agent limitations
+
+#### AI Agent File Size & Context Limitations
+
+**Most Restrictive Agents (Under 2 MB)**
+- **Cursor**: 2 MB hard limit, 250 lines readable per operation
+- **GitHub Copilot**: 1 MB file upload limit
+- **Microsoft Copilot**: 1 MB file restriction
+
+**Moderate Limits (2-50 MB)**
+- **Claude Web Interface**: 30 MB per file, 20 files per chat
+- **Perplexity AI**: 40 MB (regular), 50 MB (Enterprise Pro)
+- **PDF Processing**: 100+ pages processed as text-only
+
+**Highest Limits (500+ MB)**
+- **Claude API**: 500 MB per file
+- **ChatGPT/Custom GPTs**: 512 MB per file
+- **Microsoft Copilot Studio**: 512 MB for agent systems
+
+**Context Window Considerations**
+- **Token Limits**: Often more restrictive than file size limits
+- **Claude**: 200,000 tokens (30 MB file limit)
+- **OpenAI Codex**: 192,000 tokens context
+- **ChatGPT**: 2 million tokens for text files
+
+**Repository-Level Processing**
+- **Sourcegraph Cody**: No single-file limits, indexes entire repositories
+- **Cursor Workspace**: Up to 100,000 files for indexing
+- **Tabnine/CodeWhisperer**: Contextual processing without explicit limits
+
+**File Size Validation Criteria**
+- **Critical Files**: README, AGENTS.md, main source files under 1 MB
+- **Large Files**: Detection and flagging of files > 2 MB
+- **Context Files**: Instruction files under 200 KB for optimal processing
+- **Binary Files**: Identification and exclusion from agent processing
+
 **Documentation Portal Structure (Weight: 20%)**
 - **Machine-Readability**: OpenAPI specs, JSON schemas, AsyncAPI definitions
 - **Navigation Structure**: Clear TOC, cross-linking, search functionality

@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 
-export async function generatePDFReport(assessmentResult: any): Promise<Buffer> {
+export async function generatePDFReport(assessmentResult: any, repoUrl?: string): Promise<Buffer> {
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -27,6 +27,68 @@ export async function generatePDFReport(assessmentResult: any): Promise<Buffer> 
   doc.setFont('helvetica', 'bold')
   doc.text('AI Agent Readiness Assessment', pageWidth / 2, yPosition, { align: 'center' })
   yPosition += 20
+
+  // Repository Information
+  if (repoUrl) {
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Repository: ${repoUrl}`, pageWidth / 2, yPosition, { align: 'center' })
+    yPosition += 15
+  }
+
+  // Repository Statistics
+  const staticAnalysis = assessmentResult.staticAnalysis || {}
+  const fileSizeAnalysis = staticAnalysis.fileSizeAnalysis || {}
+  
+  if (staticAnalysis.fileCount || fileSizeAnalysis.totalFiles) {
+    checkNewPage(40)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Repository Statistics', 20, yPosition)
+    yPosition += 15
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    
+    // Basic stats
+    const totalFiles = fileSizeAnalysis.totalFiles || staticAnalysis.fileCount || 0
+    doc.text(`Total Files: ${totalFiles}`, 20, yPosition)
+    yPosition += 12
+
+    if (staticAnalysis.languages && staticAnalysis.languages.length > 0) {
+      doc.text(`Primary Languages: ${staticAnalysis.languages.slice(0, 3).join(', ')}`, 20, yPosition)
+      yPosition += 12
+    }
+
+    // File size distribution
+    if (fileSizeAnalysis.filesBySize) {
+      const fs = fileSizeAnalysis.filesBySize
+      doc.text(`File Size Distribution:`, 20, yPosition)
+      yPosition += 8
+      doc.text(`  • Under 1MB: ${fs.under1MB} files`, 30, yPosition)
+      yPosition += 8
+      doc.text(`  • 1-2MB: ${fs.under2MB - fs.under1MB} files`, 30, yPosition)
+      yPosition += 8
+      doc.text(`  • 2-10MB: ${fs.under10MB - fs.under2MB} files`, 30, yPosition)
+      yPosition += 8
+      doc.text(`  • 10-50MB: ${fs.under50MB - fs.under10MB} files`, 30, yPosition)
+      yPosition += 8
+      doc.text(`  • Over 50MB: ${fs.over50MB} files`, 30, yPosition)
+      yPosition += 15
+    }
+
+    // Lines of code estimation
+    if (fileSizeAnalysis.contextConsumption) {
+      const totalLines = (fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd?.lines || 0) +
+                        (fileSizeAnalysis.contextConsumption.instructionFiles.readme?.lines || 0) +
+                        (fileSizeAnalysis.contextConsumption.instructionFiles.contributing?.lines || 0)
+      
+      if (totalLines > 0) {
+        doc.text(`Documentation Lines: ${totalLines}`, 20, yPosition)
+        yPosition += 12
+      }
+    }
+  }
 
   // Overall Score
   doc.setFontSize(18)
@@ -61,7 +123,8 @@ export async function generatePDFReport(assessmentResult: any): Promise<Buffer> 
     instructionClarity: 'Instruction Clarity',
     workflowAutomation: 'Workflow Automation',
     riskCompliance: 'Risk & Compliance',
-    integrationStructure: 'Integration & Structure'
+    integrationStructure: 'Integration & Structure',
+    fileSizeOptimization: 'File Size & Context Optimization'
   }
 
   Object.entries(categories || {}).forEach(([key, score]) => {
@@ -102,8 +165,6 @@ export async function generatePDFReport(assessmentResult: any): Promise<Buffer> 
   doc.setFont('helvetica', 'bold')
   doc.text('Static Analysis Results', 20, yPosition)
   yPosition += 15
-
-  const staticAnalysis = assessmentResult.staticAnalysis || {}
   const staticItems = [
     { name: 'README.md', value: staticAnalysis.hasReadme || false },
     { name: 'CONTRIBUTING.md', value: staticAnalysis.hasContributing || false },
@@ -124,6 +185,108 @@ export async function generatePDFReport(assessmentResult: any): Promise<Buffer> 
   })
 
   yPosition += 10
+
+  // File Size & AI Agent Compatibility Analysis
+  if (fileSizeAnalysis.agentCompatibility || fileSizeAnalysis.largeFiles || fileSizeAnalysis.criticalFiles) {
+    checkNewPage(50)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text('File Size & AI Agent Compatibility', 20, yPosition)
+    yPosition += 15
+
+    // Agent Compatibility Scores
+    if (fileSizeAnalysis.agentCompatibility) {
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Agent Compatibility Scores:', 20, yPosition)
+      yPosition += 10
+
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      const agents = fileSizeAnalysis.agentCompatibility
+      doc.text(`Cursor: ${agents.cursor}%`, 30, yPosition)
+      yPosition += 8
+      doc.text(`GitHub Copilot: ${agents.githubCopilot}%`, 30, yPosition)
+      yPosition += 8
+      doc.text(`Claude Web: ${agents.claudeWeb}%`, 30, yPosition)
+      yPosition += 8
+      doc.text(`Claude API: ${agents.claudeApi}%`, 30, yPosition)
+      yPosition += 15
+    }
+
+    // Large Files Analysis
+    if (fileSizeAnalysis.largeFiles && fileSizeAnalysis.largeFiles.length > 0) {
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`Large Files (>2MB): ${fileSizeAnalysis.largeFiles.length} files`, 20, yPosition)
+      yPosition += 10
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      fileSizeAnalysis.largeFiles.slice(0, 5).forEach((file: any) => {
+        checkNewPage(15)
+        doc.text(`• ${file.path}: ${file.sizeFormatted} (${file.type})`, 30, yPosition)
+        yPosition += 8
+        doc.text(`  Impact: Cursor ${file.agentImpact.cursor}, GitHub Copilot ${file.agentImpact.githubCopilot}`, 35, yPosition)
+        yPosition += 8
+      })
+      
+      if (fileSizeAnalysis.largeFiles.length > 5) {
+        doc.text(`... and ${fileSizeAnalysis.largeFiles.length - 5} more files`, 30, yPosition)
+        yPosition += 8
+      }
+      yPosition += 10
+    }
+
+    // Critical Files Analysis
+    if (fileSizeAnalysis.criticalFiles && fileSizeAnalysis.criticalFiles.length > 0) {
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Critical Files Analysis:', 20, yPosition)
+      yPosition += 10
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      fileSizeAnalysis.criticalFiles.forEach((file: any) => {
+        checkNewPage(12)
+        const status = file.isOptimal ? 'Optimal' : 'Suboptimal'
+        doc.text(`• ${file.path}: ${file.sizeFormatted} (${file.type}) - ${status}`, 30, yPosition)
+        yPosition += 8
+      })
+      yPosition += 10
+    }
+
+    // Context Consumption Analysis
+    if (fileSizeAnalysis.contextConsumption) {
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Context Consumption Analysis:', 20, yPosition)
+      yPosition += 10
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      const context = fileSizeAnalysis.contextConsumption
+      doc.text(`Total Context Files: ${context.totalContextFiles}`, 30, yPosition)
+      yPosition += 8
+      doc.text(`Average File Size: ${Math.round(context.averageContextFileSize / 1024)}KB`, 30, yPosition)
+      yPosition += 8
+      doc.text(`Context Efficiency: ${context.contextEfficiency}`, 30, yPosition)
+      yPosition += 8
+
+      // Instruction files details
+      if (context.instructionFiles.agentsMd) {
+        const agents = context.instructionFiles.agentsMd
+        doc.text(`AGENTS.md: ${Math.round(agents.size / 1024)}KB, ${agents.lines} lines`, 30, yPosition)
+        yPosition += 8
+      }
+      if (context.instructionFiles.readme) {
+        const readme = context.instructionFiles.readme
+        doc.text(`README: ${Math.round(readme.size / 1024)}KB, ${readme.lines} lines`, 30, yPosition)
+        yPosition += 8
+      }
+      yPosition += 10
+    }
+  }
 
   // Key Findings
   if (assessmentResult.findings && assessmentResult.findings.length > 0) {

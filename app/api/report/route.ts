@@ -3,7 +3,7 @@ import { generatePDFReport } from '../../../lib/report-generator'
 
 export async function POST(request: NextRequest) {
   try {
-    const { result } = await request.json()
+    const { result, repoUrl } = await request.json()
 
     if (!result) {
       return NextResponse.json(
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const pdfBuffer = await generatePDFReport(result)
+    const pdfBuffer = await generatePDFReport(result, repoUrl)
 
     return new NextResponse(pdfBuffer as any, {
       headers: {

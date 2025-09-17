@@ -34,6 +34,61 @@ export interface StaticAnalysisSummary {
   agentsContent?: string
   workflowFiles: string[]
   testFiles: string[]
+  fileSizeAnalysis?: {
+    totalFiles: number
+    filesBySize: {
+      under1MB: number
+      under2MB: number
+      under10MB: number
+      under50MB: number
+      over50MB: number
+    }
+    largeFiles: Array<{
+      path: string
+      size: number
+      sizeFormatted: string
+      type: string
+      agentImpact: {
+        cursor: string
+        githubCopilot: string
+        claudeWeb: string
+        claudeApi: string
+      }
+      recommendation: string
+    }>
+    criticalFiles: Array<{
+      path: string
+      size: number
+      sizeFormatted: string
+      type: string
+      isOptimal: boolean
+      agentImpact: {
+        cursor: string
+        githubCopilot: string
+        claudeWeb: string
+      }
+      recommendation: string
+    }>
+    contextConsumption: {
+      instructionFiles: {
+        agentsMd: { size: number; lines: number; estimatedTokens: number } | null
+        readme: { size: number; lines: number; estimatedTokens: number } | null
+        contributing: { size: number; lines: number; estimatedTokens: number } | null
+      }
+      totalContextFiles: number
+      averageContextFileSize: number
+      contextEfficiency: string
+      recommendations: string[]
+    }
+    agentCompatibility: {
+      cursor: number
+      githubCopilot: number
+      claudeWeb: number
+      claudeApi: number
+      overall: number
+    }
+    recommendations: string[]
+  }
 }
 
 export interface AIAssessmentResult {
@@ -44,6 +99,7 @@ export interface AIAssessmentResult {
     workflowAutomation: number
     riskCompliance: number
     integrationStructure: number
+    fileSizeOptimization: number
   }
   findings: string[]
   recommendations: string[]
@@ -73,6 +129,7 @@ Assessment Categories (0-20 points each):
 3. Workflow Automation Potential: CI/CD, automated testing, deployment scripts
 4. Risk & Compliance: Error handling, security considerations, license compliance
 5. Integration & Structure: Code organization, modularity, API design
+6. File Size & Context Optimization: AI agent compatibility, file size limits, context consumption
 
 Provide a JSON response with the following structure:
 {
@@ -82,7 +139,8 @@ Provide a JSON response with the following structure:
     "instructionClarity": 0-20,
     "workflowAutomation": 0-20,
     "riskCompliance": 0-20,
-    "integrationStructure": 0-20
+    "integrationStructure": 0-20,
+    "fileSizeOptimization": 0-20
   },
   "findings": ["finding1", "finding2", ...],
   "recommendations": ["recommendation1", "recommendation2", ...]
@@ -131,7 +189,7 @@ STRICT OUTPUT RULES:
       throw new Error('Invalid categories: must be an object')
     }
     
-    const requiredCategories = ['documentation', 'instructionClarity', 'workflowAutomation', 'riskCompliance', 'integrationStructure']
+    const requiredCategories = ['documentation', 'instructionClarity', 'workflowAutomation', 'riskCompliance', 'integrationStructure', 'fileSizeOptimization']
     for (const category of requiredCategories) {
       if (typeof assessment.categories[category] !== 'number' || assessment.categories[category] < 0 || assessment.categories[category] > 20) {
         throw new Error(`Invalid ${category} score: must be a number between 0 and 20`)
@@ -218,6 +276,44 @@ Documentation Content:`
   prompt += `\n\nWorkflow Files: ${filteredWorkflowFiles.join(', ')}`
   prompt += `\n\nTest Files: ${filteredTestFiles.slice(0, 10).join(', ')}${filteredTestFiles.length > 10 ? '...' : ''}`
 
+  // Add file size analysis if available
+  if (staticAnalysis.fileSizeAnalysis) {
+    const fs = staticAnalysis.fileSizeAnalysis
+    prompt += `\n\nFile Size Analysis:
+- Total Files Analyzed: ${fs.totalFiles}
+- Files by Size: ${fs.filesBySize.under1MB} under 1MB, ${fs.filesBySize.under2MB} under 2MB, ${fs.filesBySize.under10MB} under 10MB, ${fs.filesBySize.under50MB} under 50MB, ${fs.filesBySize.over50MB} over 50MB
+- Large Files (>2MB): ${fs.largeFiles.length}
+- Critical Files Analysis: ${fs.criticalFiles.length} files checked
+- Context Efficiency: ${fs.contextConsumption.contextEfficiency}
+- Agent Compatibility Scores: Cursor ${fs.agentCompatibility.cursor}%, GitHub Copilot ${fs.agentCompatibility.githubCopilot}%, Claude Web ${fs.agentCompatibility.claudeWeb}%, Claude API ${fs.agentCompatibility.claudeApi}%`
+
+    if (fs.largeFiles.length > 0) {
+      prompt += `\n\nLarge Files Detected:`
+      fs.largeFiles.slice(0, 5).forEach(file => {
+        prompt += `\n- ${file.path}: ${file.sizeFormatted} (${file.type}) - ${file.agentImpact.cursor} for Cursor, ${file.agentImpact.githubCopilot} for GitHub Copilot`
+      })
+    }
+
+    if (fs.criticalFiles.length > 0) {
+      prompt += `\n\nCritical Files Analysis:`
+      fs.criticalFiles.forEach(file => {
+        prompt += `\n- ${file.path}: ${file.sizeFormatted} (${file.type}) - ${file.isOptimal ? 'Optimal' : 'Suboptimal'} for AI agents`
+      })
+    }
+
+    if (fs.contextConsumption.instructionFiles.agentsMd) {
+      const agents = fs.contextConsumption.instructionFiles.agentsMd
+      prompt += `\n\nAGENTS.md Analysis: ${Math.round(agents.size / 1024)}KB, ${agents.lines} lines, ~${agents.estimatedTokens} tokens`
+    }
+
+    if (fs.recommendations.length > 0) {
+      prompt += `\n\nFile Size Recommendations:`
+      fs.recommendations.forEach(rec => {
+        prompt += `\n- ${rec}`
+      })
+    }
+  }
+
   return prompt
 }
 
@@ -255,7 +351,22 @@ function generateFallbackAssessment(staticAnalysis: StaticAnalysisSummary): AIAs
   if (languages.length > 0) integrationStructureScore += 5
   if (hasTests) integrationStructureScore += 5
 
-  const totalScore = documentationScore + instructionClarityScore + workflowAutomationScore + riskComplianceScore + integrationStructureScore
+  // File size optimization score based on file size analysis
+  let fileSizeOptimizationScore = 15 // Base score
+  if (staticAnalysis.fileSizeAnalysis) {
+    const fs = staticAnalysis.fileSizeAnalysis
+    // Penalize for large files
+    if (fs.largeFiles.length > 0) fileSizeOptimizationScore -= fs.largeFiles.length * 2
+    // Penalize for suboptimal critical files
+    const suboptimalCritical = fs.criticalFiles.filter(f => !f.isOptimal).length
+    if (suboptimalCritical > 0) fileSizeOptimizationScore -= suboptimalCritical * 3
+    // Reward good context efficiency
+    if (fs.contextConsumption.contextEfficiency === 'excellent') fileSizeOptimizationScore += 5
+    else if (fs.contextConsumption.contextEfficiency === 'good') fileSizeOptimizationScore += 3
+    else if (fs.contextConsumption.contextEfficiency === 'poor') fileSizeOptimizationScore -= 5
+  }
+
+  const totalScore = documentationScore + instructionClarityScore + workflowAutomationScore + riskComplianceScore + integrationStructureScore + fileSizeOptimizationScore
 
   const findings: string[] = []
   const recommendations: string[] = []
@@ -295,6 +406,30 @@ function generateFallbackAssessment(staticAnalysis: StaticAnalysisSummary): AIAs
     recommendations.push('Implement proper error handling and logging throughout the codebase')
   }
 
+  // Add file size findings and recommendations
+  if (staticAnalysis.fileSizeAnalysis) {
+    const fs = staticAnalysis.fileSizeAnalysis
+    
+    if (fs.largeFiles.length > 0) {
+      findings.push(`${fs.largeFiles.length} files exceed 2MB, limiting AI agent compatibility`)
+      recommendations.push('Consider splitting large files or using repository-level processing tools')
+    }
+    
+    const suboptimalCritical = fs.criticalFiles.filter(f => !f.isOptimal)
+    if (suboptimalCritical.length > 0) {
+      findings.push(`${suboptimalCritical.length} critical files exceed optimal sizes for AI agents`)
+      recommendations.push('Optimize critical files (README, AGENTS.md, etc.) for better AI agent processing')
+    }
+    
+    if (fs.contextConsumption.contextEfficiency === 'poor') {
+      findings.push('Context consumption efficiency is poor')
+      recommendations.push('Restructure documentation into smaller, focused files for better AI agent processing')
+    }
+    
+    // Add specific file size recommendations
+    recommendations.push(...fs.recommendations)
+  }
+
   return {
     readinessScore: Math.min(totalScore, 100),
     categories: {
@@ -303,6 +438,7 @@ function generateFallbackAssessment(staticAnalysis: StaticAnalysisSummary): AIAs
       workflowAutomation: Math.min(workflowAutomationScore, 20),
       riskCompliance: Math.min(riskComplianceScore, 20),
       integrationStructure: Math.min(integrationStructureScore, 20),
+      fileSizeOptimization: Math.min(fileSizeOptimizationScore, 20),
     },
     findings,
     recommendations,

@@ -1,5 +1,6 @@
 import JSZip from 'jszip'
 import axios from 'axios'
+import { FileSizeAnalyzer, FileSizeAnalysis } from './file-size-analyzer'
 
 export interface StaticAnalysisResult {
   hasReadme: boolean
@@ -16,6 +17,7 @@ export interface StaticAnalysisResult {
   agentsContent?: string
   workflowFiles: string[]
   testFiles: string[]
+  fileSizeAnalysis?: FileSizeAnalysis
 }
 
 export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysisResult> {
@@ -152,6 +154,15 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
     // Check for error handling patterns
     analysis.errorHandling = await checkErrorHandling(zip, files)
 
+    // Perform file size analysis
+    try {
+      const fileData = await extractFileData(zip, files)
+      analysis.fileSizeAnalysis = await FileSizeAnalyzer.analyzeFileSizes(fileData)
+    } catch (error) {
+      console.warn('File size analysis failed:', error)
+      // Continue without file size analysis if it fails
+    }
+
     return analysis
   } catch (error) {
     console.error('Repository analysis error:', error)
@@ -254,4 +265,56 @@ async function checkErrorHandling(zip: JSZip, files: string[]): Promise<boolean>
   }
 
   return hasErrorHandling
+}
+
+async function extractFileData(zip: JSZip, files: string[]): Promise<Array<{ path: string; content: string; size: number }>> {
+  const fileData: Array<{ path: string; content: string; size: number }> = []
+  
+  // Limit to first 100 files to avoid memory issues
+  const filesToProcess = files.slice(0, 100)
+  
+  for (const file of filesToProcess) {
+    try {
+      // Skip directories and very large files (>50MB) to avoid memory issues
+      if (file.endsWith('/') || zip.files[file].dir) {
+        continue
+      }
+      
+      const zipFile = zip.files[file]
+      // Get file size by reading the content and measuring it
+      let size = 0
+      try {
+        const content = await zipFile.async('uint8array')
+        size = content.length
+      } catch (e) {
+        // Skip files that can't be read
+        continue
+      }
+      
+      // Skip files larger than 50MB to avoid memory issues
+      if (size > 50 * 1024 * 1024) {
+        continue
+      }
+      
+      // Try to read as text, skip if it fails (binary files)
+      let content = ''
+      try {
+        content = await zipFile.async('text')
+      } catch (e) {
+        // Skip binary files
+        continue
+      }
+      
+      fileData.push({
+        path: file,
+        content,
+        size
+      })
+    } catch (error) {
+      // Skip files that can't be processed
+      continue
+    }
+  }
+  
+  return fileData
 }

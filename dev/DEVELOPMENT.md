@@ -178,6 +178,14 @@ This document outlines the development process, implementation status, and futur
   - Code of conduct and template detection
   - Automated test suite quality assessment
 
+- [ ] **File Size & Context Optimization Engine**
+  - File size validation against AI agent limits
+  - Large file detection and flagging (>2MB, >10MB, >50MB)
+  - Context consumption analysis for instruction files
+  - Agent compatibility scoring (Cursor, GitHub Copilot, Claude, etc.)
+  - Binary file identification and exclusion
+  - Token estimation for context window optimization
+
 - [ ] **Documentation Portal Structure Analyzer**
   - OpenAPI/AsyncAPI specification detection
   - JSON Schema validation and completeness
