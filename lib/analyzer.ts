@@ -25,12 +25,37 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
     const owner = urlParts[0]
     const repo = urlParts[1]
 
-    // Download repository as ZIP
-    const zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/main.zip`
-    const response = await axios.get(zipUrl, {
-      responseType: 'arraybuffer',
-      timeout: 30000,
-    })
+    if (!owner || !repo) {
+      throw new Error('Invalid GitHub repository URL format')
+    }
+
+    // Try to download repository as ZIP - first try main branch, then master
+    let response
+    let branch = 'main'
+    
+    try {
+      const zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/main.zip`
+      response = await axios.get(zipUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+      })
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        // Try master branch if main doesn't exist
+        try {
+          const zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`
+          response = await axios.get(zipUrl, {
+            responseType: 'arraybuffer',
+            timeout: 30000,
+          })
+          branch = 'master'
+        } catch (masterError: any) {
+          throw new Error(`Repository not found. Tried both 'main' and 'master' branches. Error: ${masterError.response?.status || 'Unknown error'}`)
+        }
+      } else {
+        throw new Error(`Failed to download repository: ${error.message}`)
+      }
+    }
 
     // Extract ZIP contents
     const zip = await JSZip.loadAsync(response.data)
@@ -130,7 +155,8 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
     return analysis
   } catch (error) {
     console.error('Repository analysis error:', error)
-    throw new Error('Failed to analyze repository')
+    // Re-throw the original error to preserve error messages
+    throw error
   }
 }
 
