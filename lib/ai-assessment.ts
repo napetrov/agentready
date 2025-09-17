@@ -4,6 +4,20 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+export interface StaticAnalysisSummary {
+  hasReadme: boolean
+  hasContributing: boolean
+  hasAgents: boolean
+  hasLicense: boolean
+  hasWorkflows: boolean
+  hasTests: boolean
+  languages: string[]
+  errorHandling: boolean
+  fileCount: number
+  workflowFiles: string[]
+  testFiles: string[]
+}
+
 export interface AIAssessmentResult {
   readinessScore: number
   categories: {
@@ -17,7 +31,7 @@ export interface AIAssessmentResult {
   recommendations: string[]
 }
 
-export async function generateAIAssessment(staticAnalysis: any): Promise<AIAssessmentResult> {
+export async function generateAIAssessment(staticAnalysis: StaticAnalysisSummary): Promise<AIAssessmentResult> {
   try {
     const prompt = createAssessmentPrompt(staticAnalysis)
     
@@ -62,17 +76,46 @@ Provide a JSON response with the following structure:
       throw new Error('No response from OpenAI')
     }
 
-    // Parse JSON response
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('No valid JSON found in response')
+    // Parse JSON response - try to parse the entire trimmed content first
+    let assessment
+    try {
+      const trimmedContent = content.trim()
+      assessment = JSON.parse(trimmedContent)
+    } catch (parseError) {
+      // Fallback to regex extraction if direct parsing fails
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        throw new Error('No valid JSON found in response')
+      }
+      try {
+        assessment = JSON.parse(jsonMatch[0])
+      } catch (regexParseError) {
+        throw new Error(`Failed to parse JSON response: ${regexParseError instanceof Error ? regexParseError.message : 'Unknown error'}`)
+      }
     }
-
-    const assessment = JSON.parse(jsonMatch[0])
     
-    // Validate the response structure
-    if (!assessment.readinessScore || !assessment.categories || !assessment.findings || !assessment.recommendations) {
-      throw new Error('Invalid assessment structure')
+    // Validate the response structure with proper type checking
+    if (typeof assessment.readinessScore !== 'number' || assessment.readinessScore < 0 || assessment.readinessScore > 100) {
+      throw new Error('Invalid readinessScore: must be a number between 0 and 100')
+    }
+    
+    if (!assessment.categories || typeof assessment.categories !== 'object') {
+      throw new Error('Invalid categories: must be an object')
+    }
+    
+    const requiredCategories = ['documentation', 'instructionClarity', 'workflowAutomation', 'riskCompliance', 'integrationStructure']
+    for (const category of requiredCategories) {
+      if (typeof assessment.categories[category] !== 'number' || assessment.categories[category] < 0 || assessment.categories[category] > 20) {
+        throw new Error(`Invalid ${category} score: must be a number between 0 and 20`)
+      }
+    }
+    
+    if (!Array.isArray(assessment.findings)) {
+      throw new Error('Invalid findings: must be an array')
+    }
+    
+    if (!Array.isArray(assessment.recommendations)) {
+      throw new Error('Invalid recommendations: must be an array')
     }
 
     return assessment
@@ -109,11 +152,11 @@ Static Analysis Results:
 - Has CONTRIBUTING: ${hasContributing}
 - Has AGENTS documentation: ${hasAgents}
 - Has LICENSE: ${hasLicense}
-- Has CI/CD Workflows: ${hasWorkflows} (${workflowFiles.length} files)
-- Has Tests: ${hasTests} (${testFiles.length} files)
+- Has CI/CD Workflows: ${hasWorkflows} (${(workflowFiles || []).length} files)
+- Has Tests: ${hasTests} (${(testFiles || []).length} files)
 - Error Handling Detected: ${errorHandling}
 - Total Files: ${fileCount}
-- Primary Languages: ${languages.join(', ')}
+- Primary Languages: ${(languages || []).join(', ')}
 
 Documentation Content:`
 

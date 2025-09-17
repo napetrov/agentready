@@ -207,19 +207,35 @@ export default function Home() {
           <div className="card">
             <h3 className="text-lg font-semibold mb-4">Static Analysis Results</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(result.staticAnalysis).map(([key, value]) => (
-                <div key={key} className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    value ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {value ? '✓' : '✗'}
+              {Object.entries(result.staticAnalysis)
+                .filter(([_, value]) => typeof value === 'boolean')
+                .map(([key, value]) => (
+                  <div key={key} className="text-center p-3 border rounded-lg">
+                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                      value ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {value ? '✓' : '✗'}
+                    </div>
+                    <div className="text-sm font-medium capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </div>
                   </div>
-                  <div className="text-sm font-medium capitalize">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
+            
+            {/* Languages */}
+            {result.staticAnalysis.languages && result.staticAnalysis.languages.length > 0 && (
+              <div className="mt-4 p-3 border rounded-lg">
+                <div className="text-sm font-medium mb-2">Programming Languages</div>
+                <div className="flex flex-wrap gap-2">
+                  {result.staticAnalysis.languages.map((lang: string, index: number) => (
+                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                      {lang}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Key Findings */}

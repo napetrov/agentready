@@ -143,10 +143,10 @@ jobs:
     - name: Test API endpoints
       run: |
         # Test basic API health
-        curl -f http://localhost:3000/api/analyze -X POST \
+        curl --fail-with-body http://localhost:3000/api/analyze -X POST \
           -H "Content-Type: application/json" \
           -d '{"repoUrl": "https://github.com/vercel/next.js"}' \
-          --max-time 60 || echo "API test failed but continuing..."
+          --max-time 60
           
     - name: Cleanup
       if: always()

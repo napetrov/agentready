@@ -5,7 +5,7 @@
  * Run with: node dev/test-scripts/test-simple.js
  */
 
-const https = require('https')
+const http = require('http')
 
 async function testAPI() {
   console.log('🧪 Testing API Endpoint\n')
@@ -31,9 +31,12 @@ async function testAPI() {
   console.log('URL:', `http://${options.hostname}:${options.port}${options.path}`)
   console.log('Data:', testData)
   
-  const req = https.request(options, (res) => {
+  const req = http.request(options, (res) => {
     console.log(`Status: ${res.statusCode}`)
     console.log(`Headers:`, res.headers)
+    
+    // Set encoding to handle string data properly
+    res.setEncoding('utf8')
     
     let data = ''
     res.on('data', (chunk) => {
@@ -41,19 +44,39 @@ async function testAPI() {
     })
     
     res.on('end', () => {
-      try {
-        const result = JSON.parse(data)
-        console.log('\n✅ API Response:')
-        console.log(JSON.stringify(result, null, 2))
-      } catch (error) {
-        console.log('\n❌ Failed to parse response:')
-        console.log('Raw response:', data)
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        try {
+          const result = JSON.parse(data)
+          console.log('\n✅ API Response:')
+          console.log(JSON.stringify(result, null, 2))
+        } catch (error) {
+          console.log('\n❌ Failed to parse response:')
+          console.log('Parse error:', error.message)
+          console.log('Raw response:', data)
+        }
+      } else {
+        console.log('\n❌ API returned error status:', res.statusCode)
+        console.log('Response body:', data)
       }
     })
   })
   
+  // Set timeout and handle timeout
+  req.setTimeout(10000, () => {
+    console.log('\n❌ Request timed out after 10 seconds')
+    req.destroy()
+  })
+  
+  req.on('timeout', () => {
+    console.log('\n❌ Request timed out')
+    req.destroy()
+  })
+  
   req.on('error', (error) => {
     console.log('\n❌ Request failed:', error.message)
+    if (error.stack) {
+      console.log('Error stack:', error.stack)
+    }
     console.log('Make sure the development server is running: npm run dev')
   })
   

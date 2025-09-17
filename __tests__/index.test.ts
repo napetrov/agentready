@@ -6,14 +6,14 @@ describe('Simple Functionality Tests', () => {
     expect(() => require('../lib/report-generator')).not.toThrow()
   })
 
-  test('should validate URL format correctly', () => {
+  test('should validate URL format correctly', async () => {
     const { analyzeRepository } = require('../lib/analyzer')
     
     // Test invalid URLs
-    expect(() => analyzeRepository('invalid-url')).rejects.toThrow('Invalid GitHub repository URL format')
-    expect(() => analyzeRepository('https://not-github.com/user/repo')).rejects.toThrow('Invalid GitHub repository URL format')
-    expect(() => analyzeRepository('https://github.com/')).rejects.toThrow('Invalid GitHub repository URL format')
-    expect(() => analyzeRepository('')).rejects.toThrow('Invalid GitHub repository URL format')
+    await expect(analyzeRepository('invalid-url')).rejects.toThrow('Invalid GitHub repository URL format')
+    await expect(analyzeRepository('https://not-github.com/user/repo')).rejects.toThrow('Invalid GitHub repository URL format')
+    await expect(analyzeRepository('https://github.com/')).rejects.toThrow('Invalid GitHub repository URL format')
+    await expect(analyzeRepository('')).rejects.toThrow('Invalid GitHub repository URL format')
   })
 
   test('should handle fallback assessment with missing data', async () => {
