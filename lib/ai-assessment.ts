@@ -129,22 +129,22 @@ Documentation Content:`
     prompt += `\n\nAGENTS Content (first 1000 chars):\n${agentsContent.substring(0, 1000)}`
   }
 
-  prompt += `\n\nWorkflow Files: ${workflowFiles.join(', ')}`
-  prompt += `\n\nTest Files: ${testFiles.slice(0, 10).join(', ')}${testFiles.length > 10 ? '...' : ''}`
+  prompt += `\n\nWorkflow Files: ${(workflowFiles || []).join(', ')}`
+  prompt += `\n\nTest Files: ${(testFiles || []).slice(0, 10).join(', ')}${(testFiles || []).length > 10 ? '...' : ''}`
 
   return prompt
 }
 
 function generateFallbackAssessment(staticAnalysis: any): AIAssessmentResult {
   const {
-    hasReadme,
-    hasContributing,
-    hasAgents,
-    hasLicense,
-    hasWorkflows,
-    hasTests,
-    errorHandling,
-    languages
+    hasReadme = false,
+    hasContributing = false,
+    hasAgents = false,
+    hasLicense = false,
+    hasWorkflows = false,
+    hasTests = false,
+    errorHandling = false,
+    languages = []
   } = staticAnalysis
 
   // Calculate basic scores

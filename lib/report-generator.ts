@@ -64,7 +64,7 @@ export async function generatePDFReport(assessmentResult: any): Promise<Buffer> 
     integrationStructure: 'Integration & Structure'
   }
 
-  Object.entries(categories).forEach(([key, score]) => {
+  Object.entries(categories || {}).forEach(([key, score]) => {
     checkNewPage(20)
     
     const scoreValue = score as number
@@ -103,15 +103,15 @@ export async function generatePDFReport(assessmentResult: any): Promise<Buffer> 
   doc.text('Static Analysis Results', 20, yPosition)
   yPosition += 15
 
-  const staticAnalysis = assessmentResult.staticAnalysis
+  const staticAnalysis = assessmentResult.staticAnalysis || {}
   const staticItems = [
-    { name: 'README.md', value: staticAnalysis.hasReadme },
-    { name: 'CONTRIBUTING.md', value: staticAnalysis.hasContributing },
-    { name: 'AGENTS.md', value: staticAnalysis.hasAgents },
-    { name: 'LICENSE', value: staticAnalysis.hasLicense },
-    { name: 'CI/CD Workflows', value: staticAnalysis.hasWorkflows },
-    { name: 'Test Files', value: staticAnalysis.hasTests },
-    { name: 'Error Handling', value: staticAnalysis.errorHandling }
+    { name: 'README.md', value: staticAnalysis.hasReadme || false },
+    { name: 'CONTRIBUTING.md', value: staticAnalysis.hasContributing || false },
+    { name: 'AGENTS.md', value: staticAnalysis.hasAgents || false },
+    { name: 'LICENSE', value: staticAnalysis.hasLicense || false },
+    { name: 'CI/CD Workflows', value: staticAnalysis.hasWorkflows || false },
+    { name: 'Test Files', value: staticAnalysis.hasTests || false },
+    { name: 'Error Handling', value: staticAnalysis.errorHandling || false }
   ]
 
   staticItems.forEach(item => {
