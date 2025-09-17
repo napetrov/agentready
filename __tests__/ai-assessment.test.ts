@@ -296,7 +296,21 @@ describe('generateAIAssessment', () => {
   test('should handle empty static analysis', async () => {
     delete process.env.OPENAI_API_KEY
 
-    const result = await generateAIAssessment({})
+    const emptyStaticAnalysis = {
+      hasReadme: false,
+      hasContributing: false,
+      hasAgents: false,
+      hasLicense: false,
+      hasWorkflows: false,
+      hasTests: false,
+      languages: [],
+      errorHandling: false,
+      fileCount: 0,
+      workflowFiles: [],
+      testFiles: []
+    }
+
+    const result = await generateAIAssessment(emptyStaticAnalysis)
 
     expect(result).toBeDefined()
     expect(typeof result.readinessScore).toBe('number')
