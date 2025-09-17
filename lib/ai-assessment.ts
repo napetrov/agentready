@@ -1,11 +1,19 @@
 import 'server-only'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL,           // optional: Azure / proxy / compat providers
-  timeout: Number(process.env.OPENAI_TIMEOUT_MS ?? 30000), // fail fast
-})
+// Lazy initialization to avoid build-time errors
+let openai: OpenAI | null = null
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: process.env.OPENAI_BASE_URL,           // optional: Azure / proxy / compat providers
+      timeout: Number(process.env.OPENAI_TIMEOUT_MS ?? 30000), // fail fast
+    })
+  }
+  return openai
+}
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
 
@@ -48,7 +56,7 @@ export async function generateAIAssessment(staticAnalysis: StaticAnalysisSummary
       return generateFallbackAssessment(staticAnalysis)
     }
     
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
         {
