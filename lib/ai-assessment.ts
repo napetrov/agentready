@@ -22,7 +22,7 @@ export async function generateAIAssessment(staticAnalysis: any): Promise<AIAsses
     const prompt = createAssessmentPrompt(staticAnalysis)
     
     const response = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-5-nano',
       messages: [
         {
           role: 'system',
