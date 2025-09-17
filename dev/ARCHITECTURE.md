@@ -2,7 +2,163 @@
 
 ## 🏗️ Overall Architecture
 
-The AI Agent Readiness Assessment Tool is a full-stack web application designed to evaluate GitHub repositories for their readiness to work with AI agents. The system combines static code analysis with AI-powered assessment to provide comprehensive readiness scores and actionable recommendations.
+The AI Agent Readiness Assessment Tool is a comprehensive full-stack web application designed to evaluate software repositories, documentation portals, and business websites for their readiness to work with AI agents. The system combines static deterministic evaluations with dynamic AI-powered assessments to provide comprehensive readiness scores, actionable recommendations, and industry-specific optimization guidance.
+
+## 📊 AI-Agent Readiness Assessment Methodology
+
+### Core Assessment Framework
+
+The tool implements a comprehensive methodology that evaluates both technical repositories and business websites for AI agent readiness across multiple dimensions:
+
+#### 1. Static Deterministic Evaluations
+
+**Repository Artifacts & Automation (Weight: 25%)**
+- **Essential Documentation**: README.md, CONTRIBUTING.md, LICENSE, AGENTS.md
+- **AI-Specific Documentation**: AGENTS.md with explicit step-by-step instructions for AI agents
+- **Automation Evidence**: CI/CD workflows, automated test suites, build scripts
+- **Community Standards**: Code of conduct, issue templates, pull request templates
+
+**Documentation Portal Structure (Weight: 20%)**
+- **Machine-Readability**: OpenAPI specs, JSON schemas, AsyncAPI definitions
+- **Navigation Structure**: Clear TOC, cross-linking, search functionality
+- **Content Organization**: Self-contained chunks (500-3000 words), semantic HTML
+- **Accessibility**: WCAG compliance, screen reader compatibility
+
+#### 2. Dynamic AI-Based Evaluations (LLM-Driven)
+
+**Instruction Clarity & Precision (Weight: 25%)**
+- **Unambiguous Instructions**: Clear, numbered steps with prerequisites
+- **Context Completeness**: All necessary information without assumptions
+- **Concrete Commands**: Specific actions vs. vague language
+- **Verification Steps**: Expected outputs and success criteria
+
+**Workflow Automation Potential (Weight: 20%)**
+- **Scriptable Processes**: CLI commands, API calls vs. GUI-only workflows
+- **Decision Point Analysis**: Human judgment requirements vs. automated decisions
+- **Integration Readiness**: API availability, webhook support
+- **Error Handling**: Automated recovery vs. manual intervention
+
+**Context & Reasoning Efficiency (Weight: 15%)**
+- **Information Cohesion**: Related concepts grouped together
+- **Terminology Consistency**: Standardized vocabulary throughout
+- **Cross-Reference Quality**: Explicit links between related sections
+- **Chunking Optimization**: RAG-friendly content structure
+
+**Risk & Compliance Signals (Weight: 15%)**
+- **Security Practices**: Safe coding examples, security considerations
+- **Compliance Alignment**: License terms, regulatory requirements
+- **Safety Guidelines**: Harm prevention, ethical considerations
+- **Governance Documentation**: Clear policies and escalation paths
+
+### Scoring Methodologies
+
+#### 1. Additive Checklist Scoring (MVP)
+- **Total Points**: 100 (20 binary checks × 5 points each)
+- **Categories**: 5 core areas with equal weighting
+- **Transparency**: Each point traceable to specific criteria
+- **Use Case**: Quick health assessment, initial evaluation
+
+#### 2. Weighted Category Scoring (Enterprise)
+- **Total Points**: 1000 with quality gates
+- **Categories**: 12 detailed evaluation areas
+- **Weighting**: Business-critical categories weighted higher
+- **Quality Gates**: Critical failures cap maximum score
+- **Use Case**: Enterprise compliance, detailed analysis
+
+#### 3. Rule-Based Gates and Tiered Ratings
+- **Quality Gates**: Must-pass criteria for agent readiness
+- **Tiered Ratings**: Gold/Silver/Bronze or Level 1/2/3
+- **Binary Assessment**: Pass/fail with detailed rationale
+- **Use Case**: Compliance enforcement, policy adherence
+
+### Business Website Agent-Readiness Framework
+
+#### Industry-Specific Assessment Templates
+
+**Restaurant & Food Service**
+- **Critical Agent Tasks**: Reservations, ordering, dietary restrictions, modifications
+- **Essential APIs**: OpenTable/Resy, POS integration, delivery platforms
+- **Key Metrics**: Real-time availability, payment processing, customer notifications
+
+**Retail & E-commerce**
+- **Critical Agent Tasks**: Product search, inventory checking, order management, returns
+- **Essential APIs**: Product catalog, e-commerce platform, payment gateway, shipping
+- **Key Metrics**: Real-time inventory, conversion optimization, customer service
+
+**Professional Services**
+- **Critical Agent Tasks**: Consultation scheduling, availability checking, quote generation
+- **Essential APIs**: Calendar systems, client management, document sharing, billing
+- **Key Metrics**: Appointment automation, client portal access, service delivery
+
+#### Business Website Evaluation Categories
+
+**Basic Information Architecture (20%)**
+- Contact information visibility
+- Business hours and location data
+- Services/products categorization
+- Pricing transparency
+
+**Machine-Readable Content Structure (25%)**
+- Schema.org markup implementation
+- JSON-LD structured data
+- OpenGraph and meta tags
+- Semantic HTML structure
+
+**API & Integration Readiness (20%)**
+- Reservation/booking APIs
+- Payment processing endpoints
+- Inventory/availability feeds
+- Customer communication systems
+
+**Conversational Query Readiness (35%)**
+- FAQ structure optimization
+- Natural language content
+- Voice search compatibility
+- Multi-turn conversation support
+
+### Governance, Trust, and Transparency Framework
+
+#### Explainability of the Score
+- **Traceable Criteria**: Every score component backed by specific evidence
+- **LLM Rationale**: AI evaluations include detailed reasoning
+- **Audit Logs**: Complete evaluation process documentation
+- **Evidence Files**: Reproducible assessment results
+
+#### Confidence Indicators
+- **Uncertainty Measures**: LLM confidence levels for findings
+- **Double-Check Mechanism**: Critical categories require dual validation
+- **Human Review Flags**: Borderline cases marked for expert review
+- **Confidence Ranges**: Score uncertainty bounds displayed
+
+#### Auditable and Repeatable Process
+- **Process Documentation**: Formal methodology documentation
+- **Version Control**: Evaluation script versioning
+- **Calibration Repos**: Reference examples for consistency
+- **Compliance Mapping**: Alignment with governance frameworks
+
+#### Integration with AI Governance Tools
+- **NIST AI Risk Management**: Map to Govern, Map, Measure, Manage functions
+- **IBM AI Governance**: Process evaluation and safety monitoring
+- **Slalom AI Agent Framework**: Security, ethics, and governance alignment
+- **Lumenova AI Governance**: Explainability, accountability, auditability
+
+### Actionable Recommendations Engine
+
+#### Priority-Based Improvement Suggestions
+- **High Priority**: Foundational issues (missing README, AGENTS.md)
+- **Medium Priority**: Quality improvements (clarity, automation)
+- **Low Priority**: Enhancement features (advanced integrations)
+
+#### Industry-Specific Guidance
+- **Restaurant Optimization**: Reservation APIs, menu management, delivery integration
+- **Retail Enhancement**: Product APIs, inventory management, checkout optimization
+- **Service Business**: Scheduling APIs, client portals, consultation automation
+
+#### Implementation Roadmaps
+- **Phase 1 (Weeks 1-4)**: Foundation elements (score 0-40)
+- **Phase 2 (Weeks 5-12)**: Agent interaction capabilities (score 41-70)
+- **Phase 3 (Weeks 13-24)**: Advanced integration features (score 71-85)
+- **Phase 4 (Ongoing)**: Optimization and innovation (score 86-100)
 
 ## 📐 System Design
 
