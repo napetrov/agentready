@@ -1,0 +1,44 @@
+{
+  "name": "ai-agent-readiness-assessment",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "prepare": "husky install",
+    "type-check": "tsc --noEmit",
+    "ci": "npm run lint && npm run type-check && npm test"
+  },
+  "dependencies": {
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.6.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.2",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.292.0",
+    "next": "^14.2.32",
+    "openai": "^4.20.0",
+    "postcss": "^8.4.31",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "server-only": "^0.0.1",
+    "tailwindcss": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.8",
+    "@types/node": "^20.8.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "eslint": "^8.52.0",
+    "eslint-config-next": "14.0.0",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
+    "typescript": "^5.2.0"
+  }
+}

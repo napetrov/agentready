@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+set -e
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run linting
+npm run lint
+
+# Run type checking
+npx tsc --noEmit
+
+# Run tests
+npm test -- --passWithNoTests
