@@ -114,7 +114,8 @@ describe('generateEnhancedAIAssessment', () => {
           agentsMd: { size: 1000, lines: 20, estimatedTokens: 200 },
           readme: { size: 5000, lines: 50, estimatedTokens: 500 },
           contributing: { size: 2000, lines: 30, estimatedTokens: 300 }
-        }
+        },
+        recommendations: ['Context usage is optimal for AI agents.']
       },
       agentCompatibility: {
         cursor: 95,
