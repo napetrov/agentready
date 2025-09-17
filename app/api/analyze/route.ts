@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { analyzeRepository } from '@/lib/analyzer'
-import { generateAIAssessment } from '@/lib/ai-assessment'
+import { analyzeRepository } from '../../../lib/analyzer'
+import { generateAIAssessment } from '../../../lib/ai-assessment'
 
 export async function POST(request: NextRequest) {
   try {

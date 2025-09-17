@@ -1,12 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // App Router is enabled by default in Next.js 14
   experimental: {
-    appDir: true,
-  },
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
+    // Remove deprecated appDir option
   },
 }
 
