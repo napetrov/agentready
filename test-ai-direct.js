@@ -5,16 +5,40 @@ const OpenAI = require('openai');
 
 async function testAIDirect() {
   console.log('🔧 Testing AI Communication Directly...');
-  console.log('API Key length:', process.env.OPENAI_API_KEY?.length || 0);
-  console.log('API Key starts with:', process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined');
+  console.log('All environment variables with OPENAI:', Object.keys(process.env).filter(key => key.includes('OPENAI')));
+  console.log('All environment variables with API:', Object.keys(process.env).filter(key => key.includes('API')));
+  console.log('All environment variables with KEY:', Object.keys(process.env).filter(key => key.includes('KEY')));
   
-  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your_openai_api_key_here') {
-    console.log('❌ No valid API key found');
+  console.log('OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
+  console.log('OPENAI_API_KEY starts with:', process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined');
+  
+  // Try different possible environment variable names
+  const possibleKeys = [
+    'OPENAI_API_KEY',
+    'OPENAI_KEY', 
+    'OPENAI_API_TOKEN',
+    'OPENAI_TOKEN',
+    'API_KEY',
+    'OPENAI_SECRET'
+  ];
+  
+  let apiKey = null;
+  for (const key of possibleKeys) {
+    if (process.env[key] && process.env[key] !== 'your_openai_api_key_here' && process.env[key].length > 10) {
+      apiKey = process.env[key];
+      console.log(`✅ Found API key in ${key}:`, process.env[key].substring(0, 10) + '...');
+      break;
+    }
+  }
+  
+  if (!apiKey) {
+    console.log('❌ No valid API key found in any environment variable');
+    console.log('Available env vars:', Object.keys(process.env).slice(0, 20));
     return;
   }
 
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: apiKey,
     timeout: 30000
   });
 
