@@ -226,7 +226,12 @@ Provide a JSON response with detailed scoring and analysis.`
       hasFindings: 'findings' in parsed,
       hasRecommendations: 'recommendations' in parsed,
       findingsLength: Array.isArray(parsed.findings) ? parsed.findings.length : 'not array',
-      recommendationsLength: Array.isArray(parsed.recommendations) ? parsed.recommendations.length : 'not array'
+      recommendationsLength: Array.isArray(parsed.recommendations) ? parsed.recommendations.length : 'not array',
+      actualKeys: Object.keys(parsed),
+      stepByStepQualityValue: parsed.stepByStepQuality,
+      stepByStepQualityType: typeof parsed.stepByStepQuality,
+      commandClarityValue: parsed.commandClarity,
+      commandClarityType: typeof parsed.commandClarity
     })
     
     // Validate that we have the required numeric fields
