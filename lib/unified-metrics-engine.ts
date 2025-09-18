@@ -427,33 +427,75 @@ export class UnifiedMetricsEngine {
       findings.push(`${category} score is excellent (${score.value}/20) - well optimized`);
     }
 
-    // Add category-specific findings
+    // Check if this is a website analysis
+    const isWebsite = staticAnalysis.websiteUrl || staticAnalysis.pageTitle;
+
+    // Add category-specific findings based on analysis type
     switch (category) {
       case 'documentation':
-        if (!staticAnalysis.hasReadme) findings.push('Missing README.md file');
-        if (!staticAnalysis.hasAgents) findings.push('Missing AGENTS.md file');
-        if (!staticAnalysis.hasContributing) findings.push('Missing CONTRIBUTING.md file');
-        if (!staticAnalysis.hasLicense) findings.push('Missing LICENSE file');
+        if (isWebsite) {
+          if (!staticAnalysis.hasStructuredData) findings.push('Missing structured data markup');
+          if (!staticAnalysis.hasOpenGraph) findings.push('No Open Graph meta tags found');
+          if (!staticAnalysis.hasTwitterCards) findings.push('No Twitter Cards meta tags');
+          if (!staticAnalysis.hasSitemap) findings.push('No XML sitemap available');
+          if (!staticAnalysis.hasRobotsTxt) findings.push('No robots.txt file found');
+          if (!staticAnalysis.hasFavicon) findings.push('No favicon detected');
+        } else {
+          if (!staticAnalysis.hasReadme) findings.push('Missing README.md file');
+          if (!staticAnalysis.hasAgents) findings.push('Missing AGENTS.md file');
+          if (!staticAnalysis.hasContributing) findings.push('Missing CONTRIBUTING.md file');
+          if (!staticAnalysis.hasLicense) findings.push('Missing LICENSE file');
+        }
         break;
       case 'instructionClarity':
-        if (!staticAnalysis.hasReadme) findings.push('No setup instructions available');
-        if (!staticAnalysis.hasAgents) findings.push('No AI agent specific instructions');
+        if (isWebsite) {
+          if (!staticAnalysis.technologies || staticAnalysis.technologies.length === 0) findings.push('No technology stack detected');
+          if (!staticAnalysis.contactInfo || staticAnalysis.contactInfo.length === 0) findings.push('No contact information found');
+          if (!staticAnalysis.socialMediaLinks || staticAnalysis.socialMediaLinks.length === 0) findings.push('No social media links detected');
+        } else {
+          if (!staticAnalysis.hasReadme) findings.push('No setup instructions available');
+          if (!staticAnalysis.hasAgents) findings.push('No AI agent specific instructions');
+        }
         break;
       case 'workflowAutomation':
-        if (!staticAnalysis.hasWorkflows) findings.push('No CI/CD workflows detected');
-        if (!staticAnalysis.hasTests) findings.push('No automated tests found');
+        if (isWebsite) {
+          if (!staticAnalysis.mobileFriendly) findings.push('Website not mobile-friendly');
+          if (staticAnalysis.pageLoadSpeed && staticAnalysis.pageLoadSpeed > 3000) findings.push('Slow page load speed detected');
+          if (!staticAnalysis.navigationStructure || staticAnalysis.navigationStructure.length === 0) findings.push('No clear navigation structure');
+        } else {
+          if (!staticAnalysis.hasWorkflows) findings.push('No CI/CD workflows detected');
+          if (!staticAnalysis.hasTests) findings.push('No automated tests found');
+        }
         break;
       case 'riskCompliance':
-        if (!staticAnalysis.hasLicense) findings.push('No license information available');
-        if (!staticAnalysis.errorHandling) findings.push('Limited error handling detected');
+        if (isWebsite) {
+          if (!staticAnalysis.securityHeaders || staticAnalysis.securityHeaders.length === 0) findings.push('No security headers detected');
+          if (!staticAnalysis.contactInfo || staticAnalysis.contactInfo.length === 0) findings.push('No contact information available');
+          if (staticAnalysis.accessibilityScore && staticAnalysis.accessibilityScore < 60) findings.push('Accessibility issues detected');
+        } else {
+          if (!staticAnalysis.hasLicense) findings.push('No license information available');
+          if (!staticAnalysis.errorHandling) findings.push('Limited error handling detected');
+        }
         break;
       case 'integrationStructure':
-        if (!staticAnalysis.hasWorkflows) findings.push('No automation infrastructure');
-        if (!staticAnalysis.hasTests) findings.push('No testing infrastructure');
+        if (isWebsite) {
+          if (!staticAnalysis.technologies || staticAnalysis.technologies.length === 0) findings.push('No technology stack detected');
+          if (!staticAnalysis.socialMediaLinks || staticAnalysis.socialMediaLinks.length === 0) findings.push('No social media integration found');
+          if (!staticAnalysis.contactInfo || staticAnalysis.contactInfo.length === 0) findings.push('No contact information for integration');
+        } else {
+          if (!staticAnalysis.hasWorkflows) findings.push('No automation infrastructure');
+          if (!staticAnalysis.hasTests) findings.push('No testing infrastructure');
+        }
         break;
       case 'fileSizeOptimization':
-        if (staticAnalysis.fileSizeAnalysis?.largeFiles?.length > 0) {
-          findings.push(`${staticAnalysis.fileSizeAnalysis.largeFiles.length} files exceed 2MB limit`);
+        if (isWebsite) {
+          if (staticAnalysis.contentLength && staticAnalysis.contentLength < 500) findings.push('Very limited content available');
+          if (staticAnalysis.imageCount && staticAnalysis.imageCount === 0) findings.push('No images found for visual context');
+          if (staticAnalysis.linkCount && staticAnalysis.linkCount < 5) findings.push('Limited internal linking structure');
+        } else {
+          if (staticAnalysis.fileSizeAnalysis?.largeFiles?.length > 0) {
+            findings.push(`${staticAnalysis.fileSizeAnalysis.largeFiles.length} files exceed 2MB limit`);
+          }
         }
         break;
     }
@@ -471,33 +513,75 @@ export class UnifiedMetricsEngine {
       recommendations.push(`Focus on improving ${category} through targeted enhancements`);
     }
 
-    // Add category-specific recommendations
+    // Check if this is a website analysis
+    const isWebsite = staticAnalysis.websiteUrl || staticAnalysis.pageTitle;
+
+    // Add category-specific recommendations based on analysis type
     switch (category) {
       case 'documentation':
-        if (!staticAnalysis.hasReadme) recommendations.push('Create comprehensive README.md with setup instructions');
-        if (!staticAnalysis.hasAgents) recommendations.push('Add AGENTS.md with AI agent specific instructions');
-        if (!staticAnalysis.hasContributing) recommendations.push('Add CONTRIBUTING.md for contributor guidance');
-        if (!staticAnalysis.hasLicense) recommendations.push('Add LICENSE file to clarify usage rights');
+        if (isWebsite) {
+          if (!staticAnalysis.hasStructuredData) recommendations.push('Add structured data markup for better AI understanding');
+          if (!staticAnalysis.hasOpenGraph) recommendations.push('Implement Open Graph meta tags for social sharing');
+          if (!staticAnalysis.hasTwitterCards) recommendations.push('Add Twitter Cards meta tags for better social media integration');
+          if (!staticAnalysis.hasSitemap) recommendations.push('Create XML sitemap for better search engine indexing');
+          if (!staticAnalysis.hasRobotsTxt) recommendations.push('Add robots.txt file for search engine directives');
+          if (!staticAnalysis.hasFavicon) recommendations.push('Add favicon for better brand recognition');
+        } else {
+          if (!staticAnalysis.hasReadme) recommendations.push('Create comprehensive README.md with setup instructions');
+          if (!staticAnalysis.hasAgents) recommendations.push('Add AGENTS.md with AI agent specific instructions');
+          if (!staticAnalysis.hasContributing) recommendations.push('Add CONTRIBUTING.md for contributor guidance');
+          if (!staticAnalysis.hasLicense) recommendations.push('Add LICENSE file to clarify usage rights');
+        }
         break;
       case 'instructionClarity':
-        if (!staticAnalysis.hasReadme) recommendations.push('Create detailed setup and usage instructions');
-        if (!staticAnalysis.hasAgents) recommendations.push('Add specific instructions for AI agents');
+        if (isWebsite) {
+          if (!staticAnalysis.technologies || staticAnalysis.technologies.length === 0) recommendations.push('Add technology stack information for better integration');
+          if (!staticAnalysis.contactInfo || staticAnalysis.contactInfo.length === 0) recommendations.push('Add comprehensive contact information');
+          if (!staticAnalysis.socialMediaLinks || staticAnalysis.socialMediaLinks.length === 0) recommendations.push('Add social media links for better connectivity');
+        } else {
+          if (!staticAnalysis.hasReadme) recommendations.push('Create detailed setup and usage instructions');
+          if (!staticAnalysis.hasAgents) recommendations.push('Add specific instructions for AI agents');
+        }
         break;
       case 'workflowAutomation':
-        if (!staticAnalysis.hasWorkflows) recommendations.push('Implement CI/CD workflows for automated processes');
-        if (!staticAnalysis.hasTests) recommendations.push('Add automated test suite');
+        if (isWebsite) {
+          if (!staticAnalysis.mobileFriendly) recommendations.push('Optimize website for mobile devices');
+          if (staticAnalysis.pageLoadSpeed && staticAnalysis.pageLoadSpeed > 3000) recommendations.push('Improve page load speed for better user experience');
+          if (!staticAnalysis.navigationStructure || staticAnalysis.navigationStructure.length === 0) recommendations.push('Implement clear navigation structure');
+        } else {
+          if (!staticAnalysis.hasWorkflows) recommendations.push('Implement CI/CD workflows for automated processes');
+          if (!staticAnalysis.hasTests) recommendations.push('Add automated test suite');
+        }
         break;
       case 'riskCompliance':
-        if (!staticAnalysis.hasLicense) recommendations.push('Add appropriate license file');
-        if (!staticAnalysis.errorHandling) recommendations.push('Implement comprehensive error handling');
+        if (isWebsite) {
+          if (!staticAnalysis.securityHeaders || staticAnalysis.securityHeaders.length === 0) recommendations.push('Implement security headers for better protection');
+          if (!staticAnalysis.contactInfo || staticAnalysis.contactInfo.length === 0) recommendations.push('Add contact information for compliance');
+          if (staticAnalysis.accessibilityScore && staticAnalysis.accessibilityScore < 60) recommendations.push('Improve website accessibility for better usability');
+        } else {
+          if (!staticAnalysis.hasLicense) recommendations.push('Add appropriate license file');
+          if (!staticAnalysis.errorHandling) recommendations.push('Implement comprehensive error handling');
+        }
         break;
       case 'integrationStructure':
-        if (!staticAnalysis.hasWorkflows) recommendations.push('Set up automation infrastructure');
-        if (!staticAnalysis.hasTests) recommendations.push('Implement testing infrastructure');
+        if (isWebsite) {
+          if (!staticAnalysis.technologies || staticAnalysis.technologies.length === 0) recommendations.push('Document technology stack for better integration');
+          if (!staticAnalysis.socialMediaLinks || staticAnalysis.socialMediaLinks.length === 0) recommendations.push('Add social media integration for better connectivity');
+          if (!staticAnalysis.contactInfo || staticAnalysis.contactInfo.length === 0) recommendations.push('Add contact information for integration support');
+        } else {
+          if (!staticAnalysis.hasWorkflows) recommendations.push('Set up automation infrastructure');
+          if (!staticAnalysis.hasTests) recommendations.push('Implement testing infrastructure');
+        }
         break;
       case 'fileSizeOptimization':
-        if (staticAnalysis.fileSizeAnalysis?.largeFiles?.length > 0) {
-          recommendations.push('Optimize large files for better AI agent compatibility');
+        if (isWebsite) {
+          if (staticAnalysis.contentLength && staticAnalysis.contentLength < 500) recommendations.push('Add more comprehensive content for better context');
+          if (staticAnalysis.imageCount && staticAnalysis.imageCount === 0) recommendations.push('Add relevant images for better visual context');
+          if (staticAnalysis.linkCount && staticAnalysis.linkCount < 5) recommendations.push('Improve internal linking structure for better navigation');
+        } else {
+          if (staticAnalysis.fileSizeAnalysis?.largeFiles?.length > 0) {
+            recommendations.push('Optimize large files for better AI agent compatibility');
+          }
         }
         break;
     }
