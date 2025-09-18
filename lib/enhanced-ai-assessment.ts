@@ -618,12 +618,21 @@ function combineAssessmentResults(
   return {
     readinessScore: overallScore,
     categories: {
-      documentation: Math.min(20, Math.round((staticAnalysis.hasReadme ? 15 : 0) + (staticAnalysis.hasAgents ? 5 : 0))),
+      documentation: Math.min(20, Math.round(
+        (staticAnalysis.hasReadme ? 8 : 0) + 
+        (staticAnalysis.hasAgents ? 6 : 0) + 
+        (staticAnalysis.hasContributing ? 4 : 0) + 
+        (staticAnalysis.hasLicense ? 2 : 0)
+      )),
       instructionClarity: instructionScore,
       workflowAutomation: workflowScore,
       riskCompliance: riskScore,
-      integrationStructure: Math.min(20, Math.round((staticAnalysis.hasWorkflows ? 10 : 0) + (staticAnalysis.hasTests ? 10 : 0))),
-      fileSizeOptimization: Math.min(20, staticAnalysis.fileSizeAnalysis ? Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5) : 10)
+      integrationStructure: Math.min(20, Math.round(
+        (staticAnalysis.hasWorkflows ? 8 : 0) + 
+        (staticAnalysis.hasTests ? 6 : 0) + 
+        (staticAnalysis.workflowFiles?.length > 0 ? Math.min(6, staticAnalysis.workflowFiles.length) : 0)
+      )),
+      fileSizeOptimization: staticAnalysis.fileSizeAnalysis ? Math.min(20, Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 6)) : 10
     },
     findings: findings.slice(0, 10), // Limit to top 10 findings
     recommendations: recommendations.slice(0, 10), // Limit to top 10 recommendations
@@ -690,7 +699,12 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
   return {
     readinessScore: Math.min(baseScore, 100),
     categories: {
-      documentation: Math.min(20, Math.round((staticAnalysis.hasReadme ? 15 : 0) + (staticAnalysis.hasAgents ? 5 : 0))),
+      documentation: Math.min(20, Math.round(
+        (staticAnalysis.hasReadme ? 8 : 0) + 
+        (staticAnalysis.hasAgents ? 6 : 0) + 
+        (staticAnalysis.hasContributing ? 4 : 0) + 
+        (staticAnalysis.hasLicense ? 2 : 0)
+      )),
       instructionClarity: Math.round((
         (staticAnalysis.hasReadme ? 16 : 4) +
         (staticAnalysis.hasAgents ? 18 : 6) +
@@ -712,8 +726,12 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
         (staticAnalysis.hasTests ? 10 : 6) +
         (staticAnalysis.hasLicense ? 16 : 4)
       ) / 5),
-      integrationStructure: Math.min(20, Math.round((staticAnalysis.hasWorkflows ? 10 : 0) + (staticAnalysis.hasTests ? 10 : 0))),
-      fileSizeOptimization: Math.min(20, staticAnalysis.fileSizeAnalysis ? Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5) : 10)
+      integrationStructure: Math.min(20, Math.round(
+        (staticAnalysis.hasWorkflows ? 8 : 0) + 
+        (staticAnalysis.hasTests ? 6 : 0) + 
+        (staticAnalysis.workflowFiles?.length > 0 ? Math.min(6, staticAnalysis.workflowFiles.length) : 0)
+      )),
+      fileSizeOptimization: staticAnalysis.fileSizeAnalysis ? Math.min(20, Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 6)) : 10
     },
     findings: [
       staticAnalysis.hasReadme ? 'README.md present' : 'Missing README.md',
