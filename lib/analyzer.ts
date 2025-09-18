@@ -606,6 +606,9 @@ export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<
   try {
     console.log('🌐 Starting website analysis for:', websiteUrl)
     
+    // Import cheerio dynamically to avoid Node.js compatibility issues
+    const cheerio = await import('cheerio')
+    
     // Fetch the website content
     const response = await axios.get(websiteUrl, {
       timeout: 30000,
@@ -861,7 +864,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
     })
 
     const html = response.data
-    const $ = cheerio.default.load(html)
+    const $ = cheerio.load(html)
     const url = new URL(websiteUrl)
 
     // Detect website type
