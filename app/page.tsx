@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Github, FileText, Download, Loader2 } from 'lucide-react'
+import { Github, FileText, Download, Loader2, AlertCircle } from 'lucide-react'
 
 interface AssessmentResult {
   readinessScore: number
@@ -151,10 +151,19 @@ export default function Home() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to analyze repository')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.message || errorData.error || `Server error: ${response.status}`
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
+      console.log('Analysis result:', data)
+      
+      // Validate the response data
+      if (!data || typeof data.readinessScore !== 'number') {
+        throw new Error('Invalid response format from server')
+      }
+      
       setResult(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -284,12 +293,60 @@ export default function Home() {
             )}
           </button>
           {error && (
-            <div className="text-danger-600 text-sm bg-danger-50 p-3 rounded-md">
-              {error}
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200">
+              <div className="flex items-center">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                <div>
+                  <p className="font-medium">Analysis Failed</p>
+                  <p className="text-sm mt-1">{error}</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Loading State */}
+      {isAnalyzing && (
+        <div className="card border-blue-200 bg-blue-50">
+          <div className="flex items-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+            <div>
+              <p className="text-blue-800 font-medium">Analyzing Repository</p>
+              <p className="text-blue-700 text-sm mt-1">This may take a few moments for large repositories...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debug Information */}
+      {result && (
+        <div className="card border-gray-200 bg-gray-50">
+          <h3 className="text-lg font-semibold mb-2">Debug Information</h3>
+          <div className="text-xs text-gray-600">
+            <p><strong>Readiness Score:</strong> {result.readinessScore} (type: {typeof result.readinessScore})</p>
+            <p><strong>Categories:</strong> {JSON.stringify(result.categories)}</p>
+            <p><strong>Has Categories:</strong> {result.categories ? 'Yes' : 'No'}</p>
+            <p><strong>Categories Keys:</strong> {result.categories ? Object.keys(result.categories).join(', ') : 'None'}</p>
+            <p><strong>Static Analysis File Count:</strong> {result.staticAnalysis?.fileCount || 'undefined'}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Data Validation Warning */}
+      {result && (result.readinessScore === 0 || !result.categories || Object.values(result.categories).every(score => score === 0)) && (
+        <div className="card border-yellow-200 bg-yellow-50">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
+            <div>
+              <p className="text-yellow-800 font-medium">Data Validation Warning</p>
+              <p className="text-yellow-700 text-sm mt-1">
+                The assessment data appears to be incomplete or incorrect. This may indicate an issue with the analysis process.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Results Section */}
       {result && (
@@ -364,8 +421,8 @@ export default function Home() {
             </div>
             
             <div className="flex items-center space-x-8">
-              <div className={`score-circle ${getScoreColor(result.readinessScore)}`}>
-                {result.readinessScore}
+              <div className={`score-circle ${getScoreColor(result.readinessScore || 0)}`}>
+                {result.readinessScore || 0}
               </div>
               <div>
                 <h3 className="text-lg font-semibold mb-2">Overall Readiness Score</h3>
@@ -382,22 +439,22 @@ export default function Home() {
           <div className="card">
             <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(result.categories).map(([category, score]) => (
+              {Object.entries(result.categories || {}).map(([category, score]) => (
                 <div key={category} className="p-4 border rounded-lg group relative">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium capitalize">
                       {category.replace(/([A-Z])/g, ' $1').trim()}
                     </span>
-                    <span className={`text-sm font-bold ${getCategoryTextColor(score)}`}>
-                      {score}/20
+                    <span className={`text-sm font-bold ${getCategoryTextColor(score || 0)}`}>
+                      {score || 0}/20
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className={`h-2 rounded-full ${
-                        score >= 16 ? 'bg-success-500' : score >= 12 ? 'bg-warning-500' : 'bg-danger-500'
+                        (score || 0) >= 16 ? 'bg-success-500' : (score || 0) >= 12 ? 'bg-warning-500' : 'bg-danger-500'
                       }`}
-                      style={{ width: `${(score / 20) * 100}%` }}
+                      style={{ width: `${((score || 0) / 20) * 100}%` }}
                     />
                   </div>
                   {/* Tooltip */}
