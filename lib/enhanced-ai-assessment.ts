@@ -169,7 +169,45 @@ Provide a JSON response with detailed scoring and analysis.`
     ],
   })
 
-  return JSON.parse(response.choices[0]?.message?.content || '{}')
+  try {
+    const content = response.choices[0]?.message?.content || '{}'
+    const parsed = JSON.parse(content)
+    
+    // Validate that we have the required numeric fields
+    const hasRequiredFields = [
+      'stepByStepQuality', 'commandClarity', 'environmentSetup', 
+      'errorHandling', 'dependencySpecification'
+    ].every(field => typeof parsed[field] === 'number' && !isNaN(parsed[field]))
+    
+    if (!hasRequiredFields) {
+      throw new Error('Missing or invalid required numeric fields')
+    }
+    
+    // Ensure required properties exist and are arrays
+    return {
+      stepByStepQuality: Number(parsed.stepByStepQuality) || 0,
+      commandClarity: Number(parsed.commandClarity) || 0,
+      environmentSetup: Number(parsed.environmentSetup) || 0,
+      errorHandling: Number(parsed.errorHandling) || 0,
+      dependencySpecification: Number(parsed.dependencySpecification) || 0,
+      findings: Array.isArray(parsed.findings) ? parsed.findings : [],
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      confidence: Number(parsed.confidence) || 70
+    }
+  } catch (error) {
+    console.error('Failed to parse instruction clarity analysis:', error)
+    // Return reasonable fallback values based on static analysis
+    return {
+      stepByStepQuality: staticAnalysis.hasReadme ? 12 : 4,
+      commandClarity: staticAnalysis.hasAgents ? 15 : 6,
+      environmentSetup: staticAnalysis.hasContributing ? 10 : 4,
+      errorHandling: staticAnalysis.errorHandling ? 14 : 6,
+      dependencySpecification: staticAnalysis.hasReadme ? 8 : 4,
+      findings: [],
+      recommendations: [],
+      confidence: 30
+    }
+  }
 }
 
 async function analyzeWorkflowAutomation(staticAnalysis: StaticAnalysisSummary): Promise<WorkflowAutomationAnalysis> {
@@ -200,7 +238,45 @@ Provide a JSON response with detailed scoring and analysis.`
     ],
   })
 
-  return JSON.parse(response.choices[0]?.message?.content || '{}')
+  try {
+    const content = response.choices[0]?.message?.content || '{}'
+    const parsed = JSON.parse(content)
+    
+    // Validate that we have the required numeric fields
+    const hasRequiredFields = [
+      'ciCdQuality', 'testAutomation', 'buildScripts', 
+      'deploymentAutomation', 'monitoringLogging'
+    ].every(field => typeof parsed[field] === 'number' && !isNaN(parsed[field]))
+    
+    if (!hasRequiredFields) {
+      throw new Error('Missing or invalid required numeric fields')
+    }
+    
+    // Ensure required properties exist and are arrays
+    return {
+      ciCdQuality: Number(parsed.ciCdQuality) || 0,
+      testAutomation: Number(parsed.testAutomation) || 0,
+      buildScripts: Number(parsed.buildScripts) || 0,
+      deploymentAutomation: Number(parsed.deploymentAutomation) || 0,
+      monitoringLogging: Number(parsed.monitoringLogging) || 0,
+      findings: Array.isArray(parsed.findings) ? parsed.findings : [],
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      confidence: Number(parsed.confidence) || 70
+    }
+  } catch (error) {
+    console.error('Failed to parse workflow automation analysis:', error)
+    // Return reasonable fallback values based on static analysis
+    return {
+      ciCdQuality: staticAnalysis.hasWorkflows ? 14 : 4,
+      testAutomation: staticAnalysis.hasTests ? 12 : 4,
+      buildScripts: staticAnalysis.hasWorkflows ? 10 : 4,
+      deploymentAutomation: staticAnalysis.hasWorkflows ? 8 : 4,
+      monitoringLogging: staticAnalysis.hasWorkflows ? 6 : 4,
+      findings: [],
+      recommendations: [],
+      confidence: 30
+    }
+  }
 }
 
 async function analyzeContextEfficiency(staticAnalysis: StaticAnalysisSummary): Promise<ContextEfficiencyAnalysis> {
@@ -231,7 +307,43 @@ Provide a JSON response with detailed scoring and analysis.`
     ],
   })
 
-  return JSON.parse(response.choices[0]?.message?.content || '{}')
+  try {
+    const content = response.choices[0]?.message?.content || '{}'
+    const parsed = JSON.parse(content)
+    
+    // Validate that we have the required numeric fields
+    const hasRequiredFields = [
+      'instructionFileOptimization', 'codeDocumentation', 
+      'apiDocumentation', 'contextWindowUsage'
+    ].every(field => typeof parsed[field] === 'number' && !isNaN(parsed[field]))
+    
+    if (!hasRequiredFields) {
+      throw new Error('Missing or invalid required numeric fields')
+    }
+    
+    // Ensure required properties exist and are arrays
+    return {
+      instructionFileOptimization: Number(parsed.instructionFileOptimization) || 0,
+      codeDocumentation: Number(parsed.codeDocumentation) || 0,
+      apiDocumentation: Number(parsed.apiDocumentation) || 0,
+      contextWindowUsage: Number(parsed.contextWindowUsage) || 0,
+      findings: Array.isArray(parsed.findings) ? parsed.findings : [],
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      confidence: Number(parsed.confidence) || 70
+    }
+  } catch (error) {
+    console.error('Failed to parse context efficiency analysis:', error)
+    // Return reasonable fallback values based on static analysis
+    return {
+      instructionFileOptimization: staticAnalysis.hasAgents ? 12 : 6,
+      codeDocumentation: staticAnalysis.hasReadme ? 10 : 4,
+      apiDocumentation: staticAnalysis.hasReadme ? 8 : 4,
+      contextWindowUsage: staticAnalysis.hasAgents ? 14 : 6,
+      findings: [],
+      recommendations: [],
+      confidence: 30
+    }
+  }
 }
 
 async function analyzeRiskCompliance(staticAnalysis: StaticAnalysisSummary): Promise<RiskComplianceAnalysis> {
@@ -262,7 +374,45 @@ Provide a JSON response with detailed scoring and analysis.`
     ],
   })
 
-  return JSON.parse(response.choices[0]?.message?.content || '{}')
+  try {
+    const content = response.choices[0]?.message?.content || '{}'
+    const parsed = JSON.parse(content)
+    
+    // Validate that we have the required numeric fields
+    const hasRequiredFields = [
+      'securityPractices', 'errorHandling', 'inputValidation', 
+      'dependencySecurity', 'licenseCompliance'
+    ].every(field => typeof parsed[field] === 'number' && !isNaN(parsed[field]))
+    
+    if (!hasRequiredFields) {
+      throw new Error('Missing or invalid required numeric fields')
+    }
+    
+    // Ensure required properties exist and are arrays
+    return {
+      securityPractices: Number(parsed.securityPractices) || 0,
+      errorHandling: Number(parsed.errorHandling) || 0,
+      inputValidation: Number(parsed.inputValidation) || 0,
+      dependencySecurity: Number(parsed.dependencySecurity) || 0,
+      licenseCompliance: Number(parsed.licenseCompliance) || 0,
+      findings: Array.isArray(parsed.findings) ? parsed.findings : [],
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      confidence: Number(parsed.confidence) || 70
+    }
+  } catch (error) {
+    console.error('Failed to parse risk compliance analysis:', error)
+    // Return reasonable fallback values based on static analysis
+    return {
+      securityPractices: staticAnalysis.errorHandling ? 10 : 4,
+      errorHandling: staticAnalysis.errorHandling ? 14 : 4,
+      inputValidation: staticAnalysis.hasTests ? 8 : 4,
+      dependencySecurity: staticAnalysis.hasTests ? 6 : 4,
+      licenseCompliance: staticAnalysis.hasLicense ? 12 : 4,
+      findings: [],
+      recommendations: [],
+      confidence: 30
+    }
+  }
 }
 
 function createInstructionClarityPrompt(staticAnalysis: StaticAnalysisSummary): string {
@@ -450,19 +600,19 @@ function combineAssessmentResults(
   // Calculate overall readiness score (0-100 scale)
   const overallScore = Math.min(100, Math.round((instructionScore + workflowScore + contextScore + riskScore) / 4))
 
-  // Generate findings and recommendations
+  // Generate findings and recommendations with proper type guards
   const findings = [
-    ...(instructionAnalysis.findings || []),
-    ...(workflowAnalysis.findings || []),
-    ...(contextAnalysis.findings || []),
-    ...(riskAnalysis.findings || [])
+    ...(Array.isArray(instructionAnalysis.findings) ? instructionAnalysis.findings : []),
+    ...(Array.isArray(workflowAnalysis.findings) ? workflowAnalysis.findings : []),
+    ...(Array.isArray(contextAnalysis.findings) ? contextAnalysis.findings : []),
+    ...(Array.isArray(riskAnalysis.findings) ? riskAnalysis.findings : [])
   ]
 
   const recommendations = [
-    ...(instructionAnalysis.recommendations || []),
-    ...(workflowAnalysis.recommendations || []),
-    ...(contextAnalysis.recommendations || []),
-    ...(riskAnalysis.recommendations || [])
+    ...(Array.isArray(instructionAnalysis.recommendations) ? instructionAnalysis.recommendations : []),
+    ...(Array.isArray(workflowAnalysis.recommendations) ? workflowAnalysis.recommendations : []),
+    ...(Array.isArray(contextAnalysis.recommendations) ? contextAnalysis.recommendations : []),
+    ...(Array.isArray(riskAnalysis.recommendations) ? riskAnalysis.recommendations : [])
   ]
 
   return {
