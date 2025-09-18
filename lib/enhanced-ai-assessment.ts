@@ -460,46 +460,46 @@ function combineAssessmentResults(
   return {
     readinessScore: overallScore,
     categories: {
-      documentation: Math.round((staticAnalysis.hasReadme ? 15 : 0) + (staticAnalysis.hasAgents ? 5 : 0)),
-      instructionClarity: instructionScore,
-      workflowAutomation: workflowScore,
-      riskCompliance: riskScore,
-      integrationStructure: Math.round((staticAnalysis.hasWorkflows ? 10 : 0) + (staticAnalysis.hasTests ? 10 : 0)),
-      fileSizeOptimization: staticAnalysis.fileSizeAnalysis ? Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5) : 10
+      documentation: Math.min(20, Math.round((staticAnalysis.hasReadme ? 15 : 0) + (staticAnalysis.hasAgents ? 5 : 0))),
+      instructionClarity: Math.min(20, instructionScore),
+      workflowAutomation: Math.min(20, workflowScore),
+      riskCompliance: Math.min(20, riskScore),
+      integrationStructure: Math.min(20, Math.round((staticAnalysis.hasWorkflows ? 10 : 0) + (staticAnalysis.hasTests ? 10 : 0))),
+      fileSizeOptimization: Math.min(20, staticAnalysis.fileSizeAnalysis ? Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5) : 10)
     },
     findings: findings.slice(0, 10), // Limit to top 10 findings
     recommendations: recommendations.slice(0, 10), // Limit to top 10 recommendations
     detailedAnalysis: {
       instructionClarity: {
-        stepByStepQuality: instructionAnalysis.stepByStepQuality || 0,
-        commandClarity: instructionAnalysis.commandClarity || 0,
-        environmentSetup: instructionAnalysis.environmentSetup || 0,
-        errorHandling: instructionAnalysis.errorHandling || 0,
-        dependencySpecification: instructionAnalysis.dependencySpecification || 0,
-        overallScore: instructionScore
+        stepByStepQuality: Math.min(20, instructionAnalysis.stepByStepQuality || 0),
+        commandClarity: Math.min(20, instructionAnalysis.commandClarity || 0),
+        environmentSetup: Math.min(20, instructionAnalysis.environmentSetup || 0),
+        errorHandling: Math.min(20, instructionAnalysis.errorHandling || 0),
+        dependencySpecification: Math.min(20, instructionAnalysis.dependencySpecification || 0),
+        overallScore: Math.min(20, instructionScore)
       },
       workflowAutomation: {
-        ciCdQuality: workflowAnalysis.ciCdQuality || 0,
-        testAutomation: workflowAnalysis.testAutomation || 0,
-        buildScripts: workflowAnalysis.buildScripts || 0,
-        deploymentAutomation: workflowAnalysis.deploymentAutomation || 0,
-        monitoringLogging: workflowAnalysis.monitoringLogging || 0,
-        overallScore: workflowScore
+        ciCdQuality: Math.min(20, workflowAnalysis.ciCdQuality || 0),
+        testAutomation: Math.min(20, workflowAnalysis.testAutomation || 0),
+        buildScripts: Math.min(20, workflowAnalysis.buildScripts || 0),
+        deploymentAutomation: Math.min(20, workflowAnalysis.deploymentAutomation || 0),
+        monitoringLogging: Math.min(20, workflowAnalysis.monitoringLogging || 0),
+        overallScore: Math.min(20, workflowScore)
       },
       contextEfficiency: {
-        instructionFileOptimization: contextAnalysis.instructionFileOptimization || 0,
-        codeDocumentation: contextAnalysis.codeDocumentation || 0,
-        apiDocumentation: contextAnalysis.apiDocumentation || 0,
-        contextWindowUsage: contextAnalysis.contextWindowUsage || 0,
-        overallScore: contextScore
+        instructionFileOptimization: Math.min(20, contextAnalysis.instructionFileOptimization || 0),
+        codeDocumentation: Math.min(20, contextAnalysis.codeDocumentation || 0),
+        apiDocumentation: Math.min(20, contextAnalysis.apiDocumentation || 0),
+        contextWindowUsage: Math.min(20, contextAnalysis.contextWindowUsage || 0),
+        overallScore: Math.min(20, contextScore)
       },
       riskCompliance: {
-        securityPractices: riskAnalysis.securityPractices || 0,
-        errorHandling: riskAnalysis.errorHandling || 0,
-        inputValidation: riskAnalysis.inputValidation || 0,
-        dependencySecurity: riskAnalysis.dependencySecurity || 0,
-        licenseCompliance: riskAnalysis.licenseCompliance || 0,
-        overallScore: riskScore
+        securityPractices: Math.min(20, riskAnalysis.securityPractices || 0),
+        errorHandling: Math.min(20, riskAnalysis.errorHandling || 0),
+        inputValidation: Math.min(20, riskAnalysis.inputValidation || 0),
+        dependencySecurity: Math.min(20, riskAnalysis.dependencySecurity || 0),
+        licenseCompliance: Math.min(20, riskAnalysis.licenseCompliance || 0),
+        overallScore: Math.min(20, riskScore)
       }
     },
     confidence: {
@@ -532,12 +532,16 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
   return {
     readinessScore: Math.min(baseScore, 100),
     categories: {
-      documentation: Math.round((staticAnalysis.hasReadme ? 15 : 0) + (staticAnalysis.hasAgents ? 5 : 0)),
-      instructionClarity: Math.round(baseScore * 0.8),
-      workflowAutomation: Math.round((staticAnalysis.hasWorkflows ? 15 : 0) + (staticAnalysis.hasTests ? 5 : 0)),
-      riskCompliance: Math.round((staticAnalysis.hasLicense ? 10 : 0) + (staticAnalysis.errorHandling ? 10 : 0)),
-      integrationStructure: Math.round((staticAnalysis.hasWorkflows ? 10 : 0) + (staticAnalysis.hasTests ? 10 : 0)),
-      fileSizeOptimization: staticAnalysis.fileSizeAnalysis ? Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5) : 10
+      documentation: Math.min(20, Math.round((staticAnalysis.hasReadme ? 15 : 0) + (staticAnalysis.hasAgents ? 5 : 0))),
+      instructionClarity: Math.min(20, Math.round(
+        (staticAnalysis.hasReadme ? 12 : 0) + 
+        (staticAnalysis.hasAgents ? 8 : 0) + 
+        (staticAnalysis.hasContributing ? 3 : 0)
+      )),
+      workflowAutomation: Math.min(20, Math.round((staticAnalysis.hasWorkflows ? 15 : 0) + (staticAnalysis.hasTests ? 5 : 0))),
+      riskCompliance: Math.min(20, Math.round((staticAnalysis.hasLicense ? 10 : 0) + (staticAnalysis.errorHandling ? 10 : 0))),
+      integrationStructure: Math.min(20, Math.round((staticAnalysis.hasWorkflows ? 10 : 0) + (staticAnalysis.hasTests ? 10 : 0))),
+      fileSizeOptimization: Math.min(20, staticAnalysis.fileSizeAnalysis ? Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5) : 10)
     },
     findings: [
       staticAnalysis.hasReadme ? 'README.md present' : 'Missing README.md',
@@ -555,58 +559,58 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
     ],
     detailedAnalysis: {
       instructionClarity: {
-        stepByStepQuality: staticAnalysis.hasReadme ? 16 : 4,
-        commandClarity: staticAnalysis.hasAgents ? 18 : 6,
-        environmentSetup: staticAnalysis.hasContributing ? 14 : 6,
-        errorHandling: staticAnalysis.errorHandling ? 16 : 4,
-        dependencySpecification: staticAnalysis.hasReadme ? 12 : 4,
-        overallScore: Math.round((
+        stepByStepQuality: Math.min(20, staticAnalysis.hasReadme ? 16 : 4),
+        commandClarity: Math.min(20, staticAnalysis.hasAgents ? 18 : 6),
+        environmentSetup: Math.min(20, staticAnalysis.hasContributing ? 14 : 6),
+        errorHandling: Math.min(20, staticAnalysis.errorHandling ? 16 : 4),
+        dependencySpecification: Math.min(20, staticAnalysis.hasReadme ? 12 : 4),
+        overallScore: Math.min(20, Math.round((
           (staticAnalysis.hasReadme ? 16 : 4) +
           (staticAnalysis.hasAgents ? 18 : 6) +
           (staticAnalysis.hasContributing ? 14 : 6) +
           (staticAnalysis.errorHandling ? 16 : 4) +
           (staticAnalysis.hasReadme ? 12 : 4)
-        ) / 5)
+        ) / 5))
       },
       workflowAutomation: {
-        ciCdQuality: staticAnalysis.hasWorkflows ? 18 : 4,
-        testAutomation: staticAnalysis.hasTests ? 16 : 4,
-        buildScripts: staticAnalysis.hasWorkflows ? 14 : 6,
-        deploymentAutomation: staticAnalysis.hasWorkflows ? 12 : 6,
-        monitoringLogging: staticAnalysis.hasWorkflows ? 10 : 6,
-        overallScore: Math.round((
+        ciCdQuality: Math.min(20, staticAnalysis.hasWorkflows ? 18 : 4),
+        testAutomation: Math.min(20, staticAnalysis.hasTests ? 16 : 4),
+        buildScripts: Math.min(20, staticAnalysis.hasWorkflows ? 14 : 6),
+        deploymentAutomation: Math.min(20, staticAnalysis.hasWorkflows ? 12 : 6),
+        monitoringLogging: Math.min(20, staticAnalysis.hasWorkflows ? 10 : 6),
+        overallScore: Math.min(20, Math.round((
           (staticAnalysis.hasWorkflows ? 18 : 4) +
           (staticAnalysis.hasTests ? 16 : 4) +
           (staticAnalysis.hasWorkflows ? 14 : 6) +
           (staticAnalysis.hasWorkflows ? 12 : 6) +
           (staticAnalysis.hasWorkflows ? 10 : 6)
-        ) / 5)
+        ) / 5))
       },
       contextEfficiency: {
-        instructionFileOptimization: staticAnalysis.hasAgents ? 16 : 8,
-        codeDocumentation: staticAnalysis.hasReadme ? 14 : 6,
-        apiDocumentation: staticAnalysis.hasReadme ? 12 : 6,
-        contextWindowUsage: staticAnalysis.hasAgents ? 18 : 6,
-        overallScore: Math.round((
+        instructionFileOptimization: Math.min(20, staticAnalysis.hasAgents ? 16 : 8),
+        codeDocumentation: Math.min(20, staticAnalysis.hasReadme ? 14 : 6),
+        apiDocumentation: Math.min(20, staticAnalysis.hasReadme ? 12 : 6),
+        contextWindowUsage: Math.min(20, staticAnalysis.hasAgents ? 18 : 6),
+        overallScore: Math.min(20, Math.round((
           (staticAnalysis.hasAgents ? 16 : 8) +
           (staticAnalysis.hasReadme ? 14 : 6) +
           (staticAnalysis.hasReadme ? 12 : 6) +
           (staticAnalysis.hasAgents ? 18 : 6)
-        ) / 4)
+        ) / 4))
       },
       riskCompliance: {
-        securityPractices: staticAnalysis.errorHandling ? 14 : 6,
-        errorHandling: staticAnalysis.errorHandling ? 18 : 4,
-        inputValidation: staticAnalysis.hasTests ? 12 : 6,
-        dependencySecurity: staticAnalysis.hasTests ? 10 : 6,
-        licenseCompliance: staticAnalysis.hasLicense ? 16 : 4,
-        overallScore: Math.round((
+        securityPractices: Math.min(20, staticAnalysis.errorHandling ? 14 : 6),
+        errorHandling: Math.min(20, staticAnalysis.errorHandling ? 18 : 4),
+        inputValidation: Math.min(20, staticAnalysis.hasTests ? 12 : 6),
+        dependencySecurity: Math.min(20, staticAnalysis.hasTests ? 10 : 6),
+        licenseCompliance: Math.min(20, staticAnalysis.hasLicense ? 16 : 4),
+        overallScore: Math.min(20, Math.round((
           (staticAnalysis.errorHandling ? 14 : 6) +
           (staticAnalysis.errorHandling ? 18 : 4) +
           (staticAnalysis.hasTests ? 12 : 6) +
           (staticAnalysis.hasTests ? 10 : 6) +
           (staticAnalysis.hasLicense ? 16 : 4)
-        ) / 5)
+        ) / 5))
       }
     },
     confidence: {
