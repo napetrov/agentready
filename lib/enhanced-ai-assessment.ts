@@ -150,9 +150,7 @@ export async function generateWebsiteAIAssessment(staticAnalysis: StaticAnalysis
       console.error('❌ AI ANALYSIS FAILED: No valid OpenAI API key found!')
       console.error('🔧 API Key Status:', {
         exists: !!process.env.OPENAI_API_KEY,
-        length: process.env.OPENAI_API_KEY?.length || 0,
-        isPlaceholder: process.env.OPENAI_API_KEY === 'your_openai_api_key_here',
-        startsWith: process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined'
+        isPlaceholder: process.env.OPENAI_API_KEY === 'your_openai_api_key_here'
       })
       console.warn('⚠️ Falling back to static analysis only - AI insights will be limited!')
       return generateWebsiteFallbackAssessment(staticAnalysis)
@@ -307,9 +305,7 @@ export async function generateEnhancedAIAssessment(staticAnalysis: StaticAnalysi
       console.error('❌ AI ANALYSIS FAILED: No valid OpenAI API key found!')
       console.error('🔧 API Key Status:', {
         exists: !!process.env.OPENAI_API_KEY,
-        length: process.env.OPENAI_API_KEY?.length || 0,
-        isPlaceholder: process.env.OPENAI_API_KEY === 'your_openai_api_key_here',
-        startsWith: process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined'
+        isPlaceholder: process.env.OPENAI_API_KEY === 'your_openai_api_key_here'
       })
       console.warn('⚠️ Falling back to static analysis only - AI insights will be limited!')
       return generateEnhancedFallbackAssessment(staticAnalysis)

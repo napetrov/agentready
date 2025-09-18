@@ -741,19 +741,14 @@ export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<
     })
     analysis.socialMediaLinks = [...new Set(socialLinks)]
 
-    // Extract contact information
+    // Extract contact information from explicit mailto/tel links only
     const contactInfo: string[] = []
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
-    const phoneRegex = /(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/g
-    
-    const textContent = $('body').text()
-    const emails = textContent.match(emailRegex) || []
-    const phones = textContent.match(phoneRegex) || []
-    
-    contactInfo.push(...emails.slice(0, 3)) // Limit to 3 emails
-    contactInfo.push(...phones.slice(0, 3)) // Limit to 3 phone numbers
-    
-    analysis.contactInfo = contactInfo
+    $('a[href^="mailto:"], a[href^="tel:"]').each((_, el) => {
+      const href = $(el).attr('href') || ''
+      if (href.startsWith('mailto:')) contactInfo.push(href.replace(/^mailto:/, ''))
+      if (href.startsWith('tel:')) contactInfo.push(href.replace(/^tel:/, ''))
+    })
+    analysis.contactInfo = Array.from(new Set(contactInfo)).slice(0, 3)
 
     // Extract navigation structure
     const navItems: string[] = []
