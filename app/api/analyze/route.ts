@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     // Generate appropriate AI assessment based on input type
     const aiAssessment = inputType === 'website' 
-      ? await generateWebsiteAIAssessment(staticAnalysis)
+      ? await generateWebsiteAIAssessment(staticAnalysis, websiteAnalysis?.agenticFlows)
       : await generateEnhancedAIAssessment(staticAnalysis)
 
     // Combine results

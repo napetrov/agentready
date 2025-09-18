@@ -137,7 +137,7 @@ export interface EnhancedAIAssessmentResult {
   }
 }
 
-export async function generateWebsiteAIAssessment(staticAnalysis: StaticAnalysisSummary): Promise<EnhancedAIAssessmentResult> {
+export async function generateWebsiteAIAssessment(staticAnalysis: StaticAnalysisSummary, agenticFlows?: any): Promise<EnhancedAIAssessmentResult> {
   try {
     console.log('🌐 Starting Website AI Agent Readiness Assessment...')
     console.log('📊 Website Analysis Summary:', {
@@ -199,8 +199,23 @@ export async function generateWebsiteAIAssessment(staticAnalysis: StaticAnalysis
     const businessDataScore = Math.round(businessDataAnalysis.overallScore * 4)
 
     // Calculate overall readiness score (0-100 scale)
-    const averageScore = (structuredDataScore + apiReadinessScore + conversationalScore + businessDataScore) / 4
-    const overallScore = Math.min(100, Math.round(averageScore * 5))
+    let overallScore: number
+    if (agenticFlows) {
+      // Use agentic flows for scoring if available
+      const flowScores = [
+        agenticFlows.informationGathering?.score || 0,
+        agenticFlows.directBooking?.score || 0,
+        agenticFlows.faqSupport?.score || 0,
+        agenticFlows.taskManagement?.score || 0,
+        agenticFlows.personalization?.score || 0
+      ]
+      const averageFlowScore = flowScores.reduce((sum, score) => sum + score, 0) / flowScores.length
+      overallScore = Math.min(100, Math.round(averageFlowScore))
+    } else {
+      // Fallback to AI analysis categories
+      const averageScore = (structuredDataScore + apiReadinessScore + conversationalScore + businessDataScore) / 4
+      overallScore = Math.min(100, Math.round(averageScore * 5))
+    }
 
     console.log('🎯 Final Assessment Score:', overallScore)
 
