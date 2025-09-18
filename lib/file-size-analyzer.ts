@@ -130,12 +130,18 @@ export class FileSizeAnalyzer {
    */
   private static categorizeFilesBySize(files: Array<{ size: number }>) {
     return files.reduce((acc, file) => {
-      // More relevant file size categories for typical repositories
-      if (file.size < 100 * 1024) acc.under100KB++;      // < 100KB
-      if (file.size < 500 * 1024) acc.under500KB++;      // < 500KB  
-      if (file.size < 1024 * 1024) acc.under1MB++;       // < 1MB
-      if (file.size < 5 * 1024 * 1024) acc.under5MB++;   // < 5MB
-      if (file.size >= 5 * 1024 * 1024) acc.over5MB++;   // >= 5MB
+      // Exclusive file size categories for typical repositories
+      if (file.size < 100 * 1024) {
+        acc.under100KB++;      // < 100KB
+      } else if (file.size < 500 * 1024) {
+        acc.under500KB++;      // 100KB - 500KB
+      } else if (file.size <= 1024 * 1024) {
+        acc.under1MB++;        // 500KB - 1MB (inclusive)
+      } else if (file.size < 5 * 1024 * 1024) {
+        acc.under5MB++;        // 1MB - 5MB
+      } else {
+        acc.over5MB++;         // >= 5MB
+      }
       return acc;
     }, {
       under100KB: 0,

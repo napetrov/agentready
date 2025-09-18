@@ -288,12 +288,12 @@ describe('API Tests', () => {
     expect(result).toBeDefined()
     expect(result.totalFiles).toBe(8)
     
-    // Check file size distribution
-    expect(result.filesBySize.under100KB).toBeGreaterThan(0)
-    expect(result.filesBySize.under500KB).toBeGreaterThan(0)
-    expect(result.filesBySize.under1MB).toBeGreaterThan(0)
-    expect(result.filesBySize.under5MB).toBeGreaterThan(0)
-    expect(result.filesBySize.over5MB).toBe(0) // No files over 5MB
+    // Check file size distribution - all files are under 100KB
+    expect(result.filesBySize.under100KB).toBe(8) // All 8 files are under 100KB
+    expect(result.filesBySize.under500KB).toBe(0) // No files in 100KB-500KB range
+    expect(result.filesBySize.under1MB).toBe(0)   // No files in 500KB-1MB range
+    expect(result.filesBySize.under5MB).toBe(0)   // No files in 1MB-5MB range
+    expect(result.filesBySize.over5MB).toBe(0)    // No files over 5MB
     
     // Check critical files analysis
     expect(result.criticalFiles.length).toBeGreaterThan(0)

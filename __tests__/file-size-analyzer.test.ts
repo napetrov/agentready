@@ -40,9 +40,9 @@ describe('FileSizeAnalyzer', () => {
     expect(result).toBeDefined()
     expect(result.totalFiles).toBe(6)
     expect(result.filesBySize.under100KB).toBe(4)  // <100KB: README, AGENTS, small-file, data
-    expect(result.filesBySize.under500KB).toBe(4)  // <=500KB: same as under100KB
-    expect(result.filesBySize.under1MB).toBe(4)    // <1MB: same as under100KB (1MB binary is exactly 1MB)
-    expect(result.filesBySize.under5MB).toBe(6)    // <=5MB: adds 1MB binary + 3MB file
+    expect(result.filesBySize.under500KB).toBe(0)  // 100KB-500KB: none
+    expect(result.filesBySize.under1MB).toBe(1)    // 500KB-1MB: 1MB binary (exactly 1MB)
+    expect(result.filesBySize.under5MB).toBe(1)    // 1MB-5MB: 3MB file
     expect(result.filesBySize.over5MB).toBe(0)     // >5MB: none
   })
 

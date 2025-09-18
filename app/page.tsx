@@ -198,6 +198,12 @@ export default function Home() {
     return 'text-danger-600 bg-danger-50'
   }
 
+  const getCategoryTextColor = (score: number) => {
+    if (score >= 16) return 'text-success-600'
+    if (score >= 12) return 'text-warning-600'
+    return 'text-danger-600'
+  }
+
   const getCategoryDescription = (category: string) => {
     const descriptions: Record<string, string> = {
       documentation: 'Measures presence and quality of README, CONTRIBUTING, AGENTS.md, and LICENSE files',
@@ -266,6 +272,7 @@ export default function Home() {
                 href={repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="View repository on GitHub"
                 className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
               >
                 <Github className="w-4 h-4 mr-2" />
@@ -343,7 +350,7 @@ export default function Home() {
                     <span className="font-medium capitalize">
                       {category.replace(/([A-Z])/g, ' $1').trim()}
                     </span>
-                    <span className={`text-sm font-bold ${getScoreColor(score).split(' ')[0]}`}>
+                    <span className={`text-sm font-bold ${getCategoryTextColor(score)}`}>
                       {score}/20
                     </span>
                   </div>
@@ -431,14 +438,22 @@ export default function Home() {
               <div className="mb-6">
                 <h4 className="text-md font-medium mb-3">File Size Distribution</h4>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  {Object.entries(result.staticAnalysis.fileSizeAnalysis.filesBySize).map(([range, count]) => (
+                  {(['under100KB','under500KB','under1MB','under5MB','over5MB'] as const).map((range) => {
+                    const count = result.staticAnalysis.fileSizeAnalysis?.filesBySize[range] ?? 0
+                    const label =
+                      range === 'under100KB' ? 'Under 100KB' :
+                      range === 'under500KB' ? '100KB–500KB' :
+                      range === 'under1MB'   ? '500KB–1MB' :
+                      range === 'under5MB'   ? '1MB–5MB' :
+                      'Over 5MB'
+                    return (
                     <div key={range} className="p-3 border rounded-lg text-center">
-                      <div className="text-sm font-medium capitalize mb-1">
-                        {range.replace(/([A-Z])/g, ' $1').trim()}
+                      <div className="text-sm font-medium mb-1">
+                        {label}
                       </div>
                       <div className="text-lg font-bold text-blue-600">{count}</div>
                     </div>
-                  ))}
+                    )})}
                 </div>
               </div>
 

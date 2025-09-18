@@ -266,12 +266,15 @@ Documentation Content:`
   }
 
   // Filter out binary/lock files from workflow and test file lists
-  const binaryExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.svg', '.ico', '.lock', '.zip', '.tar', '.gz', '.7z', '.exe', '.dll', '.dylib', '.bin']
+  const binaryExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.svg', '.ico', '.zip', '.tar', '.gz', '.7z', '.exe', '.dll', '.dylib', '.bin']
+  const lockFileNames = ['yarn.lock', 'package-lock.json', 'pnpm-lock.yaml', 'Cargo.lock']
   const filteredWorkflowFiles = (workflowFiles || []).filter(file => 
-    !binaryExtensions.some(ext => file.toLowerCase().endsWith(ext))
+    !binaryExtensions.some(ext => file.toLowerCase().endsWith(ext)) &&
+    !lockFileNames.some(name => file.toLowerCase().endsWith(name))
   )
   const filteredTestFiles = (testFiles || []).filter(file => 
-    !binaryExtensions.some(ext => file.toLowerCase().endsWith(ext))
+    !binaryExtensions.some(ext => file.toLowerCase().endsWith(ext)) &&
+    !lockFileNames.some(name => file.toLowerCase().endsWith(name))
   )
   
   prompt += `\n\nWorkflow Files: ${filteredWorkflowFiles.join(', ')}`
