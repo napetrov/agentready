@@ -407,37 +407,45 @@ function combineAssessmentResults(
   riskAnalysis: RiskComplianceAnalysis,
   staticAnalysis: StaticAnalysisSummary
 ): EnhancedAIAssessmentResult {
-  // Calculate overall scores with proper scaling from 0-5 to 0-100
-  const instructionScore = Math.min(100, Math.round((
-    Math.min(5, Math.max(0, Number(instructionAnalysis.stepByStepQuality ?? 0))) + 
-    Math.min(5, Math.max(0, Number(instructionAnalysis.commandClarity ?? 0))) + 
-    Math.min(5, Math.max(0, Number(instructionAnalysis.environmentSetup ?? 0))) + 
-    Math.min(5, Math.max(0, Number(instructionAnalysis.errorHandling ?? 0))) + 
-    Math.min(5, Math.max(0, Number(instructionAnalysis.dependencySpecification ?? 0)))
-  ) / 5 * 100))
+  // Helper functions for proper 0-20 score handling
+  const clip20 = (v: unknown) => Math.max(0, Math.min(20, Number(v) || 0))
+  const pctFrom20 = (vals: unknown[]) =>
+    Math.min(100, Math.round((vals.map(clip20).reduce((a, b) => a + b, 0) / vals.length) / 20 * 100))
+
+  // Calculate overall scores with proper scaling from 0-20 to 0-100
+  const instructionScore = pctFrom20([
+    instructionAnalysis.stepByStepQuality,
+    instructionAnalysis.commandClarity,
+    instructionAnalysis.environmentSetup,
+    instructionAnalysis.errorHandling,
+    instructionAnalysis.dependencySpecification,
+  ])
   
-  const workflowScore = Math.min(100, Math.round((
-    Math.min(5, Math.max(0, Number(workflowAnalysis.ciCdQuality ?? 0))) + 
-    Math.min(5, Math.max(0, Number(workflowAnalysis.testAutomation ?? 0))) + 
-    Math.min(5, Math.max(0, Number(workflowAnalysis.buildScripts ?? 0))) + 
-    Math.min(5, Math.max(0, Number(workflowAnalysis.deploymentAutomation ?? 0))) + 
-    Math.min(5, Math.max(0, Number(workflowAnalysis.monitoringLogging ?? 0)))
-  ) / 5 * 100))
+  const workflowScore = pctFrom20([
+    workflowAnalysis.ciCdQuality,
+    workflowAnalysis.testAutomation,
+    workflowAnalysis.buildScripts,
+    workflowAnalysis.deploymentAutomation,
+    workflowAnalysis.monitoringLogging,
+  ])
   
-  const contextScore = Math.min(100, Math.round((
-    Math.min(5, Math.max(0, Number(contextAnalysis.instructionFileOptimization ?? 0))) + 
-    Math.min(5, Math.max(0, Number(contextAnalysis.codeDocumentation ?? 0))) + 
-    Math.min(5, Math.max(0, Number(contextAnalysis.apiDocumentation ?? 0))) + 
-    Math.min(5, Math.max(0, Number(contextAnalysis.contextWindowUsage ?? 0)))
-  ) / 4 * 100))
+  // Accept optional fifth metric if model returns it
+  const contextParts: unknown[] = [
+    contextAnalysis.instructionFileOptimization,
+    contextAnalysis.codeDocumentation,
+    contextAnalysis.apiDocumentation,
+    contextAnalysis.contextWindowUsage,
+    (contextAnalysis as any).informationDensity, // optional
+  ].filter(v => Number.isFinite(Number(v)))
+  const contextScore = pctFrom20(contextParts.length ? contextParts : [0, 0, 0, 0])
   
-  const riskScore = Math.min(100, Math.round((
-    Math.min(5, Math.max(0, Number(riskAnalysis.securityPractices ?? 0))) + 
-    Math.min(5, Math.max(0, Number(riskAnalysis.errorHandling ?? 0))) + 
-    Math.min(5, Math.max(0, Number(riskAnalysis.inputValidation ?? 0))) + 
-    Math.min(5, Math.max(0, Number(riskAnalysis.dependencySecurity ?? 0))) + 
-    Math.min(5, Math.max(0, Number(riskAnalysis.licenseCompliance ?? 0)))
-  ) / 5 * 100))
+  const riskScore = pctFrom20([
+    riskAnalysis.securityPractices,
+    riskAnalysis.errorHandling,
+    riskAnalysis.inputValidation,
+    riskAnalysis.dependencySecurity,
+    riskAnalysis.licenseCompliance,
+  ])
 
   // Calculate overall readiness score (0-100 scale)
   const overallScore = Math.min(100, Math.round((instructionScore + workflowScore + contextScore + riskScore) / 4))
@@ -471,34 +479,34 @@ function combineAssessmentResults(
     recommendations: recommendations.slice(0, 10), // Limit to top 10 recommendations
     detailedAnalysis: {
       instructionClarity: {
-        stepByStepQuality: Math.min(20, Math.round((instructionAnalysis.stepByStepQuality || 0) * 4)),
-        commandClarity: Math.min(20, Math.round((instructionAnalysis.commandClarity || 0) * 4)),
-        environmentSetup: Math.min(20, Math.round((instructionAnalysis.environmentSetup || 0) * 4)),
-        errorHandling: Math.min(20, Math.round((instructionAnalysis.errorHandling || 0) * 4)),
-        dependencySpecification: Math.min(20, Math.round((instructionAnalysis.dependencySpecification || 0) * 4)),
+        stepByStepQuality: clip20(instructionAnalysis.stepByStepQuality),
+        commandClarity: clip20(instructionAnalysis.commandClarity),
+        environmentSetup: clip20(instructionAnalysis.environmentSetup),
+        errorHandling: clip20(instructionAnalysis.errorHandling),
+        dependencySpecification: clip20(instructionAnalysis.dependencySpecification),
         overallScore: Math.min(20, Math.round(instructionScore / 5))
       },
       workflowAutomation: {
-        ciCdQuality: Math.min(20, Math.round((workflowAnalysis.ciCdQuality || 0) * 4)),
-        testAutomation: Math.min(20, Math.round((workflowAnalysis.testAutomation || 0) * 4)),
-        buildScripts: Math.min(20, Math.round((workflowAnalysis.buildScripts || 0) * 4)),
-        deploymentAutomation: Math.min(20, Math.round((workflowAnalysis.deploymentAutomation || 0) * 4)),
-        monitoringLogging: Math.min(20, Math.round((workflowAnalysis.monitoringLogging || 0) * 4)),
+        ciCdQuality: clip20(workflowAnalysis.ciCdQuality),
+        testAutomation: clip20(workflowAnalysis.testAutomation),
+        buildScripts: clip20(workflowAnalysis.buildScripts),
+        deploymentAutomation: clip20(workflowAnalysis.deploymentAutomation),
+        monitoringLogging: clip20(workflowAnalysis.monitoringLogging),
         overallScore: Math.min(20, Math.round(workflowScore / 5))
       },
       contextEfficiency: {
-        instructionFileOptimization: Math.min(20, Math.round((contextAnalysis.instructionFileOptimization || 0) * 4)),
-        codeDocumentation: Math.min(20, Math.round((contextAnalysis.codeDocumentation || 0) * 4)),
-        apiDocumentation: Math.min(20, Math.round((contextAnalysis.apiDocumentation || 0) * 4)),
-        contextWindowUsage: Math.min(20, Math.round((contextAnalysis.contextWindowUsage || 0) * 4)),
+        instructionFileOptimization: clip20(contextAnalysis.instructionFileOptimization),
+        codeDocumentation: clip20(contextAnalysis.codeDocumentation),
+        apiDocumentation: clip20(contextAnalysis.apiDocumentation),
+        contextWindowUsage: clip20(contextAnalysis.contextWindowUsage),
         overallScore: Math.min(20, Math.round(contextScore / 5))
       },
       riskCompliance: {
-        securityPractices: Math.min(20, Math.round((riskAnalysis.securityPractices || 0) * 4)),
-        errorHandling: Math.min(20, Math.round((riskAnalysis.errorHandling || 0) * 4)),
-        inputValidation: Math.min(20, Math.round((riskAnalysis.inputValidation || 0) * 4)),
-        dependencySecurity: Math.min(20, Math.round((riskAnalysis.dependencySecurity || 0) * 4)),
-        licenseCompliance: Math.min(20, Math.round((riskAnalysis.licenseCompliance || 0) * 4)),
+        securityPractices: clip20(riskAnalysis.securityPractices),
+        errorHandling: clip20(riskAnalysis.errorHandling),
+        inputValidation: clip20(riskAnalysis.inputValidation),
+        dependencySecurity: clip20(riskAnalysis.dependencySecurity),
+        licenseCompliance: clip20(riskAnalysis.licenseCompliance),
         overallScore: Math.min(20, Math.round(riskScore / 5))
       }
     },
@@ -622,3 +630,5 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
     }
   }
 }
+
+export { combineAssessmentResults }
