@@ -275,11 +275,11 @@ Provide a JSON response with detailed scoring and analysis.`
     const parsed = JSON.parse(content)
     
     return {
-      codeOrganization: Number(parsed.codeOrganization) || 0,
-      modularity: Number(parsed.modularity) || 0,
-      apiDesign: Number(parsed.apiDesign) || 0,
-      scalability: Number(parsed.scalability) || 0,
-      maintainability: Number(parsed.maintainability) || 0,
+      codeOrganization: Number(parsed.codeOrganization) || (staticAnalysis.hasWorkflows ? 12 : 6),
+      modularity: Number(parsed.modularity) || (staticAnalysis.hasTests ? 14 : 6),
+      apiDesign: Number(parsed.apiDesign) || (staticAnalysis.hasReadme ? 10 : 4),
+      scalability: Number(parsed.scalability) || (staticAnalysis.hasWorkflows ? 12 : 6),
+      maintainability: Number(parsed.maintainability) || (staticAnalysis.hasTests ? 14 : 6),
       findings: Array.isArray(parsed.findings) ? parsed.findings : [],
       recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
       confidence: Number(parsed.confidence) || 70
@@ -336,11 +336,11 @@ Provide a JSON response with detailed scoring and analysis.`
     const parsed = JSON.parse(content)
     
     return {
-      complexity: Number(parsed.complexity) || 0,
-      readability: Number(parsed.readability) || 0,
-      documentation: Number(parsed.documentation) || 0,
-      errorHandling: Number(parsed.errorHandling) || 0,
-      testing: Number(parsed.testing) || 0,
+      complexity: Number(parsed.complexity) || (staticAnalysis.hasTests ? 14 : 6),
+      readability: Number(parsed.readability) || (staticAnalysis.hasReadme ? 12 : 6),
+      documentation: Number(parsed.documentation) || (staticAnalysis.hasReadme ? 16 : 4),
+      errorHandling: Number(parsed.errorHandling) || (staticAnalysis.errorHandling ? 14 : 6),
+      testing: Number(parsed.testing) || (staticAnalysis.hasTests ? 16 : 4),
       findings: Array.isArray(parsed.findings) ? parsed.findings : [],
       recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
       confidence: Number(parsed.confidence) || 70
@@ -397,11 +397,11 @@ Provide a JSON response with detailed scoring and analysis.`
     const parsed = JSON.parse(content)
     
     return {
-      versionControl: Number(parsed.versionControl) || 0,
-      branchManagement: Number(parsed.branchManagement) || 0,
-      codeReview: Number(parsed.codeReview) || 0,
-      continuousIntegration: Number(parsed.continuousIntegration) || 0,
-      deployment: Number(parsed.deployment) || 0,
+      versionControl: Number(parsed.versionControl) || (githubData?.activityMetrics?.recentActivity ? 14 : 6),
+      branchManagement: Number(parsed.branchManagement) || (githubData?.prQuality?.pullRequests?.hasReviews ? 16 : 6),
+      codeReview: Number(parsed.codeReview) || (githubData?.prQuality?.pullRequests?.hasReviews ? 18 : 4),
+      continuousIntegration: Number(parsed.continuousIntegration) || (staticAnalysis.hasWorkflows ? 16 : 4),
+      deployment: Number(parsed.deployment) || (staticAnalysis.hasWorkflows ? 12 : 6),
       findings: Array.isArray(parsed.findings) ? parsed.findings : [],
       recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
       confidence: Number(parsed.confidence) || 70
@@ -458,11 +458,11 @@ Provide a JSON response with detailed scoring and analysis.`
     const parsed = JSON.parse(content)
     
     return {
-      compatibility: Number(parsed.compatibility) || 0,
-      contextOptimization: Number(parsed.contextOptimization) || 0,
-      fileStructure: Number(parsed.fileStructure) || 0,
-      agentRequirements: Number(parsed.agentRequirements) || 0,
-      processingEfficiency: Number(parsed.processingEfficiency) || 0,
+      compatibility: Number(parsed.compatibility) || (staticAnalysis.hasAgents ? 16 : 6),
+      contextOptimization: Number(parsed.contextOptimization) || (staticAnalysis.fileSizeAnalysis ? 14 : 6),
+      fileStructure: Number(parsed.fileStructure) || (staticAnalysis.hasReadme ? 12 : 6),
+      agentRequirements: Number(parsed.agentRequirements) || (staticAnalysis.hasAgents ? 18 : 4),
+      processingEfficiency: Number(parsed.processingEfficiency) || (staticAnalysis.fileSizeAnalysis ? 16 : 6),
       findings: Array.isArray(parsed.findings) ? parsed.findings : [],
       recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
       confidence: Number(parsed.confidence) || 70
@@ -519,11 +519,11 @@ Provide a JSON response with detailed scoring and analysis.`
     const parsed = JSON.parse(content)
     
     return {
-      maintenancePatterns: Number(parsed.maintenancePatterns) || 0,
-      communityEngagement: Number(parsed.communityEngagement) || 0,
-      documentationCompleteness: Number(parsed.documentationCompleteness) || 0,
-      longTermViability: Number(parsed.longTermViability) || 0,
-      supportStructure: Number(parsed.supportStructure) || 0,
+      maintenancePatterns: Number(parsed.maintenancePatterns) || (githubData?.activityMetrics?.recentActivity ? 14 : 6),
+      communityEngagement: Number(parsed.communityEngagement) || ((githubData?.communityHealth?.communityProfile?.healthPercentage ?? 0) > 50 ? 16 : 6),
+      documentationCompleteness: Number(parsed.documentationCompleteness) || (staticAnalysis.hasReadme ? 16 : 4),
+      longTermViability: Number(parsed.longTermViability) || (githubData?.activityMetrics?.recentActivity ? 12 : 6),
+      supportStructure: Number(parsed.supportStructure) || (staticAnalysis.hasContributing ? 14 : 6),
       findings: Array.isArray(parsed.findings) ? parsed.findings : [],
       recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
       confidence: Number(parsed.confidence) || 70
