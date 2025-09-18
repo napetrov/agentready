@@ -1,4 +1,3 @@
-import { generateAIAssessment } from '../lib/ai-assessment'
 import { generateEnhancedAIAssessment } from '../lib/enhanced-ai-assessment'
 import { FileSizeAnalyzer } from '../lib/file-size-analyzer'
 import { StaticAnalysisSummary } from '../lib/ai-assessment'
@@ -6,6 +5,15 @@ import { StaticAnalysisSummary } from '../lib/ai-assessment'
 // OpenAI API is mocked globally in jest.setup.js
 
 describe('Comprehensive Assessment Integration', () => {
+  // Set up API key for tests
+  beforeAll(() => {
+    process.env.OPENAI_API_KEY = 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+  })
+
+  afterAll(() => {
+    delete process.env.OPENAI_API_KEY
+  })
+
   // Mock realistic repository data
   const mockRepositoryFiles = [
     {
@@ -190,7 +198,7 @@ describe('API Tests', () => {
   }
 
   test('should generate comprehensive basic assessment', async () => {
-    const result = await generateAIAssessment(mockStaticAnalysis)
+    const result = await generateEnhancedAIAssessment(mockStaticAnalysis)
     
     expect(result).toBeDefined()
     expect(result.readinessScore).toBeGreaterThan(0)
@@ -272,7 +280,7 @@ describe('API Tests', () => {
       testFiles: []
     }
 
-    const result = await generateAIAssessment(minimalStaticAnalysis)
+    const result = await generateEnhancedAIAssessment(minimalStaticAnalysis)
     
     expect(result).toBeDefined()
     expect(result.readinessScore).toBeGreaterThanOrEqual(0)
@@ -329,7 +337,7 @@ describe('API Tests', () => {
   })
 
   test('should generate actionable recommendations', async () => {
-    const result = await generateAIAssessment(mockStaticAnalysis)
+    const result = await generateEnhancedAIAssessment(mockStaticAnalysis)
     
     expect(result.recommendations).toBeDefined()
     

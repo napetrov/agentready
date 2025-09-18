@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyzeRepository, analyzeWebsite, WebsiteAnalysisResult } from '../../../lib/analyzer'
-import { generateAIAssessment } from '../../../lib/ai-assessment'
 import { generateEnhancedAIAssessment, generateWebsiteAIAssessment } from '../../../lib/enhanced-ai-assessment'
 
 export async function POST(request: NextRequest) {
