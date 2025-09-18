@@ -257,24 +257,70 @@ export default function Home() {
   const [error, setError] = useState('')
   const [inputType, setInputType] = useState<'repository' | 'website'>('repository')
 
-  const handleAnalyze = async () => {
-    if (!inputUrl.trim()) {
-      setError(`Please enter a ${inputType === 'repository' ? 'repository' : 'website'} URL`)
-      return
+  // URL validation and sanitization function
+  const validateAndSanitizeUrl = (url: string, type: 'repository' | 'website'): string => {
+    // Trim whitespace
+    const trimmedUrl = url.trim()
+    
+    if (!trimmedUrl) {
+      throw new Error(`Please enter a ${type === 'repository' ? 'repository' : 'website'} URL`)
     }
 
-    setIsAnalyzing(true)
-    setError('')
-    setResult(null)
-
+    let validatedUrl: URL
+    
     try {
+      // Try to construct URL directly
+      validatedUrl = new URL(trimmedUrl)
+    } catch {
+      try {
+        // If that fails, try prepending https://
+        validatedUrl = new URL(`https://${trimmedUrl}`)
+      } catch {
+        throw new Error(`Invalid ${type === 'repository' ? 'repository' : 'website'} URL format`)
+      }
+    }
+
+    // Validate protocol
+    if (type === 'repository') {
+      if (!['http:', 'https:'].includes(validatedUrl.protocol)) {
+        throw new Error('Repository URL must use HTTP or HTTPS protocol')
+      }
+    } else {
+      if (!['http:', 'https:'].includes(validatedUrl.protocol)) {
+        throw new Error('Website URL must use HTTP or HTTPS protocol')
+      }
+    }
+
+    // Remove trailing slashes and fragments for cleaner URLs
+    validatedUrl.hash = ''
+    validatedUrl.search = ''
+    
+    // Remove trailing slash from pathname
+    let pathname = validatedUrl.pathname
+    if (pathname.length > 1 && pathname.endsWith('/')) {
+      pathname = pathname.slice(0, -1)
+    }
+    validatedUrl.pathname = pathname
+
+    // Return the sanitized URL
+    return validatedUrl.toString()
+  }
+
+  const handleAnalyze = async () => {
+    try {
+      const sanitizedUrl = validateAndSanitizeUrl(inputUrl, inputType)
+      
+      setIsAnalyzing(true)
+      setError('')
+      setResult(null)
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          inputUrl: inputUrl.trim(),
+          inputUrl: sanitizedUrl,
           inputType: inputType
         }),
       })
