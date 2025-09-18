@@ -65,6 +65,15 @@ export interface RiskComplianceAnalysis {
 
 export interface EnhancedAIAssessmentResult {
   readinessScore: number
+  aiAnalysisStatus: {
+    enabled: boolean
+    instructionClarity: boolean
+    workflowAutomation: boolean
+    contextEfficiency: boolean
+    riskCompliance: boolean
+    overallSuccess: boolean
+    reason?: string
+  }
   categories: {
     documentation: number
     instructionClarity: number

@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     // Combine results
     const result = {
       readinessScore: aiAssessment.readinessScore,
+      aiAnalysisStatus: aiAssessment.aiAnalysisStatus,
       categories: aiAssessment.categories,
       findings: aiAssessment.findings,
       recommendations: aiAssessment.recommendations,

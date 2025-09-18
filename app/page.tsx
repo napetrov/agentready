@@ -5,6 +5,15 @@ import { Github, FileText, Download, Loader2, AlertCircle } from 'lucide-react'
 
 interface AssessmentResult {
   readinessScore: number
+  aiAnalysisStatus?: {
+    enabled: boolean
+    instructionClarity: boolean
+    workflowAutomation: boolean
+    contextEfficiency: boolean
+    riskCompliance: boolean
+    overallSuccess: boolean
+    reason?: string
+  }
   categories: {
     documentation: number
     instructionClarity: number
