@@ -3,6 +3,8 @@ import { generateEnhancedAIAssessment } from '../lib/enhanced-ai-assessment'
 import { FileSizeAnalyzer } from '../lib/file-size-analyzer'
 import { StaticAnalysisSummary } from '../lib/ai-assessment'
 
+// OpenAI API is mocked globally in jest.setup.js
+
 describe('Comprehensive Assessment Integration', () => {
   // Mock realistic repository data
   const mockRepositoryFiles = [

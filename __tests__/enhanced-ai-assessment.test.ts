@@ -189,7 +189,7 @@ describe('generateEnhancedAIAssessment', () => {
   })
 
   test('should handle API errors gracefully', async () => {
-    process.env.OPENAI_API_KEY = 'test-key'
+    process.env.OPENAI_API_KEY = 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
     process.env.MOCK_OPENAI_MODE = 'error'
     
     // Spy on console.error to verify error logging
@@ -204,7 +204,7 @@ describe('generateEnhancedAIAssessment', () => {
     expect(result.confidence).toBeDefined()
     
     // Verify error was logged
-    expect(consoleSpy).toHaveBeenCalledWith('Enhanced AI assessment error:', expect.any(Error))
+    expect(consoleSpy).toHaveBeenCalledWith('❌ AI ANALYSIS FAILED: Error during AI processing!')
     
     // Clean up
     consoleSpy.mockRestore()
