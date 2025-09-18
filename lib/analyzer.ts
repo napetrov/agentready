@@ -135,8 +135,9 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
     for (const file of files) {
       const fileName = file.toLowerCase()
       
-      // Test file detection
-      if (fileName.includes('test') || fileName.includes('spec') || fileName.includes('__tests__')) {
+      // Test file detection - look for test files, not directories with 'test' in name
+      if (fileName.includes('test.') || fileName.includes('spec.') || fileName.includes('__tests__/') || 
+          fileName.endsWith('.test.') || fileName.endsWith('.spec.') || fileName.includes('/test/')) {
         analysis.hasTests = true
         analysis.testFiles.push(file)
       }

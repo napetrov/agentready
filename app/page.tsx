@@ -217,6 +217,35 @@ export default function Home() {
     return descriptions[category] || 'Assessment category'
   }
 
+  const sanitizeGitHubUrl = (url: string | null): string | null => {
+    if (!url) return null
+    
+    try {
+      const parsedUrl = new URL(url)
+      
+      // Only allow http and https protocols
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        return null
+      }
+      
+      // Check if hostname is a known GitHub domain
+      const allowedHostnames = [
+        'github.com',
+        'www.github.com',
+        'raw.githubusercontent.com',
+        'githubusercontent.com'
+      ]
+      
+      if (!allowedHostnames.includes(parsedUrl.hostname)) {
+        return null
+      }
+      
+      return url
+    } catch {
+      return null
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Input Section */}
@@ -269,16 +298,18 @@ export default function Home() {
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Repository Information</h3>
-              <a
-                href={repoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="View repository on GitHub"
-                className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                <Github className="w-4 h-4 mr-2" />
-                View Repository
-              </a>
+              {sanitizeGitHubUrl(repoUrl) && (
+                <a
+                  href={sanitizeGitHubUrl(repoUrl)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="View repository on GitHub"
+                  className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <Github className="w-4 h-4 mr-2" />
+                  View Repository
+                </a>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="p-3 border rounded-lg">

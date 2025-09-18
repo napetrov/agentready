@@ -103,6 +103,7 @@ describe('generateEnhancedAIAssessment', () => {
     errorHandling: true,
     fileCount: 25,
     linesOfCode: 2500,
+    repositorySizeMB: 3.2,
     workflowFiles: ['ci.yml', 'deploy.yml'],
     testFiles: ['test.ts', 'spec.js'],
     readmeContent: 'Comprehensive README with setup instructions',
@@ -238,6 +239,7 @@ describe('generateEnhancedAIAssessment', () => {
       errorHandling: false,
       fileCount: 0,
       linesOfCode: 0,
+      repositorySizeMB: 0,
       workflowFiles: [],
       testFiles: []
     }

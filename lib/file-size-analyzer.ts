@@ -320,10 +320,10 @@ export class FileSizeAnalyzer {
     const baseScore = totalFiles === 0 ? 100 : Math.max(0, 100 - (problematicFiles / totalFiles) * 100);
     
     // Calculate agent-specific scores
-    const cursor = this.calculateAgentScore(baseScore, largeFiles, criticalFiles, 'cursor');
-    const githubCopilot = this.calculateAgentScore(baseScore, largeFiles, criticalFiles, 'githubCopilot');
-    const claudeWeb = this.calculateAgentScore(baseScore, largeFiles, criticalFiles, 'claudeWeb');
-    const claudeApi = this.calculateAgentScore(baseScore, largeFiles, criticalFiles, 'claudeApi');
+    const cursor = this.calculateAgentScore(baseScore, files, criticalFiles, 'cursor');
+    const githubCopilot = this.calculateAgentScore(baseScore, files, criticalFiles, 'githubCopilot');
+    const claudeWeb = this.calculateAgentScore(baseScore, files, criticalFiles, 'claudeWeb');
+    const claudeApi = this.calculateAgentScore(baseScore, files, criticalFiles, 'claudeApi');
     
     const overall = Math.round((cursor + githubCopilot + claudeWeb + claudeApi) / 4);
 
@@ -448,22 +448,25 @@ export class FileSizeAnalyzer {
    */
   private static calculateAgentScore(
     baseScore: number,
-    largeFiles: LargeFileInfo[],
+    files: Array<{ size: number }>,
     criticalFiles: CriticalFileInfo[],
     agent: 'cursor' | 'githubCopilot' | 'claudeWeb' | 'claudeApi'
   ): number {
     let score = baseScore;
     
-    // Penalize for files that exceed agent limits
-    const blockedFiles = largeFiles.filter(f => f.agentImpact[agent] === 'blocked').length;
-    const limitedFiles = largeFiles.filter(f => f.agentImpact[agent] === 'limited').length;
+    // Evaluate all files against agent limits (captures 1–2MB Copilot blocks)
+    const impacts = files.map(f => this.calculateAgentImpact(f.size));
+    const blockedFiles = impacts.filter(imp => imp[agent] === 'blocked').length;
+    const limitedFiles = impacts.filter(imp => imp[agent] === 'limited').length;
     
     score -= blockedFiles * 20; // -20 points per blocked file
     score -= limitedFiles * 10; // -10 points per limited file
     
     // Penalize for suboptimal critical files (only for agents that exist in critical files)
     if (agent !== 'claudeApi') {
-      const problematicCriticalFiles = criticalFiles.filter(f => f.agentImpact[agent as keyof CriticalFileInfo['agentImpact']] === 'problematic').length;
+      const problematicCriticalFiles = criticalFiles.filter(
+        f => f.agentImpact[agent as keyof CriticalFileInfo['agentImpact']] === 'problematic'
+      ).length;
       score -= problematicCriticalFiles * 15; // -15 points per problematic critical file
     }
     

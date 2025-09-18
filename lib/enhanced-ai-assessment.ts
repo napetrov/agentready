@@ -407,40 +407,40 @@ function combineAssessmentResults(
   riskAnalysis: RiskComplianceAnalysis,
   staticAnalysis: StaticAnalysisSummary
 ): EnhancedAIAssessmentResult {
-  // Calculate overall scores with proper nullish coalescing
-  const instructionScore = Math.round((
-    (instructionAnalysis.stepByStepQuality ?? 0) + 
-    (instructionAnalysis.commandClarity ?? 0) + 
-    (instructionAnalysis.environmentSetup ?? 0) + 
-    (instructionAnalysis.errorHandling ?? 0) + 
-    (instructionAnalysis.dependencySpecification ?? 0)
-  ) / 5)
+  // Calculate overall scores with proper scaling from 0-5 to 0-100
+  const instructionScore = Math.min(100, Math.round((
+    Math.min(5, Math.max(0, Number(instructionAnalysis.stepByStepQuality ?? 0))) + 
+    Math.min(5, Math.max(0, Number(instructionAnalysis.commandClarity ?? 0))) + 
+    Math.min(5, Math.max(0, Number(instructionAnalysis.environmentSetup ?? 0))) + 
+    Math.min(5, Math.max(0, Number(instructionAnalysis.errorHandling ?? 0))) + 
+    Math.min(5, Math.max(0, Number(instructionAnalysis.dependencySpecification ?? 0)))
+  ) / 5 * 100))
   
-  const workflowScore = Math.round((
-    (workflowAnalysis.ciCdQuality ?? 0) + 
-    (workflowAnalysis.testAutomation ?? 0) + 
-    (workflowAnalysis.buildScripts ?? 0) + 
-    (workflowAnalysis.deploymentAutomation ?? 0) + 
-    (workflowAnalysis.monitoringLogging ?? 0)
-  ) / 5)
+  const workflowScore = Math.min(100, Math.round((
+    Math.min(5, Math.max(0, Number(workflowAnalysis.ciCdQuality ?? 0))) + 
+    Math.min(5, Math.max(0, Number(workflowAnalysis.testAutomation ?? 0))) + 
+    Math.min(5, Math.max(0, Number(workflowAnalysis.buildScripts ?? 0))) + 
+    Math.min(5, Math.max(0, Number(workflowAnalysis.deploymentAutomation ?? 0))) + 
+    Math.min(5, Math.max(0, Number(workflowAnalysis.monitoringLogging ?? 0)))
+  ) / 5 * 100))
   
-  const contextScore = Math.round((
-    (contextAnalysis.instructionFileOptimization ?? 0) + 
-    (contextAnalysis.codeDocumentation ?? 0) + 
-    (contextAnalysis.apiDocumentation ?? 0) + 
-    (contextAnalysis.contextWindowUsage ?? 0)
-  ) / 4)
+  const contextScore = Math.min(100, Math.round((
+    Math.min(5, Math.max(0, Number(contextAnalysis.instructionFileOptimization ?? 0))) + 
+    Math.min(5, Math.max(0, Number(contextAnalysis.codeDocumentation ?? 0))) + 
+    Math.min(5, Math.max(0, Number(contextAnalysis.apiDocumentation ?? 0))) + 
+    Math.min(5, Math.max(0, Number(contextAnalysis.contextWindowUsage ?? 0)))
+  ) / 4 * 100))
   
-  const riskScore = Math.round((
-    (riskAnalysis.securityPractices ?? 0) + 
-    (riskAnalysis.errorHandling ?? 0) + 
-    (riskAnalysis.inputValidation ?? 0) + 
-    (riskAnalysis.dependencySecurity ?? 0) + 
-    (riskAnalysis.licenseCompliance ?? 0)
-  ) / 5)
+  const riskScore = Math.min(100, Math.round((
+    Math.min(5, Math.max(0, Number(riskAnalysis.securityPractices ?? 0))) + 
+    Math.min(5, Math.max(0, Number(riskAnalysis.errorHandling ?? 0))) + 
+    Math.min(5, Math.max(0, Number(riskAnalysis.inputValidation ?? 0))) + 
+    Math.min(5, Math.max(0, Number(riskAnalysis.dependencySecurity ?? 0))) + 
+    Math.min(5, Math.max(0, Number(riskAnalysis.licenseCompliance ?? 0)))
+  ) / 5 * 100))
 
-  // Calculate overall readiness score
-  const overallScore = Math.round((instructionScore + workflowScore + contextScore + riskScore) / 4)
+  // Calculate overall readiness score (0-100 scale)
+  const overallScore = Math.min(100, Math.round((instructionScore + workflowScore + contextScore + riskScore) / 4))
 
   // Generate findings and recommendations
   const findings = [
@@ -461,9 +461,9 @@ function combineAssessmentResults(
     readinessScore: overallScore,
     categories: {
       documentation: Math.min(20, Math.round((staticAnalysis.hasReadme ? 15 : 0) + (staticAnalysis.hasAgents ? 5 : 0))),
-      instructionClarity: Math.min(20, instructionScore),
-      workflowAutomation: Math.min(20, workflowScore),
-      riskCompliance: Math.min(20, riskScore),
+      instructionClarity: Math.min(20, Math.round(instructionScore / 5)),
+      workflowAutomation: Math.min(20, Math.round(workflowScore / 5)),
+      riskCompliance: Math.min(20, Math.round(riskScore / 5)),
       integrationStructure: Math.min(20, Math.round((staticAnalysis.hasWorkflows ? 10 : 0) + (staticAnalysis.hasTests ? 10 : 0))),
       fileSizeOptimization: Math.min(20, staticAnalysis.fileSizeAnalysis ? Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5) : 10)
     },
@@ -471,35 +471,35 @@ function combineAssessmentResults(
     recommendations: recommendations.slice(0, 10), // Limit to top 10 recommendations
     detailedAnalysis: {
       instructionClarity: {
-        stepByStepQuality: Math.min(20, instructionAnalysis.stepByStepQuality || 0),
-        commandClarity: Math.min(20, instructionAnalysis.commandClarity || 0),
-        environmentSetup: Math.min(20, instructionAnalysis.environmentSetup || 0),
-        errorHandling: Math.min(20, instructionAnalysis.errorHandling || 0),
-        dependencySpecification: Math.min(20, instructionAnalysis.dependencySpecification || 0),
-        overallScore: Math.min(20, instructionScore)
+        stepByStepQuality: Math.min(20, Math.round((instructionAnalysis.stepByStepQuality || 0) * 4)),
+        commandClarity: Math.min(20, Math.round((instructionAnalysis.commandClarity || 0) * 4)),
+        environmentSetup: Math.min(20, Math.round((instructionAnalysis.environmentSetup || 0) * 4)),
+        errorHandling: Math.min(20, Math.round((instructionAnalysis.errorHandling || 0) * 4)),
+        dependencySpecification: Math.min(20, Math.round((instructionAnalysis.dependencySpecification || 0) * 4)),
+        overallScore: Math.min(20, Math.round(instructionScore / 5))
       },
       workflowAutomation: {
-        ciCdQuality: Math.min(20, workflowAnalysis.ciCdQuality || 0),
-        testAutomation: Math.min(20, workflowAnalysis.testAutomation || 0),
-        buildScripts: Math.min(20, workflowAnalysis.buildScripts || 0),
-        deploymentAutomation: Math.min(20, workflowAnalysis.deploymentAutomation || 0),
-        monitoringLogging: Math.min(20, workflowAnalysis.monitoringLogging || 0),
-        overallScore: Math.min(20, workflowScore)
+        ciCdQuality: Math.min(20, Math.round((workflowAnalysis.ciCdQuality || 0) * 4)),
+        testAutomation: Math.min(20, Math.round((workflowAnalysis.testAutomation || 0) * 4)),
+        buildScripts: Math.min(20, Math.round((workflowAnalysis.buildScripts || 0) * 4)),
+        deploymentAutomation: Math.min(20, Math.round((workflowAnalysis.deploymentAutomation || 0) * 4)),
+        monitoringLogging: Math.min(20, Math.round((workflowAnalysis.monitoringLogging || 0) * 4)),
+        overallScore: Math.min(20, Math.round(workflowScore / 5))
       },
       contextEfficiency: {
-        instructionFileOptimization: Math.min(20, contextAnalysis.instructionFileOptimization || 0),
-        codeDocumentation: Math.min(20, contextAnalysis.codeDocumentation || 0),
-        apiDocumentation: Math.min(20, contextAnalysis.apiDocumentation || 0),
-        contextWindowUsage: Math.min(20, contextAnalysis.contextWindowUsage || 0),
-        overallScore: Math.min(20, contextScore)
+        instructionFileOptimization: Math.min(20, Math.round((contextAnalysis.instructionFileOptimization || 0) * 4)),
+        codeDocumentation: Math.min(20, Math.round((contextAnalysis.codeDocumentation || 0) * 4)),
+        apiDocumentation: Math.min(20, Math.round((contextAnalysis.apiDocumentation || 0) * 4)),
+        contextWindowUsage: Math.min(20, Math.round((contextAnalysis.contextWindowUsage || 0) * 4)),
+        overallScore: Math.min(20, Math.round(contextScore / 5))
       },
       riskCompliance: {
-        securityPractices: Math.min(20, riskAnalysis.securityPractices || 0),
-        errorHandling: Math.min(20, riskAnalysis.errorHandling || 0),
-        inputValidation: Math.min(20, riskAnalysis.inputValidation || 0),
-        dependencySecurity: Math.min(20, riskAnalysis.dependencySecurity || 0),
-        licenseCompliance: Math.min(20, riskAnalysis.licenseCompliance || 0),
-        overallScore: Math.min(20, riskScore)
+        securityPractices: Math.min(20, Math.round((riskAnalysis.securityPractices || 0) * 4)),
+        errorHandling: Math.min(20, Math.round((riskAnalysis.errorHandling || 0) * 4)),
+        inputValidation: Math.min(20, Math.round((riskAnalysis.inputValidation || 0) * 4)),
+        dependencySecurity: Math.min(20, Math.round((riskAnalysis.dependencySecurity || 0) * 4)),
+        licenseCompliance: Math.min(20, Math.round((riskAnalysis.licenseCompliance || 0) * 4)),
+        overallScore: Math.min(20, Math.round(riskScore / 5))
       }
     },
     confidence: {

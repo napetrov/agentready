@@ -132,7 +132,7 @@ describe('analyzeRepository', () => {
     expect(result.hasAgents).toBe(false)
     expect(result.hasLicense).toBe(false)
     expect(result.hasWorkflows).toBe(false)
-    expect(result.hasTests).toBe(true)
+    expect(result.hasTests).toBe(false)
     expect(result.fileCount).toBe(1)
   })
 
