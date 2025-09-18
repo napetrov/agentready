@@ -129,12 +129,24 @@ export async function generateEnhancedAIAssessment(staticAnalysis: StaticAnalysi
       languages: staticAnalysis.languages.length
     })
 
-    if (!process.env.OPENAI_API_KEY) {
-      console.warn('⚠️ OPENAI_API_KEY is not set; falling back to basic assessment.')
+    // Check if OpenAI API key is available and valid
+    const hasValidApiKey = process.env.OPENAI_API_KEY && 
+      process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' && 
+      process.env.OPENAI_API_KEY.length > 20
+
+    if (!hasValidApiKey) {
+      console.error('❌ AI ANALYSIS FAILED: No valid OpenAI API key found!')
+      console.error('🔧 API Key Status:', {
+        exists: !!process.env.OPENAI_API_KEY,
+        length: process.env.OPENAI_API_KEY?.length || 0,
+        isPlaceholder: process.env.OPENAI_API_KEY === 'your_openai_api_key_here',
+        startsWith: process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined'
+      })
+      console.warn('⚠️ Falling back to static analysis only - AI insights will be limited!')
       return generateEnhancedFallbackAssessment(staticAnalysis)
     }
 
-    console.log('🤖 OpenAI API Key found, proceeding with AI analysis...')
+    console.log('✅ OpenAI API Key validated, proceeding with AI analysis...')
     console.log('🔧 OpenAI Config:', {
       model: OPENAI_MODEL,
       temperature: OPENAI_TEMPERATURE,
@@ -164,12 +176,14 @@ export async function generateEnhancedAIAssessment(staticAnalysis: StaticAnalysi
     return result
 
   } catch (error) {
-    console.error('❌ Enhanced AI assessment error:', error)
-    console.error('📋 Error details:', {
+    console.error('❌ AI ANALYSIS FAILED: Error during AI processing!')
+    console.error('🔧 Error Type:', error instanceof Error ? error.constructor.name : typeof error)
+    console.error('📋 Error Details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: error instanceof Error ? error.stack?.substring(0, 500) : undefined,
       name: error instanceof Error ? error.name : 'Unknown'
     })
+    console.warn('⚠️ Falling back to static analysis only - AI insights will be limited!')
     return generateEnhancedFallbackAssessment(staticAnalysis)
   }
 }
@@ -273,11 +287,13 @@ Provide a JSON response with detailed scoring and analysis.`
     
     return result
   } catch (error) {
-    console.error('❌ Failed to analyze instruction clarity:', error)
-    console.error('📋 Error details:', {
+    console.error('❌ AI ANALYSIS FAILED: Instruction Clarity analysis failed!')
+    console.error('🔧 Error Type:', error instanceof Error ? error.constructor.name : typeof error)
+    console.error('📋 Error Details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack?.substring(0, 500) : undefined
     })
+    console.warn('⚠️ Using fallback values for Instruction Clarity - AI insights will be limited!')
     
     // Return reasonable fallback values based on static analysis
     const fallback = {
@@ -724,6 +740,15 @@ function combineAssessmentResults(
 
   return {
     readinessScore: overallScore,
+    aiAnalysisStatus: {
+      enabled: true,
+      instructionClarity: instructionAnalysis.confidence > 0,
+      workflowAutomation: workflowAnalysis.confidence > 0,
+      contextEfficiency: contextAnalysis.confidence > 0,
+      riskCompliance: riskAnalysis.confidence > 0,
+      overallSuccess: (instructionAnalysis.confidence > 0 && workflowAnalysis.confidence > 0 && 
+                      contextAnalysis.confidence > 0 && riskAnalysis.confidence > 0)
+    },
     categories: {
       documentation: Math.min(20, Math.round(
         (staticAnalysis.hasReadme ? 8 : 0) + 
@@ -805,6 +830,15 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
 
   return {
     readinessScore: Math.min(baseScore, 100),
+    aiAnalysisStatus: {
+      enabled: false,
+      instructionClarity: false,
+      workflowAutomation: false,
+      contextEfficiency: false,
+      riskCompliance: false,
+      overallSuccess: false,
+      reason: 'No valid OpenAI API key available'
+    },
     categories: {
       documentation: Math.min(20, Math.round(
         (staticAnalysis.hasReadme ? 8 : 0) + 

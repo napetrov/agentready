@@ -319,6 +319,51 @@ export default function Home() {
         </div>
       )}
 
+      {/* AI Analysis Status */}
+      {result && result.aiAnalysisStatus && (
+        <div className={`card ${result.aiAnalysisStatus.enabled ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'}`}>
+          <h3 className={`text-lg font-semibold mb-2 ${result.aiAnalysisStatus.enabled ? 'text-blue-800' : 'text-red-800'}`}>
+            {result.aiAnalysisStatus.enabled ? '✅ AI Analysis Status' : '❌ AI Analysis Status'}
+          </h3>
+          <div className="text-sm">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p><strong>Overall Status:</strong> 
+                  <span className={result.aiAnalysisStatus.overallSuccess ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.overallSuccess ? ' ✅ Working' : ' ❌ Failed'}
+                  </span>
+                </p>
+                <p><strong>Instruction Clarity:</strong> 
+                  <span className={result.aiAnalysisStatus.instructionClarity ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.instructionClarity ? ' ✅' : ' ❌'}
+                  </span>
+                </p>
+                <p><strong>Workflow Automation:</strong> 
+                  <span className={result.aiAnalysisStatus.workflowAutomation ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.workflowAutomation ? ' ✅' : ' ❌'}
+                  </span>
+                </p>
+              </div>
+              <div>
+                <p><strong>Context Efficiency:</strong> 
+                  <span className={result.aiAnalysisStatus.contextEfficiency ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.contextEfficiency ? ' ✅' : ' ❌'}
+                  </span>
+                </p>
+                <p><strong>Risk Compliance:</strong> 
+                  <span className={result.aiAnalysisStatus.riskCompliance ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.riskCompliance ? ' ✅' : ' ❌'}
+                  </span>
+                </p>
+                {result.aiAnalysisStatus.reason && (
+                  <p><strong>Reason:</strong> <span className="text-red-600">{result.aiAnalysisStatus.reason}</span></p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Debug Information */}
       {result && (
         <div className="card border-gray-200 bg-gray-50">
