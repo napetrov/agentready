@@ -179,6 +179,7 @@ describe('API Tests', () => {
     errorHandling: true,
     fileCount: 8,
     linesOfCode: 150,
+    repositorySizeMB: 0.5,
     workflowFiles: ['ci.yml'],
     testFiles: ['main.test.js'],
     readmeContent: mockRepositoryFiles[0].content,
@@ -264,6 +265,7 @@ describe('API Tests', () => {
       errorHandling: false,
       fileCount: 2,
       linesOfCode: 50,
+      repositorySizeMB: 0.1,
       workflowFiles: [],
       testFiles: []
     }

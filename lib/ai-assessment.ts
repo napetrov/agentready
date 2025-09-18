@@ -30,6 +30,7 @@ export interface StaticAnalysisSummary {
   errorHandling: boolean
   fileCount: number
   linesOfCode: number
+  repositorySizeMB: number
   readmeContent?: string
   contributingContent?: string
   agentsContent?: string
@@ -249,6 +250,7 @@ Static Analysis Results:
 - Has Tests: ${hasTests} (${(testFiles || []).length} files)
 - Error Handling Detected: ${errorHandling}
 - Total Files: ${fileCount}
+- Repository Size: ${(staticAnalysis.repositorySizeMB || 0).toFixed(2)} MB
 - Primary Languages: ${(languages || []).join(', ')}
 
 Documentation Content:`

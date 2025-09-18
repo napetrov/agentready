@@ -54,6 +54,7 @@ describe('generateAIAssessment', () => {
       errorHandling: true,
       fileCount: 50,
       linesOfCode: 1500,
+      repositorySizeMB: 2.5,
       workflowFiles: ['ci.yml'],
       testFiles: ['test.js'],
       readmeContent: 'Test README',
@@ -85,6 +86,7 @@ describe('generateAIAssessment', () => {
       errorHandling: true,
       fileCount: 25,
       linesOfCode: 800,
+      repositorySizeMB: 1.2,
       workflowFiles: ['ci.yml'],
       testFiles: ['test.js']
     }
@@ -115,6 +117,7 @@ describe('generateAIAssessment', () => {
       errorHandling: false,
       fileCount: 10,
       linesOfCode: 300,
+      repositorySizeMB: 0.8,
       workflowFiles: [],
       testFiles: [],
       fileSizeAnalysis: {
@@ -205,6 +208,7 @@ describe('generateAIAssessment', () => {
       errorHandling: false,
       fileCount: 10,
       linesOfCode: 250,
+      repositorySizeMB: 0.5,
       workflowFiles: [],
       testFiles: []
     }
@@ -241,6 +245,7 @@ describe('generateAIAssessment', () => {
       errorHandling: false,
       fileCount: 10,
       linesOfCode: 200,
+      repositorySizeMB: 0.3,
       workflowFiles: [],
       testFiles: []
     }
@@ -288,6 +293,7 @@ describe('generateAIAssessment', () => {
       errorHandling: false,
       fileCount: 10,
       linesOfCode: 180,
+      repositorySizeMB: 0.2,
       workflowFiles: [],
       testFiles: []
     }
@@ -313,6 +319,7 @@ describe('generateAIAssessment', () => {
       errorHandling: false,
       fileCount: 0,
       linesOfCode: 0,
+      repositorySizeMB: 0,
       workflowFiles: [],
       testFiles: []
     }

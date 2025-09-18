@@ -22,7 +22,9 @@ describe('generatePDFReport', () => {
         hasWorkflows: false,
         hasTests: false,
         errorHandling: false,
-        fileCount: 10
+        fileCount: 10,
+        linesOfCode: 500,
+        repositorySizeMB: 1.2
       }
     }
 
@@ -55,6 +57,8 @@ describe('generatePDFReport', () => {
         hasTests: true,
         errorHandling: true,
         fileCount: 50,
+        linesOfCode: 2000,
+        repositorySizeMB: 3.5,
         languages: ['TypeScript', 'JavaScript']
       }
     }
@@ -88,6 +92,8 @@ describe('generatePDFReport', () => {
         hasTests: true,
         errorHandling: true,
         fileCount: 100,
+        linesOfCode: 5000,
+        repositorySizeMB: 8.2,
         languages: ['TypeScript', 'JavaScript', 'CSS'],
         fileSizeAnalysis: {
           totalFiles: 100,
@@ -179,7 +185,9 @@ describe('generatePDFReport', () => {
         hasWorkflows: false,
         hasTests: false,
         errorHandling: false,
-        fileCount: 25
+        fileCount: 25,
+        linesOfCode: 800,
+        repositorySizeMB: 1.8
       }
     }
 
@@ -211,7 +219,9 @@ describe('generatePDFReport', () => {
         hasWorkflows: true,
         hasTests: true,
         errorHandling: true,
-        fileCount: 100
+        fileCount: 100,
+        linesOfCode: 3000,
+        repositorySizeMB: 5.5
       }
     }
 
@@ -265,7 +275,9 @@ describe('generatePDFReport', () => {
         hasWorkflows: false,
         hasTests: false,
         errorHandling: false,
-        fileCount: 5
+        fileCount: 5,
+        linesOfCode: 200,
+        repositorySizeMB: 0.3
       }
     }
 

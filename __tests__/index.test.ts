@@ -69,7 +69,9 @@ describe('Simple Functionality Tests', () => {
         hasWorkflows: false,
         hasTests: false,
         errorHandling: false,
-        fileCount: 10
+        fileCount: 10,
+        linesOfCode: 400,
+        repositorySizeMB: 0.8
       }
     }
     
@@ -176,6 +178,8 @@ describe('Simple Functionality Tests', () => {
         languages: ['TypeScript', 'JavaScript', 'CSS'],
         errorHandling: true,
         fileCount: 100,
+        linesOfCode: 2500,
+        repositorySizeMB: 4.2,
         workflowFiles: ['ci.yml', 'deploy.yml', 'test.yml'],
         testFiles: ['test.js', 'spec.ts', 'e2e.test.js']
       }

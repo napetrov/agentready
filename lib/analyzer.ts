@@ -13,6 +13,7 @@ export interface StaticAnalysisResult {
   errorHandling: boolean
   fileCount: number
   linesOfCode: number
+  repositorySizeMB: number
   readmeContent?: string
   contributingContent?: string
   agentsContent?: string
@@ -76,6 +77,7 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
       errorHandling: false,
       fileCount: files.length,
       linesOfCode: 0,
+      repositorySizeMB: 0,
       workflowFiles: [],
       testFiles: [],
     }
@@ -169,6 +171,14 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
 
     // Check for error handling patterns
     analysis.errorHandling = await checkErrorHandling(zip, files)
+
+    // Calculate repository size
+    try {
+      analysis.repositorySizeMB = await calculateRepositorySize(zip, files)
+    } catch (error) {
+      console.warn('Repository size calculation failed:', error)
+      // Continue with 0 size if calculation fails
+    }
 
     // Perform file size analysis
     try {
@@ -333,6 +343,35 @@ async function extractFileData(zip: JSZip, files: string[]): Promise<Array<{ pat
   }
   
   return fileData
+}
+
+async function calculateRepositorySize(zip: JSZip, files: string[]): Promise<number> {
+  let totalSizeBytes = 0
+  
+  for (const file of files) {
+    try {
+      // Skip directories
+      if (file.endsWith('/') || zip.files[file].dir) {
+        continue
+      }
+      
+      const zipFile = zip.files[file]
+      // Get file size by reading the content and measuring it
+      try {
+        const content = await zipFile.async('uint8array')
+        totalSizeBytes += content.length
+      } catch (e) {
+        // Skip files that can't be read
+        continue
+      }
+    } catch (error) {
+      // Skip files that can't be processed
+      continue
+    }
+  }
+  
+  // Convert bytes to MB and round to 2 decimal places
+  return Math.round((totalSizeBytes / (1024 * 1024)) * 100) / 100
 }
 
 function isTextFile(extension: string | undefined): boolean {

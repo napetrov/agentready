@@ -66,6 +66,7 @@ interface AssessmentResult {
     errorHandling: boolean
     fileCount: number
     linesOfCode: number
+    repositorySizeMB: number
     fileSizeAnalysis?: {
       totalFiles: number
       filesBySize: {
@@ -279,7 +280,7 @@ export default function Home() {
                 View Repository
               </a>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="p-3 border rounded-lg">
                 <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
                 <div className="text-lg font-bold text-blue-600">
@@ -290,6 +291,12 @@ export default function Home() {
                 <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
                 <div className="text-lg font-bold text-green-600">
                   {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
+                </div>
+              </div>
+              <div className="p-3 border rounded-lg">
+                <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {result.staticAnalysis.repositorySizeMB?.toFixed(2) || '0.00'} MB
                 </div>
               </div>
               <div className="p-3 border rounded-lg">

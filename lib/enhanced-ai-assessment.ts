@@ -309,7 +309,8 @@ Repository Automation Status:
 - Has Tests: ${staticAnalysis.hasTests}
 - Test Files: ${staticAnalysis.testFiles.slice(0, 10).join(', ')}
 - Error Handling: ${staticAnalysis.errorHandling}
-- Total Files: ${staticAnalysis.fileCount}`
+- Total Files: ${staticAnalysis.fileCount}
+- Repository Size: ${(staticAnalysis.repositorySizeMB || 0).toFixed(2)} MB`
 
   if (staticAnalysis.workflowFiles.length > 0) {
     prompt += `\n\nWorkflow Files Analysis:`
@@ -380,7 +381,8 @@ Repository Security Status:
 - Has Tests: ${staticAnalysis.hasTests}
 - Test Files: ${staticAnalysis.testFiles.length}
 - Primary Languages: ${staticAnalysis.languages.join(', ')}
-- Total Files: ${staticAnalysis.fileCount}`
+- Total Files: ${staticAnalysis.fileCount}
+- Repository Size: ${(staticAnalysis.repositorySizeMB || 0).toFixed(2)} MB`
 
   if (staticAnalysis.readmeContent) {
     prompt += `\n\nREADME Content (first 1500 chars):\n${staticAnalysis.readmeContent.substring(0, 1500)}`

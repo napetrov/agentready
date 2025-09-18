@@ -55,6 +55,11 @@ export async function generatePDFReport(assessmentResult: any, repoUrl?: string)
     doc.text(`Total Files: ${totalFiles}`, 20, yPosition)
     yPosition += 12
 
+    if (staticAnalysis.repositorySizeMB !== undefined) {
+      doc.text(`Repository Size: ${staticAnalysis.repositorySizeMB.toFixed(2)} MB`, 20, yPosition)
+      yPosition += 12
+    }
+
     if (staticAnalysis.languages && staticAnalysis.languages.length > 0) {
       doc.text(`Primary Languages: ${staticAnalysis.languages.slice(0, 3).join(', ')}`, 20, yPosition)
       yPosition += 12
