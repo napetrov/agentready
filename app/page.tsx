@@ -482,8 +482,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* AI Analysis Status */}
-      {result && result.aiAnalysisStatus && (
+      {/* AI Analysis Status - Only for repositories */}
+      {inputType === 'repository' && result && result.aiAnalysisStatus && (
         <div className={`card ${result.aiAnalysisStatus.enabled ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'}`}>
           <h3 className={`text-lg font-semibold mb-2 ${result.aiAnalysisStatus.enabled ? 'text-blue-800' : 'text-red-800'}`}>
             {result.aiAnalysisStatus.enabled ? '✅ AI Analysis Status' : '❌ AI Analysis Status'}
@@ -614,11 +614,17 @@ export default function Home() {
                     <div className="text-lg font-bold text-green-600">
                       {result.staticAnalysis.accessibilityScore || 0}%
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Helps agents understand content structure and navigation
+                    </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">SEO Score</div>
                     <div className="text-lg font-bold text-blue-600">
                       {result.staticAnalysis.seoScore || 0}%
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Indicates well-structured content for agent consumption
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
@@ -626,11 +632,17 @@ export default function Home() {
                     <div className="text-sm font-medium">
                       {result.staticAnalysis.technologies?.slice(0, 2).join(', ') || 'Unknown'}
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Framework compatibility for agent integration
+                    </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Mobile Friendly</div>
                     <div className="text-sm font-medium">
                       {result.staticAnalysis.mobileFriendly ? '✅ Yes' : '❌ No'}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Responsive design improves agent accessibility
                     </div>
                   </div>
                 </>
@@ -779,7 +791,19 @@ export default function Home() {
                       <h4 className="text-md font-medium mb-2">Contact Information</h4>
                       <ul className="text-sm text-gray-600 space-y-1">
                         {result.staticAnalysis.contactInfo.slice(0, 3).map((contact: string, index: number) => (
-                          <li key={index}>{contact}</li>
+                          <li key={index} className="flex items-center">
+                            {contact.includes('@') ? (
+                              <>
+                                <span className="text-blue-600 mr-2">📧</span>
+                                <span>Email: {contact}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-green-600 mr-2">📞</span>
+                                <span>Phone: {contact}</span>
+                              </>
+                            )}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -941,6 +965,273 @@ export default function Home() {
                         <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
                       </div>
                     ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed Flow Analysis for Website Type */}
+        {result.websiteAnalysis?.agenticFlows && result.websiteAnalysis.websiteType && (
+          <div className="mt-6 p-4 border rounded-lg bg-indigo-50">
+            <h4 className="text-lg font-medium mb-4 text-indigo-900">
+              Detailed Flow Analysis for {result.websiteAnalysis.websiteType.charAt(0).toUpperCase() + result.websiteAnalysis.websiteType.slice(1)} Websites
+            </h4>
+            
+            {/* Information Gathering Flow Details */}
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">Information Gathering & Comparison</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.informationGathering.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Evaluates how well the website provides comprehensive information for AI agents to gather and compare data.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.informationGathering)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Direct Booking Flow Details */}
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">Direct Booking & Reservations</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.directBooking.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Assesses the website's ability to support direct booking, reservation, and transaction actions.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.directBooking)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* FAQ/Support Flow Details */}
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">FAQ & Knowledge Support</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.faqSupport.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Evaluates support and knowledge base capabilities for answering user questions and providing guidance.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.faqSupport)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Task Management Flow Details */}
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">Task & Calendar Management</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.taskManagement.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Assesses task management, scheduling, and calendar integration capabilities.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.taskManagement)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Personalization Flow Details */}
+            <div className="p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">Personalization & Recommendations</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.personalization.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Evaluates personalization capabilities and recommendation systems for tailored user experiences.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.personalization)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Feature Validation & Flow Mapping */}
+        {result.websiteAnalysis?.agenticFlows && result.websiteAnalysis.websiteType && (
+          <div className="mt-6 p-4 border rounded-lg bg-amber-50">
+            <h4 className="text-lg font-medium mb-4 text-amber-900">
+              Feature Validation & Flow Mapping
+            </h4>
+            <p className="text-sm text-amber-700 mb-4">
+              This section shows how individual website features are validated and mapped to specific agentic flows for {result.websiteAnalysis.websiteType} websites.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Information Gathering Features */}
+              <div className="p-3 border rounded-lg bg-white">
+                <h5 className="font-semibold text-amber-800 mb-2">Information Gathering Features</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Service/Product Info</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasServiceProductInfo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.informationGathering.hasServiceProductInfo ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Pricing Information</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasPricing ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.informationGathering.hasPricing ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Contact Information</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasContactInfo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.informationGathering.hasContactInfo ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Location Data</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasLocation ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.informationGathering.hasLocation ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Booking Features */}
+              <div className="p-3 border rounded-lg bg-white">
+                <h5 className="font-semibold text-amber-800 mb-2">Direct Booking Features</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Actionable Instructions</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasActionableInstructions ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.directBooking.hasActionableInstructions ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Payment Options</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasPaymentOptions ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.directBooking.hasPaymentOptions ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Booking Requirements</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasBookingRequirements ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.directBooking.hasBookingRequirements ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Mobile Optimization</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasMobileOptimization ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.directBooking.hasMobileOptimization ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* FAQ/Support Features */}
+              <div className="p-3 border rounded-lg bg-white">
+                <h5 className="font-semibold text-amber-800 mb-2">FAQ/Support Features</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>FAQ Section</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasFaq ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.faqSupport.hasFaq ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Policy Documentation</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasPolicyDocumentation ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.faqSupport.hasPolicyDocumentation ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>User Guides</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasUserGuides ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.faqSupport.hasUserGuides ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Search Functionality</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasSearchFunctionality ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.faqSupport.hasSearchFunctionality ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Task Management Features */}
+              <div className="p-3 border rounded-lg bg-white">
+                <h5 className="font-semibold text-amber-800 mb-2">Task Management Features</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Schedule Visibility</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasScheduleVisibility ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.taskManagement.hasScheduleVisibility ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Reservation Management</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasReservationManagement ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.taskManagement.hasReservationManagement ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Task Tracking</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasTaskTracking ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.taskManagement.hasTaskTracking ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Notification Systems</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasNotificationSystems ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.taskManagement.hasNotificationSystems ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
