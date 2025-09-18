@@ -19,12 +19,6 @@ export interface AlignedAssessmentConfig {
 }
 
 export interface AlignedAssessmentResult extends UnifiedAssessmentResult {
-  validation: {
-    passed: boolean;
-    alignmentScore: number;
-    issues: string[];
-    recommendations: string[];
-  };
   assessmentMetadata: {
     staticAnalysisTime: number;
     aiAnalysisTime: number;
@@ -102,8 +96,8 @@ export class AlignedAssessmentEngine {
       // Validate alignment if enabled
       let validation: ValidationResult | null = null;
       if (this.config.enableValidation) {
-        const staticScores = this.metricsEngine['convertStaticAnalysisToScores'](staticAnalysis);
-        const aiScores = this.metricsEngine['convertAIAnalysisToScores'](aiAnalysis);
+        const staticScores = this.metricsEngine.convertStaticAnalysisToScores(staticAnalysis);
+        const aiScores = this.metricsEngine.convertAIAnalysisToScores(aiAnalysis);
         
         validation = this.validator.validateMetrics(staticScores, aiScores);
         
@@ -119,14 +113,17 @@ export class AlignedAssessmentEngine {
       return {
         ...unifiedAssessment,
         validation: validation ? {
-          passed: validation.isValid,
-          alignmentScore: validation.alignmentScore,
-          issues: validation.issues.map(issue => issue.message),
+          isValid: validation.isValid,
+          variances: validation.issues.reduce((acc, issue) => {
+            if (issue.variance !== undefined) {
+              acc[issue.category] = issue.variance;
+            }
+            return acc;
+          }, {} as { [key: string]: number }),
           recommendations: validation.recommendations
         } : {
-          passed: true,
-          alignmentScore: 100,
-          issues: [],
+          isValid: true,
+          variances: {},
           recommendations: []
         },
         assessmentMetadata: {
@@ -234,8 +231,8 @@ export class AlignedAssessmentEngine {
       // Validate alignment if enabled
       let validation: ValidationResult | null = null;
       if (this.config.enableValidation) {
-        const staticScores = this.metricsEngine['convertStaticAnalysisToScores'](staticAnalysis);
-        const aiScores = this.metricsEngine['convertAIAnalysisToScores'](aiAnalysis);
+        const staticScores = this.metricsEngine.convertStaticAnalysisToScores(staticAnalysis);
+        const aiScores = this.metricsEngine.convertAIAnalysisToScores(aiAnalysis);
         
         validation = this.validator.validateMetrics(staticScores, aiScores);
       }
@@ -245,14 +242,17 @@ export class AlignedAssessmentEngine {
       return {
         ...unifiedAssessment,
         validation: validation ? {
-          passed: validation.isValid,
-          alignmentScore: validation.alignmentScore,
-          issues: validation.issues.map(issue => issue.message),
+          isValid: validation.isValid,
+          variances: validation.issues.reduce((acc, issue) => {
+            if (issue.variance !== undefined) {
+              acc[issue.category] = issue.variance;
+            }
+            return acc;
+          }, {} as { [key: string]: number }),
           recommendations: validation.recommendations
         } : {
-          passed: true,
-          alignmentScore: 100,
-          issues: [],
+          isValid: true,
+          variances: {},
           recommendations: []
         },
         assessmentMetadata: {

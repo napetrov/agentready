@@ -7,8 +7,16 @@
 
 import { UnifiedMetricsConfig, UnifiedMetric } from './unified-metrics-engine';
 
+export interface MetricsValidatorConfig extends UnifiedMetricsConfig {
+  maxVariance: number;
+  minConfidence: number;
+  criticalVariance: number;
+  lowConfidenceThreshold: number;
+}
+
 export interface ValidationResult {
   isValid: boolean;
+  passed: boolean; // Alias for isValid for backward compatibility
   overallScore: number;
   issues: ValidationIssue[];
   recommendations: string[];
@@ -18,6 +26,7 @@ export interface ValidationResult {
 export interface ValidationIssue {
   type: 'variance' | 'confidence' | 'missing_data' | 'inconsistency';
   category: string;
+  metric: string; // Alias for category for backward compatibility
   severity: 'low' | 'medium' | 'high' | 'critical';
   message: string;
   staticValue?: number;
@@ -35,10 +44,185 @@ export interface MetricsAlignmentReport {
 }
 
 export class MetricsValidator {
-  private config: UnifiedMetricsConfig;
+  private config: MetricsValidatorConfig;
 
-  constructor(config: UnifiedMetricsConfig) {
-    this.config = config;
+  constructor(config: Partial<MetricsValidatorConfig> = {}) {
+    this.config = { ...DEFAULT_VALIDATOR_CONFIG, ...config };
+  }
+
+  /**
+   * Validate a single metric
+   */
+  validateMetric(
+    metricName: string,
+    staticValue: number,
+    aiValue: number,
+    aiConfidence: number
+  ): ValidationIssue[] {
+    const issues: ValidationIssue[] = [];
+    const variance = Math.abs(staticValue - aiValue);
+    
+    // Check variance
+    if (variance >= this.config.maxScoreVariance) {
+      issues.push({
+        type: 'variance',
+        category: metricName,
+        metric: metricName,
+        severity: variance >= 20 ? 'critical' : variance >= 15 ? 'high' : 'medium',
+        message: `High variance between static (${staticValue}) and AI (${aiValue}) scores`,
+        staticValue,
+        aiValue,
+        variance
+      });
+    }
+    
+    // Check confidence
+    if (aiConfidence < this.config.minConfidenceThreshold) {
+      issues.push({
+        type: 'confidence',
+        category: metricName,
+        metric: metricName,
+        severity: aiConfidence < 30 ? 'high' : 'medium',
+        message: `Low AI confidence (${aiConfidence}%) for ${metricName}`,
+        aiValue,
+        expectedValue: this.config.minConfidenceThreshold
+      });
+    }
+    
+    return issues;
+  }
+
+  /**
+   * Validate overall assessment
+   */
+  validateOverallAssessment(
+    overallScore: UnifiedMetric,
+    categories: { [key: string]: any }
+  ): ValidationResult {
+    const issues: ValidationIssue[] = [];
+    
+    // Check overall confidence
+    if (overallScore.confidence < this.config.minConfidenceThreshold) {
+      issues.push({
+        type: 'confidence',
+        category: 'overall',
+        metric: 'overall',
+        severity: 'high',
+        message: `Low overall confidence (${overallScore.confidence}%)`,
+        expectedValue: this.config.minConfidenceThreshold
+      });
+    }
+    
+    // Validate category scores
+    const categoryIssues = this.validateCategoryScores(categories);
+    issues.push(...categoryIssues);
+    
+    const alignmentScore = this.calculateAlignmentScore(issues);
+    
+    return {
+      isValid: issues.length === 0,
+      passed: issues.length === 0,
+      overallScore: overallScore.value,
+      issues,
+      recommendations: this.generateRecommendations(issues),
+      alignmentScore
+    };
+  }
+
+  /**
+   * Validate category scores
+   */
+  validateCategoryScores(categories: { [key: string]: any }): ValidationIssue[] {
+    const issues: ValidationIssue[] = [];
+    
+    Object.entries(categories).forEach(([categoryName, category]) => {
+      if (category.score) {
+        const score = category.score;
+        
+        // Check confidence
+        if (score.confidence < this.config.minConfidenceThreshold) {
+          issues.push({
+            type: 'confidence',
+            category: categoryName,
+            metric: categoryName,
+            severity: score.confidence < 40 ? 'high' : 'medium',
+            message: `Low confidence (${score.confidence}%) for ${categoryName}`,
+            expectedValue: this.config.minConfidenceThreshold
+          });
+        }
+        
+        // Check variance if available
+        if (score.variance && score.variance > this.config.maxScoreVariance) {
+          issues.push({
+            type: 'variance',
+            category: categoryName,
+            metric: categoryName,
+            severity: score.variance > 20 ? 'critical' : 'high',
+            message: `High variance (${score.variance}) for ${categoryName}`,
+            variance: score.variance
+          });
+        }
+      }
+    });
+    
+    return issues;
+  }
+
+  /**
+   * Validate sub-metrics
+   */
+  validateSubMetrics(
+    categoryName: string,
+    subMetrics: { [key: string]: UnifiedMetric }
+  ): ValidationIssue[] {
+    const issues: ValidationIssue[] = [];
+    
+    Object.entries(subMetrics).forEach(([metricName, metric]) => {
+      if (metric.confidence < this.config.minConfidenceThreshold) {
+        issues.push({
+          type: 'confidence',
+          category: `${categoryName}.${metricName}`,
+          metric: `${categoryName}.${metricName}`,
+          severity: metric.confidence < 40 ? 'high' : 'medium',
+          message: `Low confidence (${metric.confidence}%) for ${metricName}`,
+          expectedValue: this.config.minConfidenceThreshold
+        });
+      }
+    });
+    
+    return issues;
+  }
+
+  /**
+   * Calculate alignment score
+   */
+  private calculateAlignmentScore(issues: ValidationIssue[]): number {
+    if (issues.length === 0) return 100;
+    
+    const criticalIssues = issues.filter(i => i.severity === 'critical').length;
+    const highIssues = issues.filter(i => i.severity === 'high').length;
+    const mediumIssues = issues.filter(i => i.severity === 'medium').length;
+    const lowIssues = issues.filter(i => i.severity === 'low').length;
+    
+    const penalty = (criticalIssues * 25) + (highIssues * 15) + (mediumIssues * 8) + (lowIssues * 3);
+    return Math.max(0, 100 - penalty);
+  }
+
+  /**
+   * Generate recommendations
+   */
+  private generateRecommendations(issues: ValidationIssue[]): string[] {
+    const recommendations: string[] = [];
+    
+    if (issues.some(i => i.type === 'variance')) {
+      recommendations.push('Review and align static and AI analysis methods');
+    }
+    
+    if (issues.some(i => i.type === 'confidence')) {
+      recommendations.push('Improve data quality and analysis methods for better confidence');
+    }
+    
+    return recommendations;
   }
 
   /**
@@ -70,6 +254,7 @@ export class MetricsValidator {
         issues.push({
           type: 'variance',
           category,
+          metric: category,
           severity,
           message: `High variance detected: static=${staticScore}, ai=${aiScore}, variance=${variance}`,
           staticValue: staticScore,
@@ -85,6 +270,7 @@ export class MetricsValidator {
         issues.push({
           type: 'missing_data',
           category,
+          metric: category,
           severity: 'medium',
           message: `No data available for ${category} in both static and AI analysis`
         });
@@ -99,6 +285,7 @@ export class MetricsValidator {
         issues.push({
           type: 'confidence',
           category,
+          metric: category,
           severity: 'medium',
           message: `Low static analysis confidence: ${staticConf}%`
         });
@@ -108,6 +295,7 @@ export class MetricsValidator {
         issues.push({
           type: 'confidence',
           category,
+          metric: category,
           severity: 'medium',
           message: `Low AI analysis confidence: ${aiConf}%`
         });
@@ -136,6 +324,7 @@ export class MetricsValidator {
 
     return {
       isValid,
+      passed: isValid,
       overallScore: alignmentScore,
       issues,
       recommendations,
@@ -171,6 +360,7 @@ export class MetricsValidator {
         criticalIssues.push({
           type: 'variance',
           category,
+          metric: category,
           severity: 'critical',
           message: `Critical variance in ${category}: ${variance} points difference`,
           staticValue: staticScore,
@@ -293,11 +483,13 @@ export class MetricsValidator {
       issues.push({
         type: 'missing_data',
         category: 'fileSizeOptimization',
+        metric: 'fileSizeOptimization',
         severity: 'high',
         message: 'File size analysis data missing from static or AI analysis'
       });
       return {
         isValid: false,
+        passed: false,
         overallScore: 0,
         issues,
         recommendations: ['Ensure file size analysis is performed in both static and AI analysis'],
@@ -314,6 +506,7 @@ export class MetricsValidator {
       issues.push({
         type: 'variance',
         category: 'fileSizeOptimization',
+        metric: 'fileSizeOptimization',
         severity: 'high',
         message: `High variance in agent compatibility: static=${staticCompatibility}%, ai=${aiCompatibility}%`,
         staticValue: staticCompatibility,
@@ -331,6 +524,7 @@ export class MetricsValidator {
       issues.push({
         type: 'inconsistency',
         category: 'fileSizeOptimization',
+        metric: 'fileSizeOptimization',
         severity: 'medium',
         message: `Inconsistent large file detection: static=${staticLargeFiles}, ai=${aiLargeFiles}`
       });
@@ -341,6 +535,7 @@ export class MetricsValidator {
 
     return {
       isValid: issues.length === 0,
+      passed: issues.length === 0,
       overallScore: alignmentScore,
       issues,
       recommendations,
@@ -374,9 +569,9 @@ export class MetricsValidator {
     const overallValidation = this.validateMetrics(staticScores, aiScores);
     
     // Validate file size analysis
-    const fileSizeValidation = fileSizeAnalysis 
+    const fileSizeValidation = fileSizeAnalysis
       ? this.validateFileSizeConsistency(fileSizeAnalysis, fileSizeAnalysis) // Assuming same data for now
-      : { isValid: true, overallScore: 100, issues: [], recommendations: [], alignmentScore: 100 };
+      : { isValid: true, passed: true, overallScore: 100, issues: [], recommendations: [], alignmentScore: 100 };
 
     // Generate alignment report
     const alignmentReport = this.generateAlignmentReport(staticScores, aiScores);
@@ -439,3 +634,27 @@ export class MetricsValidator {
     };
   }
 }
+
+// Default configuration
+export const DEFAULT_VALIDATOR_CONFIG: MetricsValidatorConfig = {
+  categoryScale: 20,
+  overallScale: 100,
+  confidenceScale: 100,
+  staticWeight: 0.3,
+  aiWeight: 0.7,
+  categoryWeights: {
+    documentation: 0.20,
+    instructionClarity: 0.20,
+    workflowAutomation: 0.20,
+    riskCompliance: 0.20,
+    integrationStructure: 0.10,
+    fileSizeOptimization: 0.10,
+  },
+  minConfidenceThreshold: 60,
+  maxScoreVariance: 15,
+  // Additional properties for validator
+  maxVariance: 15,
+  minConfidence: 60,
+  criticalVariance: 20,
+  lowConfidenceThreshold: 40,
+};

@@ -41,6 +41,10 @@ export interface UnifiedMetric {
     variance?: number;
     isValidated: boolean;
   };
+  // Direct access properties for convenience
+  staticValue?: number;
+  aiValue?: number;
+  variance?: number;
 }
 
 export interface UnifiedCategoryScore {
@@ -61,6 +65,15 @@ export interface UnifiedAssessmentResult {
     riskCompliance: UnifiedCategoryScore;
     integrationStructure: UnifiedCategoryScore;
     fileSizeOptimization: UnifiedCategoryScore;
+  };
+  validation: {
+    isValid: boolean;
+    variances: { [key: string]: number };
+    recommendations: string[];
+  };
+  insights: {
+    findings: string[];
+    recommendations: string[];
   };
   assessmentStatus: {
     staticAnalysisEnabled: boolean;
@@ -113,20 +126,36 @@ export class UnifiedMetricsEngine {
     const isValidated = variance <= this.config.maxScoreVariance;
     
     // Calculate weighted average
-    const weightedValue = (staticValue * this.config.staticWeight) + (aiValue * this.config.aiWeight);
-    const weightedConfidence = (staticConfidence * this.config.staticWeight) + (aiConfidence * this.config.aiWeight);
+    let weightedValue: number;
+    let weightedConfidence: number;
+    let source: 'static' | 'ai' | 'hybrid';
+    
+    if (aiValue > 0) {
+      // Both static and AI values available
+      weightedValue = (staticValue * this.config.staticWeight) + (aiValue * this.config.aiWeight);
+      weightedConfidence = (staticConfidence * this.config.staticWeight) + (aiConfidence * this.config.aiWeight);
+      source = 'hybrid';
+    } else {
+      // Only static value available
+      weightedValue = staticValue;
+      weightedConfidence = staticConfidence;
+      source = 'static';
+    }
     
     return {
       value: Math.round(weightedValue),
       confidence: Math.round(weightedConfidence),
-      source: 'hybrid',
+      source,
       lastUpdated: new Date(),
       metadata: {
         staticValue,
         aiValue,
         variance,
         isValidated
-      }
+      },
+      staticValue,
+      aiValue,
+      variance
     };
   }
 
@@ -186,7 +215,7 @@ export class UnifiedMetricsEngine {
       
       variances[category] = variance;
       
-      if (variance > this.config.maxScoreVariance) {
+      if (variance >= this.config.maxScoreVariance) {
         isValid = false;
         recommendations.push(
           `High variance detected in ${category}: static=${staticScore}, ai=${aiScore}, variance=${variance}`
@@ -295,6 +324,15 @@ export class UnifiedMetricsEngine {
     return {
       overallScore,
       categories: categoryScores as any,
+      validation: {
+        isValid: validation.isValid,
+        variances: validation.variances,
+        recommendations: validation.recommendations
+      },
+      insights: {
+        findings: insights.findings,
+        recommendations: insights.recommendations
+      },
       assessmentStatus: {
         staticAnalysisEnabled: true,
         aiAnalysisEnabled: !!aiAnalysis,
@@ -313,7 +351,7 @@ export class UnifiedMetricsEngine {
   /**
    * Convert static analysis to normalized scores
    */
-  private convertStaticAnalysisToScores(staticAnalysis: any): { [key: string]: number } {
+  convertStaticAnalysisToScores(staticAnalysis: any): { [key: string]: number } {
     return {
       documentation: this.normalizeToCategoryScale(
         (staticAnalysis.hasReadme ? 8 : 0) +
@@ -348,7 +386,7 @@ export class UnifiedMetricsEngine {
   /**
    * Convert AI analysis to normalized scores
    */
-  private convertAIAnalysisToScores(aiAnalysis: any): { [key: string]: number } {
+  convertAIAnalysisToScores(aiAnalysis: any): { [key: string]: number } {
     if (!aiAnalysis || !aiAnalysis.categories) {
       return Object.keys(this.config.categoryWeights).reduce((acc, key) => {
         acc[key] = 0;
