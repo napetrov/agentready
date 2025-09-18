@@ -616,36 +616,38 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Category Breakdown */}
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(result.categories || {}).map(([category, score]) => (
-                <div key={category} className="p-4 border rounded-lg group relative">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium capitalize">
-                      {category.replace(/([A-Z])/g, ' $1').trim()}
-                    </span>
-                    <span className={`text-sm font-bold ${getCategoryTextColor(score || 0)}`}>
-                      {score || 0}/20
-                    </span>
+          {/* Category Breakdown - Only for repositories */}
+          {inputType === 'repository' && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(result.categories || {}).map(([category, score]) => (
+                  <div key={category} className="p-4 border rounded-lg group relative">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium capitalize">
+                        {category.replace(/([A-Z])/g, ' $1').trim()}
+                      </span>
+                      <span className={`text-sm font-bold ${getCategoryTextColor(score || 0)}`}>
+                        {score || 0}/20
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          (score || 0) >= 16 ? 'bg-success-500' : (score || 0) >= 12 ? 'bg-warning-500' : 'bg-danger-500'
+                        }`}
+                        style={{ width: `${((score || 0) / 20) * 100}%` }}
+                      />
+                    </div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                      {getCategoryDescription(category)}
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${
-                        (score || 0) >= 16 ? 'bg-success-500' : (score || 0) >= 12 ? 'bg-warning-500' : 'bg-danger-500'
-                      }`}
-                      style={{ width: `${((score || 0) / 20) * 100}%` }}
-                    />
-                  </div>
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                    {getCategoryDescription(category)}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Static Analysis */}
           <div className="card">
@@ -831,176 +833,9 @@ export default function Home() {
             )}
           </div>
 
-          {/* Website-specific Analysis */}
-          {inputType === 'website' && (
-            <div className="card">
-              <h3 className="text-lg font-semibold mb-4">Website Analysis Results</h3>
-              
-              {/* Website Features */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    result.staticAnalysis.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {result.staticAnalysis.hasStructuredData ? '✓' : '✗'}
-                  </div>
-                  <div className="text-sm font-medium">Structured Data</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    result.staticAnalysis.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {result.staticAnalysis.hasOpenGraph ? '✓' : '✗'}
-                  </div>
-                  <div className="text-sm font-medium">Open Graph</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    result.staticAnalysis.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {result.staticAnalysis.hasTwitterCards ? '✓' : '✗'}
-                  </div>
-                  <div className="text-sm font-medium">Twitter Cards</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    result.staticAnalysis.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {result.staticAnalysis.hasSitemap ? '✓' : '✗'}
-                  </div>
-                  <div className="text-sm font-medium">Sitemap</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    result.staticAnalysis.hasRobotsTxt ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {result.staticAnalysis.hasRobotsTxt ? '✓' : '✗'}
-                  </div>
-                  <div className="text-sm font-medium">Robots.txt</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    result.staticAnalysis.hasFavicon ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {result.staticAnalysis.hasFavicon ? '✓' : '✗'}
-                  </div>
-                  <div className="text-sm font-medium">Favicon</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    result.staticAnalysis.hasManifest ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {result.staticAnalysis.hasManifest ? '✓' : '✗'}
-                  </div>
-                  <div className="text-sm font-medium">Web Manifest</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                    result.staticAnalysis.hasServiceWorker ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {result.staticAnalysis.hasServiceWorker ? '✓' : '✗'}
-                  </div>
-                  <div className="text-sm font-medium">Service Worker</div>
-                </div>
-              </div>
 
-              {/* Website Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="p-3 border rounded-lg">
-                  <div className="text-sm font-medium text-gray-600 mb-1">Content Length</div>
-                  <div className="text-lg font-bold text-blue-600">
-                    {result.staticAnalysis.contentLength?.toLocaleString() || '0'} characters
-                  </div>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <div className="text-sm font-medium text-gray-600 mb-1">Images</div>
-                  <div className="text-lg font-bold text-green-600">
-                    {result.staticAnalysis.imageCount || 0}
-                  </div>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <div className="text-sm font-medium text-gray-600 mb-1">Links</div>
-                  <div className="text-lg font-bold text-purple-600">
-                    {result.staticAnalysis.linkCount || 0}
-                  </div>
-                </div>
-              </div>
-
-              {/* Heading Structure */}
-              {result.staticAnalysis.headingStructure && (
-                <div className="mb-6">
-                  <h4 className="text-md font-medium mb-3">Heading Structure</h4>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                    {Object.entries(result.staticAnalysis.headingStructure).map(([level, count]) => (
-                      <div key={level} className="text-center p-2 border rounded-lg">
-                        <div className="text-sm font-medium text-gray-600 mb-1">{level.toUpperCase()}</div>
-                        <div className="text-lg font-bold text-blue-600">{count as number}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Technologies */}
-              {result.staticAnalysis.technologies && result.staticAnalysis.technologies.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-md font-medium mb-3">Detected Technologies</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {result.staticAnalysis.technologies.map((tech: string, index: number) => (
-                      <span key={index} className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Social Media Links */}
-              {result.staticAnalysis.socialMediaLinks && result.staticAnalysis.socialMediaLinks.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-md font-medium mb-3">Social Media Links</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {result.staticAnalysis.socialMediaLinks.map((social: string, index: number) => (
-                      <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                        {social}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Contact Information */}
-              {result.staticAnalysis.contactInfo && result.staticAnalysis.contactInfo.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-md font-medium mb-3">Contact Information</h4>
-                  <div className="space-y-1">
-                    {result.staticAnalysis.contactInfo.slice(0, 5).map((contact: string, index: number) => (
-                      <div key={index} className="text-sm text-gray-700 bg-gray-50 p-2 rounded">
-                        {contact}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Navigation Structure */}
-              {result.staticAnalysis.navigationStructure && result.staticAnalysis.navigationStructure.length > 0 && (
-                <div>
-                  <h4 className="text-md font-medium mb-3">Navigation Structure</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {result.staticAnalysis.navigationStructure.map((nav: string, index: number) => (
-                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded">
-                        {nav}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* File Size Analysis */}
-          {result.staticAnalysis.fileSizeAnalysis && (
+          {/* File Size Analysis - Only for repositories */}
+          {inputType === 'repository' && result.staticAnalysis.fileSizeAnalysis && (
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">File Size & AI Agent Compatibility</h3>
               
@@ -1156,8 +991,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Detailed Analysis */}
-          {result.detailedAnalysis && (
+          {/* Detailed Analysis - Only for repositories */}
+          {inputType === 'repository' && result.detailedAnalysis && (
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Detailed Analysis</h3>
               
@@ -1283,8 +1118,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Confidence Scores */}
-          {result.confidence && (
+          {/* Confidence Scores - Only for repositories */}
+          {inputType === 'repository' && result.confidence && (
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Assessment Confidence</h3>
