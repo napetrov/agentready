@@ -147,14 +147,14 @@ export class UnifiedMetricsEngine {
   /**
    * Calculate overall score from category scores
    */
-  calculateOverallScore(categoryScores: { [key: string]: UnifiedMetric }): UnifiedMetric {
+  calculateOverallScore(categoryScores: { [key: string]: UnifiedCategoryScore }): UnifiedMetric {
     const weightedSum = Object.entries(this.config.categoryWeights).reduce((sum, [category, weight]) => {
       const categoryScore = categoryScores[category];
-      return sum + (categoryScore.value * weight);
+      return sum + (categoryScore.score.value * weight);
     }, 0);
 
-    const averageConfidence = Object.values(categoryScores).reduce((sum, metric) => 
-      sum + metric.confidence, 0) / Object.keys(categoryScores).length;
+    const averageConfidence = Object.values(categoryScores).reduce((sum, categoryScore) => 
+      sum + categoryScore.score.confidence, 0) / Object.keys(categoryScores).length;
 
     return {
       value: Math.round(weightedSum),
@@ -214,12 +214,12 @@ export class UnifiedMetricsEngine {
     const recommendations: string[] = [];
 
     // Generate findings based on scores
-    Object.entries(categoryScores).forEach(([category, score]) => {
-      if (score.score.value < 10) {
-        findings.push(`${category} score is low (${score.score.value}/20) - needs improvement`);
+    Object.entries(categoryScores).forEach(([category, categoryScore]) => {
+      if (categoryScore.score.value < 10) {
+        findings.push(`${category} score is low (${categoryScore.score.value}/20) - needs improvement`);
         recommendations.push(`Focus on improving ${category} through targeted enhancements`);
-      } else if (score.score.value >= 16) {
-        findings.push(`${category} score is excellent (${score.score.value}/20) - well optimized`);
+      } else if (categoryScore.score.value >= 16) {
+        findings.push(`${category} score is excellent (${categoryScore.score.value}/20) - well optimized`);
       }
     });
 
@@ -281,8 +281,8 @@ export class UnifiedMetricsEngine {
       categoryScores[category] = {
         score: unifiedScore,
         subMetrics: this.createSubMetrics(category, staticAnalysis, aiAnalysis),
-        findings: [],
-        recommendations: []
+        findings: this.generateCategoryFindings(category, unifiedScore, staticAnalysis, aiAnalysis),
+        recommendations: this.generateCategoryRecommendations(category, unifiedScore, staticAnalysis, aiAnalysis)
       };
     });
 
@@ -373,6 +373,98 @@ export class UnifiedMetricsEngine {
     // This would be implemented based on specific sub-metrics for each category
     // For now, return empty object
     return {};
+  }
+
+  /**
+   * Generate category-specific findings
+   */
+  private generateCategoryFindings(category: string, score: UnifiedMetric, staticAnalysis: any, aiAnalysis: any): string[] {
+    const findings: string[] = [];
+    
+    if (score.value < 5) {
+      findings.push(`${category} score is very low (${score.value}/20) - critical improvement needed`);
+    } else if (score.value < 10) {
+      findings.push(`${category} score is low (${score.value}/20) - needs improvement`);
+    } else if (score.value >= 16) {
+      findings.push(`${category} score is excellent (${score.value}/20) - well optimized`);
+    }
+
+    // Add category-specific findings
+    switch (category) {
+      case 'documentation':
+        if (!staticAnalysis.hasReadme) findings.push('Missing README.md file');
+        if (!staticAnalysis.hasAgents) findings.push('Missing AGENTS.md file');
+        if (!staticAnalysis.hasContributing) findings.push('Missing CONTRIBUTING.md file');
+        if (!staticAnalysis.hasLicense) findings.push('Missing LICENSE file');
+        break;
+      case 'instructionClarity':
+        if (!staticAnalysis.hasReadme) findings.push('No setup instructions available');
+        if (!staticAnalysis.hasAgents) findings.push('No AI agent specific instructions');
+        break;
+      case 'workflowAutomation':
+        if (!staticAnalysis.hasWorkflows) findings.push('No CI/CD workflows detected');
+        if (!staticAnalysis.hasTests) findings.push('No automated tests found');
+        break;
+      case 'riskCompliance':
+        if (!staticAnalysis.hasLicense) findings.push('No license information available');
+        if (!staticAnalysis.errorHandling) findings.push('Limited error handling detected');
+        break;
+      case 'integrationStructure':
+        if (!staticAnalysis.hasWorkflows) findings.push('No automation infrastructure');
+        if (!staticAnalysis.hasTests) findings.push('No testing infrastructure');
+        break;
+      case 'fileSizeOptimization':
+        if (staticAnalysis.fileSizeAnalysis?.largeFiles?.length > 0) {
+          findings.push(`${staticAnalysis.fileSizeAnalysis.largeFiles.length} files exceed 2MB limit`);
+        }
+        break;
+    }
+
+    return findings;
+  }
+
+  /**
+   * Generate category-specific recommendations
+   */
+  private generateCategoryRecommendations(category: string, score: UnifiedMetric, staticAnalysis: any, aiAnalysis: any): string[] {
+    const recommendations: string[] = [];
+    
+    if (score.value < 10) {
+      recommendations.push(`Focus on improving ${category} through targeted enhancements`);
+    }
+
+    // Add category-specific recommendations
+    switch (category) {
+      case 'documentation':
+        if (!staticAnalysis.hasReadme) recommendations.push('Create comprehensive README.md with setup instructions');
+        if (!staticAnalysis.hasAgents) recommendations.push('Add AGENTS.md with AI agent specific instructions');
+        if (!staticAnalysis.hasContributing) recommendations.push('Add CONTRIBUTING.md for contributor guidance');
+        if (!staticAnalysis.hasLicense) recommendations.push('Add LICENSE file to clarify usage rights');
+        break;
+      case 'instructionClarity':
+        if (!staticAnalysis.hasReadme) recommendations.push('Create detailed setup and usage instructions');
+        if (!staticAnalysis.hasAgents) recommendations.push('Add specific instructions for AI agents');
+        break;
+      case 'workflowAutomation':
+        if (!staticAnalysis.hasWorkflows) recommendations.push('Implement CI/CD workflows for automated processes');
+        if (!staticAnalysis.hasTests) recommendations.push('Add automated test suite');
+        break;
+      case 'riskCompliance':
+        if (!staticAnalysis.hasLicense) recommendations.push('Add appropriate license file');
+        if (!staticAnalysis.errorHandling) recommendations.push('Implement comprehensive error handling');
+        break;
+      case 'integrationStructure':
+        if (!staticAnalysis.hasWorkflows) recommendations.push('Set up automation infrastructure');
+        if (!staticAnalysis.hasTests) recommendations.push('Implement testing infrastructure');
+        break;
+      case 'fileSizeOptimization':
+        if (staticAnalysis.fileSizeAnalysis?.largeFiles?.length > 0) {
+          recommendations.push('Optimize large files for better AI agent compatibility');
+        }
+        break;
+    }
+
+    return recommendations;
   }
 }
 
