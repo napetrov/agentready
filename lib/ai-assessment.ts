@@ -36,6 +36,33 @@ export interface StaticAnalysisSummary {
   agentsContent?: string
   workflowFiles: string[]
   testFiles: string[]
+  // Website-specific properties
+  websiteUrl?: string
+  pageTitle?: string
+  metaDescription?: string
+  hasStructuredData?: boolean
+  hasOpenGraph?: boolean
+  hasTwitterCards?: boolean
+  hasSitemap?: boolean
+  hasRobotsTxt?: boolean
+  hasFavicon?: boolean
+  hasManifest?: boolean
+  hasServiceWorker?: boolean
+  pageLoadSpeed?: number
+  mobileFriendly?: boolean
+  accessibilityScore?: number
+  seoScore?: number
+  contentLength?: number
+  imageCount?: number
+  linkCount?: number
+  headingStructure?: {
+    [key: string]: number
+  }
+  technologies?: string[]
+  securityHeaders?: string[]
+  socialMediaLinks?: string[]
+  contactInfo?: string[]
+  navigationStructure?: string[]
   fileSizeAnalysis?: {
     totalFiles: number
     filesBySize: {

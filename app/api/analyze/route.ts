@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyzeRepository, analyzeWebsite } from '../../../lib/analyzer'
 import { generateAIAssessment } from '../../../lib/ai-assessment'
-import { generateEnhancedAIAssessment } from '../../../lib/enhanced-ai-assessment'
+import { generateEnhancedAIAssessment, generateWebsiteAIAssessment } from '../../../lib/enhanced-ai-assessment'
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,8 +51,10 @@ export async function POST(request: NextRequest) {
       staticAnalysis = await analyzeWebsite(inputUrl)
     }
 
-    // Generate enhanced AI assessment
-    const aiAssessment = await generateEnhancedAIAssessment(staticAnalysis)
+    // Generate appropriate AI assessment based on input type
+    const aiAssessment = inputType === 'website' 
+      ? await generateWebsiteAIAssessment(staticAnalysis)
+      : await generateEnhancedAIAssessment(staticAnalysis)
 
     // Combine results
     const result = {

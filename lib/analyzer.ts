@@ -419,7 +419,7 @@ function isTextFile(extension: string | undefined): boolean {
   return textExtensions.includes(extension.toLowerCase())
 }
 
-export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysisResult> {
+export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<StaticAnalysisResult> {
   try {
     console.log('🌐 Starting website analysis for:', websiteUrl)
     
@@ -649,6 +649,195 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
       accessibilityScore: analysis.accessibilityScore,
       seoScore: analysis.seoScore,
       mobileFriendly: analysis.mobileFriendly
+    })
+
+    return analysis
+  } catch (error) {
+    console.error('Website analysis error:', error)
+    throw new Error(`Failed to analyze website: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysisResult> {
+  try {
+    console.log('🌐 Starting website AI agent readiness analysis for:', websiteUrl)
+    
+    // Fetch the website content
+    const response = await axios.get(websiteUrl, {
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; AI-Agent-Analyzer/1.0)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+      }
+    })
+
+    const html = response.data
+    const $ = cheerio.load(html)
+    const url = new URL(websiteUrl)
+
+    // Initialize analysis result with AI agent readiness focus
+    const analysis: StaticAnalysisResult = {
+      hasReadme: false,
+      hasContributing: false,
+      hasAgents: false,
+      hasLicense: false,
+      hasWorkflows: false,
+      hasTests: false,
+      languages: [],
+      errorHandling: false,
+      fileCount: 1,
+      linesOfCode: html.split('\n').length,
+      repositorySizeMB: Math.round((html.length / (1024 * 1024)) * 100) / 100,
+      workflowFiles: [],
+      testFiles: [],
+      fileSizeAnalysis: undefined,
+      // AI Agent Readiness specific properties
+      websiteUrl: websiteUrl,
+      pageTitle: $('title').text().trim() || 'No title found',
+      metaDescription: $('meta[name="description"]').attr('content') || '',
+      hasStructuredData: $('script[type="application/ld+json"]').length > 0,
+      hasOpenGraph: $('meta[property^="og:"]').length > 0,
+      hasTwitterCards: $('meta[name^="twitter:"]').length > 0,
+      hasSitemap: false,
+      hasRobotsTxt: false,
+      hasFavicon: $('link[rel="icon"], link[rel="shortcut icon"]').length > 0,
+      hasManifest: $('link[rel="manifest"]').length > 0,
+      hasServiceWorker: false,
+      pageLoadSpeed: 0,
+      mobileFriendly: $('meta[name="viewport"]').length > 0,
+      accessibilityScore: 0,
+      seoScore: 0,
+      contentLength: html.length,
+      imageCount: $('img').length,
+      linkCount: $('a[href]').length,
+      headingStructure: {
+        h1: $('h1').length,
+        h2: $('h2').length,
+        h3: $('h3').length,
+        h4: $('h4').length,
+        h5: $('h5').length,
+        h6: $('h6').length,
+      },
+      technologies: [],
+      securityHeaders: [],
+      socialMediaLinks: [],
+      contactInfo: [],
+      navigationStructure: []
+    }
+
+    // AI Agent Readiness: Check for structured data (critical for AI understanding)
+    analysis.hasStructuredData = $('script[type="application/ld+json"]').length > 0
+
+    // AI Agent Readiness: Check for Open Graph and Twitter Cards (social sharing)
+    analysis.hasOpenGraph = $('meta[property^="og:"]').length > 0
+    analysis.hasTwitterCards = $('meta[name^="twitter:"]').length > 0
+
+    // AI Agent Readiness: Check for sitemap and robots.txt (crawling support)
+    try {
+      const robotsResponse = await axios.get(new URL('/robots.txt', websiteUrl).toString(), { timeout: 5000 })
+      analysis.hasRobotsTxt = true
+      analysis.hasSitemap = robotsResponse.data.toLowerCase().includes('sitemap')
+    } catch {
+      // robots.txt not found
+    }
+
+    // AI Agent Readiness: Check for service worker (PWA capabilities)
+    const swScripts = $('script').filter((_, el) => {
+      const scriptContent = $(el).html() || ''
+      return scriptContent.includes('serviceWorker') || scriptContent.includes('navigator.serviceWorker')
+    })
+    analysis.hasServiceWorker = swScripts.length > 0
+
+    // AI Agent Readiness: Accessibility score (critical for AI agents)
+    let accessibilityScore = 0
+    if ($('h1').length > 0) accessibilityScore += 20 // Single H1
+    if ($('nav').length > 0) accessibilityScore += 20 // Navigation structure
+    if ($('main').length > 0) accessibilityScore += 20 // Main content area
+    if ($('img[alt]').length > 0) accessibilityScore += 20 // Alt text for images
+    if ($('a[href]').length > 0) accessibilityScore += 20 // Links have href
+    analysis.accessibilityScore = accessibilityScore
+
+    // AI Agent Readiness: SEO score (discoverability)
+    let seoScore = 0
+    if (analysis.pageTitle && analysis.pageTitle.length > 10 && analysis.pageTitle.length < 60) seoScore += 25
+    if (analysis.metaDescription && analysis.metaDescription.length > 120 && analysis.metaDescription.length < 160) seoScore += 25
+    if (analysis.hasStructuredData) seoScore += 25
+    if (analysis.hasOpenGraph) seoScore += 25
+    analysis.seoScore = seoScore
+
+    // AI Agent Readiness: Detect technologies (API integration potential)
+    const techSet = new Set<string>()
+    $('meta[name="generator"]').each((_, el) => {
+      const content = $(el).attr('content')
+      if (content) techSet.add(content)
+    })
+    $('script[src]').each((_, el) => {
+      const src = $(el).attr('src')
+      if (src) {
+        if (src.includes('jquery')) techSet.add('jQuery')
+        if (src.includes('react')) techSet.add('React')
+        if (src.includes('vue')) techSet.add('Vue.js')
+        if (src.includes('angular')) techSet.add('Angular')
+        if (src.includes('bootstrap')) techSet.add('Bootstrap')
+        if (src.includes('tailwind')) techSet.add('Tailwind CSS')
+      }
+    })
+    analysis.technologies = Array.from(techSet)
+
+    // AI Agent Readiness: Extract social media links (contact channels)
+    const socialLinks: string[] = []
+    $('a[href]').each((_, el) => {
+      const href = $(el).attr('href')
+      if (href) {
+        if (href.includes('facebook.com')) socialLinks.push('Facebook')
+        if (href.includes('twitter.com') || href.includes('x.com')) socialLinks.push('Twitter/X')
+        if (href.includes('linkedin.com')) socialLinks.push('LinkedIn')
+        if (href.includes('instagram.com')) socialLinks.push('Instagram')
+        if (href.includes('youtube.com')) socialLinks.push('YouTube')
+      }
+    })
+    analysis.socialMediaLinks = [...new Set(socialLinks)]
+
+    // AI Agent Readiness: Extract contact information (business data)
+    const contactInfo: string[] = []
+    $('a[href^="tel:"]').each((_, el) => {
+      const href = $(el).attr('href')
+      if (href) contactInfo.push(href.replace('tel:', ''))
+    })
+    $('a[href^="mailto:"]').each((_, el) => {
+      const href = $(el).attr('href')
+      if (href) contactInfo.push(href.replace('mailto:', ''))
+    })
+    analysis.contactInfo = contactInfo
+
+    // AI Agent Readiness: Analyze navigation structure (content organization)
+    const navItems: string[] = []
+    $('nav a, .nav a, .navigation a, .menu a').each((_, el) => {
+      const text = $(el).text().trim()
+      if (text) navItems.push(text)
+    })
+    analysis.navigationStructure = navItems
+
+    // Set languages based on detected technologies
+    if (analysis.technologies.length > 0) {
+      analysis.languages = analysis.technologies
+    } else {
+      analysis.languages = ['HTML', 'CSS', 'JavaScript']
+    }
+
+    console.log('✅ Website AI agent readiness analysis completed:', {
+      url: websiteUrl,
+      title: analysis.pageTitle,
+      structuredData: analysis.hasStructuredData,
+      openGraph: analysis.hasOpenGraph,
+      accessibility: analysis.accessibilityScore,
+      seo: analysis.seoScore,
+      technologies: analysis.technologies.length,
+      socialLinks: analysis.socialMediaLinks.length,
+      contactInfo: analysis.contactInfo.length
     })
 
     return analysis

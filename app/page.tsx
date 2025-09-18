@@ -256,12 +256,24 @@ export default function Home() {
 
   const getCategoryDescription = (category: string) => {
     const descriptions: Record<string, string> = {
-      documentation: 'Measures presence and quality of README, CONTRIBUTING, AGENTS.md, and LICENSE files',
-      instructionClarity: 'Evaluates how clear and actionable instructions are for AI agents to follow',
-      workflowAutomation: 'Assesses CI/CD setup, testing, build scripts, and deployment automation',
-      riskCompliance: 'Checks security practices, error handling, input validation, and license compliance',
-      integrationStructure: 'Evaluates code organization, API structure, and integration readiness',
-      fileSizeOptimization: 'Measures file sizes against AI agent limits and context window efficiency'
+      documentation: inputType === 'website' 
+        ? 'Measures structured data, meta tags, and machine-readable content for AI agent understanding'
+        : 'Measures presence and quality of README, CONTRIBUTING, AGENTS.md, and LICENSE files',
+      instructionClarity: inputType === 'website'
+        ? 'Evaluates API readiness, integration points, and data accessibility for AI agents'
+        : 'Evaluates how clear and actionable instructions are for AI agents to follow',
+      workflowAutomation: inputType === 'website'
+        ? 'Assesses conversational readiness, natural language structure, and user intent matching'
+        : 'Assesses CI/CD setup, testing, build scripts, and deployment automation',
+      riskCompliance: inputType === 'website'
+        ? 'Checks business data completeness, contact information, and service transparency'
+        : 'Checks security practices, error handling, input validation, and license compliance',
+      integrationStructure: inputType === 'website'
+        ? 'Evaluates technology stack, social media integration, and automation potential'
+        : 'Evaluates code organization, API structure, and integration readiness',
+      fileSizeOptimization: inputType === 'website'
+        ? 'Measures content organization, navigation structure, and AI agent discoverability'
+        : 'Measures file sizes against AI agent limits and context window efficiency'
     }
     return descriptions[category] || 'Assessment category'
   }
@@ -598,23 +610,121 @@ export default function Home() {
 
           {/* Static Analysis */}
           <div className="card">
-            <h3 className="text-lg font-semibold mb-4">Static Analysis Results</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(result.staticAnalysis)
-                .filter(([_, value]) => typeof value === 'boolean')
-                .map(([key, value]) => (
-                  <div key={key} className="text-center p-3 border rounded-lg">
+            <h3 className="text-lg font-semibold mb-4">
+              {inputType === 'website' ? 'Website Analysis Results' : 'Static Analysis Results'}
+            </h3>
+            {inputType === 'website' ? (
+              <div className="space-y-6">
+                {/* Website-specific metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      value ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      result.staticAnalysis.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {value ? '✓' : '✗'}
+                      {result.staticAnalysis.hasStructuredData ? '✓' : '✗'}
                     </div>
-                    <div className="text-sm font-medium capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    <div className="text-sm font-medium">Structured Data</div>
+                  </div>
+                  <div className="text-center p-3 border rounded-lg">
+                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                      result.staticAnalysis.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {result.staticAnalysis.hasOpenGraph ? '✓' : '✗'}
+                    </div>
+                    <div className="text-sm font-medium">Open Graph</div>
+                  </div>
+                  <div className="text-center p-3 border rounded-lg">
+                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                      result.staticAnalysis.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {result.staticAnalysis.hasTwitterCards ? '✓' : '✗'}
+                    </div>
+                    <div className="text-sm font-medium">Twitter Cards</div>
+                  </div>
+                  <div className="text-center p-3 border rounded-lg">
+                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                      result.staticAnalysis.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {result.staticAnalysis.hasSitemap ? '✓' : '✗'}
+                    </div>
+                    <div className="text-sm font-medium">Sitemap</div>
+                  </div>
+                </div>
+
+                {/* Website scores */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-2">Accessibility Score</div>
+                    <div className="text-2xl font-bold text-blue-600">{result.staticAnalysis.accessibilityScore}/100</div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-2">SEO Score</div>
+                    <div className="text-2xl font-bold text-green-600">{result.staticAnalysis.seoScore}/100</div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-2">Content Length</div>
+                    <div className="text-2xl font-bold text-purple-600">{result.staticAnalysis.contentLength?.toLocaleString() || 0} chars</div>
+                  </div>
+                </div>
+
+                {/* Website technologies */}
+                {result.staticAnalysis.technologies && result.staticAnalysis.technologies.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-medium mb-2">Detected Technologies</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {result.staticAnalysis.technologies.map((tech: string, index: number) => (
+                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                          {tech}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                ))}
-            </div>
+                )}
+
+                {/* Contact and social info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {result.staticAnalysis.contactInfo && result.staticAnalysis.contactInfo.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium mb-2">Contact Information</h4>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        {result.staticAnalysis.contactInfo.slice(0, 3).map((contact: string, index: number) => (
+                          <li key={index}>{contact}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {result.staticAnalysis.socialMediaLinks && result.staticAnalysis.socialMediaLinks.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium mb-2">Social Media</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {result.staticAnalysis.socialMediaLinks.map((social: string, index: number) => (
+                          <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                            {social}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Object.entries(result.staticAnalysis)
+                  .filter(([_, value]) => typeof value === 'boolean')
+                  .map(([key, value]) => (
+                    <div key={key} className="text-center p-3 border rounded-lg">
+                      <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                        value ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {value ? '✓' : '✗'}
+                      </div>
+                      <div className="text-sm font-medium capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
             
             {/* Languages */}
             {result.staticAnalysis.languages && result.staticAnalysis.languages.length > 0 && (
