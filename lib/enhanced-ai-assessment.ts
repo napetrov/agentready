@@ -600,19 +600,36 @@ function combineAssessmentResults(
   // Calculate overall readiness score (0-100 scale)
   const overallScore = Math.min(100, Math.round((instructionScore + workflowScore + contextScore + riskScore) / 4 * 5))
 
-  // Generate findings and recommendations with proper type guards
-  const findings = [
+  // Generate findings and recommendations with proper type guards and fallbacks
+  const aiFindings = [
     ...(Array.isArray(instructionAnalysis.findings) ? instructionAnalysis.findings : []),
     ...(Array.isArray(workflowAnalysis.findings) ? workflowAnalysis.findings : []),
     ...(Array.isArray(contextAnalysis.findings) ? contextAnalysis.findings : []),
     ...(Array.isArray(riskAnalysis.findings) ? riskAnalysis.findings : [])
   ]
 
-  const recommendations = [
+  const aiRecommendations = [
     ...(Array.isArray(instructionAnalysis.recommendations) ? instructionAnalysis.recommendations : []),
     ...(Array.isArray(workflowAnalysis.recommendations) ? workflowAnalysis.recommendations : []),
     ...(Array.isArray(contextAnalysis.recommendations) ? contextAnalysis.recommendations : []),
     ...(Array.isArray(riskAnalysis.recommendations) ? riskAnalysis.recommendations : [])
+  ]
+
+  // Fallback to static analysis findings if AI findings are empty
+  const findings = aiFindings.length > 0 ? aiFindings : [
+    staticAnalysis.hasReadme ? 'README.md present' : 'Missing README.md',
+    staticAnalysis.hasAgents ? 'AGENTS.md present' : 'Missing AGENTS.md for AI agent instructions',
+    staticAnalysis.hasWorkflows ? 'CI/CD workflows detected' : 'No CI/CD workflows found',
+    staticAnalysis.hasTests ? 'Test files detected' : 'No test files found',
+    staticAnalysis.errorHandling ? 'Error handling patterns detected' : 'Limited error handling detected'
+  ]
+
+  const recommendations = aiRecommendations.length > 0 ? aiRecommendations : [
+    !staticAnalysis.hasReadme ? 'Add comprehensive README.md' : 'README.md is present',
+    !staticAnalysis.hasAgents ? 'Create AGENTS.md with AI agent instructions' : 'AGENTS.md is present',
+    !staticAnalysis.hasWorkflows ? 'Implement CI/CD workflows' : 'CI/CD workflows are present',
+    !staticAnalysis.hasTests ? 'Add automated test suite' : 'Test suite is present',
+    !staticAnalysis.errorHandling ? 'Improve error handling patterns' : 'Error handling is adequate'
   ]
 
   return {
