@@ -1,7 +1,6 @@
 import JSZip from 'jszip'
 import axios from 'axios'
 import { FileSizeAnalyzer, FileSizeAnalysis } from './file-size-analyzer'
-import * as cheerio from 'cheerio'
 
 export interface StaticAnalysisResult {
   hasReadme: boolean
@@ -500,7 +499,7 @@ function isTextFile(extension: string | undefined): boolean {
   return textExtensions.includes(extension.toLowerCase())
 }
 
-function detectWebsiteType($: cheerio.CheerioAPI, html: string, url: string): 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown' {
+function detectWebsiteType($: any, html: string, url: string): 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown' {
   const text = $('body').text().toLowerCase()
   const title = $('title').text().toLowerCase()
   const domain = new URL(url).hostname.toLowerCase()
@@ -552,7 +551,7 @@ function detectWebsiteType($: cheerio.CheerioAPI, html: string, url: string): 'r
   return 'unknown'
 }
 
-function analyzeRestaurantMetrics($: cheerio.CheerioAPI, html: string) {
+function analyzeRestaurantMetrics($: any, html: string) {
   const text = $('body').text().toLowerCase()
   
   return {
@@ -569,7 +568,7 @@ function analyzeRestaurantMetrics($: cheerio.CheerioAPI, html: string) {
   }
 }
 
-function analyzeDocumentationMetrics($: cheerio.CheerioAPI, html: string) {
+function analyzeDocumentationMetrics($: any, html: string) {
   const text = $('body').text().toLowerCase()
   
   return {
@@ -586,7 +585,7 @@ function analyzeDocumentationMetrics($: cheerio.CheerioAPI, html: string) {
   }
 }
 
-function analyzeEcommerceMetrics($: cheerio.CheerioAPI, html: string) {
+function analyzeEcommerceMetrics($: any, html: string) {
   const text = $('body').text().toLowerCase()
   
   return {
@@ -846,6 +845,9 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
   try {
     console.log('🌐 Starting website AI agent readiness analysis for:', websiteUrl)
     
+    // Import cheerio dynamically to avoid Node.js compatibility issues
+    const cheerio = await import('cheerio')
+    
     // Fetch the website content
     const response = await axios.get(websiteUrl, {
       timeout: 30000,
@@ -859,7 +861,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
     })
 
     const html = response.data
-    const $ = cheerio.load(html)
+    const $ = cheerio.default.load(html)
     const url = new URL(websiteUrl)
 
     // Detect website type
