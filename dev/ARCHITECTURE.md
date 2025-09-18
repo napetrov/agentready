@@ -116,48 +116,203 @@ The tool implements a comprehensive methodology that evaluates both technical re
 
 ### Business Website Agent-Readiness Framework
 
+#### Agentic AI Flows and Required Information Framework
+
+The assessment evaluates websites based on their support for five core agentic AI workflows, each requiring specific information pieces for optimal AI agent interaction.
+
+##### 1. Information Gathering & Comparison Flow (Weight: 25%)
+
+**Goal**: Agents collect information, compare options, and summarize possibilities before any booking or action.
+
+**Examples**:
+- Comparing cleaning services, doctors, electronics, travel options
+- Evaluating fitness classes, events, legal consultations
+- Selecting between service providers or products
+
+**Required Information Checklist**:
+- Service/Product Name and Description/Features
+- Pricing or Fees (explicit values or ranges)
+- Availability (time slots, hours, capacity indicators)
+- Contact Info (address, phone, email)
+- Location/Service Area
+- Service/Product Reviews and Ratings
+- Discounts, Offers, Packages
+- Cancellation, refund, or change policies
+- Unique differentiators (special skills, amenities, certifications, insurance)
+
+**Assessment Criteria**:
+- Information completeness (0-20 points)
+- Pricing transparency (0-15 points)
+- Availability clarity (0-15 points)
+- Contact accessibility (0-10 points)
+- Review/rating presence (0-10 points)
+- Policy transparency (0-10 points)
+- Differentiation clarity (0-10 points)
+- Comparison readiness (0-5 points)
+
+##### 2. Direct Booking, Purchase, or Scheduling Flow (Weight: 25%)
+
+**Goal**: Reserving, buying, or scheduling after options are compared.
+
+**Examples**:
+- Book cleaning or home services
+- Order food or groceries for delivery
+- Reserve travel (hotel, flight, activity)
+- Schedule medical, beauty, or legal appointments
+
+**Required Information Checklist**:
+- Actionable instructions ("Call," "Order online," "Book Now," booking form or widget)
+- Booking requirements (party size, dates, preferences, details needed)
+- Confirmation mechanics (how user receives confirmation—email, SMS, onscreen code)
+- Payment options (accepted types, fees, splitting, etc.)
+- Policies for booking & modifications (lead time, cancellation, late arrivals, etc.)
+
+**Assessment Criteria**:
+- Action clarity (0-20 points)
+- Booking process simplicity (0-15 points)
+- Payment options (0-15 points)
+- Confirmation process (0-10 points)
+- Modification policies (0-10 points)
+- Error handling (0-10 points)
+- Mobile optimization (0-10 points)
+- Integration readiness (0-10 points)
+
+##### 3. FAQ/Knowledge Searching / Support Flow (Weight: 20%)
+
+**Goal**: Understand policy, process, technical facts, eligibility, or usage for a product/service.
+
+**Examples**:
+- Return, cancellation, or refund processes
+- Support instructions ("How do I reset my password?")
+- Documentation lookup ("How do I use feature X in your app?")
+- Warranty/guarantee explanations
+
+**Required Information Checklist**:
+- Frequently asked questions
+- Policy documentation (refund, return, support procedures)
+- User guides and help text
+- Eligibility criteria (who qualifies for service/product/support)
+- Contact/support details (live chat, phone, ticketing, office hours)
+
+**Assessment Criteria**:
+- FAQ comprehensiveness (0-25 points)
+- Policy documentation (0-20 points)
+- User guides quality (0-15 points)
+- Eligibility clarity (0-10 points)
+- Support accessibility (0-15 points)
+- Search functionality (0-10 points)
+- Content organization (0-5 points)
+
+##### 4. Task and Calendar Management Flow (Weight: 15%)
+
+**Goal**: Agents help schedule, manage tasks, or optimize ongoing engagement such as reminders or rescheduling.
+
+**Examples**:
+- Setting appointments, classes, or reminders
+- Task prioritization (e.g. follow-ups, checklists)
+- Managing recurring events (subscriptions, memberships)
+
+**Required Information Checklist**:
+- Event/class/service schedules
+- Reservation status and history
+- Task completion info
+- Rescheduling/cancellation process
+- Membership/subscription details
+
+**Assessment Criteria**:
+- Schedule visibility (0-25 points)
+- Reservation management (0-20 points)
+- Task tracking (0-15 points)
+- Rescheduling process (0-15 points)
+- Membership details (0-15 points)
+- Notification systems (0-10 points)
+
+##### 5. Personalized Recommendations / Lead Qualification Flow (Weight: 15%)
+
+**Goal**: Suggest services, products, or actions tailored to user-specific preferences, goals, or needs.
+
+**Examples**:
+- Personalized product suggestions
+- Doctor matching for rare conditions
+- Experiences or travel customized by location, demographic, or prior activity
+- Sales-lead ranking
+
+**Required Information Checklist**:
+- User profiles, preferences, and requirements
+- Past activity/history
+- Contextual details (age, location, preferences)
+- Personalized message/logic (e.g. "We recommend X because you did Y")
+
+**Assessment Criteria**:
+- Personalization data (0-30 points)
+- Recommendation logic (0-25 points)
+- Context awareness (0-20 points)
+- User profiling (0-15 points)
+- Dynamic content (0-10 points)
+
 #### Industry-Specific Assessment Templates
 
 **Restaurant & Food Service**
 - **Critical Agent Tasks**: Reservations, ordering, dietary restrictions, modifications
-- **Essential APIs**: OpenTable/Resy, POS integration, delivery platforms
+- **Essential Information**: Menu items, pricing, availability, dietary info, delivery areas
 - **Key Metrics**: Real-time availability, payment processing, customer notifications
 
 **Retail & E-commerce**
 - **Critical Agent Tasks**: Product search, inventory checking, order management, returns
-- **Essential APIs**: Product catalog, e-commerce platform, payment gateway, shipping
+- **Essential Information**: Product details, pricing, inventory, shipping, return policies
 - **Key Metrics**: Real-time inventory, conversion optimization, customer service
 
 **Professional Services**
 - **Critical Agent Tasks**: Consultation scheduling, availability checking, quote generation
-- **Essential APIs**: Calendar systems, client management, document sharing, billing
+- **Essential Information**: Service types, pricing, availability, qualifications, contact info
 - **Key Metrics**: Appointment automation, client portal access, service delivery
 
-#### Business Website Evaluation Categories
+**Healthcare & Medical**
+- **Critical Agent Tasks**: Appointment booking, provider matching, insurance verification
+- **Essential Information**: Provider specialties, availability, insurance acceptance, location
+- **Key Metrics**: Appointment scheduling, insurance compatibility, provider matching
 
-**Basic Information Architecture (20%)**
-- Contact information visibility
-- Business hours and location data
-- Services/products categorization
-- Pricing transparency
+**Travel & Hospitality**
+- **Critical Agent Tasks**: Booking management, itinerary planning, modification handling
+- **Essential Information**: Availability, pricing, policies, amenities, location details
+- **Key Metrics**: Real-time booking, policy clarity, modification flexibility
 
-**Machine-Readable Content Structure (25%)**
+#### Website Evaluation Categories
+
+**Information Architecture & Discoverability (25%)**
+- Contact information visibility and accessibility
+- Business hours and location data clarity
+- Services/products categorization and organization
+- Pricing transparency and comparison readiness
+- Search and navigation functionality
+
+**Machine-Readable Content Structure (20%)**
 - Schema.org markup implementation
 - JSON-LD structured data
 - OpenGraph and meta tags
 - Semantic HTML structure
+- API endpoint availability
 
-**API & Integration Readiness (20%)**
-- Reservation/booking APIs
-- Payment processing endpoints
-- Inventory/availability feeds
-- Customer communication systems
-
-**Conversational Query Readiness (35%)**
+**Conversational Query Readiness (25%)**
 - FAQ structure optimization
 - Natural language content
 - Voice search compatibility
 - Multi-turn conversation support
+- Context-aware responses
+
+**Action-Oriented Functionality (20%)**
+- Booking/scheduling capabilities
+- Payment processing integration
+- Confirmation and notification systems
+- Modification and cancellation processes
+- Error handling and recovery
+
+**Personalization & Context Awareness (10%)**
+- User preference capture
+- Recommendation systems
+- Contextual information delivery
+- Dynamic content adaptation
+- Lead qualification capabilities
 
 ### Governance, Trust, and Transparency Framework
 

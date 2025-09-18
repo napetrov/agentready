@@ -181,15 +181,16 @@ export async function POST(request: NextRequest) {
       detailedAnalysis: aiAssessment.detailedAnalysis,
       confidence: aiAssessment.confidence,
       staticAnalysis: staticAnalysis,
-      // Include website-specific data if available
-      ...(websiteAnalysis && {
-        websiteAnalysis: {
-          websiteType: websiteAnalysis.websiteType,
-          restaurantMetrics: websiteAnalysis.restaurantMetrics,
-          documentationMetrics: websiteAnalysis.documentationMetrics,
-          ecommerceMetrics: websiteAnalysis.ecommerceMetrics
-        }
-      })
+        // Include website-specific data if available
+        ...(websiteAnalysis && {
+          websiteAnalysis: {
+            websiteType: websiteAnalysis.websiteType,
+            agenticFlows: websiteAnalysis.agenticFlows,
+            restaurantMetrics: websiteAnalysis.restaurantMetrics,
+            documentationMetrics: websiteAnalysis.documentationMetrics,
+            ecommerceMetrics: websiteAnalysis.ecommerceMetrics
+          }
+        })
     }
 
     return NextResponse.json(result)

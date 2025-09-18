@@ -161,6 +161,56 @@ interface AssessmentResult {
   }
   websiteAnalysis?: {
     websiteType: 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown'
+    agenticFlows?: {
+      informationGathering: {
+        score: number
+        hasServiceProductInfo: boolean
+        hasPricing: boolean
+        hasAvailability: boolean
+        hasContactInfo: boolean
+        hasLocation: boolean
+        hasReviews: boolean
+        hasPolicies: boolean
+        hasDifferentiators: boolean
+      }
+      directBooking: {
+        score: number
+        hasActionableInstructions: boolean
+        hasBookingRequirements: boolean
+        hasConfirmationProcess: boolean
+        hasPaymentOptions: boolean
+        hasModificationPolicies: boolean
+        hasErrorHandling: boolean
+        hasMobileOptimization: boolean
+      }
+      faqSupport: {
+        score: number
+        hasFaq: boolean
+        hasPolicyDocumentation: boolean
+        hasUserGuides: boolean
+        hasEligibilityCriteria: boolean
+        hasSupportContact: boolean
+        hasSearchFunctionality: boolean
+        hasContentOrganization: boolean
+      }
+      taskManagement: {
+        score: number
+        hasScheduleVisibility: boolean
+        hasReservationManagement: boolean
+        hasTaskTracking: boolean
+        hasReschedulingProcess: boolean
+        hasMembershipDetails: boolean
+        hasNotificationSystems: boolean
+      }
+      personalization: {
+        score: number
+        hasPersonalizationData: boolean
+        hasRecommendationLogic: boolean
+        hasContextAwareness: boolean
+        hasUserProfiling: boolean
+        hasDynamicContent: boolean
+      }
+    }
     restaurantMetrics?: {
       hasHours: boolean
       hasMenu: boolean
@@ -748,56 +798,154 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Website Type and Type-Specific Metrics */}
-                {result.websiteAnalysis && (
-                  <div className="mt-6 p-4 border rounded-lg bg-blue-50">
-                    <h4 className="text-lg font-medium mb-3 text-blue-900">
-                      Website Type: <span className="capitalize">{result.websiteAnalysis.websiteType}</span>
-                    </h4>
-                    
-                    {result.websiteAnalysis.websiteType === 'restaurant' && result.websiteAnalysis.restaurantMetrics && (
-                      <div>
-                        <h5 className="text-md font-medium mb-2 text-blue-800">Restaurant Features</h5>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                          {Object.entries(result.websiteAnalysis.restaurantMetrics).map(([key, value]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                              <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+        {/* Website Type and Type-Specific Metrics */}
+        {result.websiteAnalysis && (
+          <div className="mt-6 p-4 border rounded-lg bg-blue-50">
+            <h4 className="text-lg font-medium mb-3 text-blue-900">
+              Website Type: <span className="capitalize">{result.websiteAnalysis.websiteType}</span>
+            </h4>
 
-                    {result.websiteAnalysis.websiteType === 'documentation' && result.websiteAnalysis.documentationMetrics && (
-                      <div>
-                        <h5 className="text-md font-medium mb-2 text-blue-800">Documentation Features</h5>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                          {Object.entries(result.websiteAnalysis.documentationMetrics).map(([key, value]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                              <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+            {result.websiteAnalysis.websiteType === 'restaurant' && result.websiteAnalysis.restaurantMetrics && (
+              <div>
+                <h5 className="text-md font-medium mb-2 text-blue-800">Restaurant Features</h5>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {Object.entries(result.websiteAnalysis.restaurantMetrics).map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                    {result.websiteAnalysis.websiteType === 'ecommerce' && result.websiteAnalysis.ecommerceMetrics && (
-                      <div>
-                        <h5 className="text-md font-medium mb-2 text-blue-800">E-commerce Features</h5>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                          {Object.entries(result.websiteAnalysis.ecommerceMetrics).map(([key, value]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                              <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
-                            </div>
-                          ))}
-                        </div>
+            {result.websiteAnalysis.websiteType === 'documentation' && result.websiteAnalysis.documentationMetrics && (
+              <div>
+                <h5 className="text-md font-medium mb-2 text-blue-800">Documentation Features</h5>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {Object.entries(result.websiteAnalysis.documentationMetrics).map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {result.websiteAnalysis.websiteType === 'ecommerce' && result.websiteAnalysis.ecommerceMetrics && (
+              <div>
+                <h5 className="text-md font-medium mb-2 text-blue-800">E-commerce Features</h5>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {Object.entries(result.websiteAnalysis.ecommerceMetrics).map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Agentic AI Flow Analysis */}
+        {result.websiteAnalysis?.agenticFlows && (
+          <div className="mt-6 p-4 border rounded-lg bg-purple-50">
+            <h4 className="text-lg font-medium mb-4 text-purple-900">Agentic AI Flow Analysis</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Information Gathering Flow */}
+              <div className="p-3 border rounded-lg bg-white">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="font-medium text-purple-800">Information Gathering</h5>
+                  <span className="text-sm font-bold text-purple-600">{result.websiteAnalysis.agenticFlows.informationGathering.score}/100</span>
+                </div>
+                <div className="space-y-1">
+                  {Object.entries(result.websiteAnalysis.agenticFlows.informationGathering)
+                    .filter(([key]) => key !== 'score')
+                    .map(([key, value]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
                       </div>
-                    )}
-                  </div>
-                )}
+                    ))}
+                </div>
+              </div>
+
+              {/* Direct Booking Flow */}
+              <div className="p-3 border rounded-lg bg-white">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="font-medium text-purple-800">Direct Booking</h5>
+                  <span className="text-sm font-bold text-purple-600">{result.websiteAnalysis.agenticFlows.directBooking.score}/100</span>
+                </div>
+                <div className="space-y-1">
+                  {Object.entries(result.websiteAnalysis.agenticFlows.directBooking)
+                    .filter(([key]) => key !== 'score')
+                    .map(([key, value]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* FAQ/Support Flow */}
+              <div className="p-3 border rounded-lg bg-white">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="font-medium text-purple-800">FAQ/Support</h5>
+                  <span className="text-sm font-bold text-purple-600">{result.websiteAnalysis.agenticFlows.faqSupport.score}/100</span>
+                </div>
+                <div className="space-y-1">
+                  {Object.entries(result.websiteAnalysis.agenticFlows.faqSupport)
+                    .filter(([key]) => key !== 'score')
+                    .map(([key, value]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Task Management Flow */}
+              <div className="p-3 border rounded-lg bg-white">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="font-medium text-purple-800">Task Management</h5>
+                  <span className="text-sm font-bold text-purple-600">{result.websiteAnalysis.agenticFlows.taskManagement.score}/100</span>
+                </div>
+                <div className="space-y-1">
+                  {Object.entries(result.websiteAnalysis.agenticFlows.taskManagement)
+                    .filter(([key]) => key !== 'score')
+                    .map(([key, value]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Personalization Flow */}
+              <div className="p-3 border rounded-lg bg-white">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="font-medium text-purple-800">Personalization</h5>
+                  <span className="text-sm font-bold text-purple-600">{result.websiteAnalysis.agenticFlows.personalization.score}/100</span>
+                </div>
+                <div className="space-y-1">
+                  {Object.entries(result.websiteAnalysis.agenticFlows.personalization)
+                    .filter(([key]) => key !== 'score')
+                    .map(([key, value]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

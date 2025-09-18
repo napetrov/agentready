@@ -89,6 +89,58 @@ export interface WebsiteAnalysisResult {
   // Website Type Detection
   websiteType: 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown'
   
+  // Agentic AI Flow Analysis
+  agenticFlows: {
+    informationGathering: {
+      score: number
+      hasServiceProductInfo: boolean
+      hasPricing: boolean
+      hasAvailability: boolean
+      hasContactInfo: boolean
+      hasLocation: boolean
+      hasReviews: boolean
+      hasPolicies: boolean
+      hasDifferentiators: boolean
+    }
+    directBooking: {
+      score: number
+      hasActionableInstructions: boolean
+      hasBookingRequirements: boolean
+      hasConfirmationProcess: boolean
+      hasPaymentOptions: boolean
+      hasModificationPolicies: boolean
+      hasErrorHandling: boolean
+      hasMobileOptimization: boolean
+    }
+    faqSupport: {
+      score: number
+      hasFaq: boolean
+      hasPolicyDocumentation: boolean
+      hasUserGuides: boolean
+      hasEligibilityCriteria: boolean
+      hasSupportContact: boolean
+      hasSearchFunctionality: boolean
+      hasContentOrganization: boolean
+    }
+    taskManagement: {
+      score: number
+      hasScheduleVisibility: boolean
+      hasReservationManagement: boolean
+      hasTaskTracking: boolean
+      hasReschedulingProcess: boolean
+      hasMembershipDetails: boolean
+      hasNotificationSystems: boolean
+    }
+    personalization: {
+      score: number
+      hasPersonalizationData: boolean
+      hasRecommendationLogic: boolean
+      hasContextAwareness: boolean
+      hasUserProfiling: boolean
+      hasDynamicContent: boolean
+    }
+  }
+  
   // Type-specific metrics
   restaurantMetrics?: {
     hasHours: boolean
@@ -602,6 +654,263 @@ function analyzeEcommerceMetrics($: any, html: string) {
   }
 }
 
+// Agentic AI Flow Analysis Functions
+
+function analyzeInformationGatheringFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+  const text = $('body').text().toLowerCase()
+  
+  // Check for service/product information
+  const hasServiceProductInfo = /service|product|offering|menu|catalog|item|solution/i.test(text) || 
+    $('.service, .product, .offering, .menu, .catalog').length > 0
+  
+  // Check for pricing information
+  const hasPricing = /\$[\d,]+|\d+\.\d{2}|\d+\s*(dollars?|usd|eur|gbp|price|cost|fee)/i.test(text) ||
+    $('.price, .cost, .fee, [data-price]').length > 0
+  
+  // Check for availability information
+  const hasAvailability = /available|hours?|open|closed|schedule|time|slot|appointment/i.test(text) ||
+    $('.hours, .schedule, .availability, .time').length > 0
+  
+  // Check for contact information
+  const hasContactInfo = $('a[href^="tel:"], a[href^="mailto:"]').length > 0 ||
+    /phone|email|contact|call|reach/i.test(text)
+  
+  // Check for location information
+  const hasLocation = /address|location|map|directions|street|city|state|zip/i.test(text) ||
+    $('.address, .location, .map, [data-location]').length > 0
+  
+  // Check for reviews and ratings
+  const hasReviews = /review|rating|stars?|testimonial|feedback/i.test(text) ||
+    $('.review, .rating, .stars, .testimonial').length > 0
+  
+  // Check for policies
+  const hasPolicies = /policy|terms|conditions|refund|cancellation|privacy/i.test(text) ||
+    $('a[href*="policy"], a[href*="terms"], a[href*="privacy"]').length > 0
+  
+  // Check for differentiators
+  const hasDifferentiators = /special|unique|exclusive|certified|licensed|award/i.test(text) ||
+    $('.special, .unique, .exclusive, .certified').length > 0
+  
+  // Calculate score based on weighted criteria
+  let score = 0
+  if (hasServiceProductInfo) score += 20
+  if (hasPricing) score += 15
+  if (hasAvailability) score += 15
+  if (hasContactInfo) score += 10
+  if (hasLocation) score += 10
+  if (hasReviews) score += 10
+  if (hasPolicies) score += 10
+  if (hasDifferentiators) score += 10
+  
+  return {
+    score: Math.min(score, 100),
+    hasServiceProductInfo,
+    hasPricing,
+    hasAvailability,
+    hasContactInfo,
+    hasLocation,
+    hasReviews,
+    hasPolicies,
+    hasDifferentiators
+  }
+}
+
+function analyzeDirectBookingFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+  const text = $('body').text().toLowerCase()
+  
+  // Check for actionable instructions
+  const hasActionableInstructions = /book|order|reserve|schedule|call|contact|buy|purchase/i.test(text) ||
+    $('button, .btn, .button, a[href*="book"], a[href*="order"], a[href*="reserve"]').length > 0
+  
+  // Check for booking requirements
+  const hasBookingRequirements = /date|time|party|size|preference|requirement/i.test(text) ||
+    $('input[type="date"], input[type="time"], select, .form-group').length > 0
+  
+  // Check for confirmation process
+  const hasConfirmationProcess = /confirm|confirmation|email|sms|text|notification/i.test(text) ||
+    $('.confirmation, .confirm, [data-confirm]').length > 0
+  
+  // Check for payment options
+  const hasPaymentOptions = /payment|credit|card|paypal|stripe|apple pay|google pay/i.test(text) ||
+    $('.payment, .checkout, [data-payment]').length > 0
+  
+  // Check for modification policies
+  const hasModificationPolicies = /modify|change|cancel|reschedule|refund/i.test(text) ||
+    $('a[href*="modify"], a[href*="cancel"], a[href*="change"]').length > 0
+  
+  // Check for error handling
+  const hasErrorHandling = /error|invalid|try again|retry|problem/i.test(text) ||
+    $('.error, .alert, .warning').length > 0
+  
+  // Check for mobile optimization
+  const hasMobileOptimization = $('meta[name="viewport"]').length > 0 &&
+    $('meta[name="viewport"]').attr('content')?.includes('width=device-width')
+  
+  // Calculate score
+  let score = 0
+  if (hasActionableInstructions) score += 20
+  if (hasBookingRequirements) score += 15
+  if (hasConfirmationProcess) score += 10
+  if (hasPaymentOptions) score += 15
+  if (hasModificationPolicies) score += 10
+  if (hasErrorHandling) score += 10
+  if (hasMobileOptimization) score += 10
+  if ($('form').length > 0) score += 10 // Bonus for having forms
+  
+  return {
+    score: Math.min(score, 100),
+    hasActionableInstructions,
+    hasBookingRequirements,
+    hasConfirmationProcess,
+    hasPaymentOptions,
+    hasModificationPolicies,
+    hasErrorHandling,
+    hasMobileOptimization
+  }
+}
+
+function analyzeFaqSupportFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+  const text = $('body').text().toLowerCase()
+  
+  // Check for FAQ
+  const hasFaq = /faq|frequently asked|questions|help|support/i.test(text) ||
+    $('.faq, .questions, .help, [data-faq]').length > 0
+  
+  // Check for policy documentation
+  const hasPolicyDocumentation = /policy|terms|conditions|refund|return|cancellation/i.test(text) ||
+    $('a[href*="policy"], a[href*="terms"], a[href*="conditions"]').length > 0
+  
+  // Check for user guides
+  const hasUserGuides = /guide|tutorial|how to|instructions|manual|documentation/i.test(text) ||
+    $('.guide, .tutorial, .instructions, .manual').length > 0
+  
+  // Check for eligibility criteria
+  const hasEligibilityCriteria = /eligible|qualify|requirement|criteria|age|location/i.test(text) ||
+    $('.eligibility, .requirements, .criteria').length > 0
+  
+  // Check for support contact
+  const hasSupportContact = $('a[href^="tel:"], a[href^="mailto:"]').length > 0 ||
+    /support|help|contact|assistance/i.test(text)
+  
+  // Check for search functionality
+  const hasSearchFunctionality = $('input[type="search"], .search, #search').length > 0 ||
+    /search|find|look for/i.test(text)
+  
+  // Check for content organization
+  const hasContentOrganization = $('nav, .navigation, .menu, .toc, .table-of-contents').length > 0 ||
+    $('h1, h2, h3, h4, h5, h6').length > 3
+  
+  // Calculate score
+  let score = 0
+  if (hasFaq) score += 25
+  if (hasPolicyDocumentation) score += 20
+  if (hasUserGuides) score += 15
+  if (hasEligibilityCriteria) score += 10
+  if (hasSupportContact) score += 15
+  if (hasSearchFunctionality) score += 10
+  if (hasContentOrganization) score += 5
+  
+  return {
+    score: Math.min(score, 100),
+    hasFaq,
+    hasPolicyDocumentation,
+    hasUserGuides,
+    hasEligibilityCriteria,
+    hasSupportContact,
+    hasSearchFunctionality,
+    hasContentOrganization
+  }
+}
+
+function analyzeTaskManagementFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+  const text = $('body').text().toLowerCase()
+  
+  // Check for schedule visibility
+  const hasScheduleVisibility = /schedule|calendar|hours?|time|appointment|event/i.test(text) ||
+    $('.schedule, .calendar, .hours, .time').length > 0
+  
+  // Check for reservation management
+  const hasReservationManagement = /reservation|booking|appointment|reserve|book/i.test(text) ||
+    $('.reservation, .booking, .appointment').length > 0
+  
+  // Check for task tracking
+  const hasTaskTracking = /task|checklist|progress|status|complete/i.test(text) ||
+    $('.task, .checklist, .progress, .status').length > 0
+  
+  // Check for rescheduling process
+  const hasReschedulingProcess = /reschedule|modify|change|update|edit/i.test(text) ||
+    $('a[href*="reschedule"], a[href*="modify"], a[href*="change"]').length > 0
+  
+  // Check for membership details
+  const hasMembershipDetails = /membership|subscription|account|profile|member/i.test(text) ||
+    $('.membership, .subscription, .account, .profile').length > 0
+  
+  // Check for notification systems
+  const hasNotificationSystems = /notification|alert|reminder|email|sms|text/i.test(text) ||
+    $('.notification, .alert, .reminder').length > 0
+  
+  // Calculate score
+  let score = 0
+  if (hasScheduleVisibility) score += 25
+  if (hasReservationManagement) score += 20
+  if (hasTaskTracking) score += 15
+  if (hasReschedulingProcess) score += 15
+  if (hasMembershipDetails) score += 15
+  if (hasNotificationSystems) score += 10
+  
+  return {
+    score: Math.min(score, 100),
+    hasScheduleVisibility,
+    hasReservationManagement,
+    hasTaskTracking,
+    hasReschedulingProcess,
+    hasMembershipDetails,
+    hasNotificationSystems
+  }
+}
+
+function analyzePersonalizationFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+  const text = $('body').text().toLowerCase()
+  
+  // Check for personalization data
+  const hasPersonalizationData = /personal|custom|preference|profile|account/i.test(text) ||
+    $('.personal, .custom, .preference, .profile, .account').length > 0
+  
+  // Check for recommendation logic
+  const hasRecommendationLogic = /recommend|suggest|recommended|for you|based on/i.test(text) ||
+    $('.recommend, .suggest, .recommended, .for-you').length > 0
+  
+  // Check for context awareness
+  const hasContextAwareness = /location|nearby|local|based on|context/i.test(text) ||
+    $('[data-location], [data-context], .location-based').length > 0
+  
+  // Check for user profiling
+  const hasUserProfiling = /profile|user|account|preferences|settings/i.test(text) ||
+    $('.profile, .user, .account, .preferences, .settings').length > 0
+  
+  // Check for dynamic content
+  const hasDynamicContent = $('script').length > 0 && 
+    ($('script').text().includes('ajax') || $('script').text().includes('fetch') || 
+     $('script').text().includes('load') || $('script').text().includes('update'))
+  
+  // Calculate score
+  let score = 0
+  if (hasPersonalizationData) score += 30
+  if (hasRecommendationLogic) score += 25
+  if (hasContextAwareness) score += 20
+  if (hasUserProfiling) score += 15
+  if (hasDynamicContent) score += 10
+  
+  return {
+    score: Math.min(score, 100),
+    hasPersonalizationData,
+    hasRecommendationLogic,
+    hasContextAwareness,
+    hasUserProfiling,
+    hasDynamicContent
+  }
+}
+
 export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<StaticAnalysisResult> {
   try {
     console.log('🌐 Starting website analysis for:', websiteUrl)
@@ -1005,6 +1314,15 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       analysis.documentationMetrics = analyzeDocumentationMetrics($, html)
     } else if (analysis.websiteType === 'ecommerce') {
       analysis.ecommerceMetrics = analyzeEcommerceMetrics($, html)
+    }
+
+    // Perform Agentic AI Flow Analysis
+    analysis.agenticFlows = {
+      informationGathering: analyzeInformationGatheringFlow($, html),
+      directBooking: analyzeDirectBookingFlow($, html),
+      faqSupport: analyzeFaqSupportFlow($, html),
+      taskManagement: analyzeTaskManagementFlow($, html),
+      personalization: analyzePersonalizationFlow($, html)
     }
 
     console.log('✅ Website AI agent readiness analysis completed:', {
