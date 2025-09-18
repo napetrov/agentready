@@ -76,6 +76,33 @@ interface AssessmentResult {
     fileCount: number
     linesOfCode: number
     repositorySizeMB: number
+    // Website-specific fields
+    websiteUrl?: string
+    pageTitle?: string
+    metaDescription?: string
+    hasStructuredData?: boolean
+    hasOpenGraph?: boolean
+    hasTwitterCards?: boolean
+    hasSitemap?: boolean
+    hasRobotsTxt?: boolean
+    hasFavicon?: boolean
+    hasManifest?: boolean
+    hasServiceWorker?: boolean
+    pageLoadSpeed?: number
+    mobileFriendly?: boolean
+    accessibilityScore?: number
+    seoScore?: number
+    contentLength?: number
+    imageCount?: number
+    linkCount?: number
+    headingStructure?: {
+      [key: string]: number
+    }
+    technologies?: string[]
+    securityHeaders?: string[]
+    socialMediaLinks?: string[]
+    contactInfo?: string[]
+    navigationStructure?: string[]
     fileSizeAnalysis?: {
       totalFiles: number
       filesBySize: {
@@ -132,31 +159,170 @@ interface AssessmentResult {
       recommendations: string[]
     }
   }
+  websiteAnalysis?: {
+    websiteType: 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown'
+    agenticFlows?: {
+      informationGathering: {
+        score: number
+        hasServiceProductInfo: boolean
+        hasPricing: boolean
+        hasAvailability: boolean
+        hasContactInfo: boolean
+        hasLocation: boolean
+        hasReviews: boolean
+        hasPolicies: boolean
+        hasDifferentiators: boolean
+      }
+      directBooking: {
+        score: number
+        hasActionableInstructions: boolean
+        hasBookingRequirements: boolean
+        hasConfirmationProcess: boolean
+        hasPaymentOptions: boolean
+        hasModificationPolicies: boolean
+        hasErrorHandling: boolean
+        hasMobileOptimization: boolean
+      }
+      faqSupport: {
+        score: number
+        hasFaq: boolean
+        hasPolicyDocumentation: boolean
+        hasUserGuides: boolean
+        hasEligibilityCriteria: boolean
+        hasSupportContact: boolean
+        hasSearchFunctionality: boolean
+        hasContentOrganization: boolean
+      }
+      taskManagement: {
+        score: number
+        hasScheduleVisibility: boolean
+        hasReservationManagement: boolean
+        hasTaskTracking: boolean
+        hasReschedulingProcess: boolean
+        hasMembershipDetails: boolean
+        hasNotificationSystems: boolean
+      }
+      personalization: {
+        score: number
+        hasPersonalizationData: boolean
+        hasRecommendationLogic: boolean
+        hasContextAwareness: boolean
+        hasUserProfiling: boolean
+        hasDynamicContent: boolean
+      }
+    }
+    restaurantMetrics?: {
+      hasHours: boolean
+      hasMenu: boolean
+      hasReservations: boolean
+      hasOrdering: boolean
+      hasIngredients: boolean
+      hasCalories: boolean
+      hasLocation: boolean
+      hasPhone: boolean
+      hasDelivery: boolean
+      hasReviews: boolean
+    }
+    documentationMetrics?: {
+      hasApiDocs: boolean
+      hasExamples: boolean
+      hasTutorials: boolean
+      hasChangelog: boolean
+      hasVersioning: boolean
+      hasCodeSamples: boolean
+      hasInstallationGuide: boolean
+      hasQuickStart: boolean
+      hasReference: boolean
+      hasCommunity: boolean
+    }
+    ecommerceMetrics?: {
+      hasProductCatalog: boolean
+      hasSearch: boolean
+      hasFilters: boolean
+      hasReviews: boolean
+      hasWishlist: boolean
+      hasCart: boolean
+      hasCheckout: boolean
+      hasPayment: boolean
+      hasShipping: boolean
+      hasReturns: boolean
+    }
+  }
 }
 
 export default function Home() {
-  const [repoUrl, setRepoUrl] = useState('')
+  const [inputUrl, setInputUrl] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [result, setResult] = useState<AssessmentResult | null>(null)
   const [error, setError] = useState('')
+  const [inputType, setInputType] = useState<'repository' | 'website'>('repository')
 
-  const handleAnalyze = async () => {
-    if (!repoUrl.trim()) {
-      setError('Please enter a GitHub repository URL')
-      return
+  // URL validation and sanitization function
+  const validateAndSanitizeUrl = (url: string, type: 'repository' | 'website'): string => {
+    // Trim whitespace
+    const trimmedUrl = url.trim()
+    
+    if (!trimmedUrl) {
+      throw new Error(`Please enter a ${type === 'repository' ? 'repository' : 'website'} URL`)
     }
 
-    setIsAnalyzing(true)
-    setError('')
-    setResult(null)
-
+    let validatedUrl: URL
+    
     try {
+      // Try to construct URL directly
+      validatedUrl = new URL(trimmedUrl)
+    } catch {
+      try {
+        // If that fails, try prepending https://
+        validatedUrl = new URL(`https://${trimmedUrl}`)
+      } catch {
+        throw new Error(`Invalid ${type === 'repository' ? 'repository' : 'website'} URL format`)
+      }
+    }
+
+    // Validate protocol
+    if (type === 'repository') {
+      if (!['http:', 'https:'].includes(validatedUrl.protocol)) {
+        throw new Error('Repository URL must use HTTP or HTTPS protocol')
+      }
+    } else {
+      if (!['http:', 'https:'].includes(validatedUrl.protocol)) {
+        throw new Error('Website URL must use HTTP or HTTPS protocol')
+      }
+    }
+
+    // Remove trailing slashes and fragments for cleaner URLs
+    validatedUrl.hash = ''
+    validatedUrl.search = ''
+    
+    // Remove trailing slash from pathname
+    let pathname = validatedUrl.pathname
+    if (pathname.length > 1 && pathname.endsWith('/')) {
+      pathname = pathname.slice(0, -1)
+    }
+    validatedUrl.pathname = pathname
+
+    // Return the sanitized URL
+    return validatedUrl.toString()
+  }
+
+  const handleAnalyze = async () => {
+    try {
+      const sanitizedUrl = validateAndSanitizeUrl(inputUrl, inputType)
+      
+      setIsAnalyzing(true)
+      setError('')
+      setResult(null)
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ repoUrl: repoUrl.trim() }),
+        body: JSON.stringify({ 
+          inputUrl: sanitizedUrl,
+          inputType: inputType
+        }),
       })
 
       if (!response.ok) {
@@ -190,7 +356,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ result, repoUrl }),
+        body: JSON.stringify({ result, inputUrl, inputType }),
       })
 
       if (!response.ok) {
@@ -225,17 +391,29 @@ export default function Home() {
 
   const getCategoryDescription = (category: string) => {
     const descriptions: Record<string, string> = {
-      documentation: 'Measures presence and quality of README, CONTRIBUTING, AGENTS.md, and LICENSE files',
-      instructionClarity: 'Evaluates how clear and actionable instructions are for AI agents to follow',
-      workflowAutomation: 'Assesses CI/CD setup, testing, build scripts, and deployment automation',
-      riskCompliance: 'Checks security practices, error handling, input validation, and license compliance',
-      integrationStructure: 'Evaluates code organization, API structure, and integration readiness',
-      fileSizeOptimization: 'Measures file sizes against AI agent limits and context window efficiency'
+      documentation: inputType === 'website' 
+        ? 'Measures structured data, meta tags, and machine-readable content for AI agent understanding'
+        : 'Measures presence and quality of README, CONTRIBUTING, AGENTS.md, and LICENSE files',
+      instructionClarity: inputType === 'website'
+        ? 'Evaluates API readiness, integration points, and data accessibility for AI agents'
+        : 'Evaluates how clear and actionable instructions are for AI agents to follow',
+      workflowAutomation: inputType === 'website'
+        ? 'Assesses conversational readiness, natural language structure, and user intent matching'
+        : 'Assesses CI/CD setup, testing, build scripts, and deployment automation',
+      riskCompliance: inputType === 'website'
+        ? 'Checks business data completeness, contact information, and service transparency'
+        : 'Checks security practices, error handling, input validation, and license compliance',
+      integrationStructure: inputType === 'website'
+        ? 'Evaluates technology stack, social media integration, and automation potential'
+        : 'Evaluates code organization, API structure, and integration readiness',
+      fileSizeOptimization: inputType === 'website'
+        ? 'Measures content organization, navigation structure, and AI agent discoverability'
+        : 'Measures file sizes against AI agent limits and context window efficiency'
     }
     return descriptions[category] || 'Assessment category'
   }
 
-  const sanitizeGitHubUrl = (url: string | null): string | null => {
+  const sanitizeUrl = (url: string | null): string | null => {
     if (!url) return null
     
     try {
@@ -246,21 +424,32 @@ export default function Home() {
         return null
       }
       
-      // Check if hostname is a known GitHub domain
-      const allowedHostnames = [
-        'github.com',
-        'www.github.com',
-        'raw.githubusercontent.com',
-        'githubusercontent.com'
-      ]
-      
-      if (!allowedHostnames.includes(parsedUrl.hostname)) {
-        return null
-      }
-      
       return url
     } catch {
       return null
+    }
+  }
+
+  const detectInputType = (url: string): 'repository' | 'website' => {
+    try {
+      const parsedUrl = new URL(url)
+      const hostname = parsedUrl.hostname.toLowerCase()
+      
+      // Check if it's a GitHub repository
+      if (hostname === 'github.com' || hostname === 'www.github.com') {
+        return 'repository'
+      }
+      
+      return 'website'
+    } catch {
+      return 'website'
+    }
+  }
+
+  const handleUrlChange = (url: string) => {
+    setInputUrl(url)
+    if (url.trim()) {
+      setInputType(detectInputType(url))
     }
   }
 
@@ -270,26 +459,32 @@ export default function Home() {
       <div className="card">
         <h2 className="text-xl font-semibold mb-4 flex items-center">
           <Github className="w-5 h-5 mr-2" />
-          Repository Analysis
+          {inputType === 'repository' ? 'Repository Analysis' : 'Website Analysis'}
         </h2>
         <div className="space-y-4">
           <div>
-            <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700 mb-2">
-              GitHub Repository URL
+            <label htmlFor="inputUrl" className="block text-sm font-medium text-gray-700 mb-2">
+              {inputType === 'repository' ? 'Repository URL' : 'Website URL'}
             </label>
             <input
               type="url"
-              id="repoUrl"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/username/repository"
+              id="inputUrl"
+              value={inputUrl}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              placeholder={inputType === 'repository' ? "https://github.com/username/repository" : "https://example.com"}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               disabled={isAnalyzing}
             />
+            <p className="text-sm text-gray-500 mt-1">
+              {inputType === 'repository' 
+                ? 'Enter a repository URL to analyze its AI readiness'
+                : 'Enter a website URL to analyze its AI agent compatibility'
+              }
+            </p>
           </div>
           <button
             onClick={handleAnalyze}
-            disabled={isAnalyzing || !repoUrl.trim()}
+            disabled={isAnalyzing || !inputUrl.trim()}
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {isAnalyzing ? (
@@ -298,7 +493,7 @@ export default function Home() {
                 Analyzing...
               </>
             ) : (
-              'Analyze Repository'
+              `Analyze ${inputType === 'repository' ? 'Repository' : 'Website'}`
             )}
           </button>
           {error && (
@@ -321,15 +516,20 @@ export default function Home() {
           <div className="flex items-center">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
             <div>
-              <p className="text-blue-800 font-medium">Analyzing Repository</p>
-              <p className="text-blue-700 text-sm mt-1">This may take a few moments for large repositories...</p>
+              <p className="text-blue-800 font-medium">Analyzing {inputType === 'repository' ? 'Repository' : 'Website'}</p>
+              <p className="text-blue-700 text-sm mt-1">
+                {inputType === 'repository' 
+                  ? 'This may take a few moments for large repositories...'
+                  : 'This may take a few moments to analyze the website...'
+                }
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* AI Analysis Status */}
-      {result && result.aiAnalysisStatus && (
+      {/* AI Analysis Status - Only for repositories */}
+      {inputType === 'repository' && result && result.aiAnalysisStatus && (
         <div className={`card ${result.aiAnalysisStatus.enabled ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'}`}>
           <h3 className={`text-lg font-semibold mb-2 ${result.aiAnalysisStatus.enabled ? 'text-blue-800' : 'text-red-800'}`}>
             {result.aiAnalysisStatus.enabled ? '✅ AI Analysis Status' : '❌ AI Analysis Status'}
@@ -391,59 +591,108 @@ export default function Home() {
       {/* Results Section */}
       {result && (
         <div className="space-y-6">
-          {/* Repository Information */}
+          {/* Source Information */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Repository Information</h3>
-              {sanitizeGitHubUrl(repoUrl) && (
+              <h3 className="text-lg font-semibold">{inputType === 'repository' ? 'Repository Information' : 'Website Information'}</h3>
+              {sanitizeUrl(inputUrl) && (
                 <a
-                  href={sanitizeGitHubUrl(repoUrl)!}
+                  href={sanitizeUrl(inputUrl)!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="View repository on GitHub"
+                  aria-label={`View ${inputType === 'repository' ? 'repository on GitHub' : 'website'}`}
                   className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
                 >
                   <Github className="w-4 h-4 mr-2" />
-                  View Repository
+                  View {inputType === 'repository' ? 'Repository' : 'Website'}
                 </a>
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
-                <div className="text-lg font-bold text-blue-600">
-                  {result.staticAnalysis.fileCount || result.staticAnalysis.fileSizeAnalysis?.totalFiles || 0}
-                </div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
-                <div className="text-lg font-bold text-green-600">
-                  {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
-                </div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
-                <div className="text-lg font-bold text-purple-600">
-                  {result.staticAnalysis.repositorySizeMB?.toFixed(2) || '0.00'} MB
-                </div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
-                <div className="text-sm font-medium">
-                  {result.staticAnalysis.languages?.slice(0, 2).join(', ') || 'Unknown'}
-                </div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
-                <div className="text-sm font-medium">
-                  {[
-                    result.staticAnalysis.hasReadme && 'README',
-                    result.staticAnalysis.hasAgents && 'AGENTS',
-                    result.staticAnalysis.hasContributing && 'CONTRIBUTING',
-                    result.staticAnalysis.hasLicense && 'LICENSE'
-                  ].filter(Boolean).join(', ') || 'None'}
-                </div>
-              </div>
+              {inputType === 'repository' ? (
+                <>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
+                    <div className="text-lg font-bold text-blue-600">
+                      {result.staticAnalysis.fileCount || result.staticAnalysis.fileSizeAnalysis?.totalFiles || 0}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
+                    <div className="text-lg font-bold text-green-600">
+                      {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
+                    <div className="text-lg font-bold text-purple-600">
+                      {result.staticAnalysis.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
+                    <div className="text-sm font-medium">
+                      {result.staticAnalysis.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
+                    <div className="text-sm font-medium">
+                      {[
+                        result.staticAnalysis.hasReadme && 'README',
+                        result.staticAnalysis.hasAgents && 'AGENTS',
+                        result.staticAnalysis.hasContributing && 'CONTRIBUTING',
+                        result.staticAnalysis.hasLicense && 'LICENSE'
+                      ].filter(Boolean).join(', ') || 'None'}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Page Title</div>
+                    <div className="text-sm font-medium truncate">
+                      {result.staticAnalysis.pageTitle || 'No title'}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Accessibility Score</div>
+                    <div className="text-lg font-bold text-green-600">
+                      {result.staticAnalysis.accessibilityScore || 0}%
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Helps agents understand content structure and navigation
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">SEO Score</div>
+                    <div className="text-lg font-bold text-blue-600">
+                      {result.staticAnalysis.seoScore || 0}%
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Indicates well-structured content for agent consumption
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Technologies</div>
+                    <div className="text-sm font-medium">
+                      {result.staticAnalysis.technologies?.slice(0, 2).join(', ') || 'Unknown'}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Framework compatibility for agent integration
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Mobile Friendly</div>
+                    <div className="text-sm font-medium">
+                      {result.staticAnalysis.mobileFriendly ? '✅ Yes' : '❌ No'}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Responsive design improves agent accessibility
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -475,56 +724,487 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Category Breakdown */}
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(result.categories || {}).map(([category, score]) => (
-                <div key={category} className="p-4 border rounded-lg group relative">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium capitalize">
-                      {category.replace(/([A-Z])/g, ' $1').trim()}
-                    </span>
-                    <span className={`text-sm font-bold ${getCategoryTextColor(score || 0)}`}>
-                      {score || 0}/20
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${
-                        (score || 0) >= 16 ? 'bg-success-500' : (score || 0) >= 12 ? 'bg-warning-500' : 'bg-danger-500'
-                      }`}
-                      style={{ width: `${((score || 0) / 20) * 100}%` }}
-                    />
-                  </div>
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                    {getCategoryDescription(category)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Static Analysis */}
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4">Static Analysis Results</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(result.staticAnalysis)
-                .filter(([_, value]) => typeof value === 'boolean')
-                .map(([key, value]) => (
-                  <div key={key} className="text-center p-3 border rounded-lg">
-                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      value ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      {value ? '✓' : '✗'}
+          {/* Category Breakdown - Only for repositories */}
+          {inputType === 'repository' && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(result.categories || {}).map(([category, score]) => (
+                  <div key={category} className="p-4 border rounded-lg group relative">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium capitalize">
+                        {category.replace(/([A-Z])/g, ' $1').trim()}
+                      </span>
+                      <span className={`text-sm font-bold ${getCategoryTextColor(score || 0)}`}>
+                        {score || 0}/20
+                      </span>
                     </div>
-                    <div className="text-sm font-medium capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          (score || 0) >= 16 ? 'bg-success-500' : (score || 0) >= 12 ? 'bg-warning-500' : 'bg-danger-500'
+                        }`}
+                        style={{ width: `${((score || 0) / 20) * 100}%` }}
+                      />
+                    </div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                      {getCategoryDescription(category)}
                     </div>
                   </div>
                 ))}
+              </div>
             </div>
+          )}
+
+          {/* Static Analysis */}
+          <div className="card">
+            <h3 className="text-lg font-semibold mb-4">
+              {inputType === 'website' ? 'Website Analysis Results' : 'Static Analysis Results'}
+            </h3>
+            {inputType === 'website' ? (
+              <div className="space-y-6">
+                {/* Website-specific metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 border rounded-lg">
+                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                      result.staticAnalysis.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {result.staticAnalysis.hasStructuredData ? '✓' : '✗'}
+                    </div>
+                    <div className="text-sm font-medium">Structured Data</div>
+                  </div>
+                  <div className="text-center p-3 border rounded-lg">
+                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                      result.staticAnalysis.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {result.staticAnalysis.hasOpenGraph ? '✓' : '✗'}
+                    </div>
+                    <div className="text-sm font-medium">Open Graph</div>
+                  </div>
+                  <div className="text-center p-3 border rounded-lg">
+                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                      result.staticAnalysis.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {result.staticAnalysis.hasTwitterCards ? '✓' : '✗'}
+                    </div>
+                    <div className="text-sm font-medium">Twitter Cards</div>
+                  </div>
+                  <div className="text-center p-3 border rounded-lg">
+                    <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                      result.staticAnalysis.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {result.staticAnalysis.hasSitemap ? '✓' : '✗'}
+                    </div>
+                    <div className="text-sm font-medium">Sitemap</div>
+                  </div>
+                </div>
+
+                {/* Website scores */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-2">Accessibility Score</div>
+                    <div className="text-2xl font-bold text-blue-600">{result.staticAnalysis.accessibilityScore}/100</div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-2">SEO Score</div>
+                    <div className="text-2xl font-bold text-green-600">{result.staticAnalysis.seoScore}/100</div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-2">Content Length</div>
+                    <div className="text-2xl font-bold text-purple-600">{result.staticAnalysis.contentLength?.toLocaleString() || 0} chars</div>
+                  </div>
+                </div>
+
+                {/* Website technologies */}
+                {result.staticAnalysis.technologies && result.staticAnalysis.technologies.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-medium mb-2">Detected Technologies</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {result.staticAnalysis.technologies.map((tech: string, index: number) => (
+                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Contact and social info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {result.staticAnalysis.contactInfo && result.staticAnalysis.contactInfo.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium mb-2">Contact Information</h4>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        {result.staticAnalysis.contactInfo.slice(0, 3).map((contact: string, index: number) => (
+                          <li key={index} className="flex items-center">
+                            {contact.includes('@') ? (
+                              <>
+                                <span className="text-blue-600 mr-2">📧</span>
+                                <span>Email: {contact}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-green-600 mr-2">📞</span>
+                                <span>Phone: {contact}</span>
+                              </>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {result.staticAnalysis.socialMediaLinks && result.staticAnalysis.socialMediaLinks.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium mb-2">Social Media</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {result.staticAnalysis.socialMediaLinks.map((social: string, index: number) => (
+                          <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                            {social}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+        {/* Website Type and Type-Specific Metrics */}
+        {result.websiteAnalysis && (
+          <div className="mt-6 p-4 border rounded-lg bg-blue-50">
+            <h4 className="text-lg font-medium mb-3 text-blue-900">
+              Website Type: <span className="capitalize">{result.websiteAnalysis.websiteType}</span>
+            </h4>
+
+            {result.websiteAnalysis.websiteType === 'restaurant' && result.websiteAnalysis.restaurantMetrics && (
+              <div>
+                <h5 className="text-md font-medium mb-2 text-blue-800">Restaurant Features</h5>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {Object.entries(result.websiteAnalysis.restaurantMetrics).map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {result.websiteAnalysis.websiteType === 'documentation' && result.websiteAnalysis.documentationMetrics && (
+              <div>
+                <h5 className="text-md font-medium mb-2 text-blue-800">Documentation Features</h5>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {Object.entries(result.websiteAnalysis.documentationMetrics).map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {result.websiteAnalysis.websiteType === 'ecommerce' && result.websiteAnalysis.ecommerceMetrics && (
+              <div>
+                <h5 className="text-md font-medium mb-2 text-blue-800">E-commerce Features</h5>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {Object.entries(result.websiteAnalysis.ecommerceMetrics).map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* Detailed Flow Analysis for Website Type */}
+        {result.websiteAnalysis?.agenticFlows && result.websiteAnalysis.websiteType && (
+          <div className="mt-6 p-4 border rounded-lg bg-indigo-50">
+            <h4 className="text-lg font-medium mb-4 text-indigo-900">
+              Detailed Flow Analysis for {result.websiteAnalysis.websiteType.charAt(0).toUpperCase() + result.websiteAnalysis.websiteType.slice(1)} Websites
+            </h4>
+            
+            {/* Information Gathering Flow Details */}
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">Information Gathering & Comparison</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.informationGathering.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Evaluates how well the website provides comprehensive information for AI agents to gather and compare data.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.informationGathering)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Direct Booking Flow Details */}
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">Direct Booking & Reservations</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.directBooking.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Assesses the website&apos;s ability to support direct booking, reservation, and transaction actions.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.directBooking)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* FAQ/Support Flow Details */}
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">FAQ & Knowledge Support</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.faqSupport.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Evaluates support and knowledge base capabilities for answering user questions and providing guidance.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.faqSupport)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Task Management Flow Details */}
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">Task & Calendar Management</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.taskManagement.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Assesses task management, scheduling, and calendar integration capabilities.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.taskManagement)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Personalization Flow Details */}
+            <div className="p-4 border rounded-lg bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-lg font-semibold text-indigo-800">Personalization & Recommendations</h5>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.personalization.score}/100</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Evaluates personalization capabilities and recommendation systems for tailored user experiences.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(result.websiteAnalysis.agenticFlows.personalization)
+                  .filter(([key]) => key !== 'score')
+                  .map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
+                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Feature Validation & Flow Mapping */}
+        {result.websiteAnalysis?.agenticFlows && result.websiteAnalysis.websiteType && (
+          <div className="mt-6 p-4 border rounded-lg bg-amber-50">
+            <h4 className="text-lg font-medium mb-4 text-amber-900">
+              Feature Validation & Flow Mapping
+            </h4>
+            <p className="text-sm text-amber-700 mb-4">
+              This section shows how individual website features are validated and mapped to specific agentic flows for {result.websiteAnalysis.websiteType} websites.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Information Gathering Features */}
+              <div className="p-3 border rounded-lg bg-white">
+                <h5 className="font-semibold text-amber-800 mb-2">Information Gathering Features</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Service/Product Info</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasServiceProductInfo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.informationGathering.hasServiceProductInfo ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Pricing Information</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasPricing ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.informationGathering.hasPricing ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Contact Information</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasContactInfo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.informationGathering.hasContactInfo ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Location Data</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasLocation ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.informationGathering.hasLocation ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Booking Features */}
+              <div className="p-3 border rounded-lg bg-white">
+                <h5 className="font-semibold text-amber-800 mb-2">Direct Booking Features</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Actionable Instructions</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasActionableInstructions ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.directBooking.hasActionableInstructions ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Payment Options</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasPaymentOptions ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.directBooking.hasPaymentOptions ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Booking Requirements</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasBookingRequirements ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.directBooking.hasBookingRequirements ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Mobile Optimization</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasMobileOptimization ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.directBooking.hasMobileOptimization ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* FAQ/Support Features */}
+              <div className="p-3 border rounded-lg bg-white">
+                <h5 className="font-semibold text-amber-800 mb-2">FAQ/Support Features</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>FAQ Section</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasFaq ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.faqSupport.hasFaq ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Policy Documentation</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasPolicyDocumentation ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.faqSupport.hasPolicyDocumentation ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>User Guides</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasUserGuides ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.faqSupport.hasUserGuides ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Search Functionality</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasSearchFunctionality ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.faqSupport.hasSearchFunctionality ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Task Management Features */}
+              <div className="p-3 border rounded-lg bg-white">
+                <h5 className="font-semibold text-amber-800 mb-2">Task Management Features</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Schedule Visibility</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasScheduleVisibility ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.taskManagement.hasScheduleVisibility ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Reservation Management</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasReservationManagement ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.taskManagement.hasReservationManagement ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Task Tracking</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasTaskTracking ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.taskManagement.hasTaskTracking ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Notification Systems</span>
+                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasNotificationSystems ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {result.websiteAnalysis.agenticFlows.taskManagement.hasNotificationSystems ? 'Found' : 'Missing'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Object.entries(result.staticAnalysis)
+                  .filter(([_, value]) => typeof value === 'boolean')
+                  .map(([key, value]) => (
+                    <div key={key} className="text-center p-3 border rounded-lg">
+                      <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                        value ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {value ? '✓' : '✗'}
+                      </div>
+                      <div className="text-sm font-medium capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
             
             {/* Languages */}
             {result.staticAnalysis.languages && result.staticAnalysis.languages.length > 0 && (
@@ -541,8 +1221,9 @@ export default function Home() {
             )}
           </div>
 
-          {/* File Size Analysis */}
-          {result.staticAnalysis.fileSizeAnalysis && (
+
+          {/* File Size Analysis - Only for repositories */}
+          {inputType === 'repository' && result.staticAnalysis.fileSizeAnalysis && (
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">File Size & AI Agent Compatibility</h3>
               
@@ -698,8 +1379,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Detailed Analysis */}
-          {result.detailedAnalysis && (
+          {/* Detailed Analysis - Only for repositories */}
+          {inputType === 'repository' && result.detailedAnalysis && (
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Detailed Analysis</h3>
               
@@ -825,8 +1506,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Confidence Scores */}
-          {result.confidence && (
+          {/* Confidence Scores - Only for repositories */}
+          {inputType === 'repository' && result.confidence && (
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Assessment Confidence</h3>

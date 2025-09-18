@@ -16,6 +16,17 @@ function getOpenAI(): OpenAI {
   return openai
 }
 
+// Helper function to clean JSON response from markdown code blocks
+function cleanJsonResponse(content: string): string {
+  // Remove markdown code blocks if present
+  const cleaned = content
+    .replace(/```json\s*/g, '')
+    .replace(/```\s*/g, '')
+    .trim()
+  
+  return cleaned
+}
+
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
 const OPENAI_TEMPERATURE = 0
 const OPENAI_RESPONSE_FORMAT = { type: 'json_object' as const }
@@ -126,6 +137,179 @@ export interface EnhancedAIAssessmentResult {
   }
 }
 
+export async function generateWebsiteAIAssessment(staticAnalysis: StaticAnalysisSummary, agenticFlows?: any): Promise<EnhancedAIAssessmentResult> {
+  try {
+    console.log('🌐 Starting Website AI Agent Readiness Assessment...')
+    console.log('📊 Website Analysis Summary:', {
+      hasStructuredData: staticAnalysis.hasStructuredData,
+      hasOpenGraph: staticAnalysis.hasOpenGraph,
+      hasTwitterCards: staticAnalysis.hasTwitterCards,
+      accessibilityScore: staticAnalysis.accessibilityScore,
+      seoScore: staticAnalysis.seoScore,
+      technologies: staticAnalysis.technologies?.length || 0,
+      contactInfo: staticAnalysis.contactInfo?.length || 0,
+      socialMediaLinks: staticAnalysis.socialMediaLinks?.length || 0
+    })
+
+    // Check for valid OpenAI API key
+    const hasValidApiKey = process.env.OPENAI_API_KEY && 
+                          process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' &&
+                          process.env.OPENAI_API_KEY.length > 20 &&
+                          process.env.OPENAI_API_KEY.startsWith('sk-')
+
+    if (!hasValidApiKey) {
+      console.error('❌ AI ANALYSIS FAILED: No valid OpenAI API key found!')
+      console.error('🔧 API Key Status:', {
+        exists: !!process.env.OPENAI_API_KEY,
+        isPlaceholder: process.env.OPENAI_API_KEY === 'your_openai_api_key_here'
+      })
+      console.warn('⚠️ Falling back to static analysis only - AI insights will be limited!')
+      return generateWebsiteFallbackAssessment(staticAnalysis)
+    }
+
+    console.log('✅ OpenAI API Key validated, proceeding with AI analysis...')
+    console.log('🔧 OpenAI Config:', {
+      model: OPENAI_MODEL,
+      temperature: OPENAI_TEMPERATURE,
+      baseURL: process.env.OPENAI_BASE_URL || 'default',
+      timeout: '30000'
+    })
+
+    console.log('🚀 Starting parallel AI analysis calls...')
+
+    // Parallel AI analysis for website-specific categories
+    const [structuredDataAnalysis, apiReadinessAnalysis, conversationalReadinessAnalysis, businessDataAnalysis] = await Promise.all([
+      analyzeStructuredData(staticAnalysis),
+      analyzeAPIReadiness(staticAnalysis),
+      analyzeConversationalReadiness(staticAnalysis),
+      analyzeBusinessData(staticAnalysis)
+    ])
+
+    console.log('✅ AI Analysis Results:', {
+      structuredData: { score: structuredDataAnalysis.overallScore, findings: structuredDataAnalysis.findings?.length || 0 },
+      apiReadiness: { score: apiReadinessAnalysis.overallScore, findings: apiReadinessAnalysis.findings?.length || 0 },
+      conversational: { score: conversationalReadinessAnalysis.overallScore, findings: conversationalReadinessAnalysis.findings?.length || 0 },
+      businessData: { score: businessDataAnalysis.overallScore, findings: businessDataAnalysis.findings?.length || 0 }
+    })
+
+    // Calculate category scores (0-20 scale)
+    const structuredDataScore = Math.round(structuredDataAnalysis.overallScore * 4) // Convert 0-5 to 0-20
+    const apiReadinessScore = Math.round(apiReadinessAnalysis.overallScore * 4)
+    const conversationalScore = Math.round(conversationalReadinessAnalysis.overallScore * 4)
+    const businessDataScore = Math.round(businessDataAnalysis.overallScore * 4)
+
+    // Calculate overall readiness score (0-100 scale)
+    let overallScore: number
+    if (agenticFlows) {
+      // Use agentic flows for scoring if available
+      const flowScores = [
+        agenticFlows.informationGathering?.score || 0,
+        agenticFlows.directBooking?.score || 0,
+        agenticFlows.faqSupport?.score || 0,
+        agenticFlows.taskManagement?.score || 0,
+        agenticFlows.personalization?.score || 0
+      ]
+      const averageFlowScore = flowScores.reduce((sum, score) => sum + score, 0) / flowScores.length
+      overallScore = Math.min(100, Math.round(averageFlowScore))
+    } else {
+      // Fallback to AI analysis categories
+      const averageScore = (structuredDataScore + apiReadinessScore + conversationalScore + businessDataScore) / 4
+      overallScore = Math.min(100, Math.round(averageScore * 5))
+    }
+
+    console.log('🎯 Final Assessment Score:', overallScore)
+
+    // Generate findings and recommendations
+    const aiFindings = [
+      ...(Array.isArray(structuredDataAnalysis.findings) ? structuredDataAnalysis.findings : []),
+      ...(Array.isArray(apiReadinessAnalysis.findings) ? apiReadinessAnalysis.findings : []),
+      ...(Array.isArray(conversationalReadinessAnalysis.findings) ? conversationalReadinessAnalysis.findings : []),
+      ...(Array.isArray(businessDataAnalysis.findings) ? businessDataAnalysis.findings : [])
+    ]
+
+    const aiRecommendations = [
+      ...(Array.isArray(structuredDataAnalysis.recommendations) ? structuredDataAnalysis.recommendations : []),
+      ...(Array.isArray(apiReadinessAnalysis.recommendations) ? apiReadinessAnalysis.recommendations : []),
+      ...(Array.isArray(conversationalReadinessAnalysis.recommendations) ? conversationalReadinessAnalysis.recommendations : []),
+      ...(Array.isArray(businessDataAnalysis.recommendations) ? businessDataAnalysis.recommendations : [])
+    ]
+
+    // Fallback to static analysis findings if AI findings are empty
+    const findings = aiFindings.length > 0 ? aiFindings.slice(0, 10) : generateWebsiteStaticFindings(staticAnalysis)
+    const recommendations = aiRecommendations.length > 0 ? aiRecommendations.slice(0, 10) : generateWebsiteStaticRecommendations(staticAnalysis)
+
+    return {
+      readinessScore: overallScore,
+      aiAnalysisStatus: {
+        enabled: true,
+        instructionClarity: true,
+        workflowAutomation: true,
+        contextEfficiency: true,
+        riskCompliance: true,
+        overallSuccess: true
+      },
+      categories: {
+        documentation: structuredDataScore,
+        instructionClarity: apiReadinessScore,
+        workflowAutomation: conversationalScore,
+        riskCompliance: businessDataScore,
+        integrationStructure: Math.round((structuredDataScore + apiReadinessScore) / 2),
+        fileSizeOptimization: Math.round((conversationalScore + businessDataScore) / 2)
+      },
+      findings,
+      recommendations,
+      detailedAnalysis: {
+        instructionClarity: {
+          stepByStepQuality: structuredDataAnalysis.stepByStepQuality || 0,
+          commandClarity: structuredDataAnalysis.commandClarity || 0,
+          environmentSetup: structuredDataAnalysis.environmentSetup || 0,
+          errorHandling: structuredDataAnalysis.errorHandling || 0,
+          dependencySpecification: structuredDataAnalysis.dependencySpecification || 0,
+          overallScore: structuredDataScore
+        },
+        workflowAutomation: {
+          ciCdQuality: apiReadinessAnalysis.ciCdQuality || 0,
+          testAutomation: apiReadinessAnalysis.testAutomation || 0,
+          buildScripts: apiReadinessAnalysis.buildScripts || 0,
+          deploymentAutomation: apiReadinessAnalysis.deploymentAutomation || 0,
+          monitoringLogging: apiReadinessAnalysis.monitoringLogging || 0,
+          overallScore: apiReadinessScore
+        },
+        contextEfficiency: {
+          instructionFileOptimization: conversationalReadinessAnalysis.instructionFileOptimization || 0,
+          codeDocumentation: conversationalReadinessAnalysis.codeDocumentation || 0,
+          apiDocumentation: conversationalReadinessAnalysis.apiDocumentation || 0,
+          contextWindowUsage: conversationalReadinessAnalysis.contextWindowUsage || 0,
+          overallScore: conversationalScore
+        },
+        riskCompliance: {
+          securityPractices: businessDataAnalysis.securityPractices || 0,
+          errorHandling: businessDataAnalysis.errorHandling || 0,
+          inputValidation: businessDataAnalysis.inputValidation || 0,
+          dependencySecurity: businessDataAnalysis.dependencySecurity || 0,
+          licenseCompliance: businessDataAnalysis.licenseCompliance || 0,
+          overallScore: businessDataScore
+        }
+      },
+      confidence: {
+        overall: Math.round((structuredDataAnalysis.confidence + apiReadinessAnalysis.confidence + conversationalReadinessAnalysis.confidence + businessDataAnalysis.confidence) / 4),
+        instructionClarity: structuredDataAnalysis.confidence || 0,
+        workflowAutomation: apiReadinessAnalysis.confidence || 0,
+        contextEfficiency: conversationalReadinessAnalysis.confidence || 0,
+        riskCompliance: businessDataAnalysis.confidence || 0
+      }
+    }
+  } catch (error) {
+    console.error('Website AI Assessment error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      name: error instanceof Error ? error.name : 'Unknown',
+      stack: error instanceof Error ? error.stack?.substring(0, 500) : undefined
+    })
+    console.warn('⚠️ Falling back to static analysis only - AI insights will be limited!')
+    return generateWebsiteFallbackAssessment(staticAnalysis)
+  }
+}
+
 export async function generateEnhancedAIAssessment(staticAnalysis: StaticAnalysisSummary): Promise<EnhancedAIAssessmentResult> {
   try {
     console.log('🔍 Starting Enhanced AI Assessment...')
@@ -147,9 +331,7 @@ export async function generateEnhancedAIAssessment(staticAnalysis: StaticAnalysi
       console.error('❌ AI ANALYSIS FAILED: No valid OpenAI API key found!')
       console.error('🔧 API Key Status:', {
         exists: !!process.env.OPENAI_API_KEY,
-        length: process.env.OPENAI_API_KEY?.length || 0,
-        isPlaceholder: process.env.OPENAI_API_KEY === 'your_openai_api_key_here',
-        startsWith: process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined'
+        isPlaceholder: process.env.OPENAI_API_KEY === 'your_openai_api_key_here'
       })
       console.warn('⚠️ Falling back to static analysis only - AI insights will be limited!')
       return generateEnhancedFallbackAssessment(staticAnalysis)
@@ -240,7 +422,8 @@ Provide a JSON response with detailed scoring and analysis.`
     console.log('📄 Raw AI Response (full):', content)
     console.log('📄 Raw AI Response (first 1000 chars):', content.substring(0, 1000))
     
-    const parsed = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const parsed = JSON.parse(cleanedContent)
     console.log('🔍 Parsed JSON:', {
       hasStepByStepQuality: 'stepByStepQuality' in parsed,
       hasCommandClarity: 'commandClarity' in parsed,
@@ -351,7 +534,8 @@ Provide a JSON response with detailed scoring and analysis.`
 
   try {
     const content = response.choices[0]?.message?.content || '{}'
-    const parsed = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const parsed = JSON.parse(cleanedContent)
     
     // Validate that we have the required numeric fields
     const hasRequiredFields = [
@@ -420,7 +604,8 @@ Provide a JSON response with detailed scoring and analysis.`
 
   try {
     const content = response.choices[0]?.message?.content || '{}'
-    const parsed = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const parsed = JSON.parse(cleanedContent)
     
     // Validate that we have the required numeric fields
     const hasRequiredFields = [
@@ -487,7 +672,8 @@ Provide a JSON response with detailed scoring and analysis.`
 
   try {
     const content = response.choices[0]?.message?.content || '{}'
-    const parsed = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const parsed = JSON.parse(cleanedContent)
     
     // Validate that we have the required numeric fields
     const hasRequiredFields = [
@@ -709,7 +895,8 @@ function combineAssessmentResults(
   ])
 
   // Calculate overall readiness score (0-100 scale)
-  const overallScore = Math.min(100, Math.round((instructionScore + workflowScore + contextScore + riskScore) / 4 * 5))
+  const averageScore = (instructionScore + workflowScore + contextScore + riskScore) / 4
+  const overallScore = Math.min(100, Math.round(averageScore * 5))
 
   // Generate findings and recommendations with proper type guards and fallbacks
   const aiFindings = [
@@ -821,6 +1008,403 @@ function combineAssessmentResults(
       workflowAutomation: workflowAnalysis.confidence ?? 70,
       contextEfficiency: contextAnalysis.confidence ?? 70,
       riskCompliance: riskAnalysis.confidence ?? 70
+    }
+  }
+}
+
+// Website-specific analysis functions
+async function analyzeStructuredData(staticAnalysis: StaticAnalysisSummary) {
+  const prompt = `Analyze the structured data and machine-readability of this website for AI agent compatibility.
+
+Website Analysis:
+- Has Structured Data (JSON-LD): ${staticAnalysis.hasStructuredData}
+- Has Open Graph: ${staticAnalysis.hasOpenGraph}
+- Has Twitter Cards: ${staticAnalysis.hasTwitterCards}
+- Page Title: ${staticAnalysis.pageTitle || 'Not found'}
+- Meta Description: ${staticAnalysis.metaDescription || 'Not found'}
+- Technologies: ${staticAnalysis.technologies?.join(', ') || 'None detected'}
+
+Rate each aspect 1-5 (1=poor, 5=excellent) and provide findings and recommendations for AI agent compatibility.
+
+Respond with JSON:
+{
+  "structuredDataQuality": 1-5,
+  "metaTagCompleteness": 1-5,
+  "semanticMarkup": 1-5,
+  "machineReadability": 1-5,
+  "overallScore": 1-5,
+  "findings": ["finding1", "finding2"],
+  "recommendations": ["rec1", "rec2"],
+  "confidence": 1-100
+}`
+
+  try {
+    const response = await getOpenAI().chat.completions.create({
+      model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: OPENAI_TEMPERATURE,
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) throw new Error('No response from OpenAI')
+
+    const cleanedContent = cleanJsonResponse(content)
+    const result = JSON.parse(cleanedContent)
+    return {
+      stepByStepQuality: result.structuredDataQuality || 1,
+      commandClarity: result.metaTagCompleteness || 1,
+      environmentSetup: result.semanticMarkup || 1,
+      errorHandling: result.machineReadability || 1,
+      dependencySpecification: result.overallScore || 1,
+      overallScore: result.overallScore || 1,
+      findings: result.findings || [],
+      recommendations: result.recommendations || [],
+      confidence: result.confidence || 50
+    }
+  } catch (error) {
+    console.error('Failed to parse structured data analysis:', error)
+    return {
+      stepByStepQuality: staticAnalysis.hasStructuredData ? 3 : 1,
+      commandClarity: (staticAnalysis.hasOpenGraph && staticAnalysis.hasTwitterCards) ? 4 : 2,
+      environmentSetup: 2,
+      errorHandling: 2,
+      dependencySpecification: 2,
+      overallScore: 2,
+      findings: ['Structured data analysis failed'],
+      recommendations: ['Add JSON-LD structured data'],
+      confidence: 30
+    }
+  }
+}
+
+async function analyzeAPIReadiness(staticAnalysis: StaticAnalysisSummary) {
+  const prompt = `Analyze the API readiness and integration potential of this website for AI agents.
+
+Website Analysis:
+- Technologies: ${staticAnalysis.technologies?.join(', ') || 'None detected'}
+- Contact Info Available: ${staticAnalysis.contactInfo?.length || 0} items
+- Social Media Links: ${staticAnalysis.socialMediaLinks?.join(', ') || 'None'}
+- Has Service Worker: ${staticAnalysis.hasServiceWorker}
+- Has Web App Manifest: ${staticAnalysis.hasManifest}
+
+Rate each aspect 1-5 (1=poor, 5=excellent) for AI agent integration potential.
+
+Respond with JSON:
+{
+  "apiAvailability": 1-5,
+  "integrationPoints": 1-5,
+  "dataAccessibility": 1-5,
+  "automationPotential": 1-5,
+  "overallScore": 1-5,
+  "findings": ["finding1", "finding2"],
+  "recommendations": ["rec1", "rec2"],
+  "confidence": 1-100
+}`
+
+  try {
+    const response = await getOpenAI().chat.completions.create({
+      model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: OPENAI_TEMPERATURE,
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) throw new Error('No response from OpenAI')
+
+    const cleanedContent = cleanJsonResponse(content)
+    const result = JSON.parse(cleanedContent)
+    return {
+      ciCdQuality: result.apiAvailability || 1,
+      testAutomation: result.integrationPoints || 1,
+      buildScripts: result.dataAccessibility || 1,
+      deploymentAutomation: result.automationPotential || 1,
+      monitoringLogging: result.overallScore || 1,
+      overallScore: result.overallScore || 1,
+      findings: result.findings || [],
+      recommendations: result.recommendations || [],
+      confidence: result.confidence || 50
+    }
+  } catch (error) {
+    console.error('Failed to parse API readiness analysis:', error)
+    return {
+      ciCdQuality: 1,
+      testAutomation: 1,
+      buildScripts: staticAnalysis.contactInfo?.length ? 3 : 1,
+      deploymentAutomation: 1,
+      monitoringLogging: 1,
+      overallScore: 1,
+      findings: ['API readiness analysis failed'],
+      recommendations: ['Add API endpoints for AI agent integration'],
+      confidence: 30
+    }
+  }
+}
+
+async function analyzeConversationalReadiness(staticAnalysis: StaticAnalysisSummary) {
+  const prompt = `Analyze the conversational readiness and natural language compatibility of this website for AI agents.
+
+Website Analysis:
+- Page Title: ${staticAnalysis.pageTitle || 'Not found'}
+- Meta Description: ${staticAnalysis.metaDescription || 'Not found'}
+- Content Length: ${staticAnalysis.contentLength || 0} characters
+- Navigation Items: ${staticAnalysis.navigationStructure?.join(', ') || 'None'}
+- Accessibility Score: ${staticAnalysis.accessibilityScore || 0}/100
+- SEO Score: ${staticAnalysis.seoScore || 0}/100
+
+Rate each aspect 1-5 (1=poor, 5=excellent) for conversational AI agent compatibility.
+
+Respond with JSON:
+{
+  "contentClarity": 1-5,
+  "naturalLanguageStructure": 1-5,
+  "conversationFlow": 1-5,
+  "userIntentMatching": 1-5,
+  "overallScore": 1-5,
+  "findings": ["finding1", "finding2"],
+  "recommendations": ["rec1", "rec2"],
+  "confidence": 1-100
+}`
+
+  try {
+    const response = await getOpenAI().chat.completions.create({
+      model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: OPENAI_TEMPERATURE,
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) throw new Error('No response from OpenAI')
+
+    const cleanedContent = cleanJsonResponse(content)
+    const result = JSON.parse(cleanedContent)
+    return {
+      instructionFileOptimization: result.contentClarity || 1,
+      codeDocumentation: result.naturalLanguageStructure || 1,
+      apiDocumentation: result.conversationFlow || 1,
+      contextWindowUsage: result.userIntentMatching || 1,
+      overallScore: result.overallScore || 1,
+      findings: result.findings || [],
+      recommendations: result.recommendations || [],
+      confidence: result.confidence || 50
+    }
+  } catch (error) {
+    console.error('Failed to parse conversational readiness analysis:', error)
+    return {
+      instructionFileOptimization: staticAnalysis.pageTitle ? 3 : 1,
+      codeDocumentation: 2,
+      apiDocumentation: 2,
+      contextWindowUsage: 2,
+      overallScore: 2,
+      findings: ['Conversational readiness analysis failed'],
+      recommendations: ['Improve content structure for AI agents'],
+      confidence: 30
+    }
+  }
+}
+
+async function analyzeBusinessData(staticAnalysis: StaticAnalysisSummary) {
+  const prompt = `Analyze the business data completeness and AI agent accessibility of this website.
+
+Website Analysis:
+- Contact Information: ${staticAnalysis.contactInfo?.join(', ') || 'None found'}
+- Social Media Links: ${staticAnalysis.socialMediaLinks?.join(', ') || 'None found'}
+- Business Hours/Location: Not analyzed
+- Services/Products: Not analyzed
+- Pricing Information: Not analyzed
+
+Rate each aspect 1-5 (1=poor, 5=excellent) for business data AI agent accessibility.
+
+Respond with JSON:
+{
+  "contactDataCompleteness": 1-5,
+  "businessInfoAccessibility": 1-5,
+  "serviceDataClarity": 1-5,
+  "pricingTransparency": 1-5,
+  "overallScore": 1-5,
+  "findings": ["finding1", "finding2"],
+  "recommendations": ["rec1", "rec2"],
+  "confidence": 1-100
+}`
+
+  try {
+    const response = await getOpenAI().chat.completions.create({
+      model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: OPENAI_TEMPERATURE,
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) throw new Error('No response from OpenAI')
+
+    const cleanedContent = cleanJsonResponse(content)
+    const result = JSON.parse(cleanedContent)
+    return {
+      securityPractices: result.contactDataCompleteness || 1,
+      errorHandling: result.businessInfoAccessibility || 1,
+      inputValidation: result.serviceDataClarity || 1,
+      dependencySecurity: result.pricingTransparency || 1,
+      licenseCompliance: result.overallScore || 1,
+      overallScore: result.overallScore || 1,
+      findings: result.findings || [],
+      recommendations: result.recommendations || [],
+      confidence: result.confidence || 50
+    }
+  } catch (error) {
+    console.error('Failed to parse business data analysis:', error)
+    return {
+      securityPractices: staticAnalysis.contactInfo?.length ? 3 : 1,
+      errorHandling: 2,
+      inputValidation: 2,
+      dependencySecurity: 1,
+      licenseCompliance: 2,
+      overallScore: 2,
+      findings: ['Business data analysis failed'],
+      recommendations: ['Add structured business information'],
+      confidence: 30
+    }
+  }
+}
+
+function generateWebsiteStaticFindings(staticAnalysis: StaticAnalysisSummary): string[] {
+  const findings: string[] = []
+  
+  if (!staticAnalysis.hasStructuredData) {
+    findings.push('No structured data (JSON-LD) found - AI agents will have difficulty understanding content')
+  }
+  
+  if (!staticAnalysis.hasOpenGraph) {
+    findings.push('Missing Open Graph meta tags - limits social sharing and AI agent context')
+  }
+  
+  if (!staticAnalysis.pageTitle) {
+    findings.push('No page title found - critical for AI agent identification')
+  }
+  
+  if (!staticAnalysis.metaDescription) {
+    findings.push('No meta description found - limits AI agent understanding of page purpose')
+  }
+  
+  if ((staticAnalysis.accessibilityScore || 0) < 50) {
+    findings.push('Low accessibility score - may impact AI agent content parsing')
+  }
+  
+  if (staticAnalysis.contactInfo?.length === 0) {
+    findings.push('No contact information found - limits AI agent business data access')
+  }
+  
+  return findings
+}
+
+function generateWebsiteStaticRecommendations(staticAnalysis: StaticAnalysisSummary): string[] {
+  const recommendations: string[] = []
+  
+  if (!staticAnalysis.hasStructuredData) {
+    recommendations.push('Add JSON-LD structured data to help AI agents understand content structure')
+  }
+  
+  if (!staticAnalysis.hasOpenGraph) {
+    recommendations.push('Implement Open Graph meta tags for better social sharing and AI agent context')
+  }
+  
+  if (!staticAnalysis.hasTwitterCards) {
+    recommendations.push('Add Twitter Card meta tags for enhanced social media integration')
+  }
+  
+  if ((staticAnalysis.accessibilityScore || 0) < 70) {
+    recommendations.push('Improve accessibility with semantic HTML, alt text, and proper heading structure')
+  }
+  
+  if (staticAnalysis.contactInfo?.length === 0) {
+    recommendations.push('Add clear contact information (phone, email, address) for AI agent access')
+  }
+  
+  if (!staticAnalysis.hasSitemap) {
+    recommendations.push('Create and submit an XML sitemap to help AI agents discover all pages')
+  }
+  
+  return recommendations
+}
+
+function generateWebsiteFallbackAssessment(staticAnalysis: StaticAnalysisSummary): EnhancedAIAssessmentResult {
+  // Basic fallback assessment for websites
+  const baseScore = Math.round(
+    (staticAnalysis.hasStructuredData ? 15 : 0) +
+    (staticAnalysis.hasOpenGraph ? 10 : 0) +
+    (staticAnalysis.hasTwitterCards ? 5 : 0) +
+    (staticAnalysis.pageTitle ? 10 : 0) +
+    (staticAnalysis.metaDescription ? 10 : 0) +
+    ((staticAnalysis.accessibilityScore || 0) > 50 ? 10 : 0) +
+    (staticAnalysis.contactInfo?.length ? 10 : 0) +
+    (staticAnalysis.socialMediaLinks?.length ? 5 : 0) +
+    (staticAnalysis.hasSitemap ? 5 : 0) +
+    (staticAnalysis.hasRobotsTxt ? 5 : 0) +
+    (staticAnalysis.technologies?.length ? 5 : 0)
+  )
+
+  return {
+    readinessScore: Math.min(baseScore, 100),
+    aiAnalysisStatus: {
+      enabled: false,
+      instructionClarity: false,
+      workflowAutomation: false,
+      contextEfficiency: false,
+      riskCompliance: false,
+      overallSuccess: false,
+      reason: 'AI analysis unavailable - using static analysis only'
+    },
+    categories: {
+      documentation: staticAnalysis.hasStructuredData ? 15 : 5,
+      instructionClarity: staticAnalysis.hasOpenGraph ? 12 : 5,
+      workflowAutomation: staticAnalysis.contactInfo?.length ? 10 : 5,
+      riskCompliance: (staticAnalysis.accessibilityScore || 0) > 50 ? 12 : 5,
+      integrationStructure: staticAnalysis.technologies?.length ? 10 : 5,
+      fileSizeOptimization: staticAnalysis.hasSitemap ? 8 : 5
+    },
+    findings: generateWebsiteStaticFindings(staticAnalysis),
+    recommendations: generateWebsiteStaticRecommendations(staticAnalysis),
+    detailedAnalysis: {
+      instructionClarity: {
+        stepByStepQuality: 5,
+        commandClarity: 5,
+        environmentSetup: 5,
+        errorHandling: 5,
+        dependencySpecification: 5,
+        overallScore: 5
+      },
+      workflowAutomation: {
+        ciCdQuality: 5,
+        testAutomation: 5,
+        buildScripts: 5,
+        deploymentAutomation: 5,
+        monitoringLogging: 5,
+        overallScore: 5
+      },
+      contextEfficiency: {
+        instructionFileOptimization: 5,
+        codeDocumentation: 5,
+        apiDocumentation: 5,
+        contextWindowUsage: 5,
+        overallScore: 5
+      },
+      riskCompliance: {
+        securityPractices: 5,
+        errorHandling: 5,
+        inputValidation: 5,
+        dependencySecurity: 5,
+        licenseCompliance: 5,
+        overallScore: 5
+      }
+    },
+    confidence: {
+      overall: 30,
+      instructionClarity: 30,
+      workflowAutomation: 30,
+      contextEfficiency: 30,
+      riskCompliance: 30
     }
   }
 }
