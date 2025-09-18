@@ -283,7 +283,7 @@ export default function Home() {
               <div className="p-3 border rounded-lg">
                 <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
                 <div className="text-lg font-bold text-blue-600">
-                  {result.staticAnalysis.fileSizeAnalysis?.totalFiles || result.staticAnalysis.fileCount || 0}
+                  {result.staticAnalysis.fileCount || result.staticAnalysis.fileSizeAnalysis?.totalFiles || 0}
                 </div>
               </div>
               <div className="p-3 border rounded-lg">

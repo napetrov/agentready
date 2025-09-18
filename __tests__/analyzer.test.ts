@@ -280,4 +280,5 @@ describe('analyzeRepository', () => {
     await expect(analyzeRepository('https://github.com/'))
       .rejects.toThrow('Invalid GitHub repository URL format')
   })
+
 })

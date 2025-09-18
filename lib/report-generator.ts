@@ -51,7 +51,7 @@ export async function generatePDFReport(assessmentResult: any, repoUrl?: string)
     doc.setFont('helvetica', 'normal')
     
     // Basic stats
-    const totalFiles = fileSizeAnalysis.totalFiles || staticAnalysis.fileCount || 0
+    const totalFiles = staticAnalysis.fileCount || fileSizeAnalysis.totalFiles || 0
     doc.text(`Total Files: ${totalFiles}`, 20, yPosition)
     yPosition += 12
 
