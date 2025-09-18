@@ -1,6 +1,7 @@
 import JSZip from 'jszip'
 import axios from 'axios'
 import { FileSizeAnalyzer, FileSizeAnalysis } from './file-size-analyzer'
+import { GitHubAPIClient, GitHubRepositoryData } from './github-api-client'
 
 export interface StaticAnalysisResult {
   hasReadme: boolean
@@ -20,6 +21,7 @@ export interface StaticAnalysisResult {
   workflowFiles: string[]
   testFiles: string[]
   fileSizeAnalysis?: FileSizeAnalysis
+  githubData?: GitHubRepositoryData
 }
 
 export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysisResult> {
@@ -31,6 +33,21 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
 
     if (!owner || !repo) {
       throw new Error('Invalid GitHub repository URL format')
+    }
+
+    // Initialize GitHub API client if token is available
+    let githubData: GitHubRepositoryData | undefined
+    if (process.env.GITHUB_TOKEN) {
+      try {
+        console.log('🔍 Fetching GitHub repository data...')
+        const githubClient = new GitHubAPIClient(process.env.GITHUB_TOKEN)
+        githubData = await githubClient.getRepositoryData(repoUrl)
+        console.log('✅ GitHub data fetched successfully')
+      } catch (error) {
+        console.warn('⚠️ Failed to fetch GitHub data, continuing with local analysis only:', error)
+      }
+    } else {
+      console.log('ℹ️ No GitHub token provided, skipping GitHub API data collection')
     }
 
     // Try to download repository as ZIP - first try main branch, then master
@@ -189,6 +206,9 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
       console.warn('File size analysis failed:', error)
       // Continue without file size analysis if it fails
     }
+
+    // Add GitHub data to analysis
+    analysis.githubData = githubData
 
     return analysis
   } catch (error) {
