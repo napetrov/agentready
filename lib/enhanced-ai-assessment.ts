@@ -16,6 +16,17 @@ function getOpenAI(): OpenAI {
   return openai
 }
 
+// Helper function to clean JSON response from markdown code blocks
+function cleanJsonResponse(content: string): string {
+  // Remove markdown code blocks if present
+  const cleaned = content
+    .replace(/```json\s*/g, '')
+    .replace(/```\s*/g, '')
+    .trim()
+  
+  return cleaned
+}
+
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
 const OPENAI_TEMPERATURE = 0
 const OPENAI_RESPONSE_FORMAT = { type: 'json_object' as const }
@@ -396,7 +407,8 @@ Provide a JSON response with detailed scoring and analysis.`
     console.log('📄 Raw AI Response (full):', content)
     console.log('📄 Raw AI Response (first 1000 chars):', content.substring(0, 1000))
     
-    const parsed = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const parsed = JSON.parse(cleanedContent)
     console.log('🔍 Parsed JSON:', {
       hasStepByStepQuality: 'stepByStepQuality' in parsed,
       hasCommandClarity: 'commandClarity' in parsed,
@@ -507,7 +519,8 @@ Provide a JSON response with detailed scoring and analysis.`
 
   try {
     const content = response.choices[0]?.message?.content || '{}'
-    const parsed = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const parsed = JSON.parse(cleanedContent)
     
     // Validate that we have the required numeric fields
     const hasRequiredFields = [
@@ -576,7 +589,8 @@ Provide a JSON response with detailed scoring and analysis.`
 
   try {
     const content = response.choices[0]?.message?.content || '{}'
-    const parsed = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const parsed = JSON.parse(cleanedContent)
     
     // Validate that we have the required numeric fields
     const hasRequiredFields = [
@@ -643,7 +657,8 @@ Provide a JSON response with detailed scoring and analysis.`
 
   try {
     const content = response.choices[0]?.message?.content || '{}'
-    const parsed = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const parsed = JSON.parse(cleanedContent)
     
     // Validate that we have the required numeric fields
     const hasRequiredFields = [
@@ -1018,7 +1033,8 @@ Respond with JSON:
     const content = response.choices[0]?.message?.content
     if (!content) throw new Error('No response from OpenAI')
 
-    const result = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const result = JSON.parse(cleanedContent)
     return {
       stepByStepQuality: result.structuredDataQuality || 1,
       commandClarity: result.metaTagCompleteness || 1,
@@ -1080,7 +1096,8 @@ Respond with JSON:
     const content = response.choices[0]?.message?.content
     if (!content) throw new Error('No response from OpenAI')
 
-    const result = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const result = JSON.parse(cleanedContent)
     return {
       ciCdQuality: result.apiAvailability || 1,
       testAutomation: result.integrationPoints || 1,
@@ -1143,7 +1160,8 @@ Respond with JSON:
     const content = response.choices[0]?.message?.content
     if (!content) throw new Error('No response from OpenAI')
 
-    const result = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const result = JSON.parse(cleanedContent)
     return {
       instructionFileOptimization: result.contentClarity || 1,
       codeDocumentation: result.naturalLanguageStructure || 1,
@@ -1203,7 +1221,8 @@ Respond with JSON:
     const content = response.choices[0]?.message?.content
     if (!content) throw new Error('No response from OpenAI')
 
-    const result = JSON.parse(content)
+    const cleanedContent = cleanJsonResponse(content)
+    const result = JSON.parse(cleanedContent)
     return {
       securityPractices: result.contactDataCompleteness || 1,
       errorHandling: result.businessInfoAccessibility || 1,
