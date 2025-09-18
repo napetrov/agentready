@@ -56,7 +56,8 @@ describe('Simple Functionality Tests', () => {
         instructionClarity: 10,
         workflowAutomation: 10,
         riskCompliance: 10,
-        integrationStructure: 10
+        integrationStructure: 10,
+        fileSizeOptimization: 10
       },
       findings: ['Test finding'],
       recommendations: ['Test recommendation'],
@@ -67,7 +68,10 @@ describe('Simple Functionality Tests', () => {
         hasLicense: true,
         hasWorkflows: false,
         hasTests: false,
-        errorHandling: false
+        errorHandling: false,
+        fileCount: 10,
+        linesOfCode: 400,
+        repositorySizeMB: 0.8
       }
     }
     
@@ -150,7 +154,8 @@ describe('Simple Functionality Tests', () => {
         instructionClarity: 19,
         workflowAutomation: 18,
         riskCompliance: 19,
-        integrationStructure: 19
+        integrationStructure: 19,
+        fileSizeOptimization: 18
       },
       findings: [
         'Excellent documentation with comprehensive README',
@@ -173,6 +178,8 @@ describe('Simple Functionality Tests', () => {
         languages: ['TypeScript', 'JavaScript', 'CSS'],
         errorHandling: true,
         fileCount: 100,
+        linesOfCode: 2500,
+        repositorySizeMB: 4.2,
         workflowFiles: ['ci.yml', 'deploy.yml', 'test.yml'],
         testFiles: ['test.js', 'spec.ts', 'e2e.test.js']
       }
@@ -218,6 +225,6 @@ describe('Simple Functionality Tests', () => {
     expect(result.readinessScore).toBeGreaterThanOrEqual(0)
     expect(result.readinessScore).toBeLessThanOrEqual(100)
     expect(result.categories).toBeDefined()
-    expect(Object.keys(result.categories)).toHaveLength(5)
+    expect(Object.keys(result.categories)).toHaveLength(6)
   })
 })

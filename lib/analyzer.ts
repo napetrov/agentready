@@ -1,5 +1,6 @@
 import JSZip from 'jszip'
 import axios from 'axios'
+import { FileSizeAnalyzer, FileSizeAnalysis } from './file-size-analyzer'
 
 export interface StaticAnalysisResult {
   hasReadme: boolean
@@ -11,11 +12,14 @@ export interface StaticAnalysisResult {
   languages: string[]
   errorHandling: boolean
   fileCount: number
+  linesOfCode: number
+  repositorySizeMB: number
   readmeContent?: string
   contributingContent?: string
   agentsContent?: string
   workflowFiles: string[]
   testFiles: string[]
+  fileSizeAnalysis?: FileSizeAnalysis
 }
 
 export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysisResult> {
@@ -72,6 +76,8 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
       languages: [],
       errorHandling: false,
       fileCount: files.length,
+      linesOfCode: 0,
+      repositorySizeMB: 0,
       workflowFiles: [],
       testFiles: [],
     }
@@ -122,14 +128,16 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
     analysis.hasWorkflows = workflowFiles.length > 0
     analysis.workflowFiles = workflowFiles
 
-    // Detect test files and languages
+    // Detect test files, languages, and count lines of code
     const languageMap = new Map<string, number>()
+    let totalLines = 0
     
     for (const file of files) {
       const fileName = file.toLowerCase()
       
-      // Test file detection
-      if (fileName.includes('test') || fileName.includes('spec') || fileName.includes('__tests__')) {
+      // Test file detection - look for test files, not directories with 'test' in name
+      if (fileName.includes('test.') || fileName.includes('spec.') || fileName.includes('__tests__/') || 
+          fileName.endsWith('.test.') || fileName.endsWith('.spec.') || fileName.includes('/test/')) {
         analysis.hasTests = true
         analysis.testFiles.push(file)
       }
@@ -142,7 +150,20 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
           languageMap.set(language, (languageMap.get(language) || 0) + 1)
         }
       }
+      
+      // Count lines of code for text files
+      if (isTextFile(extension)) {
+        try {
+          const content = await zip.files[file].async('text')
+          const lines = content.split('\n').length
+          totalLines += lines
+        } catch (e) {
+          // Skip files that can't be read as text
+        }
+      }
     }
+    
+    analysis.linesOfCode = totalLines
 
     // Sort languages by file count
     analysis.languages = Array.from(languageMap.entries())
@@ -151,6 +172,23 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
 
     // Check for error handling patterns
     analysis.errorHandling = await checkErrorHandling(zip, files)
+
+    // Calculate repository size
+    try {
+      analysis.repositorySizeMB = await calculateRepositorySize(zip, files)
+    } catch (error) {
+      console.warn('Repository size calculation failed:', error)
+      // Continue with 0 size if calculation fails
+    }
+
+    // Perform file size analysis
+    try {
+      const fileData = await extractFileData(zip, files)
+      analysis.fileSizeAnalysis = await FileSizeAnalyzer.analyzeFileSizes(fileData)
+    } catch (error) {
+      console.warn('File size analysis failed:', error)
+      // Continue without file size analysis if it fails
+    }
 
     return analysis
   } catch (error) {
@@ -254,4 +292,101 @@ async function checkErrorHandling(zip: JSZip, files: string[]): Promise<boolean>
   }
 
   return hasErrorHandling
+}
+
+async function extractFileData(zip: JSZip, files: string[]): Promise<Array<{ path: string; content: string; size: number }>> {
+  const fileData: Array<{ path: string; content: string; size: number }> = []
+  
+  // Limit to first 100 files to avoid memory issues
+  const filesToProcess = files.slice(0, 100)
+  
+  for (const file of filesToProcess) {
+    try {
+      // Skip directories and very large files (>50MB) to avoid memory issues
+      if (file.endsWith('/') || zip.files[file].dir) {
+        continue
+      }
+      
+      const zipFile = zip.files[file]
+      // Get file size by reading the content and measuring it
+      let size = 0
+      try {
+        const content = await zipFile.async('uint8array')
+        size = content.length
+      } catch (e) {
+        // Skip files that can't be read
+        continue
+      }
+      
+      // Skip files larger than 50MB to avoid memory issues
+      if (size > 50 * 1024 * 1024) {
+        continue
+      }
+      
+      // Try to read as text, skip if it fails (binary files)
+      let content = ''
+      try {
+        content = await zipFile.async('text')
+      } catch (e) {
+        // Skip binary files
+        continue
+      }
+      
+      fileData.push({
+        path: file,
+        content,
+        size
+      })
+    } catch (error) {
+      // Skip files that can't be processed
+      continue
+    }
+  }
+  
+  return fileData
+}
+
+async function calculateRepositorySize(zip: JSZip, files: string[]): Promise<number> {
+  let totalSizeBytes = 0
+  
+  for (const file of files) {
+    try {
+      // Skip directories
+      if (file.endsWith('/') || zip.files[file].dir) {
+        continue
+      }
+      
+      const zipFile = zip.files[file]
+      // Get file size by reading the content and measuring it
+      try {
+        const content = await zipFile.async('uint8array')
+        totalSizeBytes += content.length
+      } catch (e) {
+        // Skip files that can't be read
+        continue
+      }
+    } catch (error) {
+      // Skip files that can't be processed
+      continue
+    }
+  }
+  
+  // Convert bytes to MB and round to 2 decimal places
+  return Math.round((totalSizeBytes / (1024 * 1024)) * 100) / 100
+}
+
+function isTextFile(extension: string | undefined): boolean {
+  if (!extension) return false
+  
+  const textExtensions = [
+    'js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'h', 'hpp',
+    'cs', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'r',
+    'm', 'mm', 'pl', 'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat',
+    'html', 'htm', 'css', 'scss', 'sass', 'less', 'xml', 'json',
+    'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'md', 'txt',
+    'rst', 'tex', 'sql', 'dockerfile', 'makefile', 'cmake',
+    'gradle', 'maven', 'pom', 'sbt', 'build', 'gulpfile', 'gruntfile'
+  ]
+  
+  return textExtensions.includes(extension.toLowerCase())
 }

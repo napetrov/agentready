@@ -1,19 +1,69 @@
 'use client'
 
 import { useState } from 'react'
-import { Github, FileText, Download, Loader2 } from 'lucide-react'
+import { Github, FileText, Download, Loader2, AlertCircle } from 'lucide-react'
 
 interface AssessmentResult {
   readinessScore: number
+  aiAnalysisStatus?: {
+    enabled: boolean
+    instructionClarity: boolean
+    workflowAutomation: boolean
+    contextEfficiency: boolean
+    riskCompliance: boolean
+    overallSuccess: boolean
+    reason?: string
+  }
   categories: {
     documentation: number
     instructionClarity: number
     workflowAutomation: number
     riskCompliance: number
     integrationStructure: number
+    fileSizeOptimization: number
   }
   findings: string[]
   recommendations: string[]
+  detailedAnalysis?: {
+    instructionClarity: {
+      stepByStepQuality: number
+      commandClarity: number
+      environmentSetup: number
+      errorHandling: number
+      dependencySpecification: number
+      overallScore: number
+    }
+    workflowAutomation: {
+      ciCdQuality: number
+      testAutomation: number
+      buildScripts: number
+      deploymentAutomation: number
+      monitoringLogging: number
+      overallScore: number
+    }
+    contextEfficiency: {
+      instructionFileOptimization: number
+      codeDocumentation: number
+      apiDocumentation: number
+      contextWindowUsage: number
+      overallScore: number
+    }
+    riskCompliance: {
+      securityPractices: number
+      errorHandling: number
+      inputValidation: number
+      dependencySecurity: number
+      licenseCompliance: number
+      overallScore: number
+    }
+  }
+  confidence?: {
+    overall: number
+    instructionClarity: number
+    workflowAutomation: number
+    contextEfficiency: number
+    riskCompliance: number
+  }
   staticAnalysis: {
     hasReadme: boolean
     hasContributing: boolean
@@ -23,6 +73,64 @@ interface AssessmentResult {
     hasTests: boolean
     languages: string[]
     errorHandling: boolean
+    fileCount: number
+    linesOfCode: number
+    repositorySizeMB: number
+    fileSizeAnalysis?: {
+      totalFiles: number
+      filesBySize: {
+        under100KB: number
+        under500KB: number
+        under1MB: number
+        under5MB: number
+        over5MB: number
+      }
+      largeFiles: Array<{
+        path: string
+        size: number
+        sizeFormatted: string
+        type: string
+        agentImpact: {
+          cursor: string
+          githubCopilot: string
+          claudeWeb: string
+          claudeApi: string
+        }
+        recommendation: string
+      }>
+      criticalFiles: Array<{
+        path: string
+        size: number
+        sizeFormatted: string
+        type: string
+        isOptimal: boolean
+        agentImpact: {
+          cursor: string
+          githubCopilot: string
+          claudeWeb: string
+        }
+        recommendation: string
+      }>
+      contextConsumption: {
+        instructionFiles: {
+          agentsMd: { size: number; lines: number; estimatedTokens: number } | null
+          readme: { size: number; lines: number; estimatedTokens: number } | null
+          contributing: { size: number; lines: number; estimatedTokens: number } | null
+        }
+        totalContextFiles: number
+        averageContextFileSize: number
+        contextEfficiency: string
+        recommendations: string[]
+      }
+      agentCompatibility: {
+        cursor: number
+        githubCopilot: number
+        claudeWeb: number
+        claudeApi: number
+        overall: number
+      }
+      recommendations: string[]
+    }
   }
 }
 
@@ -52,10 +160,19 @@ export default function Home() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to analyze repository')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.message || errorData.error || `Server error: ${response.status}`
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
+      console.log('Analysis result:', data)
+      
+      // Validate the response data
+      if (!data || typeof data.readinessScore !== 'number') {
+        throw new Error('Invalid response format from server')
+      }
+      
       setResult(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -73,7 +190,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ result }),
+        body: JSON.stringify({ result, repoUrl }),
       })
 
       if (!response.ok) {
@@ -98,6 +215,53 @@ export default function Home() {
     if (score >= 80) return 'text-success-600 bg-success-50'
     if (score >= 60) return 'text-warning-600 bg-warning-50'
     return 'text-danger-600 bg-danger-50'
+  }
+
+  const getCategoryTextColor = (score: number) => {
+    if (score >= 16) return 'text-success-600'
+    if (score >= 12) return 'text-warning-600'
+    return 'text-danger-600'
+  }
+
+  const getCategoryDescription = (category: string) => {
+    const descriptions: Record<string, string> = {
+      documentation: 'Measures presence and quality of README, CONTRIBUTING, AGENTS.md, and LICENSE files',
+      instructionClarity: 'Evaluates how clear and actionable instructions are for AI agents to follow',
+      workflowAutomation: 'Assesses CI/CD setup, testing, build scripts, and deployment automation',
+      riskCompliance: 'Checks security practices, error handling, input validation, and license compliance',
+      integrationStructure: 'Evaluates code organization, API structure, and integration readiness',
+      fileSizeOptimization: 'Measures file sizes against AI agent limits and context window efficiency'
+    }
+    return descriptions[category] || 'Assessment category'
+  }
+
+  const sanitizeGitHubUrl = (url: string | null): string | null => {
+    if (!url) return null
+    
+    try {
+      const parsedUrl = new URL(url)
+      
+      // Only allow http and https protocols
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        return null
+      }
+      
+      // Check if hostname is a known GitHub domain
+      const allowedHostnames = [
+        'github.com',
+        'www.github.com',
+        'raw.githubusercontent.com',
+        'githubusercontent.com'
+      ]
+      
+      if (!allowedHostnames.includes(parsedUrl.hostname)) {
+        return null
+      }
+      
+      return url
+    } catch {
+      return null
+    }
   }
 
   return (
@@ -138,16 +302,151 @@ export default function Home() {
             )}
           </button>
           {error && (
-            <div className="text-danger-600 text-sm bg-danger-50 p-3 rounded-md">
-              {error}
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200">
+              <div className="flex items-center">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                <div>
+                  <p className="font-medium">Analysis Failed</p>
+                  <p className="text-sm mt-1">{error}</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
 
+      {/* Loading State */}
+      {isAnalyzing && (
+        <div className="card border-blue-200 bg-blue-50">
+          <div className="flex items-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+            <div>
+              <p className="text-blue-800 font-medium">Analyzing Repository</p>
+              <p className="text-blue-700 text-sm mt-1">This may take a few moments for large repositories...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Analysis Status */}
+      {result && result.aiAnalysisStatus && (
+        <div className={`card ${result.aiAnalysisStatus.enabled ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'}`}>
+          <h3 className={`text-lg font-semibold mb-2 ${result.aiAnalysisStatus.enabled ? 'text-blue-800' : 'text-red-800'}`}>
+            {result.aiAnalysisStatus.enabled ? '✅ AI Analysis Status' : '❌ AI Analysis Status'}
+          </h3>
+          <div className="text-sm">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p><strong>Overall Status:</strong> 
+                  <span className={result.aiAnalysisStatus.overallSuccess ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.overallSuccess ? ' ✅ Working' : ' ❌ Failed'}
+                  </span>
+                </p>
+                <p><strong>Instruction Clarity:</strong> 
+                  <span className={result.aiAnalysisStatus.instructionClarity ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.instructionClarity ? ' ✅' : ' ❌'}
+                  </span>
+                </p>
+                <p><strong>Workflow Automation:</strong> 
+                  <span className={result.aiAnalysisStatus.workflowAutomation ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.workflowAutomation ? ' ✅' : ' ❌'}
+                  </span>
+                </p>
+              </div>
+              <div>
+                <p><strong>Context Efficiency:</strong> 
+                  <span className={result.aiAnalysisStatus.contextEfficiency ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.contextEfficiency ? ' ✅' : ' ❌'}
+                  </span>
+                </p>
+                <p><strong>Risk Compliance:</strong> 
+                  <span className={result.aiAnalysisStatus.riskCompliance ? 'text-green-600' : 'text-red-600'}>
+                    {result.aiAnalysisStatus.riskCompliance ? ' ✅' : ' ❌'}
+                  </span>
+                </p>
+                {result.aiAnalysisStatus.reason && (
+                  <p><strong>Reason:</strong> <span className="text-red-600">{result.aiAnalysisStatus.reason}</span></p>
+                )}
+              </div>
+            </div>
+            
+            {/* Debug Information - Only show when there are issues */}
+            {(result.readinessScore === 0 || !result.categories || Object.values(result.categories).every(score => score === 0) || !result.aiAnalysisStatus.overallSuccess) && (
+              <div className="mt-4 pt-4 border-t border-gray-300">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Debug Information</h4>
+                <div className="text-xs text-gray-600">
+                  <p><strong>Readiness Score:</strong> {result.readinessScore} (type: {typeof result.readinessScore})</p>
+                  <p><strong>Categories:</strong> {JSON.stringify(result.categories)}</p>
+                  <p><strong>Has Categories:</strong> {result.categories ? 'Yes' : 'No'}</p>
+                  <p><strong>Categories Keys:</strong> {result.categories ? Object.keys(result.categories).join(', ') : 'None'}</p>
+                  <p><strong>Static Analysis File Count:</strong> {result.staticAnalysis?.fileCount || 'undefined'}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
       {/* Results Section */}
       {result && (
         <div className="space-y-6">
+          {/* Repository Information */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Repository Information</h3>
+              {sanitizeGitHubUrl(repoUrl) && (
+                <a
+                  href={sanitizeGitHubUrl(repoUrl)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="View repository on GitHub"
+                  className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <Github className="w-4 h-4 mr-2" />
+                  View Repository
+                </a>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="p-3 border rounded-lg">
+                <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
+                <div className="text-lg font-bold text-blue-600">
+                  {result.staticAnalysis.fileCount || result.staticAnalysis.fileSizeAnalysis?.totalFiles || 0}
+                </div>
+              </div>
+              <div className="p-3 border rounded-lg">
+                <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
+                <div className="text-lg font-bold text-green-600">
+                  {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
+                </div>
+              </div>
+              <div className="p-3 border rounded-lg">
+                <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {result.staticAnalysis.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                </div>
+              </div>
+              <div className="p-3 border rounded-lg">
+                <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
+                <div className="text-sm font-medium">
+                  {result.staticAnalysis.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                </div>
+              </div>
+              <div className="p-3 border rounded-lg">
+                <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
+                <div className="text-sm font-medium">
+                  {[
+                    result.staticAnalysis.hasReadme && 'README',
+                    result.staticAnalysis.hasAgents && 'AGENTS',
+                    result.staticAnalysis.hasContributing && 'CONTRIBUTING',
+                    result.staticAnalysis.hasLicense && 'LICENSE'
+                  ].filter(Boolean).join(', ') || 'None'}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Overall Score */}
           <div className="card">
             <div className="flex items-center justify-between mb-6">
@@ -162,8 +461,8 @@ export default function Home() {
             </div>
             
             <div className="flex items-center space-x-8">
-              <div className={`score-circle ${getScoreColor(result.readinessScore)}`}>
-                {result.readinessScore}
+              <div className={`score-circle ${getScoreColor(result.readinessScore || 0)}`}>
+                {result.readinessScore || 0}
               </div>
               <div>
                 <h3 className="text-lg font-semibold mb-2">Overall Readiness Score</h3>
@@ -180,23 +479,27 @@ export default function Home() {
           <div className="card">
             <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(result.categories).map(([category, score]) => (
-                <div key={category} className="p-4 border rounded-lg">
+              {Object.entries(result.categories || {}).map(([category, score]) => (
+                <div key={category} className="p-4 border rounded-lg group relative">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium capitalize">
                       {category.replace(/([A-Z])/g, ' $1').trim()}
                     </span>
-                    <span className={`text-sm font-bold ${getScoreColor(score).split(' ')[0]}`}>
-                      {score}/20
+                    <span className={`text-sm font-bold ${getCategoryTextColor(score || 0)}`}>
+                      {score || 0}/20
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className={`h-2 rounded-full ${
-                        score >= 16 ? 'bg-success-500' : score >= 12 ? 'bg-warning-500' : 'bg-danger-500'
+                        (score || 0) >= 16 ? 'bg-success-500' : (score || 0) >= 12 ? 'bg-warning-500' : 'bg-danger-500'
                       }`}
-                      style={{ width: `${(score / 20) * 100}%` }}
+                      style={{ width: `${((score || 0) / 20) * 100}%` }}
                     />
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    {getCategoryDescription(category)}
                   </div>
                 </div>
               ))}
@@ -237,6 +540,353 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {/* File Size Analysis */}
+          {result.staticAnalysis.fileSizeAnalysis && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">File Size & AI Agent Compatibility</h3>
+              
+              {/* Agent Compatibility Scores */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Agent Compatibility Scores</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(result.staticAnalysis.fileSizeAnalysis.agentCompatibility)
+                    .filter(([key]) => key !== 'overall')
+                    .map(([agent, score]) => (
+                    <div key={agent} className="p-3 border rounded-lg text-center">
+                      <div className="text-sm font-medium capitalize mb-1">
+                        {agent === 'githubCopilot' ? 'GitHub Copilot' : 
+                         agent === 'claudeWeb' ? 'Claude Web' :
+                         agent === 'claudeApi' ? 'Claude API' : agent}
+                      </div>
+                      <div className={`text-lg font-bold ${
+                        score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {score}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* File Size Distribution */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">File Size Distribution</h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {(['under100KB','under500KB','under1MB','under5MB','over5MB'] as const).map((range) => {
+                    const count = result.staticAnalysis.fileSizeAnalysis?.filesBySize[range] ?? 0
+                    const label =
+                      range === 'under100KB' ? 'Under 100KB' :
+                      range === 'under500KB' ? '100KB–500KB' :
+                      range === 'under1MB'   ? '500KB–1MB' :
+                      range === 'under5MB'   ? '1MB–5MB' :
+                      'Over 5MB'
+                    return (
+                    <div key={range} className="p-3 border rounded-lg text-center">
+                      <div className="text-sm font-medium mb-1">
+                        {label}
+                      </div>
+                      <div className="text-lg font-bold text-blue-600">{count}</div>
+                    </div>
+                    )})}
+                </div>
+              </div>
+
+              {/* Large Files */}
+              {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-md font-medium mb-3">Large Files (&gt;2MB)</h4>
+                  <div className="space-y-2">
+                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.slice(0, 5).map((file, index) => (
+                      <div key={index} className="p-3 border rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="font-medium text-sm truncate flex-1 mr-2">{file.path}</div>
+                          <div className="text-sm font-bold text-red-600">{file.sizeFormatted}</div>
+                        </div>
+                        <div className="text-xs text-gray-600 mb-1">
+                          Type: {file.type} | 
+                          Cursor: {file.agentImpact.cursor} | 
+                          GitHub Copilot: {file.agentImpact.githubCopilot}
+                        </div>
+                        <div className="text-xs text-gray-700">{file.recommendation}</div>
+                      </div>
+                    ))}
+                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 5 && (
+                      <div className="text-sm text-gray-500 text-center">
+                        ... and {result.staticAnalysis.fileSizeAnalysis.largeFiles.length - 5} more files
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Critical Files */}
+              {result.staticAnalysis.fileSizeAnalysis.criticalFiles.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-md font-medium mb-3">Critical Files Analysis</h4>
+                  <div className="space-y-2">
+                    {result.staticAnalysis.fileSizeAnalysis.criticalFiles.map((file, index) => (
+                      <div key={index} className="p-3 border rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="font-medium text-sm truncate flex-1 mr-2">{file.path}</div>
+                          <div className="text-sm font-bold">{file.sizeFormatted}</div>
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-1 text-xs rounded ${
+                            file.isOptimal ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {file.isOptimal ? 'Optimal' : 'Suboptimal'}
+                          </span>
+                          <span className="text-xs text-gray-600">
+                            {file.type} | Cursor: {file.agentImpact.cursor}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-700">{file.recommendation}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Context Consumption */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Context Consumption Analysis</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium mb-2">Instruction Files</div>
+                    <div className="space-y-1 text-xs">
+                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd && (
+                        <div>AGENTS.md: {Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 1024)}KB ({result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.lines} lines)</div>
+                      )}
+                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme && (
+                        <div>README: {Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 1024)}KB ({result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme.lines} lines)</div>
+                      )}
+                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing && (
+                        <div>CONTRIBUTING: {Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 1024)}KB ({result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.lines} lines)</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium mb-2">Efficiency Metrics</div>
+                    <div className="space-y-1 text-xs">
+                      <div>Total Context Files: {result.staticAnalysis.fileSizeAnalysis.contextConsumption.totalContextFiles}</div>
+                      <div>Average File Size: {Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.averageContextFileSize / 1024)}KB</div>
+                      <div>Context Efficiency: <span className={`font-medium ${
+                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'excellent' ? 'text-green-600' :
+                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'good' ? 'text-blue-600' :
+                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'moderate' ? 'text-yellow-600' : 'text-red-600'
+                      }`}>{result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* File Size Recommendations */}
+              {result.staticAnalysis.fileSizeAnalysis.recommendations.length > 0 && (
+                <div>
+                  <h4 className="text-md font-medium mb-3">File Size Recommendations</h4>
+                  <ul className="space-y-1">
+                    {result.staticAnalysis.fileSizeAnalysis.recommendations.map((rec, index) => (
+                      <li key={index} className="flex items-start text-sm">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700">{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Detailed Analysis */}
+          {result.detailedAnalysis && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Detailed Analysis</h3>
+              
+              {/* Instruction Clarity */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Instruction Clarity Breakdown</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Step-by-Step Quality</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.stepByStepQuality}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Command Clarity</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.commandClarity}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Environment Setup</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.environmentSetup}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Error Handling</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.errorHandling}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Dependency Specification</div>
+                    <div className="text-lg font-bold text-blue-600">{result.detailedAnalysis.instructionClarity.dependencySpecification}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-blue-50">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Overall Score</div>
+                    <div className="text-lg font-bold text-blue-700">{result.detailedAnalysis.instructionClarity.overallScore}/20</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow Automation */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Workflow Automation Breakdown</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">CI/CD Quality</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.ciCdQuality}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Test Automation</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.testAutomation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Build Scripts</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.buildScripts}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Deployment Automation</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.deploymentAutomation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Monitoring & Logging</div>
+                    <div className="text-lg font-bold text-green-600">{result.detailedAnalysis.workflowAutomation.monitoringLogging}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-green-50">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Overall Score</div>
+                    <div className="text-lg font-bold text-green-700">{result.detailedAnalysis.workflowAutomation.overallScore}/20</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Context Efficiency */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Context Efficiency Breakdown</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Instruction File Optimization</div>
+                    <div className="text-lg font-bold text-purple-600">{result.detailedAnalysis.contextEfficiency.instructionFileOptimization}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Code Documentation</div>
+                    <div className="text-lg font-bold text-purple-600">{result.detailedAnalysis.contextEfficiency.codeDocumentation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">API Documentation</div>
+                    <div className="text-lg font-bold text-purple-600">{result.detailedAnalysis.contextEfficiency.apiDocumentation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Context Window Usage</div>
+                    <div className="text-lg font-bold text-purple-600">{result.detailedAnalysis.contextEfficiency.contextWindowUsage}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-purple-50">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Overall Score</div>
+                    <div className="text-lg font-bold text-purple-700">{result.detailedAnalysis.contextEfficiency.overallScore}/20</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Risk & Compliance */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-3">Risk & Compliance Breakdown</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Security Practices</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.securityPractices}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Error Handling</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.errorHandling}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Input Validation</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.inputValidation}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Dependency Security</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.dependencySecurity}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">License Compliance</div>
+                    <div className="text-lg font-bold text-red-600">{result.detailedAnalysis.riskCompliance.licenseCompliance}/20</div>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-red-50">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Overall Score</div>
+                    <div className="text-lg font-bold text-red-700">{result.detailedAnalysis.riskCompliance.overallScore}/20</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Confidence Scores */}
+          {result.confidence && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Assessment Confidence</h3>
+                <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                  Based on data quality and analysis completeness
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Confidence scores indicate how reliable the assessment is based on available data quality, 
+                completeness of analysis, and consistency of findings across different evaluation methods.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Overall</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.overall >= 80 ? 'text-green-600' : 
+                    result.confidence.overall >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.overall}%
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Instruction Clarity</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.instructionClarity >= 80 ? 'text-green-600' : 
+                    result.confidence.instructionClarity >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.instructionClarity}%
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Workflow Automation</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.workflowAutomation >= 80 ? 'text-green-600' : 
+                    result.confidence.workflowAutomation >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.workflowAutomation}%
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Context Efficiency</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.contextEfficiency >= 80 ? 'text-green-600' : 
+                    result.confidence.contextEfficiency >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.contextEfficiency}%
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Risk & Compliance</div>
+                  <div className={`text-lg font-bold ${
+                    result.confidence.riskCompliance >= 80 ? 'text-green-600' : 
+                    result.confidence.riskCompliance >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {result.confidence.riskCompliance}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Key Findings */}
           <div className="card">
