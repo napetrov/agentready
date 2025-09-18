@@ -159,6 +159,45 @@ interface AssessmentResult {
       recommendations: string[]
     }
   }
+  websiteAnalysis?: {
+    websiteType: 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown'
+    restaurantMetrics?: {
+      hasHours: boolean
+      hasMenu: boolean
+      hasReservations: boolean
+      hasOrdering: boolean
+      hasIngredients: boolean
+      hasCalories: boolean
+      hasLocation: boolean
+      hasPhone: boolean
+      hasDelivery: boolean
+      hasReviews: boolean
+    }
+    documentationMetrics?: {
+      hasApiDocs: boolean
+      hasExamples: boolean
+      hasTutorials: boolean
+      hasChangelog: boolean
+      hasVersioning: boolean
+      hasCodeSamples: boolean
+      hasInstallationGuide: boolean
+      hasQuickStart: boolean
+      hasReference: boolean
+      hasCommunity: boolean
+    }
+    ecommerceMetrics?: {
+      hasProductCatalog: boolean
+      hasSearch: boolean
+      hasFilters: boolean
+      hasReviews: boolean
+      hasWishlist: boolean
+      hasCart: boolean
+      hasCheckout: boolean
+      hasPayment: boolean
+      hasShipping: boolean
+      hasReturns: boolean
+    }
+  }
 }
 
 export default function Home() {
@@ -706,6 +745,57 @@ export default function Home() {
                     </div>
                   )}
                 </div>
+
+                {/* Website Type and Type-Specific Metrics */}
+                {result.websiteAnalysis && (
+                  <div className="mt-6 p-4 border rounded-lg bg-blue-50">
+                    <h4 className="text-lg font-medium mb-3 text-blue-900">
+                      Website Type: <span className="capitalize">{result.websiteAnalysis.websiteType}</span>
+                    </h4>
+                    
+                    {result.websiteAnalysis.websiteType === 'restaurant' && result.websiteAnalysis.restaurantMetrics && (
+                      <div>
+                        <h5 className="text-md font-medium mb-2 text-blue-800">Restaurant Features</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                          {Object.entries(result.websiteAnalysis.restaurantMetrics).map(([key, value]) => (
+                            <div key={key} className="flex items-center space-x-2">
+                              <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                              <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {result.websiteAnalysis.websiteType === 'documentation' && result.websiteAnalysis.documentationMetrics && (
+                      <div>
+                        <h5 className="text-md font-medium mb-2 text-blue-800">Documentation Features</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                          {Object.entries(result.websiteAnalysis.documentationMetrics).map(([key, value]) => (
+                            <div key={key} className="flex items-center space-x-2">
+                              <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                              <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {result.websiteAnalysis.websiteType === 'ecommerce' && result.websiteAnalysis.ecommerceMetrics && (
+                      <div>
+                        <h5 className="text-md font-medium mb-2 text-blue-800">E-commerce Features</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                          {Object.entries(result.websiteAnalysis.ecommerceMetrics).map(([key, value]) => (
+                            <div key={key} className="flex items-center space-x-2">
+                              <div className={`w-4 h-4 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                              <span className="text-sm capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -50,6 +50,87 @@ export interface StaticAnalysisResult {
   navigationStructure?: string[]
 }
 
+export interface WebsiteAnalysisResult {
+  // Basic website info
+  websiteUrl: string
+  pageTitle: string
+  metaDescription: string
+  
+  // AI Agent Readiness - Core Metrics
+  hasStructuredData: boolean
+  hasOpenGraph: boolean
+  hasTwitterCards: boolean
+  hasSitemap: boolean
+  hasRobotsTxt: boolean
+  hasFavicon: boolean
+  hasManifest: boolean
+  hasServiceWorker: boolean
+  
+  // Performance & Accessibility
+  pageLoadSpeed: number
+  mobileFriendly: boolean
+  accessibilityScore: number
+  seoScore: number
+  
+  // Content Analysis
+  contentLength: number
+  imageCount: number
+  linkCount: number
+  headingStructure: {
+    [key: string]: number
+  }
+  
+  // Technology & Integration
+  technologies: string[]
+  securityHeaders: string[]
+  socialMediaLinks: string[]
+  contactInfo: string[]
+  navigationStructure: string[]
+  
+  // Website Type Detection
+  websiteType: 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown'
+  
+  // Type-specific metrics
+  restaurantMetrics?: {
+    hasHours: boolean
+    hasMenu: boolean
+    hasReservations: boolean
+    hasOrdering: boolean
+    hasIngredients: boolean
+    hasCalories: boolean
+    hasLocation: boolean
+    hasPhone: boolean
+    hasDelivery: boolean
+    hasReviews: boolean
+  }
+  
+  documentationMetrics?: {
+    hasApiDocs: boolean
+    hasExamples: boolean
+    hasTutorials: boolean
+    hasChangelog: boolean
+    hasVersioning: boolean
+    hasCodeSamples: boolean
+    hasInstallationGuide: boolean
+    hasQuickStart: boolean
+    hasReference: boolean
+    hasCommunity: boolean
+  }
+  
+  ecommerceMetrics?: {
+    hasProductCatalog: boolean
+    hasSearch: boolean
+    hasFilters: boolean
+    hasReviews: boolean
+    hasWishlist: boolean
+    hasCart: boolean
+    hasCheckout: boolean
+    hasPayment: boolean
+    hasShipping: boolean
+    hasReturns: boolean
+  }
+}
+
 export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysisResult> {
   try {
     // Extract owner and repo from URL
@@ -419,6 +500,109 @@ function isTextFile(extension: string | undefined): boolean {
   return textExtensions.includes(extension.toLowerCase())
 }
 
+function detectWebsiteType($: cheerio.CheerioAPI, html: string, url: string): 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown' {
+  const text = $('body').text().toLowerCase()
+  const title = $('title').text().toLowerCase()
+  const domain = new URL(url).hostname.toLowerCase()
+  
+  // Restaurant detection
+  const restaurantKeywords = ['menu', 'restaurant', 'food', 'dining', 'reservation', 'order', 'delivery', 'takeout', 'cuisine', 'chef', 'kitchen']
+  const restaurantIndicators = restaurantKeywords.some(keyword => 
+    text.includes(keyword) || title.includes(keyword) || domain.includes(keyword)
+  )
+  
+  // Documentation detection
+  const docKeywords = ['api', 'documentation', 'docs', 'guide', 'tutorial', 'reference', 'changelog', 'version', 'install', 'getting started', 'quick start']
+  const docIndicators = docKeywords.some(keyword => 
+    text.includes(keyword) || title.includes(keyword) || domain.includes(keyword)
+  )
+  
+  // E-commerce detection
+  const ecommerceKeywords = ['shop', 'store', 'buy', 'cart', 'checkout', 'product', 'price', 'sale', 'shopping', 'purchase', 'order']
+  const ecommerceIndicators = ecommerceKeywords.some(keyword => 
+    text.includes(keyword) || title.includes(keyword) || domain.includes(keyword)
+  )
+  
+  // Blog detection
+  const blogKeywords = ['blog', 'post', 'article', 'news', 'update', 'published', 'author', 'comment']
+  const blogIndicators = blogKeywords.some(keyword => 
+    text.includes(keyword) || title.includes(keyword) || domain.includes(keyword)
+  )
+  
+  // Portfolio detection
+  const portfolioKeywords = ['portfolio', 'work', 'projects', 'about', 'contact', 'resume', 'cv', 'skills', 'experience']
+  const portfolioIndicators = portfolioKeywords.some(keyword => 
+    text.includes(keyword) || title.includes(keyword) || domain.includes(keyword)
+  )
+  
+  // Business detection (generic business website)
+  const businessKeywords = ['services', 'company', 'about us', 'contact us', 'team', 'mission', 'vision', 'careers', 'jobs']
+  const businessIndicators = businessKeywords.some(keyword => 
+    text.includes(keyword) || title.includes(keyword) || domain.includes(keyword)
+  )
+  
+  // Priority order: restaurant > documentation > ecommerce > blog > portfolio > business > unknown
+  if (restaurantIndicators) return 'restaurant'
+  if (docIndicators) return 'documentation'
+  if (ecommerceIndicators) return 'ecommerce'
+  if (blogIndicators) return 'blog'
+  if (portfolioIndicators) return 'portfolio'
+  if (businessIndicators) return 'business'
+  
+  return 'unknown'
+}
+
+function analyzeRestaurantMetrics($: cheerio.CheerioAPI, html: string) {
+  const text = $('body').text().toLowerCase()
+  
+  return {
+    hasHours: /hours?|open|closed|monday|tuesday|wednesday|thursday|friday|saturday|sunday|am|pm/i.test(text),
+    hasMenu: /menu|food|dish|appetizer|entree|dessert|beverage|wine|beer|drink/i.test(text) || $('a[href*="menu"], .menu, #menu').length > 0,
+    hasReservations: /reservation|book|table|reserve|opentable|resy/i.test(text) || $('a[href*="reservation"], a[href*="book"], a[href*="opentable"], a[href*="resy"]').length > 0,
+    hasOrdering: /order|delivery|takeout|pickup|online ordering|grubhub|doordash|ubereats/i.test(text) || $('a[href*="order"], a[href*="delivery"], a[href*="takeout"]').length > 0,
+    hasIngredients: /ingredient|allergen|gluten|dairy|vegan|vegetarian|organic|fresh|local/i.test(text),
+    hasCalories: /calorie|nutrition|nutritional|kcal/i.test(text),
+    hasLocation: /address|location|map|directions|street|avenue|road/i.test(text) || $('a[href*="maps"], a[href*="google"], .address, .location').length > 0,
+    hasPhone: $('a[href^="tel:"]').length > 0 || /phone|call|\(\d{3}\)|\d{3}-\d{3}-\d{4}/i.test(text),
+    hasDelivery: /delivery|deliver|delivery area|delivery zone/i.test(text) || $('a[href*="delivery"]').length > 0,
+    hasReviews: /review|rating|stars?|yelp|google|tripadvisor|foursquare/i.test(text) || $('a[href*="yelp"], a[href*="google"], a[href*="tripadvisor"]').length > 0
+  }
+}
+
+function analyzeDocumentationMetrics($: cheerio.CheerioAPI, html: string) {
+  const text = $('body').text().toLowerCase()
+  
+  return {
+    hasApiDocs: /api|endpoint|reference|swagger|openapi|graphql|rest/i.test(text) || $('a[href*="api"], a[href*="reference"], a[href*="swagger"]').length > 0,
+    hasExamples: /example|sample|demo|tutorial|how to|getting started/i.test(text) || $('a[href*="example"], a[href*="sample"], a[href*="demo"]').length > 0,
+    hasTutorials: /tutorial|guide|walkthrough|step by step|learn|training/i.test(text) || $('a[href*="tutorial"], a[href*="guide"]').length > 0,
+    hasChangelog: /changelog|changelog|release notes|version history|what's new/i.test(text) || $('a[href*="changelog"], a[href*="release"]').length > 0,
+    hasVersioning: /version|v\d+\.\d+|semantic versioning|semver/i.test(text) || $('a[href*="version"], .version').length > 0,
+    hasCodeSamples: /code|snippet|example|copy|run|execute|bash|shell|curl|javascript|python|java|php|ruby|go/i.test(text) || $('pre, code, .code, .snippet').length > 0,
+    hasInstallationGuide: /install|setup|getting started|quick start|prerequisites|requirements/i.test(text) || $('a[href*="install"], a[href*="setup"]').length > 0,
+    hasQuickStart: /quick start|getting started|5 minute|hello world|first steps/i.test(text) || $('a[href*="quick"], a[href*="getting-started"]').length > 0,
+    hasReference: /reference|api reference|documentation|docs|manual/i.test(text) || $('a[href*="reference"], a[href*="docs"]').length > 0,
+    hasCommunity: /community|forum|discord|slack|github|discussions|chat|support/i.test(text) || $('a[href*="discord"], a[href*="slack"], a[href*="github"]').length > 0
+  }
+}
+
+function analyzeEcommerceMetrics($: cheerio.CheerioAPI, html: string) {
+  const text = $('body').text().toLowerCase()
+  
+  return {
+    hasProductCatalog: /product|catalog|item|shop|store|buy|price|sale/i.test(text) || $('.product, .item, .catalog, [data-product]').length > 0,
+    hasSearch: $('input[type="search"], .search, #search, [placeholder*="search"]').length > 0 || /search|find|look for/i.test(text),
+    hasFilters: /filter|sort|category|brand|price range|size|color/i.test(text) || $('.filter, .sort, .category, [data-filter]').length > 0,
+    hasReviews: /review|rating|stars?|customer review|testimonial/i.test(text) || $('.review, .rating, .stars, [data-review]').length > 0,
+    hasWishlist: /wishlist|favorite|save|bookmark/i.test(text) || $('a[href*="wishlist"], .wishlist, .favorite').length > 0,
+    hasCart: /cart|shopping cart|basket|checkout/i.test(text) || $('.cart, .basket, a[href*="cart"]').length > 0,
+    hasCheckout: /checkout|payment|billing|shipping|order/i.test(text) || $('a[href*="checkout"], .checkout').length > 0,
+    hasPayment: /payment|credit card|paypal|stripe|apple pay|google pay/i.test(text) || $('a[href*="payment"], .payment').length > 0,
+    hasShipping: /shipping|delivery|shipping info|shipping policy/i.test(text) || $('a[href*="shipping"], .shipping').length > 0,
+    hasReturns: /return|refund|exchange|return policy/i.test(text) || $('a[href*="return"], .return').length > 0
+  }
+}
+
 export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<StaticAnalysisResult> {
   try {
     console.log('🌐 Starting website analysis for:', websiteUrl)
@@ -658,7 +842,7 @@ export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<
   }
 }
 
-export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysisResult> {
+export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysisResult> {
   try {
     console.log('🌐 Starting website AI agent readiness analysis for:', websiteUrl)
     
@@ -678,26 +862,17 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
     const $ = cheerio.load(html)
     const url = new URL(websiteUrl)
 
-    // Initialize analysis result with AI agent readiness focus
-    const analysis: StaticAnalysisResult = {
-      hasReadme: false,
-      hasContributing: false,
-      hasAgents: false,
-      hasLicense: false,
-      hasWorkflows: false,
-      hasTests: false,
-      languages: [],
-      errorHandling: false,
-      fileCount: 1,
-      linesOfCode: html.split('\n').length,
-      repositorySizeMB: Math.round((html.length / (1024 * 1024)) * 100) / 100,
-      workflowFiles: [],
-      testFiles: [],
-      fileSizeAnalysis: undefined,
-      // AI Agent Readiness specific properties
+    // Detect website type
+    const websiteType = detectWebsiteType($, html, websiteUrl)
+    
+    // Initialize clean website analysis result
+    const analysis: WebsiteAnalysisResult = {
+      // Basic website info
       websiteUrl: websiteUrl,
       pageTitle: $('title').text().trim() || 'No title found',
       metaDescription: $('meta[name="description"]').attr('content') || '',
+      
+      // AI Agent Readiness - Core Metrics
       hasStructuredData: $('script[type="application/ld+json"]').length > 0,
       hasOpenGraph: $('meta[property^="og:"]').length > 0,
       hasTwitterCards: $('meta[name^="twitter:"]').length > 0,
@@ -706,10 +881,14 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
       hasFavicon: $('link[rel="icon"], link[rel="shortcut icon"]').length > 0,
       hasManifest: $('link[rel="manifest"]').length > 0,
       hasServiceWorker: false,
+      
+      // Performance & Accessibility
       pageLoadSpeed: 0,
       mobileFriendly: $('meta[name="viewport"]').length > 0,
       accessibilityScore: 0,
       seoScore: 0,
+      
+      // Content Analysis
       contentLength: html.length,
       imageCount: $('img').length,
       linkCount: $('a[href]').length,
@@ -721,21 +900,19 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
         h5: $('h5').length,
         h6: $('h6').length,
       },
+      
+      // Technology & Integration
       technologies: [],
       securityHeaders: [],
       socialMediaLinks: [],
       contactInfo: [],
-      navigationStructure: []
+      navigationStructure: [],
+      
+      // Website Type Detection
+      websiteType: websiteType
     }
 
-    // AI Agent Readiness: Check for structured data (critical for AI understanding)
-    analysis.hasStructuredData = $('script[type="application/ld+json"]').length > 0
-
-    // AI Agent Readiness: Check for Open Graph and Twitter Cards (social sharing)
-    analysis.hasOpenGraph = $('meta[property^="og:"]').length > 0
-    analysis.hasTwitterCards = $('meta[name^="twitter:"]').length > 0
-
-    // AI Agent Readiness: Check for sitemap and robots.txt (crawling support)
+    // Check for sitemap and robots.txt (crawling support)
     try {
       const robotsResponse = await axios.get(new URL('/robots.txt', websiteUrl).toString(), { timeout: 5000 })
       analysis.hasRobotsTxt = true
@@ -744,14 +921,14 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
       // robots.txt not found
     }
 
-    // AI Agent Readiness: Check for service worker (PWA capabilities)
+    // Check for service worker (PWA capabilities)
     const swScripts = $('script').filter((_, el) => {
       const scriptContent = $(el).html() || ''
       return scriptContent.includes('serviceWorker') || scriptContent.includes('navigator.serviceWorker')
     })
     analysis.hasServiceWorker = swScripts.length > 0
 
-    // AI Agent Readiness: Accessibility score (critical for AI agents)
+    // Calculate accessibility score
     let accessibilityScore = 0
     if ($('h1').length > 0) accessibilityScore += 20 // Single H1
     if ($('nav').length > 0) accessibilityScore += 20 // Navigation structure
@@ -760,7 +937,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
     if ($('a[href]').length > 0) accessibilityScore += 20 // Links have href
     analysis.accessibilityScore = accessibilityScore
 
-    // AI Agent Readiness: SEO score (discoverability)
+    // Calculate SEO score
     let seoScore = 0
     if (analysis.pageTitle && analysis.pageTitle.length > 10 && analysis.pageTitle.length < 60) seoScore += 25
     if (analysis.metaDescription && analysis.metaDescription.length > 120 && analysis.metaDescription.length < 160) seoScore += 25
@@ -768,7 +945,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
     if (analysis.hasOpenGraph) seoScore += 25
     analysis.seoScore = seoScore
 
-    // AI Agent Readiness: Detect technologies (API integration potential)
+    // Detect technologies
     const techSet = new Set<string>()
     $('meta[name="generator"]').each((_, el) => {
       const content = $(el).attr('content')
@@ -787,7 +964,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
     })
     analysis.technologies = Array.from(techSet)
 
-    // AI Agent Readiness: Extract social media links (contact channels)
+    // Extract social media links
     const socialLinks: string[] = []
     $('a[href]').each((_, el) => {
       const href = $(el).attr('href')
@@ -801,7 +978,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
     })
     analysis.socialMediaLinks = [...new Set(socialLinks)]
 
-    // AI Agent Readiness: Extract contact information (business data)
+    // Extract contact information
     const contactInfo: string[] = []
     $('a[href^="tel:"]').each((_, el) => {
       const href = $(el).attr('href')
@@ -813,7 +990,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
     })
     analysis.contactInfo = contactInfo
 
-    // AI Agent Readiness: Analyze navigation structure (content organization)
+    // Analyze navigation structure
     const navItems: string[] = []
     $('nav a, .nav a, .navigation a, .menu a').each((_, el) => {
       const text = $(el).text().trim()
@@ -821,16 +998,19 @@ export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysis
     })
     analysis.navigationStructure = navItems
 
-    // Set languages based on detected technologies
-    if (analysis.technologies.length > 0) {
-      analysis.languages = analysis.technologies
-    } else {
-      analysis.languages = ['HTML', 'CSS', 'JavaScript']
+    // Add type-specific metrics based on detected website type
+    if (analysis.websiteType === 'restaurant') {
+      analysis.restaurantMetrics = analyzeRestaurantMetrics($, html)
+    } else if (analysis.websiteType === 'documentation') {
+      analysis.documentationMetrics = analyzeDocumentationMetrics($, html)
+    } else if (analysis.websiteType === 'ecommerce') {
+      analysis.ecommerceMetrics = analyzeEcommerceMetrics($, html)
     }
 
     console.log('✅ Website AI agent readiness analysis completed:', {
       url: websiteUrl,
       title: analysis.pageTitle,
+      type: analysis.websiteType,
       structuredData: analysis.hasStructuredData,
       openGraph: analysis.hasOpenGraph,
       accessibility: analysis.accessibilityScore,

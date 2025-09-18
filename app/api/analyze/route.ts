@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { analyzeRepository, analyzeWebsite } from '../../../lib/analyzer'
+import { analyzeRepository, analyzeWebsite, WebsiteAnalysisResult } from '../../../lib/analyzer'
 import { generateAIAssessment } from '../../../lib/ai-assessment'
 import { generateEnhancedAIAssessment, generateWebsiteAIAssessment } from '../../../lib/enhanced-ai-assessment'
 
@@ -44,11 +44,54 @@ export async function POST(request: NextRequest) {
     }
 
     // Perform analysis based on input type
-    let staticAnalysis
+    let staticAnalysis: any
+    let websiteAnalysis: WebsiteAnalysisResult | null = null
+    
     if (inputType === 'repository') {
       staticAnalysis = await analyzeRepository(inputUrl)
     } else {
-      staticAnalysis = await analyzeWebsite(inputUrl)
+      websiteAnalysis = await analyzeWebsite(inputUrl)
+      // Convert website analysis to static analysis format for AI assessment
+      staticAnalysis = {
+        hasReadme: false,
+        hasContributing: false,
+        hasAgents: false,
+        hasLicense: false,
+        hasWorkflows: false,
+        hasTests: false,
+        languages: websiteAnalysis.technologies,
+        errorHandling: false,
+        fileCount: 1,
+        linesOfCode: 0,
+        repositorySizeMB: websiteAnalysis.contentLength / (1024 * 1024),
+        workflowFiles: [],
+        testFiles: [],
+        // Map website properties to static analysis format
+        websiteUrl: websiteAnalysis.websiteUrl,
+        pageTitle: websiteAnalysis.pageTitle,
+        metaDescription: websiteAnalysis.metaDescription,
+        hasStructuredData: websiteAnalysis.hasStructuredData,
+        hasOpenGraph: websiteAnalysis.hasOpenGraph,
+        hasTwitterCards: websiteAnalysis.hasTwitterCards,
+        hasSitemap: websiteAnalysis.hasSitemap,
+        hasRobotsTxt: websiteAnalysis.hasRobotsTxt,
+        hasFavicon: websiteAnalysis.hasFavicon,
+        hasManifest: websiteAnalysis.hasManifest,
+        hasServiceWorker: websiteAnalysis.hasServiceWorker,
+        pageLoadSpeed: websiteAnalysis.pageLoadSpeed,
+        mobileFriendly: websiteAnalysis.mobileFriendly,
+        accessibilityScore: websiteAnalysis.accessibilityScore,
+        seoScore: websiteAnalysis.seoScore,
+        contentLength: websiteAnalysis.contentLength,
+        imageCount: websiteAnalysis.imageCount,
+        linkCount: websiteAnalysis.linkCount,
+        headingStructure: websiteAnalysis.headingStructure,
+        technologies: websiteAnalysis.technologies,
+        securityHeaders: websiteAnalysis.securityHeaders,
+        socialMediaLinks: websiteAnalysis.socialMediaLinks,
+        contactInfo: websiteAnalysis.contactInfo,
+        navigationStructure: websiteAnalysis.navigationStructure
+      }
     }
 
     // Generate appropriate AI assessment based on input type
@@ -66,6 +109,15 @@ export async function POST(request: NextRequest) {
       detailedAnalysis: aiAssessment.detailedAnalysis,
       confidence: aiAssessment.confidence,
       staticAnalysis: staticAnalysis,
+      // Include website-specific data if available
+      ...(websiteAnalysis && {
+        websiteAnalysis: {
+          websiteType: websiteAnalysis.websiteType,
+          restaurantMetrics: websiteAnalysis.restaurantMetrics,
+          documentationMetrics: websiteAnalysis.documentationMetrics,
+          ecommerceMetrics: websiteAnalysis.ecommerceMetrics
+        }
+      })
     }
 
     return NextResponse.json(result)
