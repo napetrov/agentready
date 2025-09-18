@@ -372,7 +372,7 @@ function generateFallbackAssessment(staticAnalysis: StaticAnalysisSummary): AIAs
     else if (fs.contextConsumption.contextEfficiency === 'poor') fileSizeOptimizationScore -= 5
   }
 
-  const totalScore = documentationScore + instructionClarityScore + workflowAutomationScore + riskComplianceScore + integrationStructureScore + fileSizeOptimizationScore
+  const totalScore = Math.round((documentationScore + instructionClarityScore + workflowAutomationScore + riskComplianceScore + integrationStructureScore + fileSizeOptimizationScore) / 6 * 5)
 
   const findings: string[] = []
   const recommendations: string[] = []

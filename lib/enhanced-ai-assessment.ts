@@ -709,7 +709,8 @@ function combineAssessmentResults(
   ])
 
   // Calculate overall readiness score (0-100 scale)
-  const overallScore = Math.min(100, Math.round((instructionScore + workflowScore + contextScore + riskScore) / 4 * 5))
+  const averageScore = (instructionScore + workflowScore + contextScore + riskScore) / 4
+  const overallScore = Math.min(100, Math.round(averageScore * 5))
 
   // Generate findings and recommendations with proper type guards and fallbacks
   const aiFindings = [

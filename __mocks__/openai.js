@@ -64,6 +64,21 @@ const mockCreate = jest.fn().mockImplementation((params) => {
       recommendations: ['Enhance input validation'],
       confidence: 82
     }
+  } else if (allMessages.includes('expert ai agent readiness assessor')) {
+    // Response for the old generateAIAssessment function
+    mockResponse = {
+      readinessScore: 75,
+      categories: {
+        documentation: 15,
+        instructionClarity: 12,
+        workflowAutomation: 14,
+        riskCompliance: 13,
+        integrationStructure: 11,
+        fileSizeOptimization: 10
+      },
+      findings: ['Repository has good documentation structure', 'CI/CD workflows are well configured'],
+      recommendations: ['Add more detailed API documentation', 'Consider improving error handling patterns']
+    }
   } else {
     // Default response for other prompts
     mockResponse = {
