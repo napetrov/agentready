@@ -53,6 +53,7 @@ describe('generateAIAssessment', () => {
       languages: ['TypeScript', 'JavaScript'],
       errorHandling: true,
       fileCount: 50,
+      linesOfCode: 1500,
       workflowFiles: ['ci.yml'],
       testFiles: ['test.js'],
       readmeContent: 'Test README',
@@ -83,6 +84,7 @@ describe('generateAIAssessment', () => {
       languages: ['TypeScript'],
       errorHandling: true,
       fileCount: 25,
+      linesOfCode: 800,
       workflowFiles: ['ci.yml'],
       testFiles: ['test.js']
     }
@@ -112,6 +114,7 @@ describe('generateAIAssessment', () => {
       languages: ['JavaScript'],
       errorHandling: false,
       fileCount: 10,
+      linesOfCode: 300,
       workflowFiles: [],
       testFiles: [],
       fileSizeAnalysis: {
@@ -201,6 +204,7 @@ describe('generateAIAssessment', () => {
       languages: ['JavaScript'],
       errorHandling: false,
       fileCount: 10,
+      linesOfCode: 250,
       workflowFiles: [],
       testFiles: []
     }
@@ -236,6 +240,7 @@ describe('generateAIAssessment', () => {
       languages: ['JavaScript'],
       errorHandling: false,
       fileCount: 10,
+      linesOfCode: 200,
       workflowFiles: [],
       testFiles: []
     }
@@ -282,6 +287,7 @@ describe('generateAIAssessment', () => {
       languages: ['JavaScript'],
       errorHandling: false,
       fileCount: 10,
+      linesOfCode: 180,
       workflowFiles: [],
       testFiles: []
     }
@@ -306,6 +312,7 @@ describe('generateAIAssessment', () => {
       languages: [],
       errorHandling: false,
       fileCount: 0,
+      linesOfCode: 0,
       workflowFiles: [],
       testFiles: []
     }

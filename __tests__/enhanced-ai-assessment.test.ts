@@ -23,7 +23,7 @@ jest.mock('openai', () => {
     }
     
     // Normal mode - concatenate all messages and convert to lowercase for matching
-    const allMessages = params.messages.map(m => m.content).join(' ').toLowerCase()
+    const allMessages = params.messages.map((m: any) => m.content).join(' ').toLowerCase()
     let mockResponse = {}
     
     if (allMessages.includes('instruction clarity')) {
@@ -102,6 +102,7 @@ describe('generateEnhancedAIAssessment', () => {
     languages: ['TypeScript', 'JavaScript'],
     errorHandling: true,
     fileCount: 25,
+    linesOfCode: 2500,
     workflowFiles: ['ci.yml', 'deploy.yml'],
     testFiles: ['test.ts', 'spec.js'],
     readmeContent: 'Comprehensive README with setup instructions',
@@ -236,6 +237,7 @@ describe('generateEnhancedAIAssessment', () => {
       languages: [],
       errorHandling: false,
       fileCount: 0,
+      linesOfCode: 0,
       workflowFiles: [],
       testFiles: []
     }
