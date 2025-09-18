@@ -51,7 +51,11 @@ export interface GitHubRepositoryMetadata {
 
 export interface GitHubActivityMetrics {
   commitActivity: {
-    weekly: Array<[number, number, number]>; // [timestamp, additions, deletions]
+    weekly: Array<{
+      week: number;
+      total: number;
+      days: number[];
+    }>;
     contributors: Array<{
       author: { login: string; id: number };
       total: number;
@@ -146,11 +150,39 @@ export class GitHubAPIClient {
    * Extract owner and repo from GitHub URL
    */
   private extractOwnerRepo(repoUrl: string): { owner: string; repo: string } {
-    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-    if (!match) {
-      throw new Error('Invalid GitHub repository URL');
+    try {
+      // Add protocol if missing
+      let url = repoUrl;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
+      // Parse URL
+      const parsedUrl = new URL(url);
+      const pathname = parsedUrl.pathname;
+      
+      // Split pathname by "/" and filter out empty segments
+      const segments = pathname.split('/').filter(segment => segment.length > 0);
+      
+      // Ensure we have at least two segments (owner and repo)
+      if (segments.length < 2) {
+        throw new Error('Invalid GitHub repository URL: insufficient path segments');
+      }
+      
+      const owner = segments[0];
+      let repo = segments[1];
+      
+      // Strip .git suffix and trailing slash
+      repo = repo.replace(/\.git$/, '').replace(/\/$/, '');
+      
+      if (!owner || !repo) {
+        throw new Error('Invalid GitHub repository URL: missing owner or repository name');
+      }
+      
+      return { owner, repo };
+    } catch (error) {
+      throw new Error(`Invalid GitHub repository URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    return { owner: match[1], repo: match[2] };
   }
 
   /**
@@ -194,6 +226,51 @@ export class GitHubAPIClient {
    */
   private checkRateLimit(requiredRequests: number = 1): boolean {
     return this.rateLimitRemaining >= requiredRequests;
+  }
+
+  /**
+   * Poll stats endpoint with retry logic for 202 responses
+   */
+  private async pollStats(endpoint: string, maxRetries: number = 6, delayMs: number = 1500): Promise<any> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(`${this.baseURL}${endpoint}`, {
+          headers: {
+            'Authorization': `Bearer ${this.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'AI-Agent-Readiness-Assessment/1.0'
+          }
+        });
+
+        if (response.status === 202) {
+          // Stats not ready, wait and retry
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            continue;
+          } else {
+            throw new Error('Stats data not ready after maximum retries');
+          }
+        }
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Repository not found');
+          }
+          if (response.status === 403) {
+            throw new Error('Rate limit exceeded or repository access denied');
+          }
+          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        }
+
+        return await response.json();
+      } catch (error) {
+        if (attempt === maxRetries - 1) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+    throw new Error('Failed to fetch stats data after maximum retries');
   }
 
   /**
@@ -269,13 +346,13 @@ export class GitHubAPIClient {
 
     try {
       // Get weekly commit activity
-      const weeklyData = await this.makeRequest(`/repos/${owner}/${repo}/stats/commit_activity`);
+      const weeklyData = await this.pollStats(`/repos/${owner}/${repo}/stats/commit_activity`);
       
       // Get contributors
-      const contributorsData = await this.makeRequest(`/repos/${owner}/${repo}/stats/contributors`);
+      const contributorsData = await this.pollStats(`/repos/${owner}/${repo}/stats/contributors`);
       
       // Get participation data
-      const participationData = await this.makeRequest(`/repos/${owner}/${repo}/stats/participation`);
+      const participationData = await this.pollStats(`/repos/${owner}/${repo}/stats/participation`);
 
       // Calculate metrics
       const lastYearCommits = weeklyData.reduce((sum: number, week: any) => sum + week.total, 0);
@@ -284,7 +361,11 @@ export class GitHubAPIClient {
 
       return {
         commitActivity: {
-          weekly: weeklyData.map((week: any) => [week.week, week.additions, week.deletions]),
+          weekly: weeklyData.map((week: any) => ({
+            week: week.week,
+            total: week.total,
+            days: week.days
+          })),
           contributors: contributorsData.map((contributor: any) => ({
             author: {
               login: contributor.author.login,
@@ -334,13 +415,16 @@ export class GitHubAPIClient {
       // Get issue labels
       const labelsData = await this.makeRequest(`/repos/${owner}/${repo}/labels?per_page=100`);
 
-      // Calculate metrics
-      const totalIssues = issuesData.length;
-      const openIssues = issuesData.filter((issue: any) => issue.state === 'open').length;
+      // Filter out pull requests (issues with pull_request field)
+      const filteredIssues = issuesData.filter((i: any) => !i.pull_request);
+
+      // Calculate metrics using filtered issues
+      const totalIssues = filteredIssues.length;
+      const openIssues = filteredIssues.filter((issue: any) => issue.state === 'open').length;
       const closedIssues = totalIssues - openIssues;
       
       // Calculate average resolution time (simplified)
-      const closedIssuesWithDates = issuesData.filter((issue: any) => 
+      const closedIssuesWithDates = filteredIssues.filter((issue: any) => 
         issue.state === 'closed' && issue.closed_at
       );
       const averageResolutionTime = closedIssuesWithDates.length > 0 
@@ -351,10 +435,10 @@ export class GitHubAPIClient {
           }, 0) / closedIssuesWithDates.length / (1000 * 60 * 60 * 24) // Convert to days
         : 0;
 
-      const hasLabels = issuesData.some((issue: any) => issue.labels && issue.labels.length > 0);
-      const hasAssignees = issuesData.some((issue: any) => issue.assignees && issue.assignees.length > 0);
-      const recentActivity = issuesData.length > 0 && 
-        new Date(issuesData[0].updated_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000; // Last 7 days
+      const hasLabels = filteredIssues.some((issue: any) => issue.labels && issue.labels.length > 0);
+      const hasAssignees = filteredIssues.some((issue: any) => issue.assignees && issue.assignees.length > 0);
+      const recentActivity = filteredIssues.length > 0 && 
+        new Date(filteredIssues[0].updated_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000; // Last 7 days
 
       return {
         issues: {

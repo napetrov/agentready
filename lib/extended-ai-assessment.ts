@@ -173,10 +173,10 @@ export async function generateExtendedAIAssessment(
 
     if (githubData) {
       console.log('📊 GitHub Data Summary:', {
-        repository: githubData.metadata.fullName,
-        language: githubData.metadata.language,
-        openIssues: githubData.metadata.openIssuesCount,
-        lastPush: githubData.metadata.pushedAt,
+        repository: githubData.metadata?.fullName ?? 'Unknown',
+        language: githubData.metadata?.language ?? 'Unknown',
+        openIssues: githubData.metadata?.openIssuesCount ?? 0,
+        lastPush: githubData.metadata?.pushedAt ?? 'Unknown',
         communityHealth: githubData.communityHealth?.communityProfile?.healthPercentage ?? 0
       })
     }
@@ -558,11 +558,11 @@ Repository Information:
   if (githubData) {
     prompt += `
 GitHub Data:
-- Repository: ${githubData.metadata.fullName}
-- Primary Language: ${githubData.metadata.language}
-- Topics: ${githubData.metadata.topics.join(', ')}
-- Open Issues: ${githubData.metadata.openIssuesCount}
-- Recent Activity: ${githubData.activityMetrics.recentActivity}
+- Repository: ${githubData.metadata?.fullName ?? 'Unknown'}
+- Primary Language: ${githubData.metadata?.language ?? 'Unknown'}
+- Topics: ${(githubData.metadata?.topics ?? []).join(', ')}
+- Open Issues: ${githubData.metadata?.openIssuesCount ?? 0}
+- Recent Activity: ${githubData.activityMetrics?.recentActivity ?? false}
 - Community Health: ${githubData.communityHealth?.communityProfile?.healthPercentage ?? 0}%`
   }
 
@@ -595,10 +595,10 @@ Repository Information:
   if (githubData) {
     prompt += `
 GitHub Data:
-- Repository: ${githubData.metadata.fullName}
-- Open Issues: ${githubData.metadata.openIssuesCount}
-- PR Quality: ${githubData.prQuality.pullRequests.hasReviews ? 'Has Reviews' : 'No Reviews'}
-- Issue Management: ${githubData.issueManagement.issues.hasLabels ? 'Organized' : 'Unorganized'}`
+- Repository: ${githubData.metadata?.fullName ?? 'Unknown'}
+- Open Issues: ${githubData.metadata?.openIssuesCount ?? 0}
+- PR Quality: ${githubData.prQuality?.pullRequests?.hasReviews ?? false ? 'Has Reviews' : 'No Reviews'}
+- Issue Management: ${githubData.issueManagement?.issues?.hasLabels ?? false ? 'Organized' : 'Unorganized'}`
   }
 
   if (staticAnalysis.readmeContent) {
@@ -629,12 +629,12 @@ Repository Information:
   if (githubData) {
     prompt += `
 GitHub Data:
-- Repository: ${githubData.metadata.fullName}
-- Recent Activity: ${githubData.activityMetrics.recentActivity}
-- Active Contributors: ${githubData.activityMetrics.activeContributors}
-- PR Quality: ${githubData.prQuality.pullRequests.hasReviews ? 'Has Reviews' : 'No Reviews'}
-- Issue Management: ${githubData.issueManagement.issues.hasLabels ? 'Organized' : 'Unorganized'}
-- Merge Patterns: Squash=${githubData.prQuality.mergePatterns.squashMerge}, Merge=${githubData.prQuality.mergePatterns.mergeCommit}, Rebase=${githubData.prQuality.mergePatterns.rebaseMerge}`
+- Repository: ${githubData.metadata?.fullName ?? 'Unknown'}
+- Recent Activity: ${githubData.activityMetrics?.recentActivity ?? false}
+- Active Contributors: ${githubData.activityMetrics?.activeContributors ?? 0}
+- PR Quality: ${githubData.prQuality?.pullRequests?.hasReviews ?? false ? 'Has Reviews' : 'No Reviews'}
+- Issue Management: ${githubData.issueManagement?.issues?.hasLabels ?? false ? 'Organized' : 'Unorganized'}
+- Merge Patterns: Squash=${githubData.prQuality?.mergePatterns?.squashMerge ?? false}, Merge=${githubData.prQuality?.mergePatterns?.mergeCommit ?? false}, Rebase=${githubData.prQuality?.mergePatterns?.rebaseMerge ?? false}`
   }
 
   prompt += `\n\nAnalysis Requirements:
@@ -673,11 +673,11 @@ File Size Analysis:
   if (githubData) {
     prompt += `
 GitHub Data:
-- Repository: ${githubData.metadata.fullName}
-- Topics: ${githubData.metadata.topics.join(', ')}
+- Repository: ${githubData.metadata?.fullName ?? 'Unknown'}
+- Topics: ${(githubData.metadata?.topics ?? []).join(', ')}
 - Community Health: ${githubData.communityHealth?.communityProfile?.healthPercentage ?? 0}%
-- Has Issues: ${githubData.metadata.hasIssues}
-- Has Wiki: ${githubData.metadata.hasWiki}`
+- Has Issues: ${githubData.metadata?.hasIssues ?? false}
+- Has Wiki: ${githubData.metadata?.hasWiki ?? false}`
   }
 
   if (staticAnalysis.agentsContent) {
@@ -710,15 +710,15 @@ Repository Information:
   if (githubData) {
     prompt += `
 GitHub Data:
-- Repository: ${githubData.metadata.fullName}
-- Last Updated: ${githubData.metadata.updatedAt}
-- Last Pushed: ${githubData.metadata.pushedAt}
-- Recent Activity: ${githubData.activityMetrics.recentActivity}
-- Active Contributors: ${githubData.activityMetrics.activeContributors}
+- Repository: ${githubData.metadata?.fullName ?? 'Unknown'}
+- Last Updated: ${githubData.metadata?.updatedAt ?? 'Unknown'}
+- Last Pushed: ${githubData.metadata?.pushedAt ?? 'Unknown'}
+- Recent Activity: ${githubData.activityMetrics?.recentActivity ?? false}
+- Active Contributors: ${githubData.activityMetrics?.activeContributors ?? 0}
 - Community Health: ${githubData.communityHealth?.communityProfile?.healthPercentage ?? 0}%
-- Open Issues: ${githubData.metadata.openIssuesCount}
-- Issue Management: ${githubData.issueManagement.issues.hasLabels ? 'Organized' : 'Unorganized'}
-- PR Quality: ${githubData.prQuality.pullRequests.hasReviews ? 'Has Reviews' : 'No Reviews'}`
+- Open Issues: ${githubData.metadata?.openIssuesCount ?? 0}
+- Issue Management: ${githubData.issueManagement?.issues?.hasLabels ?? false ? 'Organized' : 'Unorganized'}
+- PR Quality: ${githubData.prQuality?.pullRequests?.hasReviews ?? false ? 'Has Reviews' : 'No Reviews'}`
   }
 
   prompt += `\n\nAnalysis Requirements:
