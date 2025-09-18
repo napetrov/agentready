@@ -119,12 +119,31 @@ export interface EnhancedAIAssessmentResult {
 
 export async function generateEnhancedAIAssessment(staticAnalysis: StaticAnalysisSummary): Promise<EnhancedAIAssessmentResult> {
   try {
+    console.log('🔍 Starting Enhanced AI Assessment...')
+    console.log('📊 Static Analysis Summary:', {
+      hasReadme: staticAnalysis.hasReadme,
+      hasAgents: staticAnalysis.hasAgents,
+      hasWorkflows: staticAnalysis.hasWorkflows,
+      hasTests: staticAnalysis.hasTests,
+      fileCount: staticAnalysis.fileCount,
+      languages: staticAnalysis.languages.length
+    })
+
     if (!process.env.OPENAI_API_KEY) {
-      console.warn('OPENAI_API_KEY is not set; falling back to basic assessment.')
+      console.warn('⚠️ OPENAI_API_KEY is not set; falling back to basic assessment.')
       return generateEnhancedFallbackAssessment(staticAnalysis)
     }
 
+    console.log('🤖 OpenAI API Key found, proceeding with AI analysis...')
+    console.log('🔧 OpenAI Config:', {
+      model: OPENAI_MODEL,
+      temperature: OPENAI_TEMPERATURE,
+      baseURL: process.env.OPENAI_BASE_URL || 'default',
+      timeout: process.env.OPENAI_TIMEOUT_MS || '30000'
+    })
+
     // Generate multiple specialized assessments
+    console.log('🚀 Starting parallel AI analysis calls...')
     const [instructionAnalysis, workflowAnalysis, contextAnalysis, riskAnalysis] = await Promise.all([
       analyzeInstructionClarity(staticAnalysis),
       analyzeWorkflowAutomation(staticAnalysis),
@@ -132,26 +151,44 @@ export async function generateEnhancedAIAssessment(staticAnalysis: StaticAnalysi
       analyzeRiskCompliance(staticAnalysis)
     ])
 
+    console.log('✅ AI Analysis Results:', {
+      instruction: { score: instructionAnalysis.stepByStepQuality, findings: instructionAnalysis.findings.length },
+      workflow: { score: workflowAnalysis.ciCdQuality, findings: workflowAnalysis.findings.length },
+      context: { score: contextAnalysis.instructionFileOptimization, findings: contextAnalysis.findings.length },
+      risk: { score: riskAnalysis.securityPractices, findings: riskAnalysis.findings.length }
+    })
+
     // Combine results into final assessment
-    return combineAssessmentResults(instructionAnalysis, workflowAnalysis, contextAnalysis, riskAnalysis, staticAnalysis)
+    const result = combineAssessmentResults(instructionAnalysis, workflowAnalysis, contextAnalysis, riskAnalysis, staticAnalysis)
+    console.log('🎯 Final Assessment Score:', result.readinessScore)
+    return result
 
   } catch (error) {
-    console.error('Enhanced AI assessment error:', error)
+    console.error('❌ Enhanced AI assessment error:', error)
+    console.error('📋 Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
     return generateEnhancedFallbackAssessment(staticAnalysis)
   }
 }
 
 async function analyzeInstructionClarity(staticAnalysis: StaticAnalysisSummary): Promise<InstructionClarityAnalysis> {
+  console.log('📝 Analyzing Instruction Clarity...')
   const prompt = createInstructionClarityPrompt(staticAnalysis)
+  console.log('📋 Prompt length:', prompt.length, 'characters')
+  console.log('📋 Prompt preview:', prompt.substring(0, 200) + '...')
   
-  const response = await getOpenAI().chat.completions.create({
-    model: OPENAI_MODEL,
-    response_format: OPENAI_RESPONSE_FORMAT,
-    temperature: OPENAI_TEMPERATURE,
-    messages: [
-      {
-        role: 'system',
-        content: `You are an expert in technical documentation and instruction clarity. Analyze the provided repository documentation and assess how clear and actionable the instructions are for AI agents and human developers.
+  try {
+    const response = await getOpenAI().chat.completions.create({
+      model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
+      temperature: OPENAI_TEMPERATURE,
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert in technical documentation and instruction clarity. Analyze the provided repository documentation and assess how clear and actionable the instructions are for AI agents and human developers.
 
 Focus on:
 1. Step-by-step instruction quality (0-20)
@@ -161,17 +198,36 @@ Focus on:
 5. Dependency specification clarity (0-20)
 
 Provide a JSON response with detailed scoring and analysis.`
-      },
-      {
-        role: 'user',
-        content: prompt
-      }
-    ],
-  })
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+    })
 
-  try {
+    console.log('🤖 OpenAI Response received:', {
+      hasChoices: !!response.choices,
+      choicesLength: response.choices?.length || 0,
+      hasContent: !!response.choices?.[0]?.message?.content,
+      contentLength: response.choices?.[0]?.message?.content?.length || 0
+    })
+
     const content = response.choices[0]?.message?.content || '{}'
+    console.log('📄 Raw AI Response:', content.substring(0, 500) + (content.length > 500 ? '...' : ''))
+    
     const parsed = JSON.parse(content)
+    console.log('🔍 Parsed JSON:', {
+      hasStepByStepQuality: 'stepByStepQuality' in parsed,
+      hasCommandClarity: 'commandClarity' in parsed,
+      hasEnvironmentSetup: 'environmentSetup' in parsed,
+      hasErrorHandling: 'errorHandling' in parsed,
+      hasDependencySpecification: 'dependencySpecification' in parsed,
+      hasFindings: 'findings' in parsed,
+      hasRecommendations: 'recommendations' in parsed,
+      findingsLength: Array.isArray(parsed.findings) ? parsed.findings.length : 'not array',
+      recommendationsLength: Array.isArray(parsed.recommendations) ? parsed.recommendations.length : 'not array'
+    })
     
     // Validate that we have the required numeric fields
     const hasRequiredFields = [
@@ -180,11 +236,12 @@ Provide a JSON response with detailed scoring and analysis.`
     ].every(field => typeof parsed[field] === 'number' && !isNaN(parsed[field]))
     
     if (!hasRequiredFields) {
+      console.error('❌ Missing or invalid required numeric fields in AI response')
       throw new Error('Missing or invalid required numeric fields')
     }
     
     // Ensure required properties exist and are arrays
-    return {
+    const result = {
       stepByStepQuality: Number(parsed.stepByStepQuality) || 0,
       commandClarity: Number(parsed.commandClarity) || 0,
       environmentSetup: Number(parsed.environmentSetup) || 0,
@@ -194,10 +251,30 @@ Provide a JSON response with detailed scoring and analysis.`
       recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
       confidence: Number(parsed.confidence) || 70
     }
+    
+    console.log('✅ Instruction Clarity Analysis Result:', {
+      scores: {
+        stepByStepQuality: result.stepByStepQuality,
+        commandClarity: result.commandClarity,
+        environmentSetup: result.environmentSetup,
+        errorHandling: result.errorHandling,
+        dependencySpecification: result.dependencySpecification
+      },
+      findingsCount: result.findings.length,
+      recommendationsCount: result.recommendations.length,
+      confidence: result.confidence
+    })
+    
+    return result
   } catch (error) {
-    console.error('Failed to parse instruction clarity analysis:', error)
+    console.error('❌ Failed to analyze instruction clarity:', error)
+    console.error('📋 Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack?.substring(0, 500) : undefined
+    })
+    
     // Return reasonable fallback values based on static analysis
-    return {
+    const fallback = {
       stepByStepQuality: staticAnalysis.hasReadme ? 12 : 4,
       commandClarity: staticAnalysis.hasAgents ? 15 : 6,
       environmentSetup: staticAnalysis.hasContributing ? 10 : 4,
@@ -207,6 +284,9 @@ Provide a JSON response with detailed scoring and analysis.`
       recommendations: [],
       confidence: 30
     }
+    
+    console.log('🔄 Using fallback values for instruction clarity:', fallback)
+    return fallback
   }
 }
 
@@ -617,19 +697,23 @@ function combineAssessmentResults(
 
   // Fallback to static analysis findings if AI findings are empty
   const findings = aiFindings.length > 0 ? aiFindings : [
-    staticAnalysis.hasReadme ? 'README.md present' : 'Missing README.md',
-    staticAnalysis.hasAgents ? 'AGENTS.md present' : 'Missing AGENTS.md for AI agent instructions',
-    staticAnalysis.hasWorkflows ? 'CI/CD workflows detected' : 'No CI/CD workflows found',
-    staticAnalysis.hasTests ? 'Test files detected' : 'No test files found',
-    staticAnalysis.errorHandling ? 'Error handling patterns detected' : 'Limited error handling detected'
+    // FINDINGS: Describe current state
+    staticAnalysis.hasReadme ? 'README.md documentation is present and accessible' : 'No README.md found in repository',
+    staticAnalysis.hasAgents ? 'AGENTS.md file provides AI agent context and instructions' : 'No AGENTS.md file found for AI agent guidance',
+    staticAnalysis.hasWorkflows ? `Found ${staticAnalysis.workflowFiles?.length || 0} CI/CD workflow files` : 'No CI/CD workflows detected',
+    staticAnalysis.hasTests ? `Test suite includes ${staticAnalysis.testFiles?.length || 0} test files` : 'No automated test files found',
+    staticAnalysis.errorHandling ? 'Error handling patterns are implemented in codebase' : 'Limited error handling patterns detected',
+    staticAnalysis.fileCount > 0 ? `Repository contains ${staticAnalysis.fileCount} files across ${staticAnalysis.languages.length} programming languages` : 'Repository structure analysis incomplete'
   ]
 
   const recommendations = aiRecommendations.length > 0 ? aiRecommendations : [
-    !staticAnalysis.hasReadme ? 'Add comprehensive README.md' : 'README.md is present',
-    !staticAnalysis.hasAgents ? 'Create AGENTS.md with AI agent instructions' : 'AGENTS.md is present',
-    !staticAnalysis.hasWorkflows ? 'Implement CI/CD workflows' : 'CI/CD workflows are present',
-    !staticAnalysis.hasTests ? 'Add automated test suite' : 'Test suite is present',
-    !staticAnalysis.errorHandling ? 'Improve error handling patterns' : 'Error handling is adequate'
+    // RECOMMENDATIONS: Provide actionable next steps
+    !staticAnalysis.hasReadme ? 'Create a comprehensive README.md with project overview, setup instructions, and usage examples' : 'Consider enhancing README.md with more detailed AI agent context',
+    !staticAnalysis.hasAgents ? 'Add AGENTS.md file with specific instructions for AI agents working with this codebase' : 'Review and update AGENTS.md with current best practices',
+    !staticAnalysis.hasWorkflows ? 'Implement GitHub Actions workflows for automated testing, building, and deployment' : 'Expand CI/CD coverage to include more comprehensive testing and deployment stages',
+    !staticAnalysis.hasTests ? 'Develop automated test suite covering critical functionality and edge cases' : 'Increase test coverage and add integration tests for better reliability',
+    !staticAnalysis.errorHandling ? 'Implement comprehensive error handling with proper logging and user feedback' : 'Enhance error handling with more specific error types and recovery mechanisms',
+    staticAnalysis.fileSizeAnalysis?.agentCompatibility.overall < 90 ? 'Optimize file sizes to improve AI agent compatibility and processing speed' : 'Maintain current file size practices for optimal AI agent performance'
   ]
 
   return {
@@ -751,18 +835,22 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
       fileSizeOptimization: staticAnalysis.fileSizeAnalysis ? Math.min(20, Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 6)) : 10
     },
     findings: [
-      staticAnalysis.hasReadme ? 'README.md present' : 'Missing README.md',
-      staticAnalysis.hasAgents ? 'AGENTS.md present' : 'Missing AGENTS.md for AI agent instructions',
-      staticAnalysis.hasWorkflows ? 'CI/CD workflows detected' : 'No CI/CD workflows found',
-      staticAnalysis.hasTests ? 'Test files detected' : 'No test files found',
-      staticAnalysis.errorHandling ? 'Error handling patterns detected' : 'Limited error handling detected'
+      // FINDINGS: Describe current state
+      staticAnalysis.hasReadme ? 'README.md documentation is present and accessible' : 'No README.md found in repository',
+      staticAnalysis.hasAgents ? 'AGENTS.md file provides AI agent context and instructions' : 'No AGENTS.md file found for AI agent guidance',
+      staticAnalysis.hasWorkflows ? `Found ${staticAnalysis.workflowFiles?.length || 0} CI/CD workflow files` : 'No CI/CD workflows detected',
+      staticAnalysis.hasTests ? `Test suite includes ${staticAnalysis.testFiles?.length || 0} test files` : 'No automated test files found',
+      staticAnalysis.errorHandling ? 'Error handling patterns are implemented in codebase' : 'Limited error handling patterns detected',
+      staticAnalysis.fileCount > 0 ? `Repository contains ${staticAnalysis.fileCount} files across ${staticAnalysis.languages.length} programming languages` : 'Repository structure analysis incomplete'
     ],
     recommendations: [
-      !staticAnalysis.hasReadme ? 'Add comprehensive README.md' : 'README.md is present',
-      !staticAnalysis.hasAgents ? 'Create AGENTS.md with AI agent instructions' : 'AGENTS.md is present',
-      !staticAnalysis.hasWorkflows ? 'Implement CI/CD workflows' : 'CI/CD workflows are present',
-      !staticAnalysis.hasTests ? 'Add automated test suite' : 'Test suite is present',
-      !staticAnalysis.errorHandling ? 'Improve error handling patterns' : 'Error handling is adequate'
+      // RECOMMENDATIONS: Provide actionable next steps
+      !staticAnalysis.hasReadme ? 'Create a comprehensive README.md with project overview, setup instructions, and usage examples' : 'Consider enhancing README.md with more detailed AI agent context',
+      !staticAnalysis.hasAgents ? 'Add AGENTS.md file with specific instructions for AI agents working with this codebase' : 'Review and update AGENTS.md with current best practices',
+      !staticAnalysis.hasWorkflows ? 'Implement GitHub Actions workflows for automated testing, building, and deployment' : 'Expand CI/CD coverage to include more comprehensive testing and deployment stages',
+      !staticAnalysis.hasTests ? 'Develop automated test suite covering critical functionality and edge cases' : 'Increase test coverage and add integration tests for better reliability',
+      !staticAnalysis.errorHandling ? 'Implement comprehensive error handling with proper logging and user feedback' : 'Enhance error handling with more specific error types and recovery mechanisms',
+      staticAnalysis.fileSizeAnalysis?.agentCompatibility.overall < 90 ? 'Optimize file sizes to improve AI agent compatibility and processing speed' : 'Maintain current file size practices for optimal AI agent performance'
     ],
     detailedAnalysis: {
       instructionClarity: {
