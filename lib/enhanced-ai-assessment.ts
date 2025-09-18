@@ -1041,6 +1041,7 @@ Respond with JSON:
   try {
     const response = await getOpenAI().chat.completions.create({
       model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
       messages: [{ role: 'user', content: prompt }],
       temperature: OPENAI_TEMPERATURE,
     })
@@ -1104,6 +1105,7 @@ Respond with JSON:
   try {
     const response = await getOpenAI().chat.completions.create({
       model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
       messages: [{ role: 'user', content: prompt }],
       temperature: OPENAI_TEMPERATURE,
     })
@@ -1168,6 +1170,7 @@ Respond with JSON:
   try {
     const response = await getOpenAI().chat.completions.create({
       model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
       messages: [{ role: 'user', content: prompt }],
       temperature: OPENAI_TEMPERATURE,
     })
@@ -1229,6 +1232,7 @@ Respond with JSON:
   try {
     const response = await getOpenAI().chat.completions.create({
       model: OPENAI_MODEL,
+      response_format: OPENAI_RESPONSE_FORMAT,
       messages: [{ role: 'user', content: prompt }],
       temperature: OPENAI_TEMPERATURE,
     })

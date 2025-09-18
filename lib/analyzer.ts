@@ -958,12 +958,24 @@ export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<
   try {
     console.log('🌐 Starting website analysis for:', websiteUrl)
     
-    // Import cheerio dynamically to avoid Node.js compatibility issues
-    const cheerio = await import('cheerio')
+    // SSRF guard
+    const parsed = new URL(websiteUrl)
+    if (!/^https?:$/.test(parsed.protocol)) throw new Error('Only http/https URLs are allowed')
+    const host = parsed.hostname
+    if (
+      /(localhost|^127\.|^0\.0\.0\.0)/i.test(host) ||
+      /^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+      /^(\[?::1\]?|::1)$/.test(host)
+    ) throw new Error('Refusing to fetch private/loopback hosts')
+
+    // Import cheerio dynamically
+    const { load } = await import('cheerio')
     
     // Fetch the website content
     const response = await axios.get(websiteUrl, {
       timeout: 30000,
+      maxRedirects: 3,
+      maxContentLength: 5 * 1024 * 1024,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; AI-Agent-Analyzer/1.0)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -974,7 +986,7 @@ export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<
     })
 
     const html = response.data
-    const $ = cheerio.load(html)
+    const $ = load(html)
     const url = new URL(websiteUrl)
 
     // Initialize analysis result
@@ -1017,6 +1029,19 @@ export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<
       contactInfo: [],
       navigationStructure: []
     }
+
+    // Capture security headers
+    try {
+      const h = response.headers || {}
+      const sec: string[] = []
+      if (h['content-security-policy']) sec.push('Content-Security-Policy')
+      if (h['strict-transport-security']) sec.push('Strict-Transport-Security')
+      if (h['x-content-type-options']) sec.push('X-Content-Type-Options')
+      if (h['x-frame-options']) sec.push('X-Frame-Options')
+      if (h['referrer-policy']) sec.push('Referrer-Policy')
+      if (h['permissions-policy']) sec.push('Permissions-Policy')
+      analysis.securityHeaders = sec
+    } catch {}
 
     // Analyze page content
     analysis.linesOfCode = html.split('\n').length
@@ -1114,11 +1139,11 @@ export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<
 
     // Check for robots.txt and sitemap
     try {
-      const robotsResponse = await axios.get(`${url.origin}/robots.txt`, { timeout: 5000 })
+      const robotsResponse = await axios.get(`${url.origin}/robots.txt`, { timeout: 5000, maxRedirects: 2, maxContentLength: 256 * 1024 })
       analysis.hasRobotsTxt = true
       
       // Check if sitemap is mentioned in robots.txt
-      if (robotsResponse.data.includes('Sitemap:')) {
+      if (typeof robotsResponse.data === 'string' && /sitemap:/i.test(robotsResponse.data)) {
         analysis.hasSitemap = true
       }
     } catch {
@@ -1127,15 +1152,15 @@ export async function analyzeWebsiteForAIReadiness(websiteUrl: string): Promise<
 
     // Check for sitemap.xml
     try {
-      await axios.get(`${url.origin}/sitemap.xml`, { timeout: 5000 })
+      await axios.get(`${url.origin}/sitemap.xml`, { timeout: 5000, maxRedirects: 2, maxContentLength: 256 * 1024 })
       analysis.hasSitemap = true
     } catch {
       // sitemap.xml not found
     }
 
     // Basic mobile-friendliness check
-    const viewport = $('meta[name="viewport"]').attr('content')
-    analysis.mobileFriendly = !!viewport && viewport.includes('width=device-width')
+    const viewport = $('meta[name="viewport"]').attr('content') || ''
+    analysis.mobileFriendly = viewport.includes('width=device-width')
 
     // Basic accessibility checks
     let accessibilityScore = 0
@@ -1195,12 +1220,24 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
   try {
     console.log('🌐 Starting website AI agent readiness analysis for:', websiteUrl)
     
-    // Import cheerio dynamically to avoid Node.js compatibility issues
-    const cheerio = await import('cheerio')
+    // SSRF guard
+    const parsed = new URL(websiteUrl)
+    if (!/^https?:$/.test(parsed.protocol)) throw new Error('Only http/https URLs are allowed')
+    const host = parsed.hostname
+    if (
+      /(localhost|^127\.|^0\.0\.0\.0)/i.test(host) ||
+      /^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+      /^(\[?::1\]?|::1)$/.test(host)
+    ) throw new Error('Refusing to fetch private/loopback hosts')
+
+    // Import cheerio dynamically
+    const { load } = await import('cheerio')
     
     // Fetch the website content
     const response = await axios.get(websiteUrl, {
       timeout: 30000,
+      maxRedirects: 3,
+      maxContentLength: 5 * 1024 * 1024,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; AI-Agent-Analyzer/1.0)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -1211,7 +1248,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
     })
 
     const html = response.data
-    const $ = cheerio.load(html)
+    const $ = load(html)
     const url = new URL(websiteUrl)
 
     // Detect website type
