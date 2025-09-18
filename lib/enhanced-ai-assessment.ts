@@ -713,7 +713,7 @@ function combineAssessmentResults(
     !staticAnalysis.hasWorkflows ? 'Implement GitHub Actions workflows for automated testing, building, and deployment' : 'Expand CI/CD coverage to include more comprehensive testing and deployment stages',
     !staticAnalysis.hasTests ? 'Develop automated test suite covering critical functionality and edge cases' : 'Increase test coverage and add integration tests for better reliability',
     !staticAnalysis.errorHandling ? 'Implement comprehensive error handling with proper logging and user feedback' : 'Enhance error handling with more specific error types and recovery mechanisms',
-    staticAnalysis.fileSizeAnalysis?.agentCompatibility.overall < 90 ? 'Optimize file sizes to improve AI agent compatibility and processing speed' : 'Maintain current file size practices for optimal AI agent performance'
+    (staticAnalysis.fileSizeAnalysis?.agentCompatibility?.overall ?? 100) < 90 ? 'Optimize file sizes to improve AI agent compatibility and processing speed' : 'Maintain current file size practices for optimal AI agent performance'
   ]
 
   return {
@@ -850,7 +850,7 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
       !staticAnalysis.hasWorkflows ? 'Implement GitHub Actions workflows for automated testing, building, and deployment' : 'Expand CI/CD coverage to include more comprehensive testing and deployment stages',
       !staticAnalysis.hasTests ? 'Develop automated test suite covering critical functionality and edge cases' : 'Increase test coverage and add integration tests for better reliability',
       !staticAnalysis.errorHandling ? 'Implement comprehensive error handling with proper logging and user feedback' : 'Enhance error handling with more specific error types and recovery mechanisms',
-      staticAnalysis.fileSizeAnalysis?.agentCompatibility.overall < 90 ? 'Optimize file sizes to improve AI agent compatibility and processing speed' : 'Maintain current file size practices for optimal AI agent performance'
+      (staticAnalysis.fileSizeAnalysis?.agentCompatibility?.overall ?? 100) < 90 ? 'Optimize file sizes to improve AI agent compatibility and processing speed' : 'Maintain current file size practices for optimal AI agent performance'
     ],
     detailedAnalysis: {
       instructionClarity: {
