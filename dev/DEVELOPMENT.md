@@ -4,6 +4,14 @@
 
 This document outlines the development process, implementation status, and future roadmap for the AI Agent Readiness Assessment Tool.
 
+## 📝 Agent Progress Log
+
+### 2025-09-18
+- Added `.cursorrules` with Cursor-optimized operating rules for Next.js/Vercel/TypeScript/Node.
+- Created `AGENTS.md` linking to `dev/ARCHITECTURE.md` and `dev/DEVELOPMENT.md` with workflow and verification steps.
+- Verified repository compiles, lints, and tests pass locally.
+- Next agents should continue updating this log with date, changes, and verification steps.
+
 ## ✅ Implementation Status
 
 ### Phase 1: MVP Foundation (COMPLETED ✅)

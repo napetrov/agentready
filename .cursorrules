@@ -1,0 +1,60 @@
+AI agents working in this repo must follow these rules. These instructions are optimized for Cursor with Next.js 14, TypeScript, Node.js, and Vercel deployment.
+
+## Core Operating Principles
+- Think first, then act: Always draft a brief plan before making edits.
+- Keep changes scoped and reversible. Prefer small, incremental edits.
+- Maintain type-safety and pass tests before concluding work.
+- After any functional change, update `dev/DEVELOPMENT.md` and `CHANGELOG.md` under Unreleased.
+- Cite and respect `dev/ARCHITECTURE.md` and `dev/DEVELOPMENT.md` as the source of truth.
+
+## Project Context
+- Framework: Next.js 14 (App Router)
+- Language: TypeScript (strict)
+- Runtime: Node.js 18+ (Vercel serverless)
+- Styling: Tailwind CSS
+- Testing: Jest with `__mocks__/openai.js`
+- Deployment: Vercel (`vercel.json` present)
+
+## Required Workflow
+1) Discovery
+   - Read `dev/ARCHITECTURE.md` and `dev/DEVELOPMENT.md` before implementing.
+   - Identify impacted files and edge cases.
+2) Plan
+   - Write a short, explicit plan of steps and risks.
+3) Implement
+   - Follow code style: clear names, early returns, minimal nesting, no useless comments.
+   - Avoid unsafe `any`; prefer explicit interfaces.
+   - Keep Next.js app router patterns and file structure intact.
+4) Verify
+   - Run: `npm run type-check`, `npm run lint`, `npm test`.
+   - Ensure all tests pass locally. If failing, fix or revert.
+5) Document
+   - Update `dev/DEVELOPMENT.md` with what changed and why.
+   - Update `CHANGELOG.md` ([Unreleased]) with Added/Changed/Fixed as relevant.
+
+## Vercel-specific Guidance
+- Keep API routes fast and side-effect free; avoid long blocking I/O.
+- Use environment variables per `dev/ARCHITECTURE.md` guidance.
+- Respect serverless limits (execution time, memory, cold starts).
+
+## TypeScript & Quality
+- `tsconfig.json` uses strict typing. Do not loosen it.
+- Prefer explicit return types on exported functions.
+- Do not ignore ESLint rules; fix root causes instead of disabling.
+
+## Testing
+- Tests must pass with Jest: `npm test`.
+- Use the provided OpenAI mock; never call real external APIs in tests.
+
+## Documentation Links
+- Architecture: dev/ARCHITECTURE.md
+- Development Process: dev/DEVELOPMENT.md
+
+## Change Management
+- All non-trivial edits must be reflected in `CHANGELOG.md` under [Unreleased].
+- Summarize changes in `dev/DEVELOPMENT.md` progress notes with date and rationale.
+
+## Safety & Governance
+- Do not commit secrets. Use `.env.local` and Vercel envs.
+- Favor clear error handling with actionable messages.
+
