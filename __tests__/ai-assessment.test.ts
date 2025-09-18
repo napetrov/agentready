@@ -120,11 +120,11 @@ describe('generateAIAssessment', () => {
       fileSizeAnalysis: {
         totalFiles: 10,
         filesBySize: {
-          under1MB: 8,
-          under2MB: 9,
-          under10MB: 10,
-          under50MB: 10,
-          over50MB: 0
+          under100KB: 8,
+          under500KB: 9,
+          under1MB: 10,
+          under5MB: 10,
+          over5MB: 0
         },
         largeFiles: [
           {

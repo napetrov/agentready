@@ -38,11 +38,11 @@ export interface StaticAnalysisSummary {
   fileSizeAnalysis?: {
     totalFiles: number
     filesBySize: {
+      under100KB: number
+      under500KB: number
       under1MB: number
-      under2MB: number
-      under10MB: number
-      under50MB: number
-      over50MB: number
+      under5MB: number
+      over5MB: number
     }
     largeFiles: Array<{
       path: string

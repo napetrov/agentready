@@ -92,11 +92,11 @@ describe('generatePDFReport', () => {
         fileSizeAnalysis: {
           totalFiles: 100,
           filesBySize: {
-            under1MB: 80,
-            under2MB: 90,
-            under10MB: 95,
-            under50MB: 100,
-            over50MB: 0
+            under100KB: 80,
+            under500KB: 90,
+            under1MB: 95,
+            under5MB: 100,
+            over5MB: 0
           },
           largeFiles: [
             {

@@ -65,15 +65,15 @@ export async function generatePDFReport(assessmentResult: any, repoUrl?: string)
       const fs = fileSizeAnalysis.filesBySize
       doc.text(`File Size Distribution:`, 20, yPosition)
       yPosition += 8
-      doc.text(`  • Under 1MB: ${fs.under1MB} files`, 30, yPosition)
+      doc.text(`  • Under 100KB: ${fs.under100KB} files`, 30, yPosition)
       yPosition += 8
-      doc.text(`  • 1-2MB: ${fs.under2MB - fs.under1MB} files`, 30, yPosition)
+      doc.text(`  • 100KB-500KB: ${fs.under500KB - fs.under100KB} files`, 30, yPosition)
       yPosition += 8
-      doc.text(`  • 2-10MB: ${fs.under10MB - fs.under2MB} files`, 30, yPosition)
+      doc.text(`  • 500KB-1MB: ${fs.under1MB - fs.under500KB} files`, 30, yPosition)
       yPosition += 8
-      doc.text(`  • 10-50MB: ${fs.under50MB - fs.under10MB} files`, 30, yPosition)
+      doc.text(`  • 1MB-5MB: ${fs.under5MB - fs.under1MB} files`, 30, yPosition)
       yPosition += 8
-      doc.text(`  • Over 50MB: ${fs.over50MB} files`, 30, yPosition)
+      doc.text(`  • Over 5MB: ${fs.over5MB} files`, 30, yPosition)
       yPosition += 15
     }
 
