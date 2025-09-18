@@ -170,7 +170,7 @@ export default function Home() {
 
   const handleAnalyze = async () => {
     if (!inputUrl.trim()) {
-      setError(`Please enter a ${inputType === 'repository' ? 'GitHub repository' : 'website'} URL`)
+      setError(`Please enter a ${inputType === 'repository' ? 'repository' : 'website'} URL`)
       return
     }
 
@@ -317,7 +317,7 @@ export default function Home() {
         <div className="space-y-4">
           <div>
             <label htmlFor="inputUrl" className="block text-sm font-medium text-gray-700 mb-2">
-              {inputType === 'repository' ? 'GitHub Repository URL' : 'Website URL'}
+              {inputType === 'repository' ? 'Repository URL' : 'Website URL'}
             </label>
             <input
               type="url"
@@ -330,7 +330,7 @@ export default function Home() {
             />
             <p className="text-sm text-gray-500 mt-1">
               {inputType === 'repository' 
-                ? 'Enter a GitHub repository URL to analyze its AI readiness'
+                ? 'Enter a repository URL to analyze its AI readiness'
                 : 'Enter a website URL to analyze its AI agent compatibility'
               }
             </p>

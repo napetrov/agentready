@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'AI Agent Readiness Assessment Tool',
-  description: 'Assess GitHub repositories for AI agent readiness',
+  description: 'Assess repositories and websites for AI agent readiness and compatibility',
 }
 
 export default function RootLayout({
