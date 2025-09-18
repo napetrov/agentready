@@ -67,37 +67,73 @@ describe('UnifiedMetricsEngine', () => {
     it('should calculate weighted overall score', () => {
       const categoryScores = {
         documentation: {
-          score: { value: 18, confidence: 85, source: 'hybrid' },
+          score: { 
+            value: 18, 
+            confidence: 85, 
+            source: 'hybrid' as const,
+            lastUpdated: new Date(),
+            metadata: { isValidated: true }
+          },
           subMetrics: {},
           findings: [],
           recommendations: []
         },
         instructionClarity: {
-          score: { value: 16, confidence: 80, source: 'hybrid' },
+          score: { 
+            value: 16, 
+            confidence: 80, 
+            source: 'hybrid' as const,
+            lastUpdated: new Date(),
+            metadata: { isValidated: true }
+          },
           subMetrics: {},
           findings: [],
           recommendations: []
         },
         workflowAutomation: {
-          score: { value: 15, confidence: 75, source: 'hybrid' },
+          score: { 
+            value: 15, 
+            confidence: 75, 
+            source: 'hybrid' as const,
+            lastUpdated: new Date(),
+            metadata: { isValidated: true }
+          },
           subMetrics: {},
           findings: [],
           recommendations: []
         },
         riskCompliance: {
-          score: { value: 17, confidence: 85, source: 'hybrid' },
+          score: { 
+            value: 17, 
+            confidence: 85, 
+            source: 'hybrid' as const,
+            lastUpdated: new Date(),
+            metadata: { isValidated: true }
+          },
           subMetrics: {},
           findings: [],
           recommendations: []
         },
         integrationStructure: {
-          score: { value: 14, confidence: 70, source: 'hybrid' },
+          score: { 
+            value: 14, 
+            confidence: 70, 
+            source: 'hybrid' as const,
+            lastUpdated: new Date(),
+            metadata: { isValidated: true }
+          },
           subMetrics: {},
           findings: [],
           recommendations: []
         },
         fileSizeOptimization: {
-          score: { value: 16, confidence: 80, source: 'hybrid' },
+          score: { 
+            value: 16, 
+            confidence: 80, 
+            source: 'hybrid' as const,
+            lastUpdated: new Date(),
+            metadata: { isValidated: true }
+          },
           subMetrics: {},
           findings: [],
           recommendations: []
@@ -141,7 +177,13 @@ describe('UnifiedMetricsEngine', () => {
     it('should generate findings for low scores', () => {
       const categoryScores = {
         documentation: {
-          score: { value: 5, confidence: 80, source: 'hybrid' },
+          score: { 
+            value: 5, 
+            confidence: 80, 
+            source: 'hybrid' as const,
+            lastUpdated: new Date(),
+            metadata: { isValidated: true }
+          },
           subMetrics: {},
           findings: [],
           recommendations: []
@@ -157,7 +199,13 @@ describe('UnifiedMetricsEngine', () => {
     it('should generate findings for high scores', () => {
       const categoryScores = {
         documentation: {
-          score: { value: 18, confidence: 90, source: 'hybrid' },
+          score: { 
+            value: 18, 
+            confidence: 90, 
+            source: 'hybrid' as const,
+            lastUpdated: new Date(),
+            metadata: { isValidated: true }
+          },
           subMetrics: {},
           findings: [],
           recommendations: []

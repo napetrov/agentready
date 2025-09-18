@@ -167,14 +167,18 @@ describe('MetricsValidator', () => {
           confidence: 85,
           source: 'ai' as const,
           lastUpdated: new Date(),
-          metadata: {}
+          metadata: {
+            isValidated: true
+          }
         },
         commandClarity: {
           value: 4,
           confidence: 80,
           source: 'ai' as const,
           lastUpdated: new Date(),
-          metadata: {}
+          metadata: {
+            isValidated: true
+          }
         }
       }
 
@@ -190,7 +194,9 @@ describe('MetricsValidator', () => {
           confidence: 30,
           source: 'ai' as const,
           lastUpdated: new Date(),
-          metadata: {}
+          metadata: {
+            isValidated: true
+          }
         }
       }
 

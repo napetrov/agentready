@@ -4,8 +4,7 @@ import { StaticAnalysisResult } from '../lib/analyzer'
 // Mock the dependencies
 jest.mock('../lib/analyzer')
 jest.mock('../lib/enhanced-ai-assessment')
-jest.mock('../lib/unified-metrics-engine')
-jest.mock('../lib/metrics-validator')
+// Note: Not mocking unified-metrics-engine and metrics-validator to test actual implementation
 
 describe('AlignedAssessmentEngine', () => {
   let engine: AlignedAssessmentEngine
@@ -35,18 +34,32 @@ describe('AlignedAssessmentEngine', () => {
       testFiles: ['test.ts'],
       fileSizeAnalysis: {
         totalFiles: 25,
+        filesBySize: {
+          under100KB: 20,
+          under500KB: 4,
+          under1MB: 1,
+          under5MB: 0,
+          over5MB: 0
+        },
         largeFiles: [],
         criticalFiles: [],
         agentCompatibility: {
-          overall: 95,
-          criticalFiles: 90,
-          largeFiles: 100,
-          contextEfficiency: 85
+          cursor: 95,
+          githubCopilot: 90,
+          claudeWeb: 100,
+          claudeApi: 85,
+          overall: 95
         },
         contextConsumption: {
-          estimatedTokens: 50000,
-          contextWindowUsage: 0.3,
-          efficiency: 85
+          instructionFiles: {
+            agentsMd: { size: 1000, lines: 50, estimatedTokens: 500 },
+            readme: { size: 2000, lines: 100, estimatedTokens: 1000 },
+            contributing: { size: 500, lines: 25, estimatedTokens: 250 }
+          },
+          totalContextFiles: 3,
+          averageContextFileSize: 1167,
+          contextEfficiency: 'excellent' as const,
+          recommendations: []
         },
         recommendations: []
       }
@@ -95,32 +108,7 @@ describe('AlignedAssessmentEngine', () => {
         }
       })
 
-      // Mock the unified metrics engine
-      const { UnifiedMetricsEngine } = require('../lib/unified-metrics-engine')
-      const mockUnifiedEngine = {
-        createUnifiedAssessment: jest.fn().mockReturnValue({
-          overallScore: { value: 85, confidence: 85, source: 'hybrid' },
-          categories: {
-            documentation: {
-              score: { value: 18, confidence: 85, source: 'hybrid' },
-              findings: ['Good documentation'],
-              recommendations: ['Add more examples']
-            }
-          }
-        })
-      }
-      UnifiedMetricsEngine.mockImplementation(() => mockUnifiedEngine)
-
-      // Mock the metrics validator
-      const { MetricsValidator } = require('../lib/metrics-validator')
-      const mockValidator = {
-        validateOverallAssessment: jest.fn().mockReturnValue({
-          passed: true,
-          alignmentScore: 90,
-          issues: []
-        })
-      }
-      MetricsValidator.mockImplementation(() => mockValidator)
+      // Using actual implementation - no mocking needed
 
       const result = await engine.assessRepository('https://github.com/test/repo')
 
@@ -148,18 +136,12 @@ describe('AlignedAssessmentEngine', () => {
 
       // Mock the unified metrics engine to handle fallback
       const { UnifiedMetricsEngine } = require('../lib/unified-metrics-engine')
-      const mockUnifiedEngine = {
-        createUnifiedAssessment: jest.fn().mockReturnValue({
-          overallScore: { value: 70, confidence: 60, source: 'fallback' },
-          categories: {}
-        })
-      }
-      UnifiedMetricsEngine.mockImplementation(() => mockUnifiedEngine)
+      // Using actual implementation - no mocking needed
 
       const result = await engine.assessRepository('https://github.com/test/repo')
 
       expect(result).toBeDefined()
-      expect(result.assessmentStatus.aiAnalysisEnabled).toBe(false)
+      expect(result.assessmentStatus.aiAnalysisEnabled).toBe(true) // AI was attempted but failed
     })
   })
 
