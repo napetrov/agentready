@@ -369,38 +369,24 @@ export default function Home() {
                 )}
               </div>
             </div>
+            
+            {/* Debug Information - Only show when there are issues */}
+            {(result.readinessScore === 0 || !result.categories || Object.values(result.categories).every(score => score === 0) || !result.aiAnalysisStatus.overallSuccess) && (
+              <div className="mt-4 pt-4 border-t border-gray-300">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Debug Information</h4>
+                <div className="text-xs text-gray-600">
+                  <p><strong>Readiness Score:</strong> {result.readinessScore} (type: {typeof result.readinessScore})</p>
+                  <p><strong>Categories:</strong> {JSON.stringify(result.categories)}</p>
+                  <p><strong>Has Categories:</strong> {result.categories ? 'Yes' : 'No'}</p>
+                  <p><strong>Categories Keys:</strong> {result.categories ? Object.keys(result.categories).join(', ') : 'None'}</p>
+                  <p><strong>Static Analysis File Count:</strong> {result.staticAnalysis?.fileCount || 'undefined'}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Debug Information */}
-      {result && (
-        <div className="card border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-semibold mb-2">Debug Information</h3>
-          <div className="text-xs text-gray-600">
-            <p><strong>Readiness Score:</strong> {result.readinessScore} (type: {typeof result.readinessScore})</p>
-            <p><strong>Categories:</strong> {JSON.stringify(result.categories)}</p>
-            <p><strong>Has Categories:</strong> {result.categories ? 'Yes' : 'No'}</p>
-            <p><strong>Categories Keys:</strong> {result.categories ? Object.keys(result.categories).join(', ') : 'None'}</p>
-            <p><strong>Static Analysis File Count:</strong> {result.staticAnalysis?.fileCount || 'undefined'}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Data Validation Warning */}
-      {result && (result.readinessScore === 0 || !result.categories || Object.values(result.categories).every(score => score === 0)) && (
-        <div className="card border-yellow-200 bg-yellow-50">
-          <div className="flex items-center">
-            <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
-            <div>
-              <p className="text-yellow-800 font-medium">Data Validation Warning</p>
-              <p className="text-yellow-700 text-sm mt-1">
-                The assessment data appears to be incomplete or incorrect. This may indicate an issue with the analysis process.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Results Section */}
       {result && (
