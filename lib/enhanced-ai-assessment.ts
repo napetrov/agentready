@@ -214,7 +214,8 @@ Provide a JSON response with detailed scoring and analysis.`
     })
 
     const content = response.choices[0]?.message?.content || '{}'
-    console.log('📄 Raw AI Response:', content.substring(0, 500) + (content.length > 500 ? '...' : ''))
+    console.log('📄 Raw AI Response (full):', content)
+    console.log('📄 Raw AI Response (first 1000 chars):', content.substring(0, 1000))
     
     const parsed = JSON.parse(content)
     console.log('🔍 Parsed JSON:', {
