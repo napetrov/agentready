@@ -144,6 +144,8 @@ export async function POST(request: NextRequest) {
         riskCompliance: result.assessmentStatus.aiAnalysisEnabled,
         overallSuccess: result.assessmentStatus.aiAnalysisEnabled && result.validation.passed
       },
+      staticAnalysis: result.staticAnalysis || {},
+      websiteAnalysis: result.websiteAnalysis || null,
       categories: {
         documentation: result.categories.documentation.score.value,
         instructionClarity: result.categories.instructionClarity.score.value,

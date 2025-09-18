@@ -19,6 +19,8 @@ export interface AlignedAssessmentConfig {
 }
 
 export interface AlignedAssessmentResult extends UnifiedAssessmentResult {
+  staticAnalysis: any;
+  websiteAnalysis?: any;
   assessmentMetadata: {
     staticAnalysisTime: number;
     aiAnalysisTime: number;
@@ -112,6 +114,7 @@ export class AlignedAssessmentEngine {
 
       return {
         ...unifiedAssessment,
+        staticAnalysis,
         validation: validation ? {
           isValid: validation.isValid,
           variances: validation.issues.reduce((acc, issue) => {
@@ -241,6 +244,8 @@ export class AlignedAssessmentEngine {
 
       return {
         ...unifiedAssessment,
+        staticAnalysis,
+        websiteAnalysis,
         validation: validation ? {
           isValid: validation.isValid,
           variances: validation.issues.reduce((acc, issue) => {
