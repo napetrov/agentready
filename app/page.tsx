@@ -198,6 +198,18 @@ export default function Home() {
     return 'text-danger-600 bg-danger-50'
   }
 
+  const getCategoryDescription = (category: string) => {
+    const descriptions: Record<string, string> = {
+      documentation: 'Measures presence and quality of README, CONTRIBUTING, AGENTS.md, and LICENSE files',
+      instructionClarity: 'Evaluates how clear and actionable instructions are for AI agents to follow',
+      workflowAutomation: 'Assesses CI/CD setup, testing, build scripts, and deployment automation',
+      riskCompliance: 'Checks security practices, error handling, input validation, and license compliance',
+      integrationStructure: 'Evaluates code organization, API structure, and integration readiness',
+      fileSizeOptimization: 'Measures file sizes against AI agent limits and context window efficiency'
+    }
+    return descriptions[category] || 'Assessment category'
+  }
+
   return (
     <div className="space-y-8">
       {/* Input Section */}
@@ -326,7 +338,7 @@ export default function Home() {
             <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Object.entries(result.categories).map(([category, score]) => (
-                <div key={category} className="p-4 border rounded-lg">
+                <div key={category} className="p-4 border rounded-lg group relative">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium capitalize">
                       {category.replace(/([A-Z])/g, ' $1').trim()}
@@ -342,6 +354,10 @@ export default function Home() {
                       }`}
                       style={{ width: `${(score / 20) * 100}%` }}
                     />
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    {getCategoryDescription(category)}
                   </div>
                 </div>
               ))}
@@ -662,7 +678,16 @@ export default function Home() {
           {/* Confidence Scores */}
           {result.confidence && (
             <div className="card">
-              <h3 className="text-lg font-semibold mb-4">Assessment Confidence</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Assessment Confidence</h3>
+                <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                  Based on data quality and analysis completeness
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Confidence scores indicate how reliable the assessment is based on available data quality, 
+                completeness of analysis, and consistency of findings across different evaluation methods.
+              </p>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="p-3 border rounded-lg text-center">
                   <div className="text-sm font-medium text-gray-600 mb-1">Overall</div>

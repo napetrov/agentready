@@ -344,7 +344,7 @@ Repository Context Usage:
     const fs = staticAnalysis.fileSizeAnalysis
     prompt += `\n\nFile Size Analysis:
 - Total Files Analyzed: ${fs.totalFiles}
-- Files by Size: ${fs.filesBySize.under1MB} under 1MB, ${fs.filesBySize.under2MB} under 2MB, ${fs.filesBySize.under10MB} under 10MB
+- Files by Size: ${fs.filesBySize.under100KB} under 100KB, ${fs.filesBySize.under500KB} under 500KB, ${fs.filesBySize.under1MB} under 1MB, ${fs.filesBySize.under5MB} under 5MB, ${fs.filesBySize.over5MB} over 5MB
 - Large Files: ${fs.largeFiles.length}
 - Context Efficiency: ${fs.contextConsumption.contextEfficiency}
 - Agent Compatibility: Cursor ${fs.agentCompatibility.cursor}%, GitHub Copilot ${fs.agentCompatibility.githubCopilot}%`
@@ -553,35 +553,58 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
     ],
     detailedAnalysis: {
       instructionClarity: {
-        stepByStepQuality: 10,
-        commandClarity: 10,
-        environmentSetup: 10,
-        errorHandling: 10,
-        dependencySpecification: 10,
-        overallScore: 10
+        stepByStepQuality: staticAnalysis.hasReadme ? 16 : 4,
+        commandClarity: staticAnalysis.hasAgents ? 18 : 6,
+        environmentSetup: staticAnalysis.hasContributing ? 14 : 6,
+        errorHandling: staticAnalysis.errorHandling ? 16 : 4,
+        dependencySpecification: staticAnalysis.hasReadme ? 12 : 4,
+        overallScore: Math.round((
+          (staticAnalysis.hasReadme ? 16 : 4) +
+          (staticAnalysis.hasAgents ? 18 : 6) +
+          (staticAnalysis.hasContributing ? 14 : 6) +
+          (staticAnalysis.errorHandling ? 16 : 4) +
+          (staticAnalysis.hasReadme ? 12 : 4)
+        ) / 5)
       },
       workflowAutomation: {
-        ciCdQuality: staticAnalysis.hasWorkflows ? 15 : 5,
-        testAutomation: staticAnalysis.hasTests ? 15 : 5,
-        buildScripts: 10,
-        deploymentAutomation: 10,
-        monitoringLogging: 10,
-        overallScore: staticAnalysis.hasWorkflows ? 15 : 5
+        ciCdQuality: staticAnalysis.hasWorkflows ? 18 : 4,
+        testAutomation: staticAnalysis.hasTests ? 16 : 4,
+        buildScripts: staticAnalysis.hasWorkflows ? 14 : 6,
+        deploymentAutomation: staticAnalysis.hasWorkflows ? 12 : 6,
+        monitoringLogging: staticAnalysis.hasWorkflows ? 10 : 6,
+        overallScore: Math.round((
+          (staticAnalysis.hasWorkflows ? 18 : 4) +
+          (staticAnalysis.hasTests ? 16 : 4) +
+          (staticAnalysis.hasWorkflows ? 14 : 6) +
+          (staticAnalysis.hasWorkflows ? 12 : 6) +
+          (staticAnalysis.hasWorkflows ? 10 : 6)
+        ) / 5)
       },
       contextEfficiency: {
-        instructionFileOptimization: 10,
-        codeDocumentation: 10,
-        apiDocumentation: 10,
-        contextWindowUsage: 10,
-        overallScore: 10
+        instructionFileOptimization: staticAnalysis.hasAgents ? 16 : 8,
+        codeDocumentation: staticAnalysis.hasReadme ? 14 : 6,
+        apiDocumentation: staticAnalysis.hasReadme ? 12 : 6,
+        contextWindowUsage: staticAnalysis.hasAgents ? 18 : 6,
+        overallScore: Math.round((
+          (staticAnalysis.hasAgents ? 16 : 8) +
+          (staticAnalysis.hasReadme ? 14 : 6) +
+          (staticAnalysis.hasReadme ? 12 : 6) +
+          (staticAnalysis.hasAgents ? 18 : 6)
+        ) / 4)
       },
       riskCompliance: {
-        securityPractices: 10,
-        errorHandling: staticAnalysis.errorHandling ? 15 : 5,
-        inputValidation: 10,
-        dependencySecurity: 10,
-        licenseCompliance: staticAnalysis.hasLicense ? 15 : 5,
-        overallScore: staticAnalysis.errorHandling ? 15 : 5
+        securityPractices: staticAnalysis.errorHandling ? 14 : 6,
+        errorHandling: staticAnalysis.errorHandling ? 18 : 4,
+        inputValidation: staticAnalysis.hasTests ? 12 : 6,
+        dependencySecurity: staticAnalysis.hasTests ? 10 : 6,
+        licenseCompliance: staticAnalysis.hasLicense ? 16 : 4,
+        overallScore: Math.round((
+          (staticAnalysis.errorHandling ? 14 : 6) +
+          (staticAnalysis.errorHandling ? 18 : 4) +
+          (staticAnalysis.hasTests ? 12 : 6) +
+          (staticAnalysis.hasTests ? 10 : 6) +
+          (staticAnalysis.hasLicense ? 16 : 4)
+        ) / 5)
       }
     },
     confidence: {

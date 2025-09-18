@@ -110,7 +110,7 @@ describe('generateEnhancedAIAssessment', () => {
     agentsContent: 'AI agent instructions available',
     fileSizeAnalysis: {
       totalFiles: 25,
-      filesBySize: { under1MB: 20, under2MB: 3, under10MB: 2, under50MB: 0, over50MB: 0 },
+      filesBySize: { under100KB: 15, under500KB: 18, under1MB: 20, under5MB: 22, over5MB: 0 },
       largeFiles: [],
       criticalFiles: [{
         path: 'README.md',

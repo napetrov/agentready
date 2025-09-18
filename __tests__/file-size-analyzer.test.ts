@@ -39,11 +39,11 @@ describe('FileSizeAnalyzer', () => {
     
     expect(result).toBeDefined()
     expect(result.totalFiles).toBe(6)
-    expect(result.filesBySize.under1MB).toBe(4)  // <1MB: README, AGENTS, small-file, data
-    expect(result.filesBySize.under2MB).toBe(5)  // <=2MB: adds 1MB binary
-    expect(result.filesBySize.under10MB).toBe(6) // <=10MB: adds 3MB file
-    expect(result.filesBySize.under50MB).toBe(6) // <=50MB: all files
-    expect(result.filesBySize.over50MB).toBe(0)  // >50MB: none
+    expect(result.filesBySize.under100KB).toBe(4)  // <100KB: README, AGENTS, small-file, data
+    expect(result.filesBySize.under500KB).toBe(4)  // <=500KB: same as under100KB
+    expect(result.filesBySize.under1MB).toBe(4)    // <1MB: same as under100KB (1MB binary is exactly 1MB)
+    expect(result.filesBySize.under5MB).toBe(6)    // <=5MB: adds 1MB binary + 3MB file
+    expect(result.filesBySize.over5MB).toBe(0)     // >5MB: none
   })
 
   test('should identify large files correctly', async () => {
@@ -108,7 +108,7 @@ describe('FileSizeAnalyzer', () => {
     const result = await FileSizeAnalyzer.analyzeFileSizes([])
     
     expect(result.totalFiles).toBe(0)
-    expect(result.filesBySize.under1MB).toBe(0)
+    expect(result.filesBySize.under100KB).toBe(0)
     expect(result.largeFiles).toHaveLength(0)
     expect(result.criticalFiles).toHaveLength(0)
     expect(result.agentCompatibility.overall).toBe(100) // Perfect score for no files

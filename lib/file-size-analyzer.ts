@@ -19,11 +19,11 @@ export interface FileSizeLimits {
 export interface FileSizeAnalysis {
   totalFiles: number;
   filesBySize: {
+    under100KB: number;
+    under500KB: number;
     under1MB: number;
-    under2MB: number;
-    under10MB: number;
-    under50MB: number;
-    over50MB: number;
+    under5MB: number;
+    over5MB: number;
   };
   largeFiles: LargeFileInfo[];
   criticalFiles: CriticalFileInfo[];
@@ -130,19 +130,19 @@ export class FileSizeAnalyzer {
    */
   private static categorizeFilesBySize(files: Array<{ size: number }>) {
     return files.reduce((acc, file) => {
-      // Cumulative counts: each bucket includes all files up to that size
-      if (file.size < 1024 * 1024) acc.under1MB++;
-      if (file.size < 2 * 1024 * 1024) acc.under2MB++;
-      if (file.size < 10 * 1024 * 1024) acc.under10MB++;
-      if (file.size < 50 * 1024 * 1024) acc.under50MB++;
-      if (file.size >= 50 * 1024 * 1024) acc.over50MB++;
+      // More relevant file size categories for typical repositories
+      if (file.size < 100 * 1024) acc.under100KB++;      // < 100KB
+      if (file.size < 500 * 1024) acc.under500KB++;      // < 500KB  
+      if (file.size < 1024 * 1024) acc.under1MB++;       // < 1MB
+      if (file.size < 5 * 1024 * 1024) acc.under5MB++;   // < 5MB
+      if (file.size >= 5 * 1024 * 1024) acc.over5MB++;   // >= 5MB
       return acc;
     }, {
+      under100KB: 0,
+      under500KB: 0,
       under1MB: 0,
-      under2MB: 0,
-      under10MB: 0,
-      under50MB: 0,
-      over50MB: 0
+      under5MB: 0,
+      over5MB: 0
     });
   }
 
@@ -556,6 +556,13 @@ export class FileSizeAnalyzer {
     
     // Add specific recommendations from context analysis
     recommendations.push(...contextConsumption.recommendations);
+    
+    // Add general recommendations for well-optimized repositories
+    if (largeFiles.length === 0 && suboptimalCriticalFiles.length === 0 && contextConsumption.contextEfficiency !== 'poor') {
+      recommendations.push('Repository files are well-optimized for AI agent consumption');
+      recommendations.push('Consider maintaining current file size practices for optimal AI agent performance');
+      recommendations.push('Regularly review file sizes as the repository grows to maintain AI agent compatibility');
+    }
     
     return recommendations;
   }

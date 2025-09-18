@@ -282,7 +282,7 @@ Documentation Content:`
     const fs = staticAnalysis.fileSizeAnalysis
     prompt += `\n\nFile Size Analysis:
 - Total Files Analyzed: ${fs.totalFiles}
-- Files by Size: ${fs.filesBySize.under1MB} under 1MB, ${fs.filesBySize.under2MB} under 2MB, ${fs.filesBySize.under10MB} under 10MB, ${fs.filesBySize.under50MB} under 50MB, ${fs.filesBySize.over50MB} over 50MB
+- Files by Size: ${fs.filesBySize.under100KB} under 100KB, ${fs.filesBySize.under500KB} under 500KB, ${fs.filesBySize.under1MB} under 1MB, ${fs.filesBySize.under5MB} under 5MB, ${fs.filesBySize.over5MB} over 5MB
 - Large Files (>2MB): ${fs.largeFiles.length}
 - Critical Files Analysis: ${fs.criticalFiles.length} files checked
 - Context Efficiency: ${fs.contextConsumption.contextEfficiency}
@@ -372,37 +372,52 @@ function generateFallbackAssessment(staticAnalysis: StaticAnalysisSummary): AIAs
   const findings: string[] = []
   const recommendations: string[] = []
 
-  if (!hasReadme) {
+  // Add positive findings for good practices
+  if (hasReadme) {
+    findings.push('README.md present with comprehensive documentation')
+  } else {
     findings.push('No README.md file found')
     recommendations.push('Create a comprehensive README.md with setup instructions and usage examples')
   }
 
-  if (!hasContributing) {
+  if (hasContributing) {
+    findings.push('CONTRIBUTING.md present for contributor guidance')
+  } else {
     findings.push('No CONTRIBUTING.md file found')
     recommendations.push('Add CONTRIBUTING.md to guide contributors and AI agents')
   }
 
-  if (!hasAgents) {
+  if (hasAgents) {
+    findings.push('AGENTS.md present for AI agent instructions')
+  } else {
     findings.push('No AGENTS.md file found')
     recommendations.push('Create AGENTS.md specifically for AI agent interaction guidelines')
   }
 
-  if (!hasLicense) {
+  if (hasLicense) {
+    findings.push('LICENSE file present for usage clarity')
+  } else {
     findings.push('No LICENSE file found')
     recommendations.push('Add a LICENSE file to clarify usage rights')
   }
 
-  if (!hasWorkflows) {
+  if (hasWorkflows) {
+    findings.push('CI/CD workflows detected for automated processes')
+  } else {
     findings.push('No CI/CD workflows detected')
     recommendations.push('Set up GitHub Actions for automated testing and deployment')
   }
 
-  if (!hasTests) {
+  if (hasTests) {
+    findings.push('Test files detected for quality assurance')
+  } else {
     findings.push('No test files detected')
     recommendations.push('Add comprehensive test suite for better reliability')
   }
 
-  if (!errorHandling) {
+  if (errorHandling) {
+    findings.push('Error handling patterns detected in codebase')
+  } else {
     findings.push('Limited error handling detected')
     recommendations.push('Implement proper error handling and logging throughout the codebase')
   }
@@ -429,6 +444,13 @@ function generateFallbackAssessment(staticAnalysis: StaticAnalysisSummary): AIAs
     
     // Add specific file size recommendations
     recommendations.push(...fs.recommendations)
+  }
+
+  // Add general recommendations for well-documented repositories
+  if (hasReadme && hasAgents && hasContributing && hasLicense && hasWorkflows && hasTests) {
+    recommendations.push('Repository is well-documented and ready for AI agent consumption')
+    recommendations.push('Consider adding more detailed API documentation for better AI agent understanding')
+    recommendations.push('Regularly update AGENTS.md with new AI agent capabilities and best practices')
   }
 
   return {
