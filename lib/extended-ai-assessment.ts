@@ -410,8 +410,8 @@ Provide a JSON response with detailed scoring and analysis.`
     console.error('Failed to parse development practices analysis:', error)
     return {
       versionControl: githubData?.activityMetrics.recentActivity ? 14 : 6,
-      branchManagement: githubData?.prQuality.pullRequests.hasReviews ? 16 : 6,
-      codeReview: githubData?.prQuality.pullRequests.hasReviews ? 18 : 4,
+      branchManagement: githubData?.prQuality?.pullRequests?.hasReviews ? 16 : 6,
+      codeReview: githubData?.prQuality?.pullRequests?.hasReviews ? 18 : 4,
       continuousIntegration: staticAnalysis.hasWorkflows ? 16 : 4,
       deployment: staticAnalysis.hasWorkflows ? 12 : 4,
       findings: [],
@@ -532,7 +532,7 @@ Provide a JSON response with detailed scoring and analysis.`
     console.error('Failed to parse maintenance sustainability analysis:', error)
     return {
       maintenancePatterns: githubData?.activityMetrics.recentActivity ? 14 : 6,
-      communityEngagement: githubData?.communityHealth.communityProfile.healthPercentage > 50 ? 16 : 6,
+      communityEngagement: (githubData?.communityHealth?.communityProfile?.healthPercentage ?? 0) > 50 ? 16 : 6,
       documentationCompleteness: staticAnalysis.hasReadme ? 16 : 4,
       longTermViability: githubData?.activityMetrics.recentActivity ? 12 : 6,
       supportStructure: staticAnalysis.hasContributing ? 14 : 6,
