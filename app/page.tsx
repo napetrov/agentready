@@ -65,6 +65,7 @@ interface AssessmentResult {
     languages: string[]
     errorHandling: boolean
     fileCount: number
+    linesOfCode: number
     fileSizeAnalysis?: {
       totalFiles: number
       filesBySize: {
@@ -259,11 +260,17 @@ export default function Home() {
                 View Repository
               </a>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="p-3 border rounded-lg">
                 <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
                 <div className="text-lg font-bold text-blue-600">
                   {result.staticAnalysis.fileSizeAnalysis?.totalFiles || result.staticAnalysis.fileCount || 0}
+                </div>
+              </div>
+              <div className="p-3 border rounded-lg">
+                <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
+                <div className="text-lg font-bold text-green-600">
+                  {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
                 </div>
               </div>
               <div className="p-3 border rounded-lg">

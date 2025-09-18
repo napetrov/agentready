@@ -4,15 +4,29 @@ import { StaticAnalysisSummary } from '../lib/ai-assessment'
 // Mock OpenAI API
 jest.mock('openai', () => {
   const mockCreate = jest.fn().mockImplementation((params) => {
-    if (params.messages[0].content.includes('error')) {
+    const mockMode = process.env.MOCK_OPENAI_MODE || 'normal'
+    
+    // Handle error mode
+    if (mockMode === 'error') {
       throw new Error('API error')
     }
     
-    // Mock different responses based on the system prompt
-    const systemContent = params.messages[0].content
+    // Handle malformed mode
+    if (mockMode === 'malformed') {
+      return Promise.resolve({
+        choices: [{
+          message: {
+            content: 'invalid json response'
+          }
+        }]
+      })
+    }
+    
+    // Normal mode - concatenate all messages and convert to lowercase for matching
+    const allMessages = params.messages.map(m => m.content).join(' ').toLowerCase()
     let mockResponse = {}
     
-    if (systemContent.includes('instruction clarity')) {
+    if (allMessages.includes('instruction clarity')) {
       mockResponse = {
         stepByStepQuality: 15,
         commandClarity: 18,
@@ -23,7 +37,7 @@ jest.mock('openai', () => {
         recommendations: ['Improve environment setup', 'Add more error handling examples'],
         confidence: 85
       }
-    } else if (systemContent.includes('workflow automation')) {
+    } else if (allMessages.includes('workflow automation')) {
       mockResponse = {
         ciCdQuality: 16,
         testAutomation: 14,
@@ -34,7 +48,7 @@ jest.mock('openai', () => {
         recommendations: ['Improve deployment automation', 'Add monitoring'],
         confidence: 75
       }
-    } else if (systemContent.includes('context optimization')) {
+    } else if (allMessages.includes('context optimization')) {
       mockResponse = {
         instructionFileOptimization: 17,
         codeDocumentation: 15,
@@ -44,7 +58,7 @@ jest.mock('openai', () => {
         recommendations: ['Improve API documentation', 'Optimize context usage'],
         confidence: 80
       }
-    } else if (systemContent.includes('security and compliance')) {
+    } else if (allMessages.includes('security and compliance')) {
       mockResponse = {
         securityPractices: 12,
         errorHandling: 15,
@@ -174,8 +188,11 @@ describe('generateEnhancedAIAssessment', () => {
 
   test('should handle API errors gracefully', async () => {
     process.env.OPENAI_API_KEY = 'test-key'
+    process.env.MOCK_OPENAI_MODE = 'error'
     
-    // The mock will cause an error, which should be handled gracefully
+    // Spy on console.error to verify error logging
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    
     const result = await generateEnhancedAIAssessment(mockStaticAnalysis)
     
     expect(result).toBeDefined()
@@ -183,12 +200,19 @@ describe('generateEnhancedAIAssessment', () => {
     expect(result.readinessScore).toBeLessThanOrEqual(100)
     expect(result.detailedAnalysis).toBeDefined()
     expect(result.confidence).toBeDefined()
+    
+    // Verify error was logged
+    expect(consoleSpy).toHaveBeenCalledWith('Enhanced AI assessment error:', expect.any(Error))
+    
+    // Clean up
+    consoleSpy.mockRestore()
+    delete process.env.MOCK_OPENAI_MODE
   })
 
   test('should handle malformed API responses', async () => {
     process.env.OPENAI_API_KEY = 'test-key'
+    process.env.MOCK_OPENAI_MODE = 'malformed'
     
-    // The mock will cause an error, which should be handled gracefully
     const result = await generateEnhancedAIAssessment(mockStaticAnalysis)
     
     expect(result).toBeDefined()
@@ -196,6 +220,9 @@ describe('generateEnhancedAIAssessment', () => {
     expect(result.readinessScore).toBeLessThanOrEqual(100)
     expect(result.detailedAnalysis).toBeDefined()
     expect(result.confidence).toBeDefined()
+    
+    // Clean up
+    delete process.env.MOCK_OPENAI_MODE
   })
 
   test('should handle empty static analysis', async () => {

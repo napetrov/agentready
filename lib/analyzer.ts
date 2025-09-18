@@ -12,6 +12,7 @@ export interface StaticAnalysisResult {
   languages: string[]
   errorHandling: boolean
   fileCount: number
+  linesOfCode: number
   readmeContent?: string
   contributingContent?: string
   agentsContent?: string
@@ -74,6 +75,7 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
       languages: [],
       errorHandling: false,
       fileCount: files.length,
+      linesOfCode: 0,
       workflowFiles: [],
       testFiles: [],
     }
@@ -124,8 +126,9 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
     analysis.hasWorkflows = workflowFiles.length > 0
     analysis.workflowFiles = workflowFiles
 
-    // Detect test files and languages
+    // Detect test files, languages, and count lines of code
     const languageMap = new Map<string, number>()
+    let totalLines = 0
     
     for (const file of files) {
       const fileName = file.toLowerCase()
@@ -144,7 +147,20 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
           languageMap.set(language, (languageMap.get(language) || 0) + 1)
         }
       }
+      
+      // Count lines of code for text files
+      if (isTextFile(extension)) {
+        try {
+          const content = await zip.files[file].async('text')
+          const lines = content.split('\n').length
+          totalLines += lines
+        } catch (e) {
+          // Skip files that can't be read as text
+        }
+      }
     }
+    
+    analysis.linesOfCode = totalLines
 
     // Sort languages by file count
     analysis.languages = Array.from(languageMap.entries())
@@ -317,4 +333,20 @@ async function extractFileData(zip: JSZip, files: string[]): Promise<Array<{ pat
   }
   
   return fileData
+}
+
+function isTextFile(extension: string | undefined): boolean {
+  if (!extension) return false
+  
+  const textExtensions = [
+    'js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'h', 'hpp',
+    'cs', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'r',
+    'm', 'mm', 'pl', 'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat',
+    'html', 'htm', 'css', 'scss', 'sass', 'less', 'xml', 'json',
+    'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'md', 'txt',
+    'rst', 'tex', 'sql', 'dockerfile', 'makefile', 'cmake',
+    'gradle', 'maven', 'pom', 'sbt', 'build', 'gulpfile', 'gruntfile'
+  ]
+  
+  return textExtensions.includes(extension.toLowerCase())
 }

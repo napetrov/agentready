@@ -130,11 +130,12 @@ export class FileSizeAnalyzer {
    */
   private static categorizeFilesBySize(files: Array<{ size: number }>) {
     return files.reduce((acc, file) => {
+      // Cumulative counts: each bucket includes all files up to that size
       if (file.size < 1024 * 1024) acc.under1MB++;
-      else if (file.size < 2 * 1024 * 1024) acc.under2MB++;
-      else if (file.size < 10 * 1024 * 1024) acc.under10MB++;
-      else if (file.size < 50 * 1024 * 1024) acc.under50MB++;
-      else acc.over50MB++;
+      if (file.size < 2 * 1024 * 1024) acc.under2MB++;
+      if (file.size < 10 * 1024 * 1024) acc.under10MB++;
+      if (file.size < 50 * 1024 * 1024) acc.under50MB++;
+      if (file.size >= 50 * 1024 * 1024) acc.over50MB++;
       return acc;
     }, {
       under1MB: 0,

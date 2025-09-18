@@ -218,12 +218,12 @@ const calculateAgentImpact = (fileSize: number) => {
 ```typescript
 const calculateOverallScore = (categories: CategoryScores) => {
   const weights = {
-    documentation: 0.20,
-    instructionClarity: 0.20,
-    workflowAutomation: 0.20,
-    riskCompliance: 0.20,
-    integrationStructure: 0.20,
-    fileSizeOptimization: 0.15
+    documentation: 0.174,      // 0.20 / 1.15
+    instructionClarity: 0.174, // 0.20 / 1.15
+    workflowAutomation: 0.174, // 0.20 / 1.15
+    riskCompliance: 0.174,     // 0.20 / 1.15
+    integrationStructure: 0.174, // 0.20 / 1.15
+    fileSizeOptimization: 0.130 // 0.15 / 1.15
   }
   
   return Object.entries(categories).reduce((total, [category, score]) => {

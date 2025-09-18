@@ -20,6 +20,49 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
 const OPENAI_TEMPERATURE = 0
 const OPENAI_RESPONSE_FORMAT = { type: 'json_object' as const }
 
+export interface InstructionClarityAnalysis {
+  stepByStepQuality: number
+  commandClarity: number
+  environmentSetup: number
+  errorHandling: number
+  dependencySpecification: number
+  findings: string[]
+  recommendations: string[]
+  confidence: number
+}
+
+export interface WorkflowAutomationAnalysis {
+  ciCdQuality: number
+  testAutomation: number
+  buildScripts: number
+  deploymentAutomation: number
+  monitoringLogging: number
+  findings: string[]
+  recommendations: string[]
+  confidence: number
+}
+
+export interface ContextEfficiencyAnalysis {
+  instructionFileOptimization: number
+  codeDocumentation: number
+  apiDocumentation: number
+  contextWindowUsage: number
+  findings: string[]
+  recommendations: string[]
+  confidence: number
+}
+
+export interface RiskComplianceAnalysis {
+  securityPractices: number
+  errorHandling: number
+  inputValidation: number
+  dependencySecurity: number
+  licenseCompliance: number
+  findings: string[]
+  recommendations: string[]
+  confidence: number
+}
+
 export interface EnhancedAIAssessmentResult {
   readinessScore: number
   categories: {
@@ -98,7 +141,7 @@ export async function generateEnhancedAIAssessment(staticAnalysis: StaticAnalysi
   }
 }
 
-async function analyzeInstructionClarity(staticAnalysis: StaticAnalysisSummary): Promise<any> {
+async function analyzeInstructionClarity(staticAnalysis: StaticAnalysisSummary): Promise<InstructionClarityAnalysis> {
   const prompt = createInstructionClarityPrompt(staticAnalysis)
   
   const response = await getOpenAI().chat.completions.create({
@@ -129,7 +172,7 @@ Provide a JSON response with detailed scoring and analysis.`
   return JSON.parse(response.choices[0]?.message?.content || '{}')
 }
 
-async function analyzeWorkflowAutomation(staticAnalysis: StaticAnalysisSummary): Promise<any> {
+async function analyzeWorkflowAutomation(staticAnalysis: StaticAnalysisSummary): Promise<WorkflowAutomationAnalysis> {
   const prompt = createWorkflowAutomationPrompt(staticAnalysis)
   
   const response = await getOpenAI().chat.completions.create({
@@ -160,7 +203,7 @@ Provide a JSON response with detailed scoring and analysis.`
   return JSON.parse(response.choices[0]?.message?.content || '{}')
 }
 
-async function analyzeContextEfficiency(staticAnalysis: StaticAnalysisSummary): Promise<any> {
+async function analyzeContextEfficiency(staticAnalysis: StaticAnalysisSummary): Promise<ContextEfficiencyAnalysis> {
   const prompt = createContextEfficiencyPrompt(staticAnalysis)
   
   const response = await getOpenAI().chat.completions.create({
@@ -191,7 +234,7 @@ Provide a JSON response with detailed scoring and analysis.`
   return JSON.parse(response.choices[0]?.message?.content || '{}')
 }
 
-async function analyzeRiskCompliance(staticAnalysis: StaticAnalysisSummary): Promise<any> {
+async function analyzeRiskCompliance(staticAnalysis: StaticAnalysisSummary): Promise<RiskComplianceAnalysis> {
   const prompt = createRiskCompliancePrompt(staticAnalysis)
   
   const response = await getOpenAI().chat.completions.create({
@@ -356,17 +399,43 @@ Provide detailed scoring and specific findings for each area.`
 }
 
 function combineAssessmentResults(
-  instructionAnalysis: any,
-  workflowAnalysis: any,
-  contextAnalysis: any,
-  riskAnalysis: any,
+  instructionAnalysis: InstructionClarityAnalysis,
+  workflowAnalysis: WorkflowAutomationAnalysis,
+  contextAnalysis: ContextEfficiencyAnalysis,
+  riskAnalysis: RiskComplianceAnalysis,
   staticAnalysis: StaticAnalysisSummary
 ): EnhancedAIAssessmentResult {
-  // Calculate overall scores
-  const instructionScore = Math.round((instructionAnalysis.stepByStepQuality + instructionAnalysis.commandClarity + instructionAnalysis.environmentSetup + instructionAnalysis.errorHandling + instructionAnalysis.dependencySpecification) / 5)
-  const workflowScore = Math.round((workflowAnalysis.ciCdQuality + workflowAnalysis.testAutomation + workflowAnalysis.buildScripts + workflowAnalysis.deploymentAutomation + workflowAnalysis.monitoringLogging) / 5)
-  const contextScore = Math.round((contextAnalysis.instructionFileOptimization + contextAnalysis.codeDocumentation + contextAnalysis.apiDocumentation + contextAnalysis.contextWindowUsage) / 4)
-  const riskScore = Math.round((riskAnalysis.securityPractices + riskAnalysis.errorHandling + riskAnalysis.inputValidation + riskAnalysis.dependencySecurity + riskAnalysis.licenseCompliance) / 5)
+  // Calculate overall scores with proper nullish coalescing
+  const instructionScore = Math.round((
+    (instructionAnalysis.stepByStepQuality ?? 0) + 
+    (instructionAnalysis.commandClarity ?? 0) + 
+    (instructionAnalysis.environmentSetup ?? 0) + 
+    (instructionAnalysis.errorHandling ?? 0) + 
+    (instructionAnalysis.dependencySpecification ?? 0)
+  ) / 5)
+  
+  const workflowScore = Math.round((
+    (workflowAnalysis.ciCdQuality ?? 0) + 
+    (workflowAnalysis.testAutomation ?? 0) + 
+    (workflowAnalysis.buildScripts ?? 0) + 
+    (workflowAnalysis.deploymentAutomation ?? 0) + 
+    (workflowAnalysis.monitoringLogging ?? 0)
+  ) / 5)
+  
+  const contextScore = Math.round((
+    (contextAnalysis.instructionFileOptimization ?? 0) + 
+    (contextAnalysis.codeDocumentation ?? 0) + 
+    (contextAnalysis.apiDocumentation ?? 0) + 
+    (contextAnalysis.contextWindowUsage ?? 0)
+  ) / 4)
+  
+  const riskScore = Math.round((
+    (riskAnalysis.securityPractices ?? 0) + 
+    (riskAnalysis.errorHandling ?? 0) + 
+    (riskAnalysis.inputValidation ?? 0) + 
+    (riskAnalysis.dependencySecurity ?? 0) + 
+    (riskAnalysis.licenseCompliance ?? 0)
+  ) / 5)
 
   // Calculate overall readiness score
   const overallScore = Math.round((instructionScore + workflowScore + contextScore + riskScore) / 4)
@@ -432,11 +501,16 @@ function combineAssessmentResults(
       }
     },
     confidence: {
-      overall: Math.round((instructionAnalysis.confidence || 70 + workflowAnalysis.confidence || 70 + contextAnalysis.confidence || 70 + riskAnalysis.confidence || 70) / 4),
-      instructionClarity: instructionAnalysis.confidence || 70,
-      workflowAutomation: workflowAnalysis.confidence || 70,
-      contextEfficiency: contextAnalysis.confidence || 70,
-      riskCompliance: riskAnalysis.confidence || 70
+      overall: Math.round((
+        (instructionAnalysis.confidence ?? 70) + 
+        (workflowAnalysis.confidence ?? 70) + 
+        (contextAnalysis.confidence ?? 70) + 
+        (riskAnalysis.confidence ?? 70)
+      ) / 4),
+      instructionClarity: instructionAnalysis.confidence ?? 70,
+      workflowAutomation: workflowAnalysis.confidence ?? 70,
+      contextEfficiency: contextAnalysis.confidence ?? 70,
+      riskCompliance: riskAnalysis.confidence ?? 70
     }
   }
 }

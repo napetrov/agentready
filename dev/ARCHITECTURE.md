@@ -47,9 +47,8 @@ The tool implements a comprehensive methodology that evaluates both technical re
 
 **Context Window Considerations**
 - **Token Limits**: Often more restrictive than file size limits
-- **Claude**: 200,000 tokens (30 MB file limit)
-- **OpenAI Codex**: 192,000 tokens context
-- **ChatGPT**: 2 million tokens for text files
+- **Vendor-Specific Limits**: Vary by model, plan, and deployment (consult vendor documentation for current limits)
+- **Context Efficiency**: Critical for optimal AI agent performance regardless of specific limits
 
 **Repository-Level Processing**
 - **Sourcegraph Cody**: No single-file limits, indexes entire repositories

@@ -29,6 +29,7 @@ export interface StaticAnalysisSummary {
   languages: string[]
   errorHandling: boolean
   fileCount: number
+  linesOfCode: number
   readmeContent?: string
   contributingContent?: string
   agentsContent?: string

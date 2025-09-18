@@ -39,10 +39,11 @@ describe('FileSizeAnalyzer', () => {
     
     expect(result).toBeDefined()
     expect(result.totalFiles).toBe(6)
-    expect(result.filesBySize.under1MB).toBe(4) // README, AGENTS, small-file, data
-    expect(result.filesBySize.under2MB).toBe(1) // binary-file (1MB)
-    expect(result.filesBySize.under10MB).toBe(1) // large-file (3MB)
-    expect(result.filesBySize.over50MB).toBe(0)
+    expect(result.filesBySize.under1MB).toBe(4)  // <1MB: README, AGENTS, small-file, data
+    expect(result.filesBySize.under2MB).toBe(5)  // <=2MB: adds 1MB binary
+    expect(result.filesBySize.under10MB).toBe(6) // <=10MB: adds 3MB file
+    expect(result.filesBySize.under50MB).toBe(6) // <=50MB: all files
+    expect(result.filesBySize.over50MB).toBe(0)  // >50MB: none
   })
 
   test('should identify large files correctly', async () => {
