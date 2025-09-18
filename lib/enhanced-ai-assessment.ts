@@ -541,13 +541,27 @@ function generateEnhancedFallbackAssessment(staticAnalysis: StaticAnalysisSummar
     readinessScore: Math.min(baseScore, 100),
     categories: {
       documentation: Math.min(20, Math.round((staticAnalysis.hasReadme ? 15 : 0) + (staticAnalysis.hasAgents ? 5 : 0))),
-      instructionClarity: Math.min(20, Math.round(
-        (staticAnalysis.hasReadme ? 12 : 0) + 
-        (staticAnalysis.hasAgents ? 8 : 0) + 
-        (staticAnalysis.hasContributing ? 3 : 0)
-      )),
-      workflowAutomation: Math.min(20, Math.round((staticAnalysis.hasWorkflows ? 15 : 0) + (staticAnalysis.hasTests ? 5 : 0))),
-      riskCompliance: Math.min(20, Math.round((staticAnalysis.hasLicense ? 10 : 0) + (staticAnalysis.errorHandling ? 10 : 0))),
+      instructionClarity: Math.min(20, Math.round((
+        (staticAnalysis.hasReadme ? 16 : 4) +
+        (staticAnalysis.hasAgents ? 18 : 6) +
+        (staticAnalysis.hasContributing ? 14 : 6) +
+        (staticAnalysis.errorHandling ? 16 : 4) +
+        (staticAnalysis.hasReadme ? 12 : 4)
+      ) / 5)),
+      workflowAutomation: Math.min(20, Math.round((
+        (staticAnalysis.hasWorkflows ? 18 : 4) +
+        (staticAnalysis.hasTests ? 16 : 4) +
+        (staticAnalysis.hasWorkflows ? 14 : 6) +
+        (staticAnalysis.hasWorkflows ? 12 : 6) +
+        (staticAnalysis.hasWorkflows ? 10 : 6)
+      ) / 5)),
+      riskCompliance: Math.min(20, Math.round((
+        (staticAnalysis.errorHandling ? 14 : 6) +
+        (staticAnalysis.errorHandling ? 18 : 4) +
+        (staticAnalysis.hasTests ? 12 : 6) +
+        (staticAnalysis.hasTests ? 10 : 6) +
+        (staticAnalysis.hasLicense ? 16 : 4)
+      ) / 5)),
       integrationStructure: Math.min(20, Math.round((staticAnalysis.hasWorkflows ? 10 : 0) + (staticAnalysis.hasTests ? 10 : 0))),
       fileSizeOptimization: Math.min(20, staticAnalysis.fileSizeAnalysis ? Math.round(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5) : 10)
     },
