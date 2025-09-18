@@ -1,6 +1,7 @@
 import JSZip from 'jszip'
 import axios from 'axios'
 import { FileSizeAnalyzer, FileSizeAnalysis } from './file-size-analyzer'
+import * as cheerio from 'cheerio'
 
 export interface StaticAnalysisResult {
   hasReadme: boolean
@@ -20,6 +21,33 @@ export interface StaticAnalysisResult {
   workflowFiles: string[]
   testFiles: string[]
   fileSizeAnalysis?: FileSizeAnalysis
+  // Website-specific fields
+  websiteUrl?: string
+  pageTitle?: string
+  metaDescription?: string
+  hasStructuredData?: boolean
+  hasOpenGraph?: boolean
+  hasTwitterCards?: boolean
+  hasSitemap?: boolean
+  hasRobotsTxt?: boolean
+  hasFavicon?: boolean
+  hasManifest?: boolean
+  hasServiceWorker?: boolean
+  pageLoadSpeed?: number
+  mobileFriendly?: boolean
+  accessibilityScore?: number
+  seoScore?: number
+  contentLength?: number
+  imageCount?: number
+  linkCount?: number
+  headingStructure?: {
+    [key: string]: number
+  }
+  technologies?: string[]
+  securityHeaders?: string[]
+  socialMediaLinks?: string[]
+  contactInfo?: string[]
+  navigationStructure?: string[]
 }
 
 export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysisResult> {
@@ -389,4 +417,243 @@ function isTextFile(extension: string | undefined): boolean {
   ]
   
   return textExtensions.includes(extension.toLowerCase())
+}
+
+export async function analyzeWebsite(websiteUrl: string): Promise<StaticAnalysisResult> {
+  try {
+    console.log('🌐 Starting website analysis for:', websiteUrl)
+    
+    // Fetch the website content
+    const response = await axios.get(websiteUrl, {
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; AI-Agent-Analyzer/1.0)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+      }
+    })
+
+    const html = response.data
+    const $ = cheerio.load(html)
+    const url = new URL(websiteUrl)
+
+    // Initialize analysis result
+    const analysis: StaticAnalysisResult = {
+      hasReadme: false,
+      hasContributing: false,
+      hasAgents: false,
+      hasLicense: false,
+      hasWorkflows: false,
+      hasTests: false,
+      languages: [],
+      errorHandling: false,
+      fileCount: 1, // Single page
+      linesOfCode: 0,
+      repositorySizeMB: 0,
+      workflowFiles: [],
+      testFiles: [],
+      websiteUrl: websiteUrl,
+      pageTitle: $('title').text().trim(),
+      metaDescription: $('meta[name="description"]').attr('content') || '',
+      hasStructuredData: false,
+      hasOpenGraph: false,
+      hasTwitterCards: false,
+      hasSitemap: false,
+      hasRobotsTxt: false,
+      hasFavicon: false,
+      hasManifest: false,
+      hasServiceWorker: false,
+      pageLoadSpeed: 0,
+      mobileFriendly: false,
+      accessibilityScore: 0,
+      seoScore: 0,
+      contentLength: html.length,
+      imageCount: 0,
+      linkCount: 0,
+      headingStructure: { h1: 0, h2: 0, h3: 0, h4: 0, h5: 0, h6: 0 },
+      technologies: [],
+      securityHeaders: [],
+      socialMediaLinks: [],
+      contactInfo: [],
+      navigationStructure: []
+    }
+
+    // Analyze page content
+    analysis.linesOfCode = html.split('\n').length
+    analysis.repositorySizeMB = Math.round((html.length / (1024 * 1024)) * 100) / 100
+
+    // Check for structured data
+    analysis.hasStructuredData = $('script[type="application/ld+json"]').length > 0
+
+    // Check for Open Graph meta tags
+    analysis.hasOpenGraph = $('meta[property^="og:"]').length > 0
+
+    // Check for Twitter Cards
+    analysis.hasTwitterCards = $('meta[name^="twitter:"]').length > 0
+
+    // Check for favicon
+    analysis.hasFavicon = $('link[rel="icon"], link[rel="shortcut icon"]').length > 0
+
+    // Check for web app manifest
+    analysis.hasManifest = $('link[rel="manifest"]').length > 0
+
+    // Check for service worker
+    analysis.hasServiceWorker = $('script').text().includes('serviceWorker') || 
+                               $('script').text().includes('navigator.serviceWorker')
+
+    // Count images and links
+    analysis.imageCount = $('img').length
+    analysis.linkCount = $('a[href]').length
+
+    // Analyze heading structure
+    for (let i = 1; i <= 6; i++) {
+      analysis.headingStructure![`h${i}`] = $(`h${i}`).length
+    }
+
+    // Detect technologies
+    const technologies: string[] = []
+    
+    // Check for common frameworks and libraries
+    if ($('script[src*="react"]').length > 0 || html.includes('React')) technologies.push('React')
+    if ($('script[src*="vue"]').length > 0 || html.includes('Vue')) technologies.push('Vue')
+    if ($('script[src*="angular"]').length > 0 || html.includes('Angular')) technologies.push('Angular')
+    if ($('script[src*="jquery"]').length > 0 || html.includes('jQuery')) technologies.push('jQuery')
+    if ($('script[src*="bootstrap"]').length > 0 || html.includes('Bootstrap')) technologies.push('Bootstrap')
+    if ($('script[src*="tailwind"]').length > 0 || html.includes('tailwind')) technologies.push('Tailwind CSS')
+    if (html.includes('WordPress')) technologies.push('WordPress')
+    if (html.includes('Drupal')) technologies.push('Drupal')
+    if (html.includes('Joomla')) technologies.push('Joomla')
+    if (html.includes('Shopify')) technologies.push('Shopify')
+    if (html.includes('Wix')) technologies.push('Wix')
+    if (html.includes('Squarespace')) technologies.push('Squarespace')
+    if (html.includes('Webflow')) technologies.push('Webflow')
+    if (html.includes('Next.js')) technologies.push('Next.js')
+    if (html.includes('Nuxt')) technologies.push('Nuxt')
+    if (html.includes('Gatsby')) technologies.push('Gatsby')
+    if (html.includes('Svelte')) technologies.push('Svelte')
+    if (html.includes('Alpine')) technologies.push('Alpine.js')
+    if (html.includes('Stimulus')) technologies.push('Stimulus')
+    if (html.includes('Turbo')) technologies.push('Turbo')
+    if (html.includes('Hotwire')) technologies.push('Hotwire')
+    
+    analysis.technologies = technologies
+
+    // Extract social media links
+    const socialLinks: string[] = []
+    $('a[href]').each((_, element) => {
+      const href = $(element).attr('href') || ''
+      if (href.includes('facebook.com')) socialLinks.push('Facebook')
+      if (href.includes('twitter.com') || href.includes('x.com')) socialLinks.push('Twitter/X')
+      if (href.includes('linkedin.com')) socialLinks.push('LinkedIn')
+      if (href.includes('instagram.com')) socialLinks.push('Instagram')
+      if (href.includes('youtube.com')) socialLinks.push('YouTube')
+      if (href.includes('github.com')) socialLinks.push('GitHub')
+      if (href.includes('discord.com')) socialLinks.push('Discord')
+      if (href.includes('telegram.org')) socialLinks.push('Telegram')
+    })
+    analysis.socialMediaLinks = [...new Set(socialLinks)]
+
+    // Extract contact information
+    const contactInfo: string[] = []
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+    const phoneRegex = /(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/g
+    
+    const textContent = $('body').text()
+    const emails = textContent.match(emailRegex) || []
+    const phones = textContent.match(phoneRegex) || []
+    
+    contactInfo.push(...emails.slice(0, 3)) // Limit to 3 emails
+    contactInfo.push(...phones.slice(0, 3)) // Limit to 3 phone numbers
+    
+    analysis.contactInfo = contactInfo
+
+    // Extract navigation structure
+    const navItems: string[] = []
+    $('nav a, .nav a, .navigation a, .menu a').each((_, element) => {
+      const text = $(element).text().trim()
+      if (text && text.length > 0 && text.length < 50) {
+        navItems.push(text)
+      }
+    })
+    analysis.navigationStructure = navItems.slice(0, 10) // Limit to 10 nav items
+
+    // Check for robots.txt and sitemap
+    try {
+      const robotsResponse = await axios.get(`${url.origin}/robots.txt`, { timeout: 5000 })
+      analysis.hasRobotsTxt = true
+      
+      // Check if sitemap is mentioned in robots.txt
+      if (robotsResponse.data.includes('Sitemap:')) {
+        analysis.hasSitemap = true
+      }
+    } catch {
+      // robots.txt not found or not accessible
+    }
+
+    // Check for sitemap.xml
+    try {
+      await axios.get(`${url.origin}/sitemap.xml`, { timeout: 5000 })
+      analysis.hasSitemap = true
+    } catch {
+      // sitemap.xml not found
+    }
+
+    // Basic mobile-friendliness check
+    const viewport = $('meta[name="viewport"]').attr('content')
+    analysis.mobileFriendly = !!viewport && viewport.includes('width=device-width')
+
+    // Basic accessibility checks
+    let accessibilityScore = 0
+    if (analysis.pageTitle) accessibilityScore += 20
+    if (analysis.metaDescription) accessibilityScore += 10
+    if (analysis.headingStructure!.h1 === 1) accessibilityScore += 20
+    if ($('img[alt]').length > 0) accessibilityScore += 15
+    if ($('a[href]').length > 0) accessibilityScore += 10
+    if (analysis.headingStructure!.h2 > 0) accessibilityScore += 10
+    if ($('form label').length > 0) accessibilityScore += 15
+    analysis.accessibilityScore = Math.min(accessibilityScore, 100)
+
+    // Basic SEO score
+    let seoScore = 0
+    if (analysis.pageTitle && analysis.pageTitle.length > 10 && analysis.pageTitle.length < 60) seoScore += 20
+    if (analysis.metaDescription && analysis.metaDescription.length > 120 && analysis.metaDescription.length < 160) seoScore += 20
+    if (analysis.hasOpenGraph) seoScore += 15
+    if (analysis.hasTwitterCards) seoScore += 10
+    if (analysis.hasStructuredData) seoScore += 15
+    if (analysis.hasSitemap) seoScore += 10
+    if (analysis.hasRobotsTxt) seoScore += 5
+    if (analysis.headingStructure!.h1 === 1) seoScore += 5
+    analysis.seoScore = Math.min(seoScore, 100)
+
+    // Simulate page load speed (basic estimation)
+    analysis.pageLoadSpeed = Math.max(1, Math.min(10, Math.round(html.length / 50000))) // Rough estimation
+
+    // Set languages based on detected technologies
+    if (technologies.length > 0) {
+      analysis.languages = technologies
+    } else {
+      analysis.languages = ['HTML', 'CSS', 'JavaScript']
+    }
+
+    // Check for error handling patterns in JavaScript
+    const scripts = $('script').text()
+    analysis.errorHandling = scripts.includes('try') && scripts.includes('catch') || 
+                           scripts.includes('console.error') || 
+                           scripts.includes('throw')
+
+    console.log('✅ Website analysis completed:', {
+      title: analysis.pageTitle,
+      technologies: analysis.technologies,
+      accessibilityScore: analysis.accessibilityScore,
+      seoScore: analysis.seoScore,
+      mobileFriendly: analysis.mobileFriendly
+    })
+
+    return analysis
+  } catch (error) {
+    console.error('Website analysis error:', error)
+    throw new Error(`Failed to analyze website: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
 }

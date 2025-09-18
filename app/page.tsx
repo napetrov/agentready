@@ -76,6 +76,33 @@ interface AssessmentResult {
     fileCount: number
     linesOfCode: number
     repositorySizeMB: number
+    // Website-specific fields
+    websiteUrl?: string
+    pageTitle?: string
+    metaDescription?: string
+    hasStructuredData?: boolean
+    hasOpenGraph?: boolean
+    hasTwitterCards?: boolean
+    hasSitemap?: boolean
+    hasRobotsTxt?: boolean
+    hasFavicon?: boolean
+    hasManifest?: boolean
+    hasServiceWorker?: boolean
+    pageLoadSpeed?: number
+    mobileFriendly?: boolean
+    accessibilityScore?: number
+    seoScore?: number
+    contentLength?: number
+    imageCount?: number
+    linkCount?: number
+    headingStructure?: {
+      [key: string]: number
+    }
+    technologies?: string[]
+    securityHeaders?: string[]
+    socialMediaLinks?: string[]
+    contactInfo?: string[]
+    navigationStructure?: string[]
     fileSizeAnalysis?: {
       totalFiles: number
       filesBySize: {
@@ -135,14 +162,15 @@ interface AssessmentResult {
 }
 
 export default function Home() {
-  const [repoUrl, setRepoUrl] = useState('')
+  const [inputUrl, setInputUrl] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [result, setResult] = useState<AssessmentResult | null>(null)
   const [error, setError] = useState('')
+  const [inputType, setInputType] = useState<'repository' | 'website'>('repository')
 
   const handleAnalyze = async () => {
-    if (!repoUrl.trim()) {
-      setError('Please enter a GitHub repository URL')
+    if (!inputUrl.trim()) {
+      setError(`Please enter a ${inputType === 'repository' ? 'GitHub repository' : 'website'} URL`)
       return
     }
 
@@ -156,7 +184,10 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ repoUrl: repoUrl.trim() }),
+        body: JSON.stringify({ 
+          inputUrl: inputUrl.trim(),
+          inputType: inputType
+        }),
       })
 
       if (!response.ok) {
@@ -190,7 +221,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ result, repoUrl }),
+        body: JSON.stringify({ result, inputUrl, inputType }),
       })
 
       if (!response.ok) {
@@ -235,7 +266,7 @@ export default function Home() {
     return descriptions[category] || 'Assessment category'
   }
 
-  const sanitizeGitHubUrl = (url: string | null): string | null => {
+  const sanitizeUrl = (url: string | null): string | null => {
     if (!url) return null
     
     try {
@@ -246,21 +277,32 @@ export default function Home() {
         return null
       }
       
-      // Check if hostname is a known GitHub domain
-      const allowedHostnames = [
-        'github.com',
-        'www.github.com',
-        'raw.githubusercontent.com',
-        'githubusercontent.com'
-      ]
-      
-      if (!allowedHostnames.includes(parsedUrl.hostname)) {
-        return null
-      }
-      
       return url
     } catch {
       return null
+    }
+  }
+
+  const detectInputType = (url: string): 'repository' | 'website' => {
+    try {
+      const parsedUrl = new URL(url)
+      const hostname = parsedUrl.hostname.toLowerCase()
+      
+      // Check if it's a GitHub repository
+      if (hostname === 'github.com' || hostname === 'www.github.com') {
+        return 'repository'
+      }
+      
+      return 'website'
+    } catch {
+      return 'website'
+    }
+  }
+
+  const handleUrlChange = (url: string) => {
+    setInputUrl(url)
+    if (url.trim()) {
+      setInputType(detectInputType(url))
     }
   }
 
@@ -270,26 +312,32 @@ export default function Home() {
       <div className="card">
         <h2 className="text-xl font-semibold mb-4 flex items-center">
           <Github className="w-5 h-5 mr-2" />
-          Repository Analysis
+          {inputType === 'repository' ? 'Repository Analysis' : 'Website Analysis'}
         </h2>
         <div className="space-y-4">
           <div>
-            <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700 mb-2">
-              GitHub Repository URL
+            <label htmlFor="inputUrl" className="block text-sm font-medium text-gray-700 mb-2">
+              {inputType === 'repository' ? 'GitHub Repository URL' : 'Website URL'}
             </label>
             <input
               type="url"
-              id="repoUrl"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/username/repository"
+              id="inputUrl"
+              value={inputUrl}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              placeholder={inputType === 'repository' ? "https://github.com/username/repository" : "https://example.com"}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               disabled={isAnalyzing}
             />
+            <p className="text-sm text-gray-500 mt-1">
+              {inputType === 'repository' 
+                ? 'Enter a GitHub repository URL to analyze its AI readiness'
+                : 'Enter a website URL to analyze its AI agent compatibility'
+              }
+            </p>
           </div>
           <button
             onClick={handleAnalyze}
-            disabled={isAnalyzing || !repoUrl.trim()}
+            disabled={isAnalyzing || !inputUrl.trim()}
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {isAnalyzing ? (
@@ -298,7 +346,7 @@ export default function Home() {
                 Analyzing...
               </>
             ) : (
-              'Analyze Repository'
+              `Analyze ${inputType === 'repository' ? 'Repository' : 'Website'}`
             )}
           </button>
           {error && (
@@ -321,8 +369,13 @@ export default function Home() {
           <div className="flex items-center">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
             <div>
-              <p className="text-blue-800 font-medium">Analyzing Repository</p>
-              <p className="text-blue-700 text-sm mt-1">This may take a few moments for large repositories...</p>
+              <p className="text-blue-800 font-medium">Analyzing {inputType === 'repository' ? 'Repository' : 'Website'}</p>
+              <p className="text-blue-700 text-sm mt-1">
+                {inputType === 'repository' 
+                  ? 'This may take a few moments for large repositories...'
+                  : 'This may take a few moments to analyze the website...'
+                }
+              </p>
             </div>
           </div>
         </div>
@@ -391,59 +444,96 @@ export default function Home() {
       {/* Results Section */}
       {result && (
         <div className="space-y-6">
-          {/* Repository Information */}
+          {/* Source Information */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Repository Information</h3>
-              {sanitizeGitHubUrl(repoUrl) && (
+              <h3 className="text-lg font-semibold">{inputType === 'repository' ? 'Repository Information' : 'Website Information'}</h3>
+              {sanitizeUrl(inputUrl) && (
                 <a
-                  href={sanitizeGitHubUrl(repoUrl)!}
+                  href={sanitizeUrl(inputUrl)!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="View repository on GitHub"
+                  aria-label={`View ${inputType === 'repository' ? 'repository on GitHub' : 'website'}`}
                   className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
                 >
                   <Github className="w-4 h-4 mr-2" />
-                  View Repository
+                  View {inputType === 'repository' ? 'Repository' : 'Website'}
                 </a>
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
-                <div className="text-lg font-bold text-blue-600">
-                  {result.staticAnalysis.fileCount || result.staticAnalysis.fileSizeAnalysis?.totalFiles || 0}
-                </div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
-                <div className="text-lg font-bold text-green-600">
-                  {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
-                </div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
-                <div className="text-lg font-bold text-purple-600">
-                  {result.staticAnalysis.repositorySizeMB?.toFixed(2) || '0.00'} MB
-                </div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
-                <div className="text-sm font-medium">
-                  {result.staticAnalysis.languages?.slice(0, 2).join(', ') || 'Unknown'}
-                </div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
-                <div className="text-sm font-medium">
-                  {[
-                    result.staticAnalysis.hasReadme && 'README',
-                    result.staticAnalysis.hasAgents && 'AGENTS',
-                    result.staticAnalysis.hasContributing && 'CONTRIBUTING',
-                    result.staticAnalysis.hasLicense && 'LICENSE'
-                  ].filter(Boolean).join(', ') || 'None'}
-                </div>
-              </div>
+              {inputType === 'repository' ? (
+                <>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
+                    <div className="text-lg font-bold text-blue-600">
+                      {result.staticAnalysis.fileCount || result.staticAnalysis.fileSizeAnalysis?.totalFiles || 0}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
+                    <div className="text-lg font-bold text-green-600">
+                      {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
+                    <div className="text-lg font-bold text-purple-600">
+                      {result.staticAnalysis.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
+                    <div className="text-sm font-medium">
+                      {result.staticAnalysis.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
+                    <div className="text-sm font-medium">
+                      {[
+                        result.staticAnalysis.hasReadme && 'README',
+                        result.staticAnalysis.hasAgents && 'AGENTS',
+                        result.staticAnalysis.hasContributing && 'CONTRIBUTING',
+                        result.staticAnalysis.hasLicense && 'LICENSE'
+                      ].filter(Boolean).join(', ') || 'None'}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Page Title</div>
+                    <div className="text-sm font-medium truncate">
+                      {result.staticAnalysis.pageTitle || 'No title'}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Accessibility Score</div>
+                    <div className="text-lg font-bold text-green-600">
+                      {result.staticAnalysis.accessibilityScore || 0}%
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">SEO Score</div>
+                    <div className="text-lg font-bold text-blue-600">
+                      {result.staticAnalysis.seoScore || 0}%
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Technologies</div>
+                    <div className="text-sm font-medium">
+                      {result.staticAnalysis.technologies?.slice(0, 2).join(', ') || 'Unknown'}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Mobile Friendly</div>
+                    <div className="text-sm font-medium">
+                      {result.staticAnalysis.mobileFriendly ? '✅ Yes' : '❌ No'}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -540,6 +630,174 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {/* Website-specific Analysis */}
+          {inputType === 'website' && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Website Analysis Results</h3>
+              
+              {/* Website Features */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-3 border rounded-lg">
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    result.staticAnalysis.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {result.staticAnalysis.hasStructuredData ? '✓' : '✗'}
+                  </div>
+                  <div className="text-sm font-medium">Structured Data</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    result.staticAnalysis.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {result.staticAnalysis.hasOpenGraph ? '✓' : '✗'}
+                  </div>
+                  <div className="text-sm font-medium">Open Graph</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    result.staticAnalysis.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {result.staticAnalysis.hasTwitterCards ? '✓' : '✗'}
+                  </div>
+                  <div className="text-sm font-medium">Twitter Cards</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    result.staticAnalysis.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {result.staticAnalysis.hasSitemap ? '✓' : '✗'}
+                  </div>
+                  <div className="text-sm font-medium">Sitemap</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    result.staticAnalysis.hasRobotsTxt ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {result.staticAnalysis.hasRobotsTxt ? '✓' : '✗'}
+                  </div>
+                  <div className="text-sm font-medium">Robots.txt</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    result.staticAnalysis.hasFavicon ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {result.staticAnalysis.hasFavicon ? '✓' : '✗'}
+                  </div>
+                  <div className="text-sm font-medium">Favicon</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    result.staticAnalysis.hasManifest ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {result.staticAnalysis.hasManifest ? '✓' : '✗'}
+                  </div>
+                  <div className="text-sm font-medium">Web Manifest</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    result.staticAnalysis.hasServiceWorker ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {result.staticAnalysis.hasServiceWorker ? '✓' : '✗'}
+                  </div>
+                  <div className="text-sm font-medium">Service Worker</div>
+                </div>
+              </div>
+
+              {/* Website Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="p-3 border rounded-lg">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Content Length</div>
+                  <div className="text-lg font-bold text-blue-600">
+                    {result.staticAnalysis.contentLength?.toLocaleString() || '0'} characters
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Images</div>
+                  <div className="text-lg font-bold text-green-600">
+                    {result.staticAnalysis.imageCount || 0}
+                  </div>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <div className="text-sm font-medium text-gray-600 mb-1">Links</div>
+                  <div className="text-lg font-bold text-purple-600">
+                    {result.staticAnalysis.linkCount || 0}
+                  </div>
+                </div>
+              </div>
+
+              {/* Heading Structure */}
+              {result.staticAnalysis.headingStructure && (
+                <div className="mb-6">
+                  <h4 className="text-md font-medium mb-3">Heading Structure</h4>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                    {Object.entries(result.staticAnalysis.headingStructure).map(([level, count]) => (
+                      <div key={level} className="text-center p-2 border rounded-lg">
+                        <div className="text-sm font-medium text-gray-600 mb-1">{level.toUpperCase()}</div>
+                        <div className="text-lg font-bold text-blue-600">{count as number}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Technologies */}
+              {result.staticAnalysis.technologies && result.staticAnalysis.technologies.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-md font-medium mb-3">Detected Technologies</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {result.staticAnalysis.technologies.map((tech: string, index: number) => (
+                      <span key={index} className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Social Media Links */}
+              {result.staticAnalysis.socialMediaLinks && result.staticAnalysis.socialMediaLinks.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-md font-medium mb-3">Social Media Links</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {result.staticAnalysis.socialMediaLinks.map((social: string, index: number) => (
+                      <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                        {social}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact Information */}
+              {result.staticAnalysis.contactInfo && result.staticAnalysis.contactInfo.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-md font-medium mb-3">Contact Information</h4>
+                  <div className="space-y-1">
+                    {result.staticAnalysis.contactInfo.slice(0, 5).map((contact: string, index: number) => (
+                      <div key={index} className="text-sm text-gray-700 bg-gray-50 p-2 rounded">
+                        {contact}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Structure */}
+              {result.staticAnalysis.navigationStructure && result.staticAnalysis.navigationStructure.length > 0 && (
+                <div>
+                  <h4 className="text-md font-medium mb-3">Navigation Structure</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {result.staticAnalysis.navigationStructure.map((nav: string, index: number) => (
+                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded">
+                        {nav}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* File Size Analysis */}
           {result.staticAnalysis.fileSizeAnalysis && (
