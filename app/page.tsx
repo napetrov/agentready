@@ -1012,7 +1012,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-sm text-gray-600 mb-3">
-                Assesses the website's ability to support direct booking, reservation, and transaction actions.
+                Assesses the website&apos;s ability to support direct booking, reservation, and transaction actions.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.entries(result.websiteAnalysis.agenticFlows.directBooking)

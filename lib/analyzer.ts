@@ -656,7 +656,17 @@ function analyzeEcommerceMetrics($: any, html: string) {
 
 // Agentic AI Flow Analysis Functions
 
-function analyzeInformationGatheringFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+function analyzeInformationGatheringFlow($: any, html: string): {
+  score: number
+  hasServiceProductInfo: boolean
+  hasPricing: boolean
+  hasAvailability: boolean
+  hasContactInfo: boolean
+  hasLocation: boolean
+  hasReviews: boolean
+  hasPolicies: boolean
+  hasDifferentiators: boolean
+} {
   const text = $('body').text().toLowerCase()
   
   // Check for service/product information
@@ -715,7 +725,16 @@ function analyzeInformationGatheringFlow($: any, html: string): { score: number;
   }
 }
 
-function analyzeDirectBookingFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+function analyzeDirectBookingFlow($: any, html: string): {
+  score: number
+  hasActionableInstructions: boolean
+  hasBookingRequirements: boolean
+  hasConfirmationProcess: boolean
+  hasPaymentOptions: boolean
+  hasModificationPolicies: boolean
+  hasErrorHandling: boolean
+  hasMobileOptimization: boolean
+} {
   const text = $('body').text().toLowerCase()
   
   // Check for actionable instructions
@@ -769,7 +788,16 @@ function analyzeDirectBookingFlow($: any, html: string): { score: number; [key: 
   }
 }
 
-function analyzeFaqSupportFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+function analyzeFaqSupportFlow($: any, html: string): {
+  score: number
+  hasFaq: boolean
+  hasPolicyDocumentation: boolean
+  hasUserGuides: boolean
+  hasEligibilityCriteria: boolean
+  hasSupportContact: boolean
+  hasSearchFunctionality: boolean
+  hasContentOrganization: boolean
+} {
   const text = $('body').text().toLowerCase()
   
   // Check for FAQ
@@ -822,7 +850,15 @@ function analyzeFaqSupportFlow($: any, html: string): { score: number; [key: str
   }
 }
 
-function analyzeTaskManagementFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+function analyzeTaskManagementFlow($: any, html: string): {
+  score: number
+  hasScheduleVisibility: boolean
+  hasReservationManagement: boolean
+  hasTaskTracking: boolean
+  hasReschedulingProcess: boolean
+  hasMembershipDetails: boolean
+  hasNotificationSystems: boolean
+} {
   const text = $('body').text().toLowerCase()
   
   // Check for schedule visibility
@@ -869,7 +905,14 @@ function analyzeTaskManagementFlow($: any, html: string): { score: number; [key:
   }
 }
 
-function analyzePersonalizationFlow($: any, html: string): { score: number; [key: string]: boolean | number } {
+function analyzePersonalizationFlow($: any, html: string): {
+  score: number
+  hasPersonalizationData: boolean
+  hasRecommendationLogic: boolean
+  hasContextAwareness: boolean
+  hasUserProfiling: boolean
+  hasDynamicContent: boolean
+} {
   const text = $('body').text().toLowerCase()
   
   // Check for personalization data
@@ -1218,7 +1261,16 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       navigationStructure: [],
       
       // Website Type Detection
-      websiteType: websiteType
+      websiteType: websiteType,
+      
+      // Agentic AI Flow Analysis (will be populated later)
+      agenticFlows: {
+        informationGathering: { score: 0, hasServiceProductInfo: false, hasPricing: false, hasAvailability: false, hasContactInfo: false, hasLocation: false, hasReviews: false, hasPolicies: false, hasDifferentiators: false },
+        directBooking: { score: 0, hasActionableInstructions: false, hasBookingRequirements: false, hasConfirmationProcess: false, hasPaymentOptions: false, hasModificationPolicies: false, hasErrorHandling: false, hasMobileOptimization: false },
+        faqSupport: { score: 0, hasFaq: false, hasPolicyDocumentation: false, hasUserGuides: false, hasEligibilityCriteria: false, hasSupportContact: false, hasSearchFunctionality: false, hasContentOrganization: false },
+        taskManagement: { score: 0, hasScheduleVisibility: false, hasReservationManagement: false, hasTaskTracking: false, hasReschedulingProcess: false, hasMembershipDetails: false, hasNotificationSystems: false },
+        personalization: { score: 0, hasPersonalizationData: false, hasRecommendationLogic: false, hasContextAwareness: false, hasUserProfiling: false, hasDynamicContent: false }
+      }
     }
 
     // Check for sitemap and robots.txt (crawling support)
