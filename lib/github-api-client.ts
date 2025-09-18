@@ -140,6 +140,7 @@ export class GitHubAPIClient {
   private baseURL = 'https://api.github.com';
   private token: string;
   private rateLimitRemaining: number = 5000;
+  private rateLimitLimit: number = 5000;
   private rateLimitReset: number = 0;
 
   constructor(token: string) {
@@ -194,15 +195,14 @@ export class GitHubAPIClient {
     try {
       const response = await fetch(url, {
         headers: {
-          'Authorization': `token ${this.token}`,
+          'Authorization': `Bearer ${this.token}`,
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'AI-Agent-Readiness-Assessment'
         }
       });
 
       // Update rate limit info
-      this.rateLimitRemaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '0');
-      this.rateLimitReset = parseInt(response.headers.get('X-RateLimit-Reset') || '0');
+      this.updateRateLimit(response);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -229,6 +229,29 @@ export class GitHubAPIClient {
   }
 
   /**
+   * Update rate limit counters from response headers
+   */
+  private updateRateLimit(response: Response | undefined): void {
+    if (!response || !response.headers) {
+      return;
+    }
+    
+    const remaining = response.headers.get('x-ratelimit-remaining');
+    const limit = response.headers.get('x-ratelimit-limit');
+    const reset = response.headers.get('x-ratelimit-reset');
+    
+    if (remaining !== null) {
+      this.rateLimitRemaining = parseInt(remaining);
+    }
+    if (limit !== null) {
+      this.rateLimitLimit = parseInt(limit);
+    }
+    if (reset !== null) {
+      this.rateLimitReset = parseInt(reset);
+    }
+  }
+
+  /**
    * Poll stats endpoint with retry logic for 202 responses
    */
   private async pollStats(endpoint: string, maxRetries: number = 6, delayMs: number = 1500): Promise<any> {
@@ -241,6 +264,9 @@ export class GitHubAPIClient {
             'User-Agent': 'AI-Agent-Readiness-Assessment/1.0'
           }
         });
+
+        // Update rate limit info
+        this.updateRateLimit(response);
 
         if (response.status === 202) {
           // Stats not ready, wait and retry
@@ -507,8 +533,13 @@ export class GitHubAPIClient {
           }, 0) / mergedPRsWithDates.length / (1000 * 60 * 60 * 24) // Convert to days
         : 0;
 
-      const hasReviews = prsData.some((pr: any) => pr.review_comments > 0);
-      const mergeable = prsData.some((pr: any) => pr.mergeable === true);
+      // Heuristic without deep calls; consider sampling detailed PR data for accuracy.
+      const hasReviews = prsData.some((pr: any) =>
+        (pr.requested_reviewers?.length ?? 0) > 0 ||
+        (pr.requested_teams?.length ?? 0) > 0 ||
+        (pr.comments ?? 0) > 0
+      );
+      const mergeable = false; // TODO: compute via GET /pulls/{number} for a small sample of open PRs.
       const recentActivity = prsData.length > 0 && 
         new Date(prsData[0].updated_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000; // Last 7 days
 
