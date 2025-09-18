@@ -142,6 +142,7 @@ export class GitHubAPIClient {
   private rateLimitRemaining: number = 5000;
   private rateLimitLimit: number = 5000;
   private rateLimitReset: number = 0;
+  private requestTimeout: number = 30000; // 30 seconds default timeout
 
   constructor(token: string) {
     this.token = token;
@@ -193,7 +194,7 @@ export class GitHubAPIClient {
     const url = `${this.baseURL}${endpoint}`;
     
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithTimeout(url, {
         headers: {
           'Authorization': `Bearer ${this.token}`,
           'Accept': 'application/vnd.github.v3+json',
@@ -252,12 +253,37 @@ export class GitHubAPIClient {
   }
 
   /**
+   * Make a fetch request with timeout
+   */
+  private async fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, this.requestTimeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`GitHub API request timed out after ${this.requestTimeout}ms`);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Poll stats endpoint with retry logic for 202 responses
    */
   private async pollStats(endpoint: string, maxRetries: number = 6, delayMs: number = 1500): Promise<any> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${this.baseURL}${endpoint}`, {
+        const response = await this.fetchWithTimeout(`${this.baseURL}${endpoint}`, {
           headers: {
             'Authorization': `Bearer ${this.token}`,
             'Accept': 'application/vnd.github.v3+json',
