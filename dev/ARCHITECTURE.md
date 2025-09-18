@@ -1,9 +1,5 @@
 # AI Agent Readiness Assessment Tool - Architecture
 
-> **⚠️ DEPRECATED**: This file has been consolidated into the main [README.md](./README.md#system-architecture). Please refer to the main documentation for the most up-to-date information.
-
-# AI Agent Readiness Assessment Tool - Architecture
-
 ## 🏗️ Overall Architecture
 
 The AI Agent Readiness Assessment Tool is a comprehensive full-stack web application designed to evaluate software repositories, documentation portals, and business websites for their readiness to work with AI agents. The system combines static deterministic evaluations with dynamic AI-powered assessments to provide comprehensive readiness scores, actionable recommendations, and industry-specific optimization guidance.

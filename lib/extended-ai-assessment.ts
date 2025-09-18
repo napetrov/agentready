@@ -177,7 +177,7 @@ export async function generateExtendedAIAssessment(
         language: githubData.metadata.language,
         openIssues: githubData.metadata.openIssuesCount,
         lastPush: githubData.metadata.pushedAt,
-        communityHealth: githubData.communityHealth.communityProfile.healthPercentage
+        communityHealth: githubData.communityHealth?.communityProfile?.healthPercentage ?? 0
       })
     }
 
@@ -563,7 +563,7 @@ GitHub Data:
 - Topics: ${githubData.metadata.topics.join(', ')}
 - Open Issues: ${githubData.metadata.openIssuesCount}
 - Recent Activity: ${githubData.activityMetrics.recentActivity}
-- Community Health: ${githubData.communityHealth.communityProfile.healthPercentage}%`
+- Community Health: ${githubData.communityHealth?.communityProfile?.healthPercentage ?? 0}%`
   }
 
   if (staticAnalysis.readmeContent) {
@@ -675,7 +675,7 @@ File Size Analysis:
 GitHub Data:
 - Repository: ${githubData.metadata.fullName}
 - Topics: ${githubData.metadata.topics.join(', ')}
-- Community Health: ${githubData.communityHealth.communityProfile.healthPercentage}%
+- Community Health: ${githubData.communityHealth?.communityProfile?.healthPercentage ?? 0}%
 - Has Issues: ${githubData.metadata.hasIssues}
 - Has Wiki: ${githubData.metadata.hasWiki}`
   }
@@ -715,7 +715,7 @@ GitHub Data:
 - Last Pushed: ${githubData.metadata.pushedAt}
 - Recent Activity: ${githubData.activityMetrics.recentActivity}
 - Active Contributors: ${githubData.activityMetrics.activeContributors}
-- Community Health: ${githubData.communityHealth.communityProfile.healthPercentage}%
+- Community Health: ${githubData.communityHealth?.communityProfile?.healthPercentage ?? 0}%
 - Open Issues: ${githubData.metadata.openIssuesCount}
 - Issue Management: ${githubData.issueManagement.issues.hasLabels ? 'Organized' : 'Unorganized'}
 - PR Quality: ${githubData.prQuality.pullRequests.hasReviews ? 'Has Reviews' : 'No Reviews'}`

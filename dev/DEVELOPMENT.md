@@ -1,9 +1,5 @@
 # AI Agent Readiness Assessment Tool - Development Guide
 
-> **⚠️ DEPRECATED**: This file has been consolidated into the main [README.md](./README.md#development-workflow). Please refer to the main documentation for the most up-to-date information.
-
-# AI Agent Readiness Assessment Tool - Development Guide
-
 ## 🚀 Development Process
 
 This document outlines the development process, implementation status, and future roadmap for the AI Agent Readiness Assessment Tool.
