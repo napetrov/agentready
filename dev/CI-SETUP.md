@@ -1,5 +1,9 @@
 # CI/CD Setup Guide
 
+> **⚠️ DEPRECATED**: This file has been consolidated into the main [README.md](./README.md#development-workflow). Please refer to the main documentation for the most up-to-date information.
+
+# CI/CD Setup Guide
+
 ## 🚀 GitHub Actions CI Pipeline
 
 The project includes a comprehensive CI pipeline that runs on every push and pull request to ensure code quality and reliability.

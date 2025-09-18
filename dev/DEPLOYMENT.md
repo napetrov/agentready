@@ -1,5 +1,9 @@
 # Deployment Guide
 
+> **⚠️ DEPRECATED**: This file has been consolidated into the main [README.md](./README.md#deployment). Please refer to the main documentation for the most up-to-date information.
+
+# Deployment Guide
+
 ## Vercel Deployment (Recommended)
 
 ### Prerequisites

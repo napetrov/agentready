@@ -1,5 +1,9 @@
 # AI Agent Readiness Assessment - Metrics & Calculations
 
+> **⚠️ DEPRECATED**: This file has been consolidated into the main [README.md](./README.md). Please refer to the main documentation for the most up-to-date information.
+
+# AI Agent Readiness Assessment - Metrics & Calculations
+
 ## 📊 Overview
 
 This document provides a comprehensive guide to all metrics, checks, and calculations used in the AI Agent Readiness Assessment Tool. It serves as a reference for understanding how scores are calculated, what each metric measures, and how the assessment methodology works.

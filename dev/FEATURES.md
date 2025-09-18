@@ -1,5 +1,9 @@
 # AI Agent Readiness Assessment Tool - Features
 
+> **⚠️ DEPRECATED**: This file has been consolidated into the main [README.md](./README.md). Please refer to the main documentation for the most up-to-date information.
+
+# AI Agent Readiness Assessment Tool - Features
+
 ## ✅ Completed Features
 
 ### Core Functionality

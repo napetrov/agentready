@@ -1,5 +1,9 @@
 # Testing Guide
 
+> **⚠️ DEPRECATED**: This file has been consolidated into the main [README.md](./README.md#testing). Please refer to the main documentation for the most up-to-date information.
+
+# Testing Guide
+
 ## ✅ Issues Fixed
 
 ### 1. GitHub Repository Download Issues
