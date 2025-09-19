@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Unified Agent Compatibility Analysis**: Merged Static Analysis Results and File Size & AI Agent Compatibility sections into a single, focused Agent Compatibility Analysis section
+- **Agent Framework Support**: Updated agent compatibility to include Cursor, GitHub Copilot, Claude (unified), and Codex with agent-specific details and tooltips
+- **Context Analysis Improvement**: Enhanced context consumption analysis to focus on context tokens rather than lines for better AI agent compatibility assessment
+- **Repository Structure Focus**: Streamlined repository structure analysis to focus on essential checks that help agents work with repositories (README, AGENTS.md, CONTRIBUTING.md, LICENSE, CI/CD, Tests)
+- **Large Files Warning**: File size distribution now only shows when there are large files (>1MB) that could impact agent performance
+- **Website-Only Static Analysis**: Static Analysis Results section now only displays for websites, with repository-specific checks moved to Agent Compatibility Analysis
+
 ### Fixed
 - **Business Type Detection Accuracy**: Fixed incorrect classification of technology/software documentation sites as "automotive" by improving keyword specificity and adding dedicated "technology_software" business type
 - **Automotive Keywords**: Made automotive keywords more specific (e.g., "car repair", "auto repair", "vehicle service") to prevent false positives from technical terms containing "auto"
