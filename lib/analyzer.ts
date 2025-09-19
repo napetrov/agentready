@@ -495,19 +495,76 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
     // Import cheerio dynamically
     const { load } = await import('cheerio')
     
-    // Fetch the website content
-    const response = await axios.get(websiteUrl, {
-      timeout: 30000,
-      maxRedirects: 3,
-      maxContentLength: 5 * 1024 * 1024,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AI-Agent-Analyzer/1.0)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate',
-        'Connection': 'keep-alive',
+    // Fetch the website content with retry logic for malformed headers
+    let response
+    try {
+      response = await axios.get(websiteUrl, {
+        timeout: 30000,
+        maxRedirects: 3,
+        maxContentLength: 5 * 1024 * 1024,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; AI-Agent-Analyzer/1.0)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate',
+          'Connection': 'keep-alive',
+        },
+        // Add HTTP parser options to handle malformed headers
+        httpAgent: new (await import('http')).Agent({
+          keepAlive: true,
+          timeout: 30000,
+        }),
+        httpsAgent: new (await import('https')).Agent({
+          keepAlive: true,
+          timeout: 30000,
+        }),
+      })
+    } catch (error: any) {
+      // Handle HTTP header parsing errors by trying with a different approach
+      if (error.code === 'HPE_INVALID_HEADER_TOKEN' || error.message?.includes('Parse Error: Invalid header value char')) {
+        console.warn(`⚠️  HTTP header parsing error for ${websiteUrl}, trying alternative approach...`)
+        
+        try {
+          // Try with Node.js built-in fetch as fallback (more lenient with malformed headers)
+          console.log(`🔄 Attempting fallback fetch for ${websiteUrl}...`)
+          const fetchResponse = await fetch(websiteUrl, {
+            method: 'GET',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+            // Set a timeout using AbortController
+            signal: AbortSignal.timeout(30000),
+          })
+          
+          if (!fetchResponse.ok) {
+            throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`)
+          }
+          
+          const html = await fetchResponse.text()
+          
+          // Create a mock axios response object to maintain compatibility
+          response = {
+            data: html,
+            status: fetchResponse.status,
+            statusText: fetchResponse.statusText,
+            headers: Object.fromEntries(fetchResponse.headers.entries()),
+            config: {},
+            request: {},
+          }
+          
+          console.log(`✅ Fallback fetch successful for ${websiteUrl}`)
+        } catch (fallbackError: any) {
+          console.error(`❌ Both primary and fallback HTTP requests failed for ${websiteUrl}:`, {
+            primaryError: error.message,
+            fallbackError: fallbackError.message,
+          })
+          throw new Error(`Failed to fetch website content: ${error.message}. Fallback also failed: ${fallbackError.message}`)
+        }
+      } else {
+        throw new Error(`Failed to fetch website content: ${error.message}`)
       }
-    })
+    }
 
     const html = response.data
     const $ = load(html)
@@ -547,11 +604,20 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
     
     // Check for sitemap and robots.txt (AI-relevant for crawling)
     try {
-      const robotsResponse = await axios.get(new URL('/robots.txt', websiteUrl).toString(), { timeout: 5000 })
+      const robotsResponse = await axios.get(new URL('/robots.txt', websiteUrl).toString(), { 
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; AI-Agent-Analyzer/1.0)',
+        },
+      })
       aiChecks.hasRobotsTxt = true
       aiChecks.hasSitemap = robotsResponse.data.toLowerCase().includes('sitemap')
-    } catch {
-      // robots.txt not found
+    } catch (error: any) {
+      // Handle HTTP header parsing errors for robots.txt as well
+      if (error.code === 'HPE_INVALID_HEADER_TOKEN' || error.message?.includes('Parse Error: Invalid header value char')) {
+        console.warn(`⚠️  HTTP header parsing error for robots.txt at ${websiteUrl}, skipping...`)
+      }
+      // robots.txt not found or other error - continue without it
     }
 
     // Generate insights
