@@ -605,64 +605,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* AI Analysis Status - Only for repositories */}
-      {inputType === 'repository' && result && result.aiAnalysisStatus && (
-        <div className={`card ${result.aiAnalysisStatus.enabled ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'}`}>
-          <h3 className={`text-lg font-semibold mb-2 ${result.aiAnalysisStatus.enabled ? 'text-blue-800' : 'text-red-800'}`}>
-            {result.aiAnalysisStatus.enabled ? '✅ AI Analysis Status' : '❌ AI Analysis Status'}
-          </h3>
-          <div className="text-sm">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p><strong>Overall Status:</strong> 
-                  <span className={result.aiAnalysisStatus.overallSuccess ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.overallSuccess ? ' ✅ Working' : ' ❌ Failed'}
-                  </span>
-                </p>
-                <p><strong>Instruction Clarity:</strong> 
-                  <span className={result.aiAnalysisStatus.instructionClarity ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.instructionClarity ? ' ✅' : ' ❌'}
-                  </span>
-                </p>
-                <p><strong>Workflow Automation:</strong> 
-                  <span className={result.aiAnalysisStatus.workflowAutomation ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.workflowAutomation ? ' ✅' : ' ❌'}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <p><strong>Context Efficiency:</strong> 
-                  <span className={result.aiAnalysisStatus.contextEfficiency ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.contextEfficiency ? ' ✅' : ' ❌'}
-                  </span>
-                </p>
-                <p><strong>Risk Compliance:</strong> 
-                  <span className={result.aiAnalysisStatus.riskCompliance ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.riskCompliance ? ' ✅' : ' ❌'}
-                  </span>
-                </p>
-                {result.aiAnalysisStatus.reason && (
-                  <p><strong>Reason:</strong> <span className="text-red-600">{result.aiAnalysisStatus.reason}</span></p>
-                )}
-              </div>
-            </div>
-            
-            {/* Debug Information - Only show when there are issues */}
-            {(result.readinessScore === 0 || !result.categories || Object.values(result.categories).every(score => score === 0) || !result.aiAnalysisStatus.overallSuccess) && (
-              <div className="mt-4 pt-4 border-t border-gray-300">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Debug Information</h4>
-                <div className="text-xs text-gray-600">
-                  <p><strong>Readiness Score:</strong> {result.readinessScore} (type: {typeof result.readinessScore})</p>
-                  <p><strong>Categories:</strong> {JSON.stringify(result.categories)}</p>
-                  <p><strong>Has Categories:</strong> {result.categories ? 'Yes' : 'No'}</p>
-                  <p><strong>Categories Keys:</strong> {result.categories ? Object.keys(result.categories).join(', ') : 'None'}</p>
-                  <p><strong>Static Analysis File Count:</strong> {result.staticAnalysis?.fileCount || 'undefined'}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
 
       {/* Results Section */}
@@ -837,12 +779,10 @@ export default function Home() {
             </div>
           )}
 
-          {/* Static Analysis */}
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4">
-              {inputType === 'website' ? 'Website Analysis Results' : 'Static Analysis Results'}
-            </h3>
-            {inputType === 'website' ? (
+          {/* Static Analysis - Only for websites */}
+          {inputType === 'website' && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Website Analysis Results</h3>
               <div className="space-y-6">
                 {/* Website-specific metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1285,159 +1225,175 @@ export default function Home() {
         )}
 
               </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(result.staticAnalysis)
-                  .filter(([_, value]) => typeof value === 'boolean')
-                  .map(([key, value]) => (
-                    <div key={key} className="text-center p-3 border rounded-lg">
-                      <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                        value ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
-                      }`}>
-                        {value ? '✓' : '✗'}
-                      </div>
-                      <div className="text-sm font-medium capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
             
-          </div>
+            </div>
+          )}
 
 
-          {/* File Size Analysis - Only for repositories */}
+          {/* Agent Compatibility Analysis - Only for repositories */}
           {inputType === 'repository' && result.staticAnalysis.fileSizeAnalysis && (
             <div className="card">
-              <h3 className="text-lg font-semibold mb-4">File Size & AI Agent Compatibility</h3>
+              <h3 className="text-lg font-semibold mb-4">Agent Compatibility Analysis</h3>
               
-              {/* Agent Compatibility Scores */}
+              {/* Agent Compatibility Overview */}
               <div className="mb-6">
-                <h4 className="text-md font-medium mb-3">Agent Compatibility Scores</h4>
+                <h4 className="text-md font-medium mb-3">Agent Framework Compatibility</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.entries(result.staticAnalysis.fileSizeAnalysis.agentCompatibility)
-                    .filter(([key]) => key !== 'overall')
-                    .map(([agent, score]) => (
-                    <div key={agent} className="p-3 border rounded-lg text-center">
-                      <div className="text-sm font-medium capitalize mb-1">
-                        {agent === 'githubCopilot' ? 'GitHub Copilot' : 
-                         agent === 'claudeWeb' ? 'Claude Web' :
-                         agent === 'claudeApi' ? 'Claude API' : agent}
-                      </div>
+                  {[
+                    { key: 'cursor', name: 'Cursor', score: result.staticAnalysis.fileSizeAnalysis.agentCompatibility.cursor || 0 },
+                    { key: 'githubCopilot', name: 'GitHub Copilot', score: result.staticAnalysis.fileSizeAnalysis.agentCompatibility.githubCopilot || 0 },
+                    { key: 'claude', name: 'Claude', score: Math.max(
+                      result.staticAnalysis.fileSizeAnalysis.agentCompatibility.claudeWeb || 0,
+                      result.staticAnalysis.fileSizeAnalysis.agentCompatibility.claudeApi || 0
+                    ) },
+                    { key: 'codex', name: 'Codex', score: (result.staticAnalysis.fileSizeAnalysis.agentCompatibility as any).codex || 0 }
+                  ].map((agent) => (
+                    <div key={agent.key} className="p-3 border rounded-lg text-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
+                      <div className="text-sm font-medium capitalize mb-1">{agent.name}</div>
                       <div className={`text-lg font-bold ${
-                        score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                        agent.score >= 80 ? 'text-green-600' : agent.score >= 60 ? 'text-yellow-600' : 'text-red-600'
                       }`}>
-                        {score}%
+                        {agent.score}%
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">Click for details</div>
+                      
+                      {/* Agent-specific details tooltip */}
+                      <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                        <div className="font-medium mb-1">{agent.name} Analysis</div>
+                        <div>Context Window: {agent.key === 'cursor' ? '200K tokens' : agent.key === 'githubCopilot' ? '8K tokens' : agent.key === 'claude' ? '200K tokens' : '8K tokens'}</div>
+                        <div>File Size Impact: {agent.score >= 80 ? 'Optimal' : agent.score >= 60 ? 'Moderate' : 'High'}</div>
+                        <div>Large Files: {result.staticAnalysis.fileSizeAnalysis?.largeFiles.length || 0} detected</div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* File Size Distribution */}
+              {/* Repository Structure Analysis */}
               <div className="mb-6">
-                <h4 className="text-md font-medium mb-3">File Size Distribution</h4>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  {(['under100KB','under500KB','under1MB','under5MB','over5MB'] as const).map((range) => {
-                    const count = result.staticAnalysis.fileSizeAnalysis?.filesBySize[range] ?? 0
-                    const label =
-                      range === 'under100KB' ? 'Under 100KB' :
-                      range === 'under500KB' ? '100KB–500KB' :
-                      range === 'under1MB'   ? '500KB–1MB' :
-                      range === 'under5MB'   ? '1MB–5MB' :
-                      'Over 5MB'
-                    return (
-                    <div key={range} className="p-3 border rounded-lg text-center">
-                      <div className="text-sm font-medium mb-1">
-                        {label}
-                      </div>
-                      <div className="text-lg font-bold text-blue-600">{count}</div>
+                <h4 className="text-md font-medium mb-3">Repository Structure for AI Agents</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Documentation</span>
+                      <span className={`text-sm ${result.staticAnalysis.hasReadme ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.staticAnalysis.hasReadme ? '✓' : '✗'}
+                      </span>
                     </div>
-                    )})}
+                    <div className="text-xs text-gray-600">
+                      {result.staticAnalysis.hasReadme ? 'README available' : 'Missing README'}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Agent Instructions</span>
+                      <span className={`text-sm ${result.staticAnalysis.hasAgents ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.staticAnalysis.hasAgents ? '✓' : '✗'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {result.staticAnalysis.hasAgents ? 'AGENTS.md found' : 'Missing AGENTS.md'}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Contributing Guide</span>
+                      <span className={`text-sm ${result.staticAnalysis.hasContributing ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.staticAnalysis.hasContributing ? '✓' : '✗'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {result.staticAnalysis.hasContributing ? 'CONTRIBUTING.md available' : 'Missing CONTRIBUTING.md'}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">License</span>
+                      <span className={`text-sm ${result.staticAnalysis.hasLicense ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.staticAnalysis.hasLicense ? '✓' : '✗'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {result.staticAnalysis.hasLicense ? 'LICENSE available' : 'Missing LICENSE'}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">CI/CD Workflows</span>
+                      <span className={`text-sm ${result.staticAnalysis.hasWorkflows ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.staticAnalysis.hasWorkflows ? '✓' : '✗'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {result.staticAnalysis.hasWorkflows ? 'GitHub Actions found' : 'No workflows detected'}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Test Coverage</span>
+                      <span className={`text-sm ${result.staticAnalysis.hasTests ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.staticAnalysis.hasTests ? '✓' : '✗'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {result.staticAnalysis.hasTests ? 'Test files found' : 'No tests detected'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Large Files */}
+              {/* Large Files Warning - Only show if there are large files */}
               {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-md font-medium mb-3">Large Files (&gt;2MB)</h4>
+                <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+                  <h4 className="text-md font-medium mb-3 text-yellow-800">⚠️ Large Files Detected</h4>
                   <div className="space-y-2">
-                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.slice(0, 5).map((file, index) => (
-                      <div key={index} className="p-3 border rounded-lg">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-medium text-sm truncate flex-1 mr-2">{file.path}</div>
-                          <div className="text-sm font-bold text-red-600">{file.sizeFormatted}</div>
-                        </div>
-                        <div className="text-xs text-gray-600 mb-1">
-                          Type: {file.type} | 
-                          Cursor: {file.agentImpact.cursor} | 
-                          GitHub Copilot: {file.agentImpact.githubCopilot}
-                        </div>
-                        <div className="text-xs text-gray-700">{file.recommendation}</div>
+                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.slice(0, 3).map((file, index) => (
+                      <div key={index} className="flex justify-between items-center text-sm">
+                        <span className="font-medium truncate flex-1 mr-2">{file.path}</span>
+                        <span className="text-red-600 font-bold">{file.sizeFormatted}</span>
                       </div>
                     ))}
-                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 5 && (
-                      <div className="text-sm text-gray-500 text-center">
-                        ... and {result.staticAnalysis.fileSizeAnalysis.largeFiles.length - 5} more files
+                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 3 && (
+                      <div className="text-sm text-yellow-700">
+                        ... and {result.staticAnalysis.fileSizeAnalysis.largeFiles.length - 3} more files
                       </div>
                     )}
                   </div>
-                </div>
-              )}
-
-              {/* Critical Files */}
-              {result.staticAnalysis.fileSizeAnalysis.criticalFiles.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-md font-medium mb-3">Critical Files Analysis</h4>
-                  <div className="space-y-2">
-                    {result.staticAnalysis.fileSizeAnalysis.criticalFiles.map((file, index) => (
-                      <div key={index} className="p-3 border rounded-lg">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-medium text-sm truncate flex-1 mr-2">{file.path}</div>
-                          <div className="text-sm font-bold">{file.sizeFormatted}</div>
-                        </div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`px-2 py-1 text-xs rounded ${
-                            file.isOptimal ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {file.isOptimal ? 'Optimal' : 'Suboptimal'}
-                          </span>
-                          <span className="text-xs text-gray-600">
-                            {file.type} | Cursor: {file.agentImpact.cursor}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-700">{file.recommendation}</div>
-                      </div>
-                    ))}
+                  <div className="text-xs text-yellow-700 mt-2">
+                    Large files may cause context window issues for AI agents. Consider splitting or optimizing these files.
                   </div>
                 </div>
               )}
 
-              {/* Context Consumption */}
+              {/* Context Analysis */}
               <div className="mb-6">
                 <h4 className="text-md font-medium mb-3">Context Consumption Analysis</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium mb-2">Instruction Files</div>
+                    <div className="text-sm font-medium mb-2">Instruction Files Context</div>
                     <div className="space-y-1 text-xs">
                       {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd && (
-                        <div>AGENTS.md: {Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 1024)}KB ({result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.lines} lines)</div>
+                        <div>AGENTS.md: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 4)} tokens</div>
                       )}
                       {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme && (
-                        <div>README: {Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 1024)}KB ({result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme.lines} lines)</div>
+                        <div>README: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 4)} tokens</div>
                       )}
                       {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing && (
-                        <div>CONTRIBUTING: {Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 1024)}KB ({result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.lines} lines)</div>
+                        <div>CONTRIBUTING: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 4)} tokens</div>
                       )}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium mb-2">Efficiency Metrics</div>
+                    <div className="text-sm font-medium mb-2">Context Efficiency</div>
                     <div className="space-y-1 text-xs">
                       <div>Total Context Files: {result.staticAnalysis.fileSizeAnalysis.contextConsumption.totalContextFiles}</div>
-                      <div>Average File Size: {Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.averageContextFileSize / 1024)}KB</div>
-                      <div>Context Efficiency: <span className={`font-medium ${
+                      <div>Average Context: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.averageContextFileSize / 4)} tokens</div>
+                      <div>Efficiency: <span className={`font-medium ${
                         result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'excellent' ? 'text-green-600' :
                         result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'good' ? 'text-blue-600' :
                         result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'moderate' ? 'text-yellow-600' : 'text-red-600'
@@ -1447,15 +1403,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* File Size Recommendations */}
+              {/* Recommendations */}
               {result.staticAnalysis.fileSizeAnalysis.recommendations.length > 0 && (
                 <div>
-                  <h4 className="text-md font-medium mb-3">File Size Recommendations</h4>
+                  <h4 className="text-md font-medium mb-3">Agent Optimization Recommendations</h4>
                   <ul className="space-y-1">
                     {result.staticAnalysis.fileSizeAnalysis.recommendations.map((rec, index) => (
                       <li key={index} className="flex items-start text-sm">
                         <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">{rec}</span>
+                        <span>{rec}</span>
                       </li>
                     ))}
                   </ul>
