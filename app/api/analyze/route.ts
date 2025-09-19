@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { analyzeRepository, analyzeWebsite, WebsiteAnalysisResult } from '../../../lib/analyzer'
-import { generateEnhancedAIAssessment, generateWebsiteAIAssessment } from '../../../lib/enhanced-ai-assessment'
-import { AlignedAssessmentEngine } from '../../../lib/aligned-assessment-engine'
+import { SimplifiedAssessmentEngine } from '../../../lib/simplified-assessment-engine'
+import { DataTransformer, UnifiedAssessmentResult, LegacyAssessmentResult } from '../../../lib/unified-data-models'
 import { promises as dns } from 'dns'
 
 // Helper function to check if an IP address is public/routable
@@ -128,107 +127,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Initialize aligned assessment engine
-    const assessmentEngine = new AlignedAssessmentEngine({
-      enableValidation: true,
-      requireAlignment: false, // Set to true for strict alignment requirements
+    // Initialize simplified assessment engine
+    const assessmentEngine = new SimplifiedAssessmentEngine({
+      enableAIAssessment: true,
+      enableFileSizeAnalysis: true,
       maxRetries: 2,
-      fallbackToStatic: true
+      timeout: 30000
     })
 
-    // Perform aligned assessment based on input type
-    let result: any
+    // Perform assessment based on input type
+    let simplifiedResult
     
     if (inputType === 'repository') {
-      result = await assessmentEngine.assessRepository(inputUrl)
+      simplifiedResult = await assessmentEngine.assessRepository(inputUrl)
     } else {
-      result = await assessmentEngine.assessWebsite(inputUrl)
+      simplifiedResult = await assessmentEngine.assessWebsite(inputUrl)
     }
 
-    // Add legacy compatibility fields for existing frontend
-    const legacyResult = {
-      readinessScore: result.websiteAnalysis?.overallScore || result.overallScore.value,
-      aiAnalysisStatus: {
-        enabled: result.assessmentStatus.aiAnalysisEnabled,
-        instructionClarity: result.assessmentStatus.aiAnalysisEnabled,
-        workflowAutomation: result.assessmentStatus.aiAnalysisEnabled,
-        contextEfficiency: result.assessmentStatus.aiAnalysisEnabled,
-        riskCompliance: result.assessmentStatus.aiAnalysisEnabled,
-        overallSuccess: result.assessmentStatus.aiAnalysisEnabled && result.validation.passed
-      },
-      staticAnalysis: result.staticAnalysis || {},
-      websiteAnalysis: result.websiteAnalysis || null,
-      categories: {
-        documentation: result.categories.documentation.score.value,
-        instructionClarity: result.categories.instructionClarity.score.value,
-        workflowAutomation: result.categories.workflowAutomation.score.value,
-        riskCompliance: result.categories.riskCompliance.score.value,
-        integrationStructure: result.categories.integrationStructure.score.value,
-        fileSizeOptimization: result.categories.fileSizeOptimization.score.value
-      },
-      findings: result.insights.findings.slice(0, 10), // Use unified insights
-      recommendations: result.insights.recommendations.slice(0, 10), // Use unified insights
-      detailedAnalysis: {
-        instructionClarity: {
-          stepByStepQuality: result.categories.instructionClarity.subMetrics.stepByStepQuality?.value || 0,
-          commandClarity: result.categories.instructionClarity.subMetrics.commandClarity?.value || 0,
-          environmentSetup: result.categories.instructionClarity.subMetrics.environmentSetup?.value || 0,
-          errorHandling: result.categories.instructionClarity.subMetrics.errorHandling?.value || 0,
-          dependencySpecification: result.categories.instructionClarity.subMetrics.dependencySpecification?.value || 0,
-          overallScore: result.categories.instructionClarity.score.value
-        },
-        workflowAutomation: {
-          ciCdQuality: result.categories.workflowAutomation.subMetrics.ciCdQuality?.value || 0,
-          testAutomation: result.categories.workflowAutomation.subMetrics.testAutomation?.value || 0,
-          buildScripts: result.categories.workflowAutomation.subMetrics.buildScripts?.value || 0,
-          deploymentAutomation: result.categories.workflowAutomation.subMetrics.deploymentAutomation?.value || 0,
-          monitoringLogging: result.categories.workflowAutomation.subMetrics.monitoringLogging?.value || 0,
-          overallScore: result.categories.workflowAutomation.score.value
-        },
-        contextEfficiency: {
-          instructionFileOptimization: result.categories.fileSizeOptimization.subMetrics.instructionFileOptimization?.value || 0,
-          codeDocumentation: result.categories.documentation.subMetrics.codeDocumentation?.value || 0,
-          apiDocumentation: result.categories.integrationStructure.subMetrics.apiDocumentation?.value || 0,
-          contextWindowUsage: result.categories.fileSizeOptimization.subMetrics.contextWindowUsage?.value || 0,
-          overallScore: result.categories.fileSizeOptimization.score.value
-        },
-        riskCompliance: {
-          securityPractices: result.categories.riskCompliance.subMetrics.securityPractices?.value || 0,
-          errorHandling: result.categories.riskCompliance.subMetrics.errorHandling?.value || 0,
-          inputValidation: result.categories.riskCompliance.subMetrics.inputValidation?.value || 0,
-          dependencySecurity: result.categories.riskCompliance.subMetrics.dependencySecurity?.value || 0,
-          licenseCompliance: result.categories.riskCompliance.subMetrics.licenseCompliance?.value || 0,
-          overallScore: result.categories.riskCompliance.score.value
-        }
-      },
-      confidence: {
-        overall: result.overallScore.confidence,
-        instructionClarity: result.categories.instructionClarity.score.confidence,
-        workflowAutomation: result.categories.workflowAutomation.score.confidence,
-        contextEfficiency: result.categories.fileSizeOptimization.score.confidence,
-        riskCompliance: result.categories.riskCompliance.score.confidence
-      },
-      // Include new aligned assessment data
-      alignedAssessment: {
-        validation: result.validation,
-        assessmentMetadata: result.assessmentMetadata,
-        unifiedMetrics: {
-          overallScore: result.overallScore,
-          categories: result.categories,
-          assessmentStatus: result.assessmentStatus
-        }
-      },
-      // Business-type-aware website analysis data
-      businessTypeAnalysis: result.websiteAnalysis ? {
-        businessType: result.websiteAnalysis.businessType,
-        businessTypeConfidence: result.websiteAnalysis.businessTypeConfidence,
-        overallScore: result.websiteAnalysis.overallScore,
-        agenticFlows: result.websiteAnalysis.agenticFlows,
-        aiRelevantChecks: result.websiteAnalysis.aiRelevantChecks,
-        findings: (result.websiteAnalysis.findings || []).slice(0, 10),
-        recommendations: (result.websiteAnalysis.recommendations || []).slice(0, 10)
-      } : null
-    }
+    // Convert to legacy format for frontend compatibility
+    const legacyResult: LegacyAssessmentResult = DataTransformer.toLegacyResult(simplifiedResult as any)
 
     return NextResponse.json(legacyResult)
   } catch (error) {
