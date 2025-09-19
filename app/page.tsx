@@ -942,12 +942,27 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.entries(result.websiteAnalysis.agenticFlows.informationGathering)
                   .filter(([key]) => key !== 'score')
-                  .map(([key, value]) => (
-                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
-                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
-                    </div>
-                  ))}
+                  .map(([key, value]) => {
+                    const descriptions = {
+                      hasServiceProductInfo: 'Checks for detailed service/product descriptions, features, and specifications',
+                      hasPricing: 'Looks for pricing information, rates, packages, or cost details',
+                      hasAvailability: 'Searches for availability calendars, schedules, or real-time status',
+                      hasContactInfo: 'Verifies presence of contact details (phone, email, address)',
+                      hasLocation: 'Checks for location data, addresses, or geographic information',
+                      hasReviews: 'Looks for customer reviews, testimonials, or rating systems',
+                      hasPolicies: 'Searches for terms of service, privacy policy, or business policies',
+                      hasDifferentiators: 'Identifies unique selling points or competitive advantages'
+                    };
+                    return (
+                      <div key={key} className="flex items-center space-x-2 p-2 rounded border group relative">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <div className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                          {descriptions[key as keyof typeof descriptions] || 'Information gathering feature'}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 
@@ -966,12 +981,26 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.entries(result.websiteAnalysis.agenticFlows.directBooking)
                   .filter(([key]) => key !== 'score')
-                  .map(([key, value]) => (
-                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
-                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
-                    </div>
-                  ))}
+                  .map(([key, value]) => {
+                    const descriptions = {
+                      hasActionableInstructions: 'Checks for clear step-by-step booking or reservation instructions',
+                      hasBookingRequirements: 'Looks for specific requirements, forms, or prerequisites for booking',
+                      hasConfirmationProcess: 'Verifies presence of confirmation emails, receipts, or booking confirmations',
+                      hasPaymentOptions: 'Searches for payment methods, pricing, or transaction capabilities',
+                      hasModificationPolicies: 'Looks for cancellation, rescheduling, or modification policies',
+                      hasErrorHandling: 'Checks for error messages, validation, or user feedback systems',
+                      hasMobileOptimization: 'Verifies mobile-friendly booking interface and responsive design'
+                    };
+                    return (
+                      <div key={key} className="flex items-center space-x-2 p-2 rounded border group relative">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <div className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                          {descriptions[key as keyof typeof descriptions] || 'Direct booking feature'}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 
@@ -990,12 +1019,26 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.entries(result.websiteAnalysis.agenticFlows.faqSupport)
                   .filter(([key]) => key !== 'score')
-                  .map(([key, value]) => (
-                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
-                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
-                    </div>
-                  ))}
+                  .map(([key, value]) => {
+                    const descriptions = {
+                      hasFaq: 'Checks for frequently asked questions section or help center',
+                      hasPolicyDocumentation: 'Looks for terms of service, privacy policy, or legal documentation',
+                      hasUserGuides: 'Searches for tutorials, guides, or instructional content',
+                      hasEligibilityCriteria: 'Verifies presence of qualification requirements or eligibility information',
+                      hasSupportContact: 'Checks for customer support contact information or help desk',
+                      hasSearchFunctionality: 'Looks for search features or knowledge base search',
+                      hasContentOrganization: 'Verifies well-organized content structure and navigation'
+                    };
+                    return (
+                      <div key={key} className="flex items-center space-x-2 p-2 rounded border group relative">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <div className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                          {descriptions[key as keyof typeof descriptions] || 'FAQ/Support feature'}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 
@@ -1014,12 +1057,25 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.entries(result.websiteAnalysis.agenticFlows.taskManagement)
                   .filter(([key]) => key !== 'score')
-                  .map(([key, value]) => (
-                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
-                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
-                    </div>
-                  ))}
+                  .map(([key, value]) => {
+                    const descriptions = {
+                      hasScheduleVisibility: 'Checks for visible schedules, calendars, or time-based information',
+                      hasReservationManagement: 'Looks for reservation systems, booking management, or appointment tools',
+                      hasTaskTracking: 'Searches for task lists, progress tracking, or project management features',
+                      hasReschedulingProcess: 'Verifies ability to modify, reschedule, or update existing bookings',
+                      hasMembershipDetails: 'Checks for membership information, accounts, or user profiles',
+                      hasNotificationSystems: 'Looks for alerts, notifications, or communication systems'
+                    };
+                    return (
+                      <div key={key} className="flex items-center space-x-2 p-2 rounded border group relative">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <div className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                          {descriptions[key as keyof typeof descriptions] || 'Task management feature'}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 
@@ -1038,154 +1094,29 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.entries(result.websiteAnalysis.agenticFlows.personalization)
                   .filter(([key]) => key !== 'score')
-                  .map(([key, value]) => (
-                    <div key={key} className="flex items-center space-x-2 p-2 rounded border">
-                      <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
-                    </div>
-                  ))}
+                  .map(([key, value]) => {
+                    const descriptions = {
+                      hasPersonalizationData: 'Checks for user preferences, settings, or customization options',
+                      hasRecommendationLogic: 'Looks for recommendation systems or suggested content',
+                      hasContextAwareness: 'Searches for location-based, time-based, or contextual features',
+                      hasUserProfiling: 'Verifies user account features, profiles, or personal data collection',
+                      hasDynamicContent: 'Checks for personalized or adaptive content delivery'
+                    };
+                    return (
+                      <div key={key} className="flex items-center space-x-2 p-2 rounded border group relative">
+                        <div className={`w-3 h-3 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-xs capitalize">{key.replace('has', '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <div className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                          {descriptions[key as keyof typeof descriptions] || 'Personalization feature'}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
         )}
 
-        {/* Feature Validation & Flow Mapping */}
-        {result.websiteAnalysis?.agenticFlows && result.websiteAnalysis.websiteType && (
-          <div className="mt-6 p-4 border rounded-lg bg-amber-50">
-            <h4 className="text-lg font-medium mb-4 text-amber-900">
-              Feature Validation & Flow Mapping
-            </h4>
-            <p className="text-sm text-amber-700 mb-4">
-              This section shows how individual website features are validated and mapped to specific agentic flows for {result.websiteAnalysis.websiteType} websites.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Information Gathering Features */}
-              <div className="p-3 border rounded-lg bg-white">
-                <h5 className="font-semibold text-amber-800 mb-2">Information Gathering Features</h5>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>Service/Product Info</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasServiceProductInfo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.informationGathering.hasServiceProductInfo ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Pricing Information</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasPricing ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.informationGathering.hasPricing ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Contact Information</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasContactInfo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.informationGathering.hasContactInfo ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Location Data</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.informationGathering.hasLocation ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.informationGathering.hasLocation ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Direct Booking Features */}
-              <div className="p-3 border rounded-lg bg-white">
-                <h5 className="font-semibold text-amber-800 mb-2">Direct Booking Features</h5>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>Actionable Instructions</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasActionableInstructions ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.directBooking.hasActionableInstructions ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Payment Options</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasPaymentOptions ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.directBooking.hasPaymentOptions ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Booking Requirements</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasBookingRequirements ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.directBooking.hasBookingRequirements ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Mobile Optimization</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.directBooking.hasMobileOptimization ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.directBooking.hasMobileOptimization ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* FAQ/Support Features */}
-              <div className="p-3 border rounded-lg bg-white">
-                <h5 className="font-semibold text-amber-800 mb-2">FAQ/Support Features</h5>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>FAQ Section</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasFaq ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.faqSupport.hasFaq ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Policy Documentation</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasPolicyDocumentation ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.faqSupport.hasPolicyDocumentation ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>User Guides</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasUserGuides ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.faqSupport.hasUserGuides ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Search Functionality</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.faqSupport.hasSearchFunctionality ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.faqSupport.hasSearchFunctionality ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Task Management Features */}
-              <div className="p-3 border rounded-lg bg-white">
-                <h5 className="font-semibold text-amber-800 mb-2">Task Management Features</h5>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>Schedule Visibility</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasScheduleVisibility ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.taskManagement.hasScheduleVisibility ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Reservation Management</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasReservationManagement ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.taskManagement.hasReservationManagement ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Task Tracking</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasTaskTracking ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.taskManagement.hasTaskTracking ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Notification Systems</span>
-                    <span className={`px-2 py-1 rounded text-xs ${result.websiteAnalysis.agenticFlows.taskManagement.hasNotificationSystems ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {result.websiteAnalysis.agenticFlows.taskManagement.hasNotificationSystems ? 'Found' : 'Missing'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
