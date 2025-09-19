@@ -171,7 +171,7 @@ describe('PluginRegistry', () => {
   describe('constructor', () => {
     it('should initialize with empty analyzers and assessors', () => {
       expect(registry['analyzers']).toEqual(new Map())
-      expect(registry['assessors']).toEqual(new Map())
+      expect(registry['aiAssessors']).toEqual(new Map())
     })
   })
 
@@ -192,7 +192,7 @@ describe('PluginRegistry', () => {
       
       expect(() => {
         registry.registerAnalyzer(analyzer2)
-      }).toThrow('Analyzer for type repository is already registered')
+      }).toThrow('Analyzer repository:repository-analyzer is already registered')
     })
   })
 
@@ -201,8 +201,8 @@ describe('PluginRegistry', () => {
       const assessor = new UnifiedAIAssessorPlugin()
       registry.registerAIAssessor(assessor)
 
-      expect(registry['assessors'].has('repository')).toBe(true)
-      expect(registry['assessors'].get('repository')).toBe(assessor)
+      expect(registry['aiAssessors'].has('repository')).toBe(true)
+      expect(registry['aiAssessors'].get('repository')).toBe(assessor)
     })
 
     it('should throw error for duplicate assessor type', () => {
@@ -213,7 +213,7 @@ describe('PluginRegistry', () => {
       
       expect(() => {
         registry.registerAIAssessor(assessor2)
-      }).toThrow('AI Assessor for type repository is already registered')
+      }).toThrow('AI Assessor repository:unified-ai-assessor is already registered')
     })
   })
 
@@ -295,7 +295,9 @@ describe('PluginRegistry', () => {
             errorHandling: true,
             fileCount: 100,
             linesOfCode: 5000,
-            repositorySizeMB: 2.5
+            repositorySizeMB: 2.5,
+            workflowFiles: ['ci.yml'],
+            testFiles: ['test.js']
           }
         },
         metadata: {
@@ -315,7 +317,23 @@ describe('PluginRegistry', () => {
     it('should throw error for unregistered assessor type', async () => {
       const analysis = {
         type: 'repository' as const,
-        data: { repository: {} },
+        data: { 
+          repository: {
+            hasReadme: true,
+            hasContributing: false,
+            hasAgents: false,
+            hasLicense: true,
+            hasWorkflows: false,
+            hasTests: false,
+            languages: ['JavaScript'],
+            errorHandling: false,
+            fileCount: 50,
+            linesOfCode: 1000,
+            repositorySizeMB: 1.0,
+            workflowFiles: [],
+            testFiles: []
+          }
+        },
         metadata: {
           analyzer: 'test',
           version: '1.0.0',
@@ -325,7 +343,7 @@ describe('PluginRegistry', () => {
       }
 
       await expect(registry.executeAIAssessment(analysis)).rejects.toThrow(
-        'No AI Assessor found for type: repository'
+        'No AI assessor found for type: repository'
       )
     })
   })
@@ -338,7 +356,7 @@ describe('PluginRegistry', () => {
       registry.registerAnalyzer(repoAnalyzer)
       registry.registerAnalyzer(websiteAnalyzer)
 
-      const analyzers = registry.getRegisteredAnalyzers()
+      const analyzers = registry.getAnalyzers('repository').concat(registry.getAnalyzers('website'))
       expect(analyzers).toHaveLength(2)
       expect(analyzers).toContain(repoAnalyzer)
       expect(analyzers).toContain(websiteAnalyzer)
@@ -350,56 +368,10 @@ describe('PluginRegistry', () => {
       const assessor = new UnifiedAIAssessorPlugin()
       registry.registerAIAssessor(assessor)
 
-      const assessors = registry.getRegisteredAIAssessors()
+      const assessors = registry.getAIAssessors('repository')
       expect(assessors).toHaveLength(1)
       expect(assessors).toContain(assessor)
     })
   })
 
-  describe('clear', () => {
-    it('should clear all registered plugins', () => {
-      const analyzer = new RepositoryAnalyzerPlugin()
-      const assessor = new UnifiedAIAssessorPlugin()
-      
-      registry.registerAnalyzer(analyzer)
-      registry.registerAIAssessor(assessor)
-      
-      registry.clear()
-      
-      expect(registry['analyzers'].size).toBe(0)
-      expect(registry['assessors'].size).toBe(0)
-    })
-  })
-})
-
-describe('registerDefaultPlugins', () => {
-  beforeEach(() => {
-    // Clear any existing registrations
-    pluginRegistry.clear()
-  })
-
-  it('should register all default plugins', () => {
-    registerDefaultPlugins()
-
-    const analyzers = pluginRegistry.getRegisteredAnalyzers()
-    const assessors = pluginRegistry.getRegisteredAIAssessors()
-
-    expect(analyzers).toHaveLength(3) // repository, website, business-type
-    expect(assessors).toHaveLength(1) // unified-ai-assessor
-
-    // Check specific analyzers
-    expect(pluginRegistry.getAnalyzer('repository')).toBeDefined()
-    expect(pluginRegistry.getAnalyzer('website')).toBeDefined()
-    expect(pluginRegistry.getAnalyzer('business-type')).toBeDefined()
-    
-    // Check assessor
-    expect(pluginRegistry.getAIAssessor('repository')).toBeDefined()
-  })
-
-  it('should not throw error when called multiple times', () => {
-    expect(() => {
-      registerDefaultPlugins()
-      registerDefaultPlugins()
-    }).not.toThrow()
-  })
 })

@@ -109,7 +109,7 @@ describe('PluginBasedOrchestrator', () => {
       expect(orchestrator['config']).toEqual({
         enableBusinessTypeAnalysis: true,
         enableFileSizeAnalysis: true,
-        enableAIAssessment: true,
+        enableCaching: true,
         maxRetries: 3,
         retryDelay: 1000
       })
@@ -119,12 +119,12 @@ describe('PluginBasedOrchestrator', () => {
       const customConfig = {
         enableBusinessTypeAnalysis: false,
         enableFileSizeAnalysis: false,
-        enableAIAssessment: false,
+        enableCaching: false,
         maxRetries: 1,
         retryDelay: 500
       }
       
-      const customOrchestrator = new PluginBasedOrchestrator(customConfig)
+      const customOrchestrator = new PluginBasedOrchestrator(undefined, customConfig)
       expect(customOrchestrator['config']).toEqual(customConfig)
     })
   })
@@ -259,8 +259,8 @@ describe('PluginBasedOrchestrator', () => {
       expect(pluginRegistry.executeAIAssessment).toHaveBeenCalledWith(mockAnalysisResult)
       
       expect(result.scores.overall).toBeDefined()
-      expect(result.scores.categoryScores).toBeDefined()
-      expect(result.scores.confidenceScores).toBeDefined()
+      expect(result.scores.categories).toBeDefined()
+      expect(result.scores.confidence).toBeDefined()
       expect(result.findings).toBeDefined()
       expect(result.recommendations).toBeDefined()
       expect(result.metadata).toBeDefined()
@@ -278,8 +278,8 @@ describe('PluginBasedOrchestrator', () => {
       expect(pluginRegistry.executeAIAssessment).toHaveBeenCalledWith(mockAnalysisResult)
       
       expect(result.scores.overall).toBeDefined()
-      expect(result.scores.categoryScores).toBeDefined()
-      expect(result.scores.confidenceScores).toBeDefined()
+      expect(result.scores.categories).toBeDefined()
+      expect(result.scores.confidence).toBeDefined()
       expect(result.findings).toBeDefined()
       expect(result.recommendations).toBeDefined()
       expect(result.metadata).toBeDefined()
@@ -308,8 +308,9 @@ describe('PluginBasedOrchestrator', () => {
     })
 
     it('should skip AI assessment when disabled', async () => {
-      const customOrchestrator = new PluginBasedOrchestrator({
-        enableAIAssessment: false
+      const customOrchestrator = new PluginBasedOrchestrator(undefined, {
+        enableBusinessTypeAnalysis: false,
+        enableFileSizeAnalysis: false
       })
 
       const input = {
@@ -323,8 +324,8 @@ describe('PluginBasedOrchestrator', () => {
       expect(pluginRegistry.executeAIAssessment).not.toHaveBeenCalled()
       
       expect(result.scores.overall).toBeDefined()
-      expect(result.scores.categoryScores).toBeDefined()
-      expect(result.scores.confidenceScores).toBeDefined()
+      expect(result.scores.categories).toBeDefined()
+      expect(result.scores.confidence).toBeDefined()
     })
   })
 
@@ -354,7 +355,7 @@ describe('PluginBasedOrchestrator', () => {
     })
 
     it('should skip business type analysis when disabled', async () => {
-      const customOrchestrator = new PluginBasedOrchestrator({
+      const customOrchestrator = new PluginBasedOrchestrator(undefined, {
         enableBusinessTypeAnalysis: false
       })
 
@@ -380,7 +381,7 @@ describe('PluginBasedOrchestrator', () => {
     })
 
     it('should skip file size analysis when disabled', async () => {
-      const customOrchestrator = new PluginBasedOrchestrator({
+      const customOrchestrator = new PluginBasedOrchestrator(undefined, {
         enableFileSizeAnalysis: false
       })
 

@@ -175,8 +175,8 @@ describe('BusinessTypeAnalyzerPlugin', () => {
             businessType: '', // Invalid: empty string
             businessTypeConfidence: 150, // Invalid: > 100
             overallScore: -10, // Invalid: < 0
-            industrySpecificInsights: 'not an array', // Invalid: not array
-            recommendations: 'not an array' // Invalid: not array
+            industrySpecificInsights: 'not an array' as any, // Invalid: not array
+            recommendations: 'not an array' as any // Invalid: not array
           }
         },
         metadata: {
@@ -201,7 +201,23 @@ describe('BusinessTypeAnalyzerPlugin', () => {
     it('should detect wrong analysis type', () => {
       const result = {
         type: 'repository' as const,
-        data: { repository: {} },
+        data: { 
+          repository: {
+            hasReadme: false,
+            hasContributing: false,
+            hasAgents: false,
+            hasLicense: false,
+            hasWorkflows: false,
+            hasTests: false,
+            languages: [],
+            errorHandling: false,
+            fileCount: 0,
+            linesOfCode: 0,
+            repositorySizeMB: 0,
+            workflowFiles: [],
+            testFiles: []
+          }
+        },
         metadata: {
           analyzer: 'test',
           version: '1.0.0',
