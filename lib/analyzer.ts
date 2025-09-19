@@ -728,35 +728,71 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       }
     })
 
-    // Extract social media links
+    // Extract social media links (deduplicated)
     const socialLinks: string[] = []
+    const socialSet = new Set<string>() // Use Set to prevent duplicates
+    
     $('a[href]').each((_, el) => {
       const href = $(el).attr('href')
       if (href) {
-        if (href.includes('facebook.com')) socialLinks.push('Facebook')
-        if (href.includes('twitter.com') || href.includes('x.com')) socialLinks.push('Twitter/X')
-        if (href.includes('linkedin.com')) socialLinks.push('LinkedIn')
-        if (href.includes('instagram.com')) socialLinks.push('Instagram')
-        if (href.includes('youtube.com')) socialLinks.push('YouTube')
+        if (href.includes('facebook.com') && !socialSet.has('Facebook')) {
+          socialLinks.push('Facebook')
+          socialSet.add('Facebook')
+        }
+        if ((href.includes('twitter.com') || href.includes('x.com')) && !socialSet.has('Twitter/X')) {
+          socialLinks.push('Twitter/X')
+          socialSet.add('Twitter/X')
+        }
+        if (href.includes('linkedin.com') && !socialSet.has('LinkedIn')) {
+          socialLinks.push('LinkedIn')
+          socialSet.add('LinkedIn')
+        }
+        if (href.includes('instagram.com') && !socialSet.has('Instagram')) {
+          socialLinks.push('Instagram')
+          socialSet.add('Instagram')
+        }
+        if (href.includes('youtube.com') && !socialSet.has('YouTube')) {
+          socialLinks.push('YouTube')
+          socialSet.add('YouTube')
+        }
       }
     })
 
-    // Extract contact information
+    // Extract contact information (deduplicated)
     const contactInfo: string[] = []
+    const contactSet = new Set<string>() // Use Set to prevent duplicates
+    
     $('a[href^="tel:"]').each((_, el) => {
       const href = $(el).attr('href')
-      if (href) contactInfo.push(href.replace('tel:', ''))
+      if (href) {
+        const phoneNumber = href.replace('tel:', '').trim()
+        if (phoneNumber && !contactSet.has(phoneNumber)) {
+          contactInfo.push(phoneNumber)
+          contactSet.add(phoneNumber)
+        }
+      }
     })
     $('a[href^="mailto:"]').each((_, el) => {
       const href = $(el).attr('href')
-      if (href) contactInfo.push(href.replace('mailto:', ''))
+      if (href) {
+        const email = href.replace('mailto:', '').trim()
+        if (email && !contactSet.has(email)) {
+          contactInfo.push(email)
+          contactSet.add(email)
+        }
+      }
     })
 
-    // Analyze navigation structure
+    // Analyze navigation structure (deduplicated)
     const navItems: string[] = []
+    const navSet = new Set<string>() // Use Set to prevent duplicates
+    
     $('nav a, .nav a, .navigation a, .menu a').each((_, el) => {
       const text = $(el).text().trim()
-      if (text) navItems.push(text)
+      if (text && !navSet.has(text)) {
+        navItems.push(text)
+        navSet.add(text)
+      }
     })
 
     // Create the new business-type-aware analysis result

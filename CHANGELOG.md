@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CRITICAL**: Fixed overall readiness score discrepancy where business-type-aware scores (80-100) were being overridden by legacy unified metrics (8) causing incorrect "Needs improvement" ratings
 - **TYPESCRIPT**: Fixed type signature for `createUnifiedMetric` to properly handle `undefined` AI values
 - **HTTP RESILIENCE**: Added comprehensive multi-strategy fallback system for malformed HTTP headers (HPE_INVALID_HEADER_TOKEN) with 4 fallback strategies and URL-based analysis
+- **DATA QUALITY**: Fixed duplicate contact information extraction using Set-based deduplication
 - Documentation gaps for agent onboarding and change management
 - TypeScript compilation errors related to missing `aiAnalysisStatus` property
 - **CRITICAL**: Fixed major inconsistency where website analysis showed repository-focused key findings
