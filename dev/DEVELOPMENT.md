@@ -6,6 +6,21 @@ This document outlines the development process, implementation status, and futur
 
 ## 📝 Agent Progress Log
 
+### 2025-01-17
+- **MAJOR UPDATE**: Redesigned website analysis system to be business-type-aware
+- **NEW**: Created `lib/business-type-analyzer.ts` with 15 business type configurations and AI-relevant assessment
+- **UPDATED**: Modified `lib/analyzer.ts` to use new business-type-aware website analysis instead of generic website analysis
+- **UPDATED**: Updated `lib/aligned-assessment-engine.ts` to properly map new website analysis data structure
+- **UPDATED**: Updated `app/api/analyze/route.ts` to include business type analysis in API response
+- **UPDATED**: Completely redesigned frontend (`app/page.tsx`) to display business-type-aware data and remove irrelevant metrics
+- **REMOVED**: Eliminated mobile-friendliness, SEO scores, accessibility scores and other non-AI-relevant checks
+- **NEW**: Implemented 5 agentic flows (Information Gathering, Direct Booking, FAQ/Support, Task Management, Personalization) with business-specific weights
+- **NEW**: Added AI-relevant checks (structured data, contact info, content accessibility, etc.)
+- **NEW**: Created `dev/BUSINESS-TYPE-AWARE-ASSESSMENT.md` documentation explaining the new system
+- **UPDATED**: Updated `CHANGELOG.md` with comprehensive details of the business-type-aware assessment system
+- **VERIFIED**: All TypeScript checks pass (`npm run type-check`) and all tests pass (`npm test` - 93/93 tests)
+- **STATUS**: Frontend now correctly displays coherent, business-type-specific assessment results instead of generic repository-focused metrics
+
 ### 2025-09-18
 - Added `.cursorrules` with Cursor-optimized operating rules for Next.js/Vercel/TypeScript/Node.
 - Created `AGENTS.md` linking to `dev/ARCHITECTURE.md` and `dev/DEVELOPMENT.md` with workflow and verification steps.
@@ -189,7 +204,7 @@ This document outlines the development process, implementation status, and futur
 - [x] **Test Infrastructure Overhaul**
   - Implemented comprehensive `__mocks__/openai.js` system
   - Fixed all TypeScript compilation errors
-  - Achieved 100% test pass rate (62/62 tests)
+  - Achieved 100% test pass rate (93/93 tests)
   - Status: All CI checks now passing consistently
 
 - [x] **API Mocking System**
@@ -223,6 +238,65 @@ This document outlines the development process, implementation status, and futur
   - Improved fallback mechanisms for AI analysis failures
   - Better user feedback for different error scenarios
   - Status: More reliable error handling and user guidance
+
+### Phase 2.6: Business-Type-Aware Assessment System (COMPLETED ✅)
+
+#### 2.6.1 Business Type Detection & Configuration
+- [x] **Business Type Analyzer Engine** (`lib/business-type-analyzer.ts`)
+  - Implemented 15 business type configurations (food_service, hospitality, travel, healthcare, etc.)
+  - Created keyword-based business type detection system
+  - Defined business-specific agentic flow weights for tailored assessments
+  - Status: Comprehensive business type coverage with industry-specific optimization
+
+- [x] **Agentic Flow Analysis System**
+  - Implemented 5 core agentic flows: Information Gathering, Direct Booking, FAQ/Support, Task Management, Personalization
+  - Created detailed scoring mechanisms for each flow with business-type-specific importance weights
+  - Added comprehensive check details for each flow (e.g., hasPricing, hasBookingRequirements, hasFaq)
+  - Status: AI-focused assessment that evaluates actual agent usability factors
+
+#### 2.6.2 AI-Relevant Assessment Criteria
+- [x] **Removed Non-AI-Relevant Metrics**
+  - Eliminated mobile-friendliness, SEO scores, accessibility scores from website assessment
+  - Removed generic website metrics that don't impact AI agent usability
+  - Status: Streamlined assessment focused on AI agent compatibility
+
+- [x] **AI-Relevant Checks Implementation**
+  - Added structured data detection (JSON-LD)
+  - Implemented contact information discoverability checks
+  - Created content accessibility scoring for AI parsing
+  - Added page title and meta description validation
+  - Status: Focused on metrics that directly impact AI agent effectiveness
+
+#### 2.6.3 Frontend Redesign & Coherence
+- [x] **Frontend Interface Overhaul** (`app/page.tsx`)
+  - Updated to display business type and confidence level
+  - Redesigned Website Information section to show only AI-relevant checks
+  - Modified Website Analysis Results to display business-type-aware data
+  - Added comprehensive Business Type Analysis section
+  - Status: Coherent, business-type-specific assessment display
+
+- [x] **Assessment Result Coherence**
+  - Fixed alignment between website analysis results and key findings
+  - Ensured all displayed metrics are relevant to AI agent usability
+  - Implemented proper data flow from backend analysis to frontend display
+  - Status: Assessment results now provide coherent, actionable insights
+
+#### 2.6.4 Backend Integration & API Updates
+- [x] **Analyzer Integration** (`lib/analyzer.ts`)
+  - Completely rewrote website analysis to use business-type-aware system
+  - Integrated business type detection, agentic flow analysis, and AI-relevant checks
+  - Removed old generic website analysis functions
+  - Status: Backend now provides coherent, business-type-specific assessments
+
+- [x] **API Response Enhancement** (`app/api/analyze/route.ts`)
+  - Added businessTypeAnalysis object to API responses
+  - Included business type, confidence, overall score, agentic flows, and findings
+  - Status: Frontend receives comprehensive business-type-aware data
+
+- [x] **Assessment Engine Updates** (`lib/aligned-assessment-engine.ts`)
+  - Updated to properly map new website analysis data structure
+  - Removed references to old, irrelevant website metrics
+  - Status: Assessment pipeline now handles business-type-aware data correctly
 
 ## 🔧 Current Technical Debt
 

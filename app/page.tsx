@@ -160,6 +160,7 @@ interface AssessmentResult {
     }
   }
   websiteAnalysis?: {
+    // Legacy fields for backward compatibility
     websiteType: 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown'
     agenticFlows?: {
       informationGathering: {
@@ -247,6 +248,81 @@ interface AssessmentResult {
       hasShipping: boolean
       hasReturns: boolean
     }
+  }
+  // New business-type-aware analysis data
+  businessTypeAnalysis?: {
+    businessType: string
+    businessTypeConfidence: number
+    overallScore: number
+    agenticFlows: {
+      informationGathering: {
+        score: number
+        details: {
+          hasServiceProductInfo: boolean
+          hasPricing: boolean
+          hasAvailability: boolean
+          hasContactInfo: boolean
+          hasLocation: boolean
+          hasReviews: boolean
+          hasPolicies: boolean
+          hasDifferentiators: boolean
+        }
+      }
+      directBooking: {
+        score: number
+        details: {
+          hasActionableInstructions: boolean
+          hasBookingRequirements: boolean
+          hasConfirmationProcess: boolean
+          hasPaymentOptions: boolean
+          hasModificationPolicies: boolean
+          hasErrorHandling: boolean
+        }
+      }
+      faqSupport: {
+        score: number
+        details: {
+          hasFaq: boolean
+          hasPolicyDocumentation: boolean
+          hasUserGuides: boolean
+          hasEligibilityCriteria: boolean
+          hasSupportContact: boolean
+          hasSearchFunctionality: boolean
+        }
+      }
+      taskManagement: {
+        score: number
+        details: {
+          hasScheduleVisibility: boolean
+          hasReservationManagement: boolean
+          hasTaskTracking: boolean
+          hasReschedulingProcess: boolean
+          hasMembershipDetails: boolean
+          hasNotificationSystems: boolean
+        }
+      }
+      personalization: {
+        score: number
+        details: {
+          hasPersonalizationData: boolean
+          hasRecommendationLogic: boolean
+          hasContextAwareness: boolean
+          hasUserProfiling: boolean
+          hasDynamicContent: boolean
+        }
+      }
+    }
+    aiRelevantChecks: {
+      hasStructuredData: boolean
+      hasContactInfo: boolean
+      hasPageTitle: boolean
+      hasMetaDescription: boolean
+      hasSitemap: boolean
+      hasRobotsTxt: boolean
+      contentAccessibility: number
+    }
+    findings: string[]
+    recommendations: string[]
   }
 }
 
@@ -654,23 +730,35 @@ export default function Home() {
                     <div className="text-sm font-medium truncate">
                       {result.staticAnalysis.pageTitle || 'No title'}
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Accessibility Score</div>
-                    <div className="text-lg font-bold text-green-600">
-                      {result.staticAnalysis.accessibilityScore || 0}%
-                    </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      Helps agents understand content structure and navigation
+                      Critical for AI agent identification
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">SEO Score</div>
+                    <div className="text-sm font-medium text-gray-600 mb-1">Content Accessibility</div>
                     <div className="text-lg font-bold text-blue-600">
-                      {result.staticAnalysis.seoScore || 0}%
+                      {result.businessTypeAnalysis?.aiRelevantChecks.contentAccessibility || 0}%
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      Indicates well-structured content for agent consumption
+                      How easy it is for AI agents to extract information
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Structured Data</div>
+                    <div className="text-sm font-medium">
+                      {result.businessTypeAnalysis?.aiRelevantChecks.hasStructuredData ? '✅ JSON-LD' : '❌ Missing'}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Helps AI agents understand content structure
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Contact Info</div>
+                    <div className="text-sm font-medium">
+                      {result.businessTypeAnalysis?.aiRelevantChecks.hasContactInfo ? '✅ Available' : '❌ Missing'}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Essential for AI agents to find contact details
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
@@ -680,15 +768,6 @@ export default function Home() {
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Framework compatibility for agent integration
-                    </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Mobile Friendly</div>
-                    <div className="text-sm font-medium">
-                      {result.staticAnalysis.mobileFriendly ? '✅ Yes' : '❌ No'}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Responsive design improves agent accessibility
                     </div>
                   </div>
                 </>
@@ -800,19 +879,22 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Website scores */}
+                {/* AI-Relevant Scores */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-2">Accessibility Score</div>
-                    <div className="text-2xl font-bold text-blue-600">{result.staticAnalysis.accessibilityScore}/100</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Content Accessibility</div>
+                    <div className="text-2xl font-bold text-blue-600">{result.businessTypeAnalysis?.aiRelevantChecks.contentAccessibility || 0}/100</div>
+                    <div className="text-xs text-gray-500 mt-1">How easy it is for AI agents to extract information</div>
                   </div>
                   <div className="p-4 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-2">SEO Score</div>
-                    <div className="text-2xl font-bold text-green-600">{result.staticAnalysis.seoScore}/100</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Overall AI Readiness</div>
+                    <div className="text-2xl font-bold text-green-600">{result.businessTypeAnalysis?.overallScore || 0}/100</div>
+                    <div className="text-xs text-gray-500 mt-1">Business-type-aware AI agent readiness score</div>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-2">Content Length</div>
                     <div className="text-2xl font-bold text-purple-600">{result.staticAnalysis.contentLength?.toLocaleString() || 0} chars</div>
+                    <div className="text-xs text-gray-500 mt-1">Total content available for analysis</div>
                   </div>
                 </div>
 
@@ -868,8 +950,25 @@ export default function Home() {
                   )}
                 </div>
 
-        {/* Website Type and Type-Specific Metrics */}
-        {result.websiteAnalysis && (
+        {/* Business Type Analysis */}
+        {result.businessTypeAnalysis && (
+          <div className="mt-6 p-4 border rounded-lg bg-blue-50">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-lg font-medium text-blue-900">
+                Business Type: <span className="capitalize font-semibold">{result.businessTypeAnalysis.businessType.replace('_', ' ')}</span>
+              </h4>
+              <div className="text-sm text-blue-700">
+                Confidence: {result.businessTypeAnalysis.businessTypeConfidence}%
+              </div>
+            </div>
+            <div className="text-sm text-blue-800 mb-3">
+              AI Agent Readiness Score: <span className="font-semibold">{result.businessTypeAnalysis.overallScore}/100</span>
+            </div>
+          </div>
+        )}
+
+        {/* Legacy Website Type Display (fallback) */}
+        {!result.businessTypeAnalysis && result.websiteAnalysis && (
           <div className="mt-6 p-4 border rounded-lg bg-blue-50">
             <h4 className="text-lg font-medium mb-3 text-blue-900">
               Website Type: <span className="capitalize">{result.websiteAnalysis.websiteType}</span>
@@ -920,11 +1019,11 @@ export default function Home() {
         )}
 
 
-        {/* Detailed Flow Analysis for Website Type */}
-        {result.websiteAnalysis?.agenticFlows && result.websiteAnalysis.websiteType && (
+        {/* Detailed Flow Analysis for Business Type */}
+        {result.businessTypeAnalysis?.agenticFlows && result.businessTypeAnalysis.businessType && (
           <div className="mt-6 p-4 border rounded-lg bg-indigo-50">
             <h4 className="text-lg font-medium mb-4 text-indigo-900">
-              Detailed Flow Analysis for {result.websiteAnalysis.websiteType.charAt(0).toUpperCase() + result.websiteAnalysis.websiteType.slice(1)} Websites
+              Detailed Flow Analysis for {result.businessTypeAnalysis.businessType.replace('_', ' ').charAt(0).toUpperCase() + result.businessTypeAnalysis.businessType.replace('_', ' ').slice(1)} Websites
             </h4>
             
             {/* Information Gathering Flow Details */}
@@ -933,15 +1032,14 @@ export default function Home() {
                 <h5 className="text-lg font-semibold text-indigo-800">Information Gathering & Comparison</h5>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Score:</span>
-                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.informationGathering.score}/100</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.businessTypeAnalysis.agenticFlows.informationGathering.score}/100</span>
                 </div>
               </div>
               <p className="text-sm text-gray-600 mb-3">
                 Evaluates how well the website provides comprehensive information for AI agents to gather and compare data.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(result.websiteAnalysis.agenticFlows.informationGathering)
-                  .filter(([key]) => key !== 'score')
+                {Object.entries(result.businessTypeAnalysis.agenticFlows.informationGathering.details)
                   .map(([key, value]) => {
                     const descriptions = {
                       hasServiceProductInfo: 'Checks for detailed service/product descriptions, features, and specifications',
@@ -972,15 +1070,14 @@ export default function Home() {
                 <h5 className="text-lg font-semibold text-indigo-800">Direct Booking & Reservations</h5>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Score:</span>
-                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.directBooking.score}/100</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.businessTypeAnalysis.agenticFlows.directBooking.score}/100</span>
                 </div>
               </div>
               <p className="text-sm text-gray-600 mb-3">
                 Assesses the website&apos;s ability to support direct booking, reservation, and transaction actions.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(result.websiteAnalysis.agenticFlows.directBooking)
-                  .filter(([key]) => key !== 'score')
+                {Object.entries(result.businessTypeAnalysis.agenticFlows.directBooking.details)
                   .map(([key, value]) => {
                     const descriptions = {
                       hasActionableInstructions: 'Checks for clear step-by-step booking or reservation instructions',
@@ -1010,15 +1107,14 @@ export default function Home() {
                 <h5 className="text-lg font-semibold text-indigo-800">FAQ & Knowledge Support</h5>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Score:</span>
-                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.faqSupport.score}/100</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.businessTypeAnalysis.agenticFlows.faqSupport.score}/100</span>
                 </div>
               </div>
               <p className="text-sm text-gray-600 mb-3">
                 Evaluates support and knowledge base capabilities for answering user questions and providing guidance.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(result.websiteAnalysis.agenticFlows.faqSupport)
-                  .filter(([key]) => key !== 'score')
+                {Object.entries(result.businessTypeAnalysis.agenticFlows.faqSupport.details)
                   .map(([key, value]) => {
                     const descriptions = {
                       hasFaq: 'Checks for frequently asked questions section or help center',
@@ -1048,15 +1144,14 @@ export default function Home() {
                 <h5 className="text-lg font-semibold text-indigo-800">Task & Calendar Management</h5>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Score:</span>
-                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.taskManagement.score}/100</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.businessTypeAnalysis.agenticFlows.taskManagement.score}/100</span>
                 </div>
               </div>
               <p className="text-sm text-gray-600 mb-3">
                 Assesses task management, scheduling, and calendar integration capabilities.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(result.websiteAnalysis.agenticFlows.taskManagement)
-                  .filter(([key]) => key !== 'score')
+                {Object.entries(result.businessTypeAnalysis.agenticFlows.taskManagement.details)
                   .map(([key, value]) => {
                     const descriptions = {
                       hasScheduleVisibility: 'Checks for visible schedules, calendars, or time-based information',
@@ -1085,15 +1180,14 @@ export default function Home() {
                 <h5 className="text-lg font-semibold text-indigo-800">Personalization & Recommendations</h5>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Score:</span>
-                  <span className="text-lg font-bold text-indigo-600">{result.websiteAnalysis.agenticFlows.personalization.score}/100</span>
+                  <span className="text-lg font-bold text-indigo-600">{result.businessTypeAnalysis.agenticFlows.personalization.score}/100</span>
                 </div>
               </div>
               <p className="text-sm text-gray-600 mb-3">
                 Evaluates personalization capabilities and recommendation systems for tailored user experiences.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(result.websiteAnalysis.agenticFlows.personalization)
-                  .filter(([key]) => key !== 'score')
+                {Object.entries(result.businessTypeAnalysis.agenticFlows.personalization.details)
                   .map(([key, value]) => {
                     const descriptions = {
                       hasPersonalizationData: 'Checks for user preferences, settings, or customization options',
@@ -1504,7 +1598,7 @@ export default function Home() {
           <div className="card">
             <h3 className="text-lg font-semibold mb-4">Key Findings</h3>
             <ul className="space-y-2">
-              {result.findings.map((finding, index) => (
+              {(result.businessTypeAnalysis?.findings || result.findings).map((finding, index) => (
                 <li key={index} className="flex items-start">
                   <span className="w-2 h-2 bg-primary-500 rounded-full mt-2 mr-3 flex-shrink-0" />
                   <span className="text-gray-700">{finding}</span>
@@ -1517,7 +1611,7 @@ export default function Home() {
           <div className="card">
             <h3 className="text-lg font-semibold mb-4">Recommendations</h3>
             <ul className="space-y-2">
-              {result.recommendations.map((recommendation, index) => (
+              {(result.businessTypeAnalysis?.recommendations || result.recommendations).map((recommendation, index) => (
                 <li key={index} className="flex items-start">
                   <span className="w-2 h-2 bg-warning-500 rounded-full mt-2 mr-3 flex-shrink-0" />
                   <span className="text-gray-700">{recommendation}</span>
