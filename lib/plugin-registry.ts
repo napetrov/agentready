@@ -5,7 +5,7 @@
  * as plugins, enabling a flexible and extensible architecture.
  */
 
-import { AnalysisType, AnalysisInput, AnalysisResult, AIAssessment, AIAssessor } from './unified-types'
+import { AnalysisType, AssessmentInput, AnalysisResult, AIAssessment, AIAssessor } from './unified-types'
 
 /**
  * Plugin interface for analyzers
@@ -19,7 +19,7 @@ export interface AnalyzerPlugin {
   /**
    * Analyze the input and return structured results
    */
-  analyze(input: AnalysisInput): Promise<AnalysisResult>
+  analyze(input: AssessmentInput): Promise<AnalysisResult>
   
   /**
    * Validate the analysis result
@@ -29,7 +29,7 @@ export interface AnalyzerPlugin {
   /**
    * Check if this analyzer can handle the given input
    */
-  canHandle(input: AnalysisInput): boolean
+  canHandle(input: AssessmentInput): boolean
 }
 
 /**
@@ -209,7 +209,7 @@ export class PluginRegistry {
   /**
    * Execute analysis using the appropriate analyzer
    */
-  async executeAnalysis(input: AnalysisInput): Promise<AnalysisResult> {
+  async executeAnalysis(input: AssessmentInput): Promise<AnalysisResult> {
     const analyzer = this.getAnalyzer(input.type)
     
     if (!analyzer) {

@@ -332,6 +332,7 @@ export interface AssessmentMetadata {
   fallbackUsed: boolean
   errors: AssessmentError[]
   warnings: AssessmentWarning[]
+  duration?: number
 }
 
 export interface AssessmentError {

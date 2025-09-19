@@ -5,7 +5,7 @@
  * including SEO, structured data, and business type detection.
  */
 
-import { AnalysisType, AnalysisInput, AnalysisResult, WebsiteAnalysisData } from '../unified-types'
+import { AnalysisType, AssessmentInput, AnalysisResult, WebsiteAnalysisData } from '../unified-types'
 import { AnalyzerPlugin, ValidationResult } from '../plugin-registry'
 import { analyzeWebsite } from '../analyzer'
 
@@ -18,7 +18,7 @@ export class WebsiteAnalyzerPlugin implements AnalyzerPlugin {
   /**
    * Analyze a website
    */
-  async analyze(input: AnalysisInput): Promise<AnalysisResult> {
+  async analyze(input: AssessmentInput): Promise<AnalysisResult> {
     if (input.type !== 'website') {
       throw new Error('Website analyzer can only handle website inputs')
     }
@@ -27,13 +27,14 @@ export class WebsiteAnalyzerPlugin implements AnalyzerPlugin {
       throw new Error('Invalid website URL')
     }
 
+    const startTime = Date.now()
+
     try {
       // Use the existing analyzer function
       const staticAnalysis = await analyzeWebsite(input.url)
       
       // Convert to unified format
       const analysisData: WebsiteAnalysisData = {
-        type: 'website',
         url: input.url,
         pageTitle: staticAnalysis.pageTitle,
         metaDescription: staticAnalysis.metaDescription,
@@ -42,21 +43,58 @@ export class WebsiteAnalyzerPlugin implements AnalyzerPlugin {
         hasTwitterCards: staticAnalysis.hasTwitterCards,
         hasSitemap: staticAnalysis.hasSitemap,
         hasRobotsTxt: staticAnalysis.hasRobotsTxt,
+        hasFavicon: false, // Placeholder
+        hasManifest: false, // Placeholder
+        hasServiceWorker: false, // Placeholder
         contentLength: staticAnalysis.contentLength,
         technologies: staticAnalysis.technologies,
         contactInfo: staticAnalysis.contactInfo,
         socialMediaLinks: staticAnalysis.socialMediaLinks,
-        locations: staticAnalysis.locations
+        locations: staticAnalysis.locations,
+        agentReadinessFeatures: {
+          informationGathering: {
+            score: staticAnalysis.hasStructuredData ? 4 : 2,
+            maxScore: 5,
+            details: staticAnalysis.hasStructuredData ? ['Structured data present'] : [],
+            missing: staticAnalysis.hasStructuredData ? [] : ['Structured data missing']
+          },
+          directBooking: {
+            score: staticAnalysis.contactInfo.length > 0 ? 4 : 2,
+            maxScore: 5,
+            details: staticAnalysis.contactInfo.length > 0 ? ['Contact info available'] : [],
+            missing: staticAnalysis.contactInfo.length > 0 ? [] : ['Contact info missing']
+          },
+          faqSupport: {
+            score: staticAnalysis.pageTitle ? 4 : 2,
+            maxScore: 5,
+            details: staticAnalysis.pageTitle ? ['Page title present'] : [],
+            missing: staticAnalysis.pageTitle ? [] : ['Page title missing']
+          },
+          taskManagement: {
+            score: staticAnalysis.metaDescription ? 4 : 2,
+            maxScore: 5,
+            details: staticAnalysis.metaDescription ? ['Meta description present'] : [],
+            missing: staticAnalysis.metaDescription ? [] : ['Meta description missing']
+          },
+          personalization: {
+            score: staticAnalysis.hasSitemap ? 4 : 2,
+            maxScore: 5,
+            details: staticAnalysis.hasSitemap ? ['Sitemap present'] : [],
+            missing: staticAnalysis.hasSitemap ? [] : ['Sitemap missing']
+          }
+        }
       }
 
       return {
         type: 'website',
-        data: analysisData,
-        timestamp: new Date(),
+        data: {
+          website: analysisData
+        },
         metadata: {
           analyzer: this.name,
           version: this.version,
-          duration: 0 // Will be set by the registry
+          timestamp: new Date(),
+          duration: Date.now() - startTime
         }
       }
     } catch (error) {
@@ -85,7 +123,7 @@ export class WebsiteAnalyzerPlugin implements AnalyzerPlugin {
 
     // Validate website-specific fields
     if (result.data && 'type' in result.data && result.data.type === 'website') {
-      const websiteData = result.data as WebsiteAnalysisData
+      const websiteData = result.data.website as WebsiteAnalysisData
       
       if (typeof websiteData.hasStructuredData !== 'boolean') {
         errors.push('hasStructuredData must be a boolean')
@@ -151,7 +189,7 @@ export class WebsiteAnalyzerPlugin implements AnalyzerPlugin {
   /**
    * Check if this analyzer can handle the given input
    */
-  canHandle(input: AnalysisInput): boolean {
+  canHandle(input: AssessmentInput): boolean {
     return input.type === 'website' && this.isValidWebsiteUrl(input.url)
   }
 

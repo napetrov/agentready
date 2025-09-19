@@ -5,9 +5,9 @@
  * including agentic flow analysis and AI relevance scoring.
  */
 
-import { AnalysisType, AnalysisInput, AnalysisResult, WebsiteAnalysisData, BusinessTypeAnalysis } from '../unified-types'
+import { AnalysisType, AssessmentInput, AnalysisResult, WebsiteAnalysisData, BusinessTypeAnalysisData } from '../unified-types'
 import { AnalyzerPlugin, ValidationResult } from '../plugin-registry'
-import { generateAIReadinessInsights } from '../business-type-analyzer'
+import { analyzeWebsite } from '../analyzer'
 
 export class BusinessTypeAnalyzerPlugin implements AnalyzerPlugin {
   readonly type: AnalysisType = 'website'
@@ -18,7 +18,7 @@ export class BusinessTypeAnalyzerPlugin implements AnalyzerPlugin {
   /**
    * Analyze business type and agentic flows for a website
    */
-  async analyze(input: AnalysisInput): Promise<AnalysisResult> {
+  async analyze(input: AssessmentInput): Promise<AnalysisResult> {
     if (input.type !== 'website') {
       throw new Error('Business type analyzer can only handle website inputs')
     }
@@ -27,29 +27,31 @@ export class BusinessTypeAnalyzerPlugin implements AnalyzerPlugin {
       throw new Error('Invalid website URL')
     }
 
+    const startTime = Date.now()
+
     try {
-      // Use the existing business type analyzer function
-      const businessTypeAnalysis = await generateAIReadinessInsights(input.url)
+      // Perform website analysis to get business type data
+      const websiteAnalysis = await analyzeWebsite(input.url)
       
-      // Convert to unified format
-      const analysisData: BusinessTypeAnalysis = {
-        businessType: businessTypeAnalysis.businessType,
-        businessTypeConfidence: businessTypeAnalysis.businessTypeConfidence,
-        overallScore: businessTypeAnalysis.overallScore,
-        agenticFlows: businessTypeAnalysis.agenticFlows,
-        aiRelevantChecks: businessTypeAnalysis.aiRelevantChecks,
-        findings: businessTypeAnalysis.findings,
-        recommendations: businessTypeAnalysis.recommendations
+      // Create analysis data from website analysis result
+      const analysisData: BusinessTypeAnalysisData = {
+        businessType: websiteAnalysis.businessType || 'unknown',
+        businessTypeConfidence: websiteAnalysis.businessTypeConfidence || 0,
+        overallScore: websiteAnalysis.overallScore || 0,
+        industrySpecificInsights: websiteAnalysis.findings || [],
+        recommendations: websiteAnalysis.recommendations || []
       }
 
       return {
         type: 'website',
-        data: analysisData,
-        timestamp: new Date(),
+        data: {
+          businessType: analysisData
+        },
         metadata: {
           analyzer: this.name,
           version: this.version,
-          duration: 0 // Will be set by the registry
+          timestamp: new Date(),
+          duration: Date.now() - startTime
         }
       }
     } catch (error) {
@@ -78,7 +80,7 @@ export class BusinessTypeAnalyzerPlugin implements AnalyzerPlugin {
 
     // Validate business type analysis specific fields
     if (result.data && 'type' in result.data && result.data.type === 'website') {
-      const businessData = result.data as BusinessTypeAnalysis
+      const businessData = result.data.businessType as BusinessTypeAnalysisData
       
       if (typeof businessData.businessType !== 'string' || businessData.businessType === '') {
         errors.push('businessType must be a non-empty string')
@@ -96,16 +98,8 @@ export class BusinessTypeAnalyzerPlugin implements AnalyzerPlugin {
         errors.push('overallScore must be a number between 0 and 100')
       }
 
-      if (!businessData.agenticFlows) {
-        errors.push('agenticFlows is required')
-      }
-
-      if (!businessData.aiRelevantChecks) {
-        errors.push('aiRelevantChecks is required')
-      }
-
-      if (!Array.isArray(businessData.findings)) {
-        errors.push('findings must be an array')
+      if (!Array.isArray(businessData.industrySpecificInsights)) {
+        errors.push('industrySpecificInsights must be an array')
       }
 
       if (!Array.isArray(businessData.recommendations)) {
@@ -136,7 +130,7 @@ export class BusinessTypeAnalyzerPlugin implements AnalyzerPlugin {
   /**
    * Check if this analyzer can handle the given input
    */
-  canHandle(input: AnalysisInput): boolean {
+  canHandle(input: AssessmentInput): boolean {
     return input.type === 'website' && this.isValidWebsiteUrl(input.url)
   }
 
