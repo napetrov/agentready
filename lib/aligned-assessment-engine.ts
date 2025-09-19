@@ -160,20 +160,22 @@ export class AlignedAssessmentEngine {
 
       // Convert website analysis to static analysis format
       const staticAnalysis = {
+        // Repository fields (set to false/empty for websites)
         hasReadme: false,
         hasContributing: false,
         hasAgents: false,
         hasLicense: false,
         hasWorkflows: false,
         hasTests: false,
-        languages: websiteAnalysis.technologies,
+        languages: websiteAnalysis.technologies || [],
         errorHandling: false,
         fileCount: 1,
         linesOfCode: 0,
-        repositorySizeMB: websiteAnalysis.contentLength / (1024 * 1024),
+        repositorySizeMB: (websiteAnalysis.contentLength || 0) / (1024 * 1024),
         workflowFiles: [],
         testFiles: [],
-        // Map website properties
+        
+        // Website-specific fields (map directly from websiteAnalysis)
         websiteUrl: websiteAnalysis.websiteUrl,
         pageTitle: websiteAnalysis.pageTitle,
         metaDescription: websiteAnalysis.metaDescription,
@@ -182,22 +184,19 @@ export class AlignedAssessmentEngine {
         hasTwitterCards: websiteAnalysis.hasTwitterCards,
         hasSitemap: websiteAnalysis.hasSitemap,
         hasRobotsTxt: websiteAnalysis.hasRobotsTxt,
-        hasFavicon: websiteAnalysis.hasFavicon,
-        hasManifest: websiteAnalysis.hasManifest,
-        hasServiceWorker: websiteAnalysis.hasServiceWorker,
-        pageLoadSpeed: websiteAnalysis.pageLoadSpeed,
-        mobileFriendly: websiteAnalysis.mobileFriendly,
-        accessibilityScore: websiteAnalysis.accessibilityScore,
-        seoScore: websiteAnalysis.seoScore,
         contentLength: websiteAnalysis.contentLength,
-        imageCount: websiteAnalysis.imageCount,
         linkCount: websiteAnalysis.linkCount,
-        headingStructure: websiteAnalysis.headingStructure,
         technologies: websiteAnalysis.technologies,
-        securityHeaders: websiteAnalysis.securityHeaders,
         socialMediaLinks: websiteAnalysis.socialMediaLinks,
         contactInfo: websiteAnalysis.contactInfo,
-        navigationStructure: websiteAnalysis.navigationStructure
+        navigationStructure: websiteAnalysis.navigationStructure,
+        
+        // Business-type-aware data for unified scoring
+        businessType: websiteAnalysis.businessType,
+        businessTypeConfidence: websiteAnalysis.businessTypeConfidence,
+        overallScore: websiteAnalysis.overallScore,
+        agenticFlows: websiteAnalysis.agenticFlows,
+        aiRelevantChecks: websiteAnalysis.aiRelevantChecks
       };
 
       // Perform AI analysis with retry logic
@@ -344,8 +343,22 @@ export class AlignedAssessmentEngine {
    * Create fallback AI assessment for websites
    */
   private createWebsiteFallbackAIAssessment(staticAnalysis: any): any {
-    return {
-      readinessScore: Math.min(100, Math.round(
+    // Use agentic flow scores if available for more accurate assessment
+    let overallScore = 50; // Default fallback score
+    
+    if (staticAnalysis.agenticFlows) {
+      const flowScores = [
+        staticAnalysis.agenticFlows.informationGathering?.score || 0,
+        staticAnalysis.agenticFlows.directBooking?.score || 0,
+        staticAnalysis.agenticFlows.faqSupport?.score || 0,
+        staticAnalysis.agenticFlows.taskManagement?.score || 0,
+        staticAnalysis.agenticFlows.personalization?.score || 0
+      ];
+      const averageFlowScore = flowScores.reduce((sum, score) => sum + score, 0) / flowScores.length;
+      overallScore = Math.min(100, Math.round(averageFlowScore));
+    } else {
+      // Fallback to basic website features
+      overallScore = Math.min(100, Math.round(
         (staticAnalysis.hasStructuredData ? 20 : 0) +
         (staticAnalysis.hasOpenGraph ? 15 : 0) +
         (staticAnalysis.hasTwitterCards ? 10 : 0) +
@@ -353,7 +366,11 @@ export class AlignedAssessmentEngine {
         (staticAnalysis.metaDescription ? 10 : 0) +
         ((staticAnalysis.accessibilityScore || 0) > 50 ? 15 : 0) +
         (staticAnalysis.contactInfo?.length ? 15 : 0)
-      )),
+      ));
+    }
+
+    return {
+      readinessScore: overallScore,
       categories: {
         documentation: staticAnalysis.hasStructuredData ? 15 : 5,
         instructionClarity: staticAnalysis.hasOpenGraph ? 12 : 5,

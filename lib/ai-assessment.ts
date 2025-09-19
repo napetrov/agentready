@@ -60,7 +60,7 @@ export interface StaticAnalysisSummary {
   }
   technologies?: string[]
   securityHeaders?: string[]
-  socialMediaLinks?: string[]
+  socialMediaLinks?: Array<{platform: string, url: string}>
   contactInfo?: string[]
   navigationStructure?: string[]
   fileSizeAnalysis?: {

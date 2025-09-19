@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Business Type Detection Accuracy**: Fixed incorrect classification of technology/software documentation sites as "automotive" by improving keyword specificity and adding dedicated "technology_software" business type
+- **Automotive Keywords**: Made automotive keywords more specific (e.g., "car repair", "auto repair", "vehicle service") to prevent false positives from technical terms containing "auto"
+- **Technology-Specific Assessment**: Added technology_software business type with appropriate keywords (software, api, documentation, developer, intel, github, vector search, etc.) and tailored agentic flow analysis for technology sites
+- **Contact Details & Social Media Links**: Restored missing contact information and social media links extraction that were not being displayed in the output
+- **GitHub Social Media Detection**: Added GitHub links to social media extraction for technology sites, with proper platform identification and clickable URLs
+- **Enhanced Contact Extraction**: Improved contact information extraction to include email addresses and phone numbers from both links and text content using regex patterns
+- **Social Media Section Display**: Fixed social media section to always show (with "None discovered" when empty) instead of hiding when no links found
+- **Limited Site Crawling**: Added intelligent key page analysis that follows navigation links to contact, about, services, pricing, support, help, team, and company pages to gather comprehensive site information
+- **Technology Section Consolidation**: Removed duplicate "Programming Languages" section and consolidated into single "Detected Technologies" section with improved visual distinction and helpful context for improvement suggestions
+
+### Added
+- **Multi-Page Analysis**: System now analyzes up to 3 key pages per site (contact, about, services, etc.) in addition to the main page for more comprehensive information gathering
+- **Comprehensive Data Merging**: Contact info, social media links, and navigation structure are now merged from main page and key pages with deduplication
+- **Location Information Extraction**: Added intelligent location extraction from structured data, microdata, text content, and map links for location-relevant business types
+- **Business-Type-Aware Location Display**: Location information is only shown for business types where it matters (restaurants, healthcare, retail, automotive, etc.) - not for software documentation
+- **Location Grouping**: Multiple locations are automatically grouped by city/region for better organization and display
+- **Code Review Improvements**: Addressed all 7 code review comments with security, performance, and maintainability enhancements
+
+### Security & Performance Improvements
+- **Command Injection Protection**: Fixed curl fallback vulnerability by properly escaping URL parameters before shell execution
+- **External Link Security**: Added `nofollow` attribute to social media links to prevent SEO endorsement and improve security
+- **DNS Security Enhancement**: Added explicit DNS rebinding protection documentation and improved error messages
+- **Regex Performance Optimization**: Implemented cached regex compilation for business type keyword matching to improve performance
+- **Module Constants**: Moved hardcoded extensionless files array to module-level constant to prevent recreation on every call
+- **Code Documentation**: Added explicit comments for variance calculation behavior and AI value validation logic
+- **TypeScript Improvements**: Enhanced type safety with proper AI value validation helper function
+
 ### Added
 - [`.cursorrules`](.cursorrules) with Cursor-recommended instructions for Vercel/Next.js/TypeScript/Node workflows
 - [`AGENTS.md`](AGENTS.md) documenting agent operating procedure and links to [`dev/ARCHITECTURE.md`](dev/ARCHITECTURE.md) and [`dev/DEVELOPMENT.md`](dev/DEVELOPMENT.md)
@@ -14,20 +42,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced error handling and debugging information display
 - Conditional debug information that only shows when issues are detected
 - Combined AI Analysis Status and Debug Information sections for better UX
-- Comprehensive test coverage with 62 passing tests
+- Comprehensive test coverage with 93 passing tests
 - OpenAI API mocking system for reliable testing
 - TypeScript error fixes and improved type safety
+- **CRITICAL**: Coherent assessment system ensuring consistent metrics across all analysis blocks
+- **NEW**: Business-type-aware assessment system with 15 industry configurations
+- **NEW**: AI-relevant assessment criteria focusing on agent usability
+- **NEW**: 5 agentic flows with business-specific importance weights
+- **NEW**: Enhanced SSRF protection with comprehensive IP range filtering
+- **NEW**: DNS-level security validation for website analysis
+- **NEW**: Word-boundary regex for improved business type detection accuracy
+- **NEW**: Extensionless file detection (Dockerfile, Makefile, etc.)
+- **NEW**: Debug flag gating for production logging control
+- **NEW**: Multi-strategy HTTP fallback system with 4 progressive strategies (minimal axios, native fetch, node-fetch, curl)
+- **NEW**: URL-based analysis fallback when all HTTP strategies fail
+- Website-specific scoring algorithms that align with agentic flow analysis
+- Unified key findings generation based on actual analysis context (website vs repository)
 
 ### Changed
 - Improved contributor/agent guidance by centralizing rules and linking architecture/development docs
+- **UPDATED**: `dev/DEVELOPMENT.md` with comprehensive progress log documenting business-type-aware assessment system implementation
+- **IMPROVED**: Overall score scaling from 0-20 to 0-100 for better user understanding
+- **ENHANCED**: AI value handling to properly treat zero scores as valid data points
+- **REFINED**: Meta description validation to trim whitespace before truthy checks
+- **EXPANDED**: AI readiness insights to include all 5 agentic flows (taskManagement and personalization)
+- **OPTIMIZED**: API response payload by limiting findings/recommendations to top 10 items
+- **HARDENED**: Security validation with comprehensive SSRF protection and DNS-level checks
+- **CRITICAL FIX**: Overall readiness score now correctly uses business-type-aware scoring instead of legacy unified metrics
 - Improved UI layout by combining separate status and debug sections
 - Enhanced error messages with more detailed debugging information
 - Updated test configuration to use proper API key validation
 - Streamlined frontend display logic for better user experience
 
 ### Fixed
+- **CRITICAL**: Fixed overall readiness score discrepancy where business-type-aware scores (80-100) were being overridden by legacy unified metrics (8) causing incorrect "Needs improvement" ratings
+- **TYPESCRIPT**: Fixed type signature for `createUnifiedMetric` to properly handle `undefined` AI values
+- **HTTP RESILIENCE**: Added comprehensive multi-strategy fallback system for malformed HTTP headers (HPE_INVALID_HEADER_TOKEN) with 4 fallback strategies and URL-based analysis
+- **DATA QUALITY**: Fixed duplicate contact information extraction using Set-based deduplication
 - Documentation gaps for agent onboarding and change management
 - TypeScript compilation errors related to missing `aiAnalysisStatus` property
+- **CRITICAL**: Fixed major inconsistency where website analysis showed repository-focused key findings
+- Fixed misalignment between detailed flow analysis scores and overall assessment scores
+- Fixed key findings showing "README.md", "AGENTS.md", "CI/CD workflows" for website analysis instead of website-specific issues
+- Fixed scoring inconsistencies between static analysis and AI analysis for websites
+- Fixed agentic flow analysis not being properly integrated with overall scoring system
+- **MAJOR**: Redesigned website analysis system to be business-type-aware (food_service, hospitality, travel, healthcare, etc.)
+- **MAJOR**: Removed irrelevant checks (mobile optimization, accessibility, SEO, page load speed) that don't help AI agents
+- **MAJOR**: Implemented 5 agentic flows with business-type-specific weights and requirements
+- **MAJOR**: Created comprehensive business type detection with 15 different business categories
+- **MAJOR**: Replaced generic website analysis with AI-relevant checks only (structured data, contact info, content accessibility)
+- **MAJOR**: Implemented weighted scoring system based on business type priorities
 - OpenAI API mocking issues that were causing test failures
 - CI pipeline failures due to improper test configuration
 - Debug information display logic to only show when needed
