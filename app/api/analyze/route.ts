@@ -205,7 +205,17 @@ export async function POST(request: NextRequest) {
           categories: result.categories,
           assessmentStatus: result.assessmentStatus
         }
-      }
+      },
+      // Business-type-aware website analysis data
+      businessTypeAnalysis: result.websiteAnalysis ? {
+        businessType: result.websiteAnalysis.businessType,
+        businessTypeConfidence: result.websiteAnalysis.businessTypeConfidence,
+        overallScore: result.websiteAnalysis.overallScore,
+        agenticFlows: result.websiteAnalysis.agenticFlows,
+        aiRelevantChecks: result.websiteAnalysis.aiRelevantChecks,
+        findings: result.websiteAnalysis.findings,
+        recommendations: result.websiteAnalysis.recommendations
+      } : null
     }
 
     return NextResponse.json(legacyResult)

@@ -184,29 +184,19 @@ export class AlignedAssessmentEngine {
         hasTwitterCards: websiteAnalysis.hasTwitterCards,
         hasSitemap: websiteAnalysis.hasSitemap,
         hasRobotsTxt: websiteAnalysis.hasRobotsTxt,
-        hasFavicon: websiteAnalysis.hasFavicon,
-        hasManifest: websiteAnalysis.hasManifest,
-        hasServiceWorker: websiteAnalysis.hasServiceWorker,
-        pageLoadSpeed: websiteAnalysis.pageLoadSpeed,
-        mobileFriendly: websiteAnalysis.mobileFriendly,
-        accessibilityScore: websiteAnalysis.accessibilityScore,
-        seoScore: websiteAnalysis.seoScore,
         contentLength: websiteAnalysis.contentLength,
-        imageCount: websiteAnalysis.imageCount,
         linkCount: websiteAnalysis.linkCount,
-        headingStructure: websiteAnalysis.headingStructure,
         technologies: websiteAnalysis.technologies,
-        securityHeaders: websiteAnalysis.securityHeaders,
         socialMediaLinks: websiteAnalysis.socialMediaLinks,
         contactInfo: websiteAnalysis.contactInfo,
         navigationStructure: websiteAnalysis.navigationStructure,
         
-        // Agentic flow data for unified scoring
+        // Business-type-aware data for unified scoring
+        businessType: websiteAnalysis.businessType,
+        businessTypeConfidence: websiteAnalysis.businessTypeConfidence,
+        overallScore: websiteAnalysis.overallScore,
         agenticFlows: websiteAnalysis.agenticFlows,
-        websiteType: websiteAnalysis.websiteType,
-        restaurantMetrics: websiteAnalysis.restaurantMetrics,
-        documentationMetrics: websiteAnalysis.documentationMetrics,
-        ecommerceMetrics: websiteAnalysis.ecommerceMetrics
+        aiRelevantChecks: websiteAnalysis.aiRelevantChecks
       };
 
       // Perform AI analysis with retry logic

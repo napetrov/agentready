@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed key findings showing "README.md", "AGENTS.md", "CI/CD workflows" for website analysis instead of website-specific issues
 - Fixed scoring inconsistencies between static analysis and AI analysis for websites
 - Fixed agentic flow analysis not being properly integrated with overall scoring system
+- **MAJOR**: Redesigned website analysis system to be business-type-aware (food_service, hospitality, travel, healthcare, etc.)
+- **MAJOR**: Removed irrelevant checks (mobile optimization, accessibility, SEO, page load speed) that don't help AI agents
+- **MAJOR**: Implemented 5 agentic flows with business-type-specific weights and requirements
+- **MAJOR**: Created comprehensive business type detection with 15 different business categories
+- **MAJOR**: Replaced generic website analysis with AI-relevant checks only (structured data, contact info, content accessibility)
+- **MAJOR**: Implemented weighted scoring system based on business type priorities
 - OpenAI API mocking issues that were causing test failures
 - CI pipeline failures due to improper test configuration
 - Debug information display logic to only show when needed
