@@ -254,13 +254,52 @@ export class UnifiedMetricsEngine {
 
     // Add specific findings based on static analysis
     if (staticAnalysis) {
-      if (!staticAnalysis.hasReadme) {
-        findings.push('Missing README.md file');
-        recommendations.push('Create comprehensive README.md with setup instructions');
-      }
-      if (!staticAnalysis.hasAgents) {
-        findings.push('Missing AGENTS.md file');
-        recommendations.push('Add AGENTS.md with AI agent specific instructions');
+      const isWebsite = staticAnalysis.websiteUrl || staticAnalysis.pageTitle;
+      
+      if (isWebsite) {
+        // Website-specific findings
+        if (!staticAnalysis.hasStructuredData) {
+          findings.push('Missing structured data markup');
+          recommendations.push('Add JSON-LD structured data for better AI understanding');
+        }
+        if (!staticAnalysis.hasOpenGraph) {
+          findings.push('No Open Graph meta tags found');
+          recommendations.push('Implement Open Graph meta tags for social sharing');
+        }
+        if (!staticAnalysis.hasTwitterCards) {
+          findings.push('No Twitter Cards meta tags');
+          recommendations.push('Add Twitter Cards meta tags for better social media integration');
+        }
+        if (!staticAnalysis.contactInfo || staticAnalysis.contactInfo.length === 0) {
+          findings.push('No contact information found');
+          recommendations.push('Add clear contact information (phone, email, address)');
+        }
+        if (!staticAnalysis.mobileFriendly) {
+          findings.push('Website not mobile-friendly');
+          recommendations.push('Optimize website for mobile devices');
+        }
+        if ((staticAnalysis.accessibilityScore || 0) < 60) {
+          findings.push('Accessibility issues detected');
+          recommendations.push('Improve website accessibility for better usability');
+        }
+        if (!staticAnalysis.hasSitemap) {
+          findings.push('No XML sitemap available');
+          recommendations.push('Create and submit an XML sitemap for better indexing');
+        }
+        if (!staticAnalysis.hasRobotsTxt) {
+          findings.push('No robots.txt file found');
+          recommendations.push('Add robots.txt file for search engine directives');
+        }
+      } else {
+        // Repository-specific findings
+        if (!staticAnalysis.hasReadme) {
+          findings.push('Missing README.md file');
+          recommendations.push('Create comprehensive README.md with setup instructions');
+        }
+        if (!staticAnalysis.hasAgents) {
+          findings.push('Missing AGENTS.md file');
+          recommendations.push('Add AGENTS.md with AI agent specific instructions');
+        }
       }
     }
 
@@ -352,35 +391,83 @@ export class UnifiedMetricsEngine {
    * Convert static analysis to normalized scores
    */
   convertStaticAnalysisToScores(staticAnalysis: any): { [key: string]: number } {
-    return {
-      documentation: this.normalizeToCategoryScale(
-        (staticAnalysis.hasReadme ? 8 : 0) +
-        (staticAnalysis.hasAgents ? 6 : 0) +
-        (staticAnalysis.hasContributing ? 4 : 0) +
-        (staticAnalysis.hasLicense ? 2 : 0)
-      ),
-      instructionClarity: this.normalizeToCategoryScale(
-        (staticAnalysis.hasReadme ? 12 : 0) +
-        (staticAnalysis.hasAgents ? 8 : 0)
-      ),
-      workflowAutomation: this.normalizeToCategoryScale(
-        (staticAnalysis.hasWorkflows ? 15 : 0) +
-        (staticAnalysis.hasTests ? 5 : 0)
-      ),
-      riskCompliance: this.normalizeToCategoryScale(
-        (staticAnalysis.hasLicense ? 5 : 0) +
-        (staticAnalysis.errorHandling ? 10 : 0) +
-        (staticAnalysis.hasTests ? 5 : 0)
-      ),
-      integrationStructure: this.normalizeToCategoryScale(
-        (staticAnalysis.hasWorkflows ? 8 : 0) +
-        (staticAnalysis.hasTests ? 6 : 0) +
-        (staticAnalysis.languages?.length > 0 ? 6 : 0)
-      ),
-      fileSizeOptimization: staticAnalysis.fileSizeAnalysis 
-        ? this.normalizeToCategoryScale(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5)
-        : 10
-    };
+    // Check if this is a website analysis
+    const isWebsite = staticAnalysis.websiteUrl || staticAnalysis.pageTitle;
+    
+    if (isWebsite) {
+      // Website-specific scoring
+      return {
+        documentation: this.normalizeToCategoryScale(
+          (staticAnalysis.hasStructuredData ? 8 : 0) +
+          (staticAnalysis.hasOpenGraph ? 4 : 0) +
+          (staticAnalysis.hasTwitterCards ? 3 : 0) +
+          (staticAnalysis.hasSitemap ? 3 : 0) +
+          (staticAnalysis.hasRobotsTxt ? 2 : 0)
+        ),
+        instructionClarity: this.normalizeToCategoryScale(
+          (staticAnalysis.technologies?.length > 0 ? 8 : 0) +
+          (staticAnalysis.contactInfo?.length > 0 ? 6 : 0) +
+          (staticAnalysis.socialMediaLinks?.length > 0 ? 3 : 0) +
+          (staticAnalysis.navigationStructure?.length > 0 ? 3 : 0)
+        ),
+        workflowAutomation: this.normalizeToCategoryScale(
+          (staticAnalysis.mobileFriendly ? 8 : 0) +
+          (staticAnalysis.pageLoadSpeed && staticAnalysis.pageLoadSpeed < 3000 ? 6 : 0) +
+          (staticAnalysis.navigationStructure?.length > 0 ? 4 : 0) +
+          (staticAnalysis.hasServiceWorker ? 2 : 0)
+        ),
+        riskCompliance: this.normalizeToCategoryScale(
+          (staticAnalysis.securityHeaders?.length > 0 ? 8 : 0) +
+          (staticAnalysis.contactInfo?.length > 0 ? 6 : 0) +
+          ((staticAnalysis.accessibilityScore || 0) > 60 ? 4 : 0) +
+          (staticAnalysis.hasManifest ? 2 : 0)
+        ),
+        integrationStructure: this.normalizeToCategoryScale(
+          (staticAnalysis.technologies?.length > 0 ? 8 : 0) +
+          (staticAnalysis.socialMediaLinks?.length > 0 ? 6 : 0) +
+          (staticAnalysis.contactInfo?.length > 0 ? 4 : 0) +
+          (staticAnalysis.hasServiceWorker ? 2 : 0)
+        ),
+        fileSizeOptimization: this.normalizeToCategoryScale(
+          ((staticAnalysis.contentLength || 0) > 1000 ? 6 : 0) +
+          ((staticAnalysis.imageCount || 0) > 0 ? 4 : 0) +
+          ((staticAnalysis.linkCount || 0) > 5 ? 4 : 0) +
+          (staticAnalysis.headingStructure?.h1 > 0 ? 3 : 0) +
+          (staticAnalysis.headingStructure?.h2 > 0 ? 3 : 0)
+        )
+      };
+    } else {
+      // Repository-specific scoring (existing logic)
+      return {
+        documentation: this.normalizeToCategoryScale(
+          (staticAnalysis.hasReadme ? 8 : 0) +
+          (staticAnalysis.hasAgents ? 6 : 0) +
+          (staticAnalysis.hasContributing ? 4 : 0) +
+          (staticAnalysis.hasLicense ? 2 : 0)
+        ),
+        instructionClarity: this.normalizeToCategoryScale(
+          (staticAnalysis.hasReadme ? 12 : 0) +
+          (staticAnalysis.hasAgents ? 8 : 0)
+        ),
+        workflowAutomation: this.normalizeToCategoryScale(
+          (staticAnalysis.hasWorkflows ? 15 : 0) +
+          (staticAnalysis.hasTests ? 5 : 0)
+        ),
+        riskCompliance: this.normalizeToCategoryScale(
+          (staticAnalysis.hasLicense ? 5 : 0) +
+          (staticAnalysis.errorHandling ? 10 : 0) +
+          (staticAnalysis.hasTests ? 5 : 0)
+        ),
+        integrationStructure: this.normalizeToCategoryScale(
+          (staticAnalysis.hasWorkflows ? 8 : 0) +
+          (staticAnalysis.hasTests ? 6 : 0) +
+          (staticAnalysis.languages?.length > 0 ? 6 : 0)
+        ),
+        fileSizeOptimization: staticAnalysis.fileSizeAnalysis 
+          ? this.normalizeToCategoryScale(staticAnalysis.fileSizeAnalysis.agentCompatibility.overall / 5)
+          : 10
+      };
+    }
   }
 
   /**

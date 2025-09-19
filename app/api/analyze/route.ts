@@ -154,20 +154,8 @@ export async function POST(request: NextRequest) {
         integrationStructure: result.categories.integrationStructure.score.value,
         fileSizeOptimization: result.categories.fileSizeOptimization.score.value
       },
-      findings: result.categories.documentation.findings.concat(
-        result.categories.instructionClarity.findings,
-        result.categories.workflowAutomation.findings,
-        result.categories.riskCompliance.findings,
-        result.categories.integrationStructure.findings,
-        result.categories.fileSizeOptimization.findings
-      ).slice(0, 10), // Limit to top 10 findings
-      recommendations: result.categories.documentation.recommendations.concat(
-        result.categories.instructionClarity.recommendations,
-        result.categories.workflowAutomation.recommendations,
-        result.categories.riskCompliance.recommendations,
-        result.categories.integrationStructure.recommendations,
-        result.categories.fileSizeOptimization.recommendations
-      ).slice(0, 10), // Limit to top 10 recommendations
+      findings: result.insights.findings.slice(0, 10), // Use unified insights
+      recommendations: result.insights.recommendations.slice(0, 10), // Use unified insights
       detailedAnalysis: {
         instructionClarity: {
           stepByStepQuality: result.categories.instructionClarity.subMetrics.stepByStepQuality?.value || 0,

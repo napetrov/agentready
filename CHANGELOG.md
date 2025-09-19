@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test coverage with 62 passing tests
 - OpenAI API mocking system for reliable testing
 - TypeScript error fixes and improved type safety
+- **CRITICAL**: Coherent assessment system ensuring consistent metrics across all analysis blocks
+- Website-specific scoring algorithms that align with agentic flow analysis
+- Unified key findings generation based on actual analysis context (website vs repository)
 
 ### Changed
 - Improved contributor/agent guidance by centralizing rules and linking architecture/development docs
@@ -28,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Documentation gaps for agent onboarding and change management
 - TypeScript compilation errors related to missing `aiAnalysisStatus` property
+- **CRITICAL**: Fixed major inconsistency where website analysis showed repository-focused key findings
+- Fixed misalignment between detailed flow analysis scores and overall assessment scores
+- Fixed key findings showing "README.md", "AGENTS.md", "CI/CD workflows" for website analysis instead of website-specific issues
+- Fixed scoring inconsistencies between static analysis and AI analysis for websites
+- Fixed agentic flow analysis not being properly integrated with overall scoring system
 - OpenAI API mocking issues that were causing test failures
 - CI pipeline failures due to improper test configuration
 - Debug information display logic to only show when needed
