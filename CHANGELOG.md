@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Business Type Detection Accuracy**: Fixed incorrect classification of technology/software documentation sites as "automotive" by improving keyword specificity and adding dedicated "technology_software" business type
 - **Automotive Keywords**: Made automotive keywords more specific (e.g., "car repair", "auto repair", "vehicle service") to prevent false positives from technical terms containing "auto"
 - **Technology-Specific Assessment**: Added technology_software business type with appropriate keywords (software, api, documentation, developer, intel, github, vector search, etc.) and tailored agentic flow analysis for technology sites
+- **Contact Details & Social Media Links**: Restored missing contact information and social media links extraction that were not being displayed in the output
+- **GitHub Social Media Detection**: Added GitHub links to social media extraction for technology sites, with proper platform identification and clickable URLs
+- **Enhanced Contact Extraction**: Improved contact information extraction to include email addresses and phone numbers from both links and text content using regex patterns
 
 ### Added
 - [`.cursorrules`](.cursorrules) with Cursor-recommended instructions for Vercel/Next.js/TypeScript/Node workflows

@@ -760,6 +760,11 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
           socialLinks.push({ platform: 'YouTube', url: href })
           socialSet.add('youtube.com')
         }
+        // GitHub
+        if (href.includes('github.com') && !socialSet.has('github.com')) {
+          socialLinks.push({ platform: 'GitHub', url: href })
+          socialSet.add('github.com')
+        }
       }
     })
 
@@ -787,6 +792,29 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
         }
       }
     })
+    
+    // Also extract email addresses from text content (common pattern for tech sites)
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g
+    const textContent = $('body').text()
+    let emailMatch
+    while ((emailMatch = emailRegex.exec(textContent)) !== null) {
+      const email = emailMatch[0].toLowerCase()
+      if (!contactSet.has(email)) {
+        contactInfo.push(email)
+        contactSet.add(email)
+      }
+    }
+    
+    // Extract phone numbers from text content (common patterns)
+    const phoneRegex = /\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b/g
+    let phoneMatch
+    while ((phoneMatch = phoneRegex.exec(textContent)) !== null) {
+      const phone = phoneMatch[0].trim()
+      if (!contactSet.has(phone)) {
+        contactInfo.push(phone)
+        contactSet.add(phone)
+      }
+    }
 
     // Analyze navigation structure (deduplicated)
     const navItems: string[] = []
