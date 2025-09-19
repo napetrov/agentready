@@ -605,64 +605,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* AI Analysis Status - Only for repositories */}
-      {inputType === 'repository' && result && result.aiAnalysisStatus && (
-        <div className={`card ${result.aiAnalysisStatus.enabled ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'}`}>
-          <h3 className={`text-lg font-semibold mb-2 ${result.aiAnalysisStatus.enabled ? 'text-blue-800' : 'text-red-800'}`}>
-            {result.aiAnalysisStatus.enabled ? '✅ AI Analysis Status' : '❌ AI Analysis Status'}
-          </h3>
-          <div className="text-sm">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p><strong>Overall Status:</strong> 
-                  <span className={result.aiAnalysisStatus.overallSuccess ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.overallSuccess ? ' ✅ Working' : ' ❌ Failed'}
-                  </span>
-                </p>
-                <p><strong>Instruction Clarity:</strong> 
-                  <span className={result.aiAnalysisStatus.instructionClarity ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.instructionClarity ? ' ✅' : ' ❌'}
-                  </span>
-                </p>
-                <p><strong>Workflow Automation:</strong> 
-                  <span className={result.aiAnalysisStatus.workflowAutomation ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.workflowAutomation ? ' ✅' : ' ❌'}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <p><strong>Context Efficiency:</strong> 
-                  <span className={result.aiAnalysisStatus.contextEfficiency ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.contextEfficiency ? ' ✅' : ' ❌'}
-                  </span>
-                </p>
-                <p><strong>Risk Compliance:</strong> 
-                  <span className={result.aiAnalysisStatus.riskCompliance ? 'text-green-600' : 'text-red-600'}>
-                    {result.aiAnalysisStatus.riskCompliance ? ' ✅' : ' ❌'}
-                  </span>
-                </p>
-                {result.aiAnalysisStatus.reason && (
-                  <p><strong>Reason:</strong> <span className="text-red-600">{result.aiAnalysisStatus.reason}</span></p>
-                )}
-              </div>
-            </div>
-            
-            {/* Debug Information - Only show when there are issues */}
-            {(result.readinessScore === 0 || !result.categories || Object.values(result.categories).every(score => score === 0) || !result.aiAnalysisStatus.overallSuccess) && (
-              <div className="mt-4 pt-4 border-t border-gray-300">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Debug Information</h4>
-                <div className="text-xs text-gray-600">
-                  <p><strong>Readiness Score:</strong> {result.readinessScore} (type: {typeof result.readinessScore})</p>
-                  <p><strong>Categories:</strong> {JSON.stringify(result.categories)}</p>
-                  <p><strong>Has Categories:</strong> {result.categories ? 'Yes' : 'No'}</p>
-                  <p><strong>Categories Keys:</strong> {result.categories ? Object.keys(result.categories).join(', ') : 'None'}</p>
-                  <p><strong>Static Analysis File Count:</strong> {result.staticAnalysis?.fileCount || 'undefined'}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
 
       {/* Results Section */}
