@@ -4,16 +4,17 @@ import { useState } from 'react'
 import { Github, FileText, Download, Loader2, AlertCircle } from 'lucide-react'
 
 interface AssessmentResult {
-  readinessScore: number
-  aiAnalysisStatus?: {
-    enabled: boolean
-    instructionClarity: boolean
-    workflowAutomation: boolean
-    contextEfficiency: boolean
-    riskCompliance: boolean
-    overallSuccess: boolean
-    reason?: string
-  }
+  // Core identification
+  id: string
+  type: 'repository' | 'website'
+  inputUrl: string
+  timestamp: string
+  
+  // Overall scoring (0-100 scale)
+  overallScore: number
+  confidence: number
+  
+  // Category scores (0-100 scale)
   categories: {
     documentation: number
     instructionClarity: number
@@ -22,103 +23,76 @@ interface AssessmentResult {
     integrationStructure: number
     fileSizeOptimization: number
   }
+  
+  // Analysis data
+  staticAnalysis: any
+  aiAssessment?: any
+  fileSizeAnalysis?: any
+  businessTypeAnalysis?: any
+  
+  // Insights
   findings: string[]
   recommendations: string[]
-  detailedAnalysis?: {
-    instructionClarity: {
-      stepByStepQuality: number
-      commandClarity: number
-      environmentSetup: number
-      errorHandling: number
-      dependencySpecification: number
-      overallScore: number
-    }
-    workflowAutomation: {
-      ciCdQuality: number
-      testAutomation: number
-      buildScripts: number
-      deploymentAutomation: number
-      monitoringLogging: number
-      overallScore: number
-    }
-    contextEfficiency: {
-      instructionFileOptimization: number
-      codeDocumentation: number
-      apiDocumentation: number
-      contextWindowUsage: number
-      overallScore: number
-    }
-    riskCompliance: {
-      securityPractices: number
-      errorHandling: number
-      inputValidation: number
-      dependencySecurity: number
-      licenseCompliance: number
-      overallScore: number
-    }
+  
+  // Status
+  status: {
+    staticAnalysisSuccess: boolean
+    aiAssessmentSuccess: boolean
+    fileSizeAnalysisSuccess: boolean
+    businessTypeAnalysisSuccess: boolean
+    overallSuccess: boolean
   }
-  confidence?: {
-    overall: number
-    instructionClarity: number
-    workflowAutomation: number
-    contextEfficiency: number
-    riskCompliance: number
+  
+  // Metadata
+  metadata: {
+    processingTime: number
+    retryCount: number
+    errors: string[]
   }
-  staticAnalysis: {
-    hasReadme: boolean
-    hasContributing: boolean
-    hasAgents: boolean
-    hasLicense: boolean
-    hasWorkflows: boolean
-    hasTests: boolean
-    languages: string[]
-    errorHandling: boolean
-    fileCount: number
-    linesOfCode: number
-    repositorySizeMB: number
-    // Website-specific fields
-    websiteUrl?: string
-    pageTitle?: string
-    metaDescription?: string
-    hasStructuredData?: boolean
-    hasOpenGraph?: boolean
-    hasTwitterCards?: boolean
-    hasSitemap?: boolean
-    hasRobotsTxt?: boolean
-    hasFavicon?: boolean
-    hasManifest?: boolean
-    hasServiceWorker?: boolean
-    pageLoadSpeed?: number
-    mobileFriendly?: boolean
-    accessibilityScore?: number
-    seoScore?: number
-    contentLength?: number
-    imageCount?: number
-    linkCount?: number
-    headingStructure?: {
-      [key: string]: number
+}
+
+export default function Home() {
+  const [inputUrl, setInputUrl] = useState('')
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [result, setResult] = useState<AssessmentResult | null>(null)
+  const [error, setError] = useState('')
+  const [inputType, setInputType] = useState<'repository' | 'website'>('repository')
+
+  const handleAnalyze = async () => {
+    if (!inputUrl.trim()) {
+      setError('Please enter a repository or website URL')
+      return
     }
-    technologies?: string[]
-    securityHeaders?: string[]
-    socialMediaLinks?: Array<{platform: string, url: string}>
-    contactInfo?: string[]
-    navigationStructure?: string[]
-    locations?: string[]
-    fileSizeAnalysis?: {
-      totalFiles: number
-      filesBySize: {
-        under100KB: number
-        under500KB: number
-        under1MB: number
-        under5MB: number
-        over5MB: number
+
+    setIsAnalyzing(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputUrl,
+          inputType,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      largeFiles: Array<{
-        path: string
-        size: number
-        sizeFormatted: string
-        type: string
-        agentImpact: {
+
+      const data = await response.json()
+      setResult(data)
+    } catch (err) {
+      console.error('Analysis error:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred during analysis')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
           cursor: string
           githubCopilot: string
           claudeWeb: string

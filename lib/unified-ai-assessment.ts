@@ -312,7 +312,64 @@ Assessment Categories (score 0-100 each):
 5. Integration Structure: Code organization and API design
 6. File Size Optimization: File sizes optimized for AI agent processing
 
-Provide detailed analysis with specific findings and actionable recommendations.`
+Provide detailed analysis with specific findings and actionable recommendations.
+
+Return your response as a JSON object with the following structure:
+{
+  "overallScore": <number 0-100>,
+  "confidence": <number 0-100>,
+  "categories": {
+    "documentation": <number 0-100>,
+    "instructionClarity": <number 0-100>,
+    "workflowAutomation": <number 0-100>,
+    "riskCompliance": <number 0-100>,
+    "integrationStructure": <number 0-100>,
+    "fileSizeOptimization": <number 0-100>
+  },
+  "detailedAnalysis": {
+    "instructionClarity": {
+      "stepByStepQuality": <number 0-20>,
+      "commandClarity": <number 0-20>,
+      "environmentSetup": <number 0-20>,
+      "errorHandling": <number 0-20>,
+      "dependencySpecification": <number 0-20>,
+      "findings": ["<finding1>", "<finding2>"],
+      "recommendations": ["<recommendation1>", "<recommendation2>"],
+      "confidence": <number 0-100>
+    },
+    "workflowAutomation": {
+      "ciCdQuality": <number 0-20>,
+      "testAutomation": <number 0-20>,
+      "buildScripts": <number 0-20>,
+      "deploymentAutomation": <number 0-20>,
+      "monitoringLogging": <number 0-20>,
+      "findings": ["<finding1>", "<finding2>"],
+      "recommendations": ["<recommendation1>", "<recommendation2>"],
+      "confidence": <number 0-100>
+    },
+    "contextEfficiency": {
+      "instructionFileOptimization": <number 0-20>,
+      "codeDocumentation": <number 0-20>,
+      "apiDocumentation": <number 0-20>,
+      "contextWindowUsage": <number 0-20>,
+      "findings": ["<finding1>", "<finding2>"],
+      "recommendations": ["<recommendation1>", "<recommendation2>"],
+      "confidence": <number 0-100>
+    },
+    "riskCompliance": {
+      "securityPractices": <number 0-20>,
+      "errorHandling": <number 0-20>,
+      "inputValidation": <number 0-20>,
+      "dependencySecurity": <number 0-20>,
+      "licenseCompliance": <number 0-20>,
+      "findings": ["<finding1>", "<finding2>"],
+      "recommendations": ["<recommendation1>", "<recommendation2>"],
+      "confidence": <number 0-100>
+    }
+  },
+  "findings": ["<overall finding1>", "<overall finding2>"],
+  "recommendations": ["<overall recommendation1>", "<overall recommendation2>"]
+}`
 
     if (type === 'website') {
       return basePrompt + `

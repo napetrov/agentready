@@ -34,6 +34,7 @@ export interface SimplifiedAssessmentResult {
   staticAnalysis: StaticAnalysisResult | WebsiteAnalysisResult
   aiAssessment?: UnifiedAIAssessmentResult
   fileSizeAnalysis?: any
+  businessTypeAnalysis?: any
   
   // Insights
   findings: string[]
@@ -117,7 +118,8 @@ export class SimplifiedAssessmentEngine {
         staticAnalysis,
         aiAssessment,
         fileSizeAnalysis,
-        errors
+        errors,
+        undefined // No business type analysis for repositories
       )
 
       return {
@@ -164,14 +166,26 @@ export class SimplifiedAssessmentEngine {
         }
       }
 
-      // Step 3: Combine results
+      // Step 3: Extract business type analysis from website analysis
+      const businessTypeAnalysis = staticAnalysis.businessType ? {
+        businessType: staticAnalysis.businessType,
+        businessTypeConfidence: staticAnalysis.businessTypeConfidence,
+        overallScore: staticAnalysis.overallScore,
+        agenticFlows: staticAnalysis.agenticFlows,
+        aiRelevantChecks: staticAnalysis.aiRelevantChecks,
+        findings: staticAnalysis.findings || [],
+        recommendations: staticAnalysis.recommendations || []
+      } : undefined
+
+      // Step 4: Combine results
       const result = this.combineResults(
         'website',
         websiteUrl,
         staticAnalysis,
         aiAssessment,
         undefined, // No file size analysis for websites
-        errors
+        errors,
+        businessTypeAnalysis
       )
 
       return {
@@ -203,7 +217,8 @@ export class SimplifiedAssessmentEngine {
     staticAnalysis: StaticAnalysisResult | WebsiteAnalysisResult,
     aiAssessment?: UnifiedAIAssessmentResult,
     fileSizeAnalysis?: any,
-    errors: string[] = []
+    errors: string[] = [],
+    businessTypeAnalysis?: any
   ): Omit<SimplifiedAssessmentResult, 'metadata'> {
     
     // Determine overall score and categories
@@ -247,12 +262,14 @@ export class SimplifiedAssessmentEngine {
       staticAnalysis,
       aiAssessment,
       fileSizeAnalysis,
+      businessTypeAnalysis,
       findings: findings.slice(0, 10), // Limit to top 10
       recommendations: recommendations.slice(0, 10),
       status: {
         staticAnalysisSuccess: true,
         aiAssessmentSuccess: aiAssessment?.metadata.success || false,
         fileSizeAnalysisSuccess: !!fileSizeAnalysis,
+        businessTypeAnalysisSuccess: !!businessTypeAnalysis,
         overallSuccess: errors.length === 0
       }
     }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SimplifiedAssessmentEngine } from '../../../lib/simplified-assessment-engine'
-import { DataTransformer, UnifiedAssessmentResult, LegacyAssessmentResult } from '../../../lib/unified-data-models'
 import { promises as dns } from 'dns'
 
 // Helper function to check if an IP address is public/routable
@@ -136,16 +135,72 @@ export async function POST(request: NextRequest) {
     })
 
     // Perform assessment based on input type
-    let simplifiedResult
+    let unifiedResult
     
     if (inputType === 'repository') {
-      simplifiedResult = await assessmentEngine.assessRepository(inputUrl)
+      unifiedResult = await assessmentEngine.assessRepository(inputUrl)
     } else {
-      simplifiedResult = await assessmentEngine.assessWebsite(inputUrl)
+      unifiedResult = await assessmentEngine.assessWebsite(inputUrl)
     }
 
-    // Convert to legacy format for frontend compatibility
-    const legacyResult: LegacyAssessmentResult = DataTransformer.toLegacyResult(simplifiedResult as any)
+    // Convert unified result to legacy format for frontend compatibility
+    const legacyResult = {
+      readinessScore: unifiedResult.overallScore,
+      aiAnalysisStatus: {
+        enabled: unifiedResult.status.aiAssessmentSuccess,
+        instructionClarity: unifiedResult.status.aiAssessmentSuccess,
+        workflowAutomation: unifiedResult.status.aiAssessmentSuccess,
+        contextEfficiency: unifiedResult.status.aiAssessmentSuccess,
+        riskCompliance: unifiedResult.status.aiAssessmentSuccess,
+        overallSuccess: unifiedResult.status.overallSuccess
+      },
+      categories: unifiedResult.categories,
+      findings: unifiedResult.findings,
+      recommendations: unifiedResult.recommendations,
+      detailedAnalysis: unifiedResult.aiAssessment?.detailedAnalysis ? {
+        instructionClarity: {
+          stepByStepQuality: unifiedResult.aiAssessment.detailedAnalysis.instructionClarity?.stepByStepQuality || 0,
+          commandClarity: unifiedResult.aiAssessment.detailedAnalysis.instructionClarity?.commandClarity || 0,
+          environmentSetup: unifiedResult.aiAssessment.detailedAnalysis.instructionClarity?.environmentSetup || 0,
+          errorHandling: unifiedResult.aiAssessment.detailedAnalysis.instructionClarity?.errorHandling || 0,
+          dependencySpecification: unifiedResult.aiAssessment.detailedAnalysis.instructionClarity?.dependencySpecification || 0,
+          overallScore: unifiedResult.categories.instructionClarity
+        },
+        workflowAutomation: {
+          ciCdQuality: unifiedResult.aiAssessment.detailedAnalysis.workflowAutomation?.ciCdQuality || 0,
+          testAutomation: unifiedResult.aiAssessment.detailedAnalysis.workflowAutomation?.testAutomation || 0,
+          buildScripts: unifiedResult.aiAssessment.detailedAnalysis.workflowAutomation?.buildScripts || 0,
+          deploymentAutomation: unifiedResult.aiAssessment.detailedAnalysis.workflowAutomation?.deploymentAutomation || 0,
+          monitoringLogging: unifiedResult.aiAssessment.detailedAnalysis.workflowAutomation?.monitoringLogging || 0,
+          overallScore: unifiedResult.categories.workflowAutomation
+        },
+        contextEfficiency: {
+          instructionFileOptimization: unifiedResult.aiAssessment.detailedAnalysis.contextEfficiency?.instructionFileOptimization || 0,
+          codeDocumentation: unifiedResult.aiAssessment.detailedAnalysis.contextEfficiency?.codeDocumentation || 0,
+          apiDocumentation: unifiedResult.aiAssessment.detailedAnalysis.contextEfficiency?.apiDocumentation || 0,
+          contextWindowUsage: unifiedResult.aiAssessment.detailedAnalysis.contextEfficiency?.contextWindowUsage || 0,
+          overallScore: unifiedResult.categories.fileSizeOptimization
+        },
+        riskCompliance: {
+          securityPractices: unifiedResult.aiAssessment.detailedAnalysis.riskCompliance?.securityPractices || 0,
+          errorHandling: unifiedResult.aiAssessment.detailedAnalysis.riskCompliance?.errorHandling || 0,
+          inputValidation: unifiedResult.aiAssessment.detailedAnalysis.riskCompliance?.inputValidation || 0,
+          dependencySecurity: unifiedResult.aiAssessment.detailedAnalysis.riskCompliance?.dependencySecurity || 0,
+          licenseCompliance: unifiedResult.aiAssessment.detailedAnalysis.riskCompliance?.licenseCompliance || 0,
+          overallScore: unifiedResult.categories.riskCompliance
+        }
+      } : undefined,
+      staticAnalysis: unifiedResult.staticAnalysis,
+      websiteAnalysis: unifiedResult.type === 'website' ? unifiedResult.staticAnalysis : null,
+      businessTypeAnalysis: unifiedResult.businessTypeAnalysis,
+      confidence: {
+        overall: unifiedResult.confidence,
+        instructionClarity: unifiedResult.confidence,
+        workflowAutomation: unifiedResult.confidence,
+        contextEfficiency: unifiedResult.confidence,
+        riskCompliance: unifiedResult.confidence
+      }
+    }
 
     return NextResponse.json(legacyResult)
   } catch (error) {
