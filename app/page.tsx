@@ -93,32 +93,6 @@ export default function Home() {
       setIsAnalyzing(false)
     }
   }
-          cursor: string
-          githubCopilot: string
-          claudeWeb: string
-          claudeApi: string
-        }
-        recommendation: string
-      }>
-      criticalFiles: Array<{
-        path: string
-        size: number
-        sizeFormatted: string
-        type: string
-        isOptimal: boolean
-        agentImpact: {
-          cursor: string
-          githubCopilot: string
-          claudeWeb: string
-        }
-        recommendation: string
-      }>
-      contextConsumption: {
-        instructionFiles: {
-          agentsMd: { size: number; lines: number; estimatedTokens: number } | null
-          readme: { size: number; lines: number; estimatedTokens: number } | null
-          contributing: { size: number; lines: number; estimatedTokens: number } | null
-        }
         totalContextFiles: number
         averageContextFileSize: number
         contextEfficiency: string
