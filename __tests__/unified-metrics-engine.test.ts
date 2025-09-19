@@ -55,10 +55,19 @@ describe('UnifiedMetricsEngine', () => {
     })
 
     it('should handle missing AI values', () => {
-      const metric = engine.createUnifiedMetric(15, 0, 80, 0)
+      const metric = engine.createUnifiedMetric(15, undefined, 80, 0)
       
       expect(metric.value).toBe(15)
       expect(metric.source).toBe('static')
+      expect(metric.aiValue).toBe(undefined)
+    })
+
+    it('should handle zero AI values as valid scores', () => {
+      const metric = engine.createUnifiedMetric(15, 0, 80, 70)
+      
+      // With default weights (0.3 static, 0.7 AI): 15 * 0.3 + 0 * 0.7 = 4.5 -> 5 (rounded)
+      expect(metric.value).toBe(5)
+      expect(metric.source).toBe('hybrid')
       expect(metric.aiValue).toBe(0)
     })
   })

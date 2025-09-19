@@ -130,7 +130,7 @@ export class UnifiedMetricsEngine {
     let weightedConfidence: number;
     let source: 'static' | 'ai' | 'hybrid';
     
-    if (aiValue > 0) {
+    if (aiValue !== undefined && aiValue !== null && !Number.isNaN(aiValue)) {
       // Both static and AI values available
       weightedValue = (staticValue * this.config.staticWeight) + (aiValue * this.config.aiWeight);
       weightedConfidence = (staticConfidence * this.config.staticWeight) + (aiConfidence * this.config.aiWeight);
@@ -185,8 +185,10 @@ export class UnifiedMetricsEngine {
     const averageConfidence = Object.values(categoryScores).reduce((sum, categoryScore) => 
       sum + categoryScore.score.confidence, 0) / Object.keys(categoryScores).length;
 
+    const value100 = Math.round(this.normalizeToOverallScale(weightedSum, this.config.categoryScale));
+
     return {
-      value: Math.round(weightedSum),
+      value: value100,
       confidence: Math.round(averageConfidence),
       source: 'hybrid',
       lastUpdated: new Date(),

@@ -171,7 +171,7 @@ export class AlignedAssessmentEngine {
         errorHandling: false,
         fileCount: 1,
         linesOfCode: 0,
-        repositorySizeMB: websiteAnalysis.contentLength / (1024 * 1024),
+        repositorySizeMB: (websiteAnalysis.contentLength || 0) / (1024 * 1024),
         workflowFiles: [],
         testFiles: [],
         

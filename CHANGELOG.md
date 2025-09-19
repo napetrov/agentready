@@ -14,15 +14,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced error handling and debugging information display
 - Conditional debug information that only shows when issues are detected
 - Combined AI Analysis Status and Debug Information sections for better UX
-- Comprehensive test coverage with 62 passing tests
+- Comprehensive test coverage with 93 passing tests
 - OpenAI API mocking system for reliable testing
 - TypeScript error fixes and improved type safety
 - **CRITICAL**: Coherent assessment system ensuring consistent metrics across all analysis blocks
+- **NEW**: Business-type-aware assessment system with 15 industry configurations
+- **NEW**: AI-relevant assessment criteria focusing on agent usability
+- **NEW**: 5 agentic flows with business-specific importance weights
+- **NEW**: Enhanced SSRF protection with comprehensive IP range filtering
+- **NEW**: DNS-level security validation for website analysis
+- **NEW**: Word-boundary regex for improved business type detection accuracy
+- **NEW**: Extensionless file detection (Dockerfile, Makefile, etc.)
+- **NEW**: Debug flag gating for production logging control
 - Website-specific scoring algorithms that align with agentic flow analysis
 - Unified key findings generation based on actual analysis context (website vs repository)
 
 ### Changed
 - Improved contributor/agent guidance by centralizing rules and linking architecture/development docs
+- **UPDATED**: `dev/DEVELOPMENT.md` with comprehensive progress log documenting business-type-aware assessment system implementation
+- **IMPROVED**: Overall score scaling from 0-20 to 0-100 for better user understanding
+- **ENHANCED**: AI value handling to properly treat zero scores as valid data points
+- **REFINED**: Meta description validation to trim whitespace before truthy checks
+- **EXPANDED**: AI readiness insights to include all 5 agentic flows (taskManagement and personalization)
+- **OPTIMIZED**: API response payload by limiting findings/recommendations to top 10 items
+- **HARDENED**: Security validation with comprehensive SSRF protection and DNS-level checks
 - Improved UI layout by combining separate status and debug sections
 - Enhanced error messages with more detailed debugging information
 - Updated test configuration to use proper API key validation

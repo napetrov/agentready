@@ -11,26 +11,38 @@ function isPublicIP(ip: string): boolean {
     const parts = ip.split('.').map(Number)
     if (parts.length !== 4 || parts.some(p => p < 0 || p > 255)) return false
     
-    // Private ranges
+    // Private/reserved ranges
+    if (parts[0] === 0) return false // 0.0.0.0/8
     if (parts[0] === 10) return false
     if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false
     if (parts[0] === 192 && parts[1] === 168) return false
     if (parts[0] === 127) return false // loopback
     if (parts[0] === 169 && parts[1] === 254) return false // link-local
+    if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return false // 100.64/10
+    if (parts[0] === 198 && (parts[1] === 18 || parts[1] === 19)) return false // 198.18/15
+    if (parts[0] === 192 && parts[1] === 0 && parts[2] === 0) return false // 192.0.0.0/24
+    if (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) return false // 192.0.2.0/24
+    if (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) return false // 198.51.100.0/24
+    if (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) return false // 203.0.113.0/24
+    if (parts[0] >= 224) return false // 224/4 multicast and 240/4 reserved
     
     return true
   }
   
   // IPv6 checks
   if (ip.includes(':')) {
-    // Loopback
-    if (ip === '::1') return false
+    if (ip === '::' || ip === '::1') return false // unspecified/loopback
     // Link-local
     if (ip.startsWith('fe80:')) return false
     // Unique local
     if (ip.startsWith('fc00:') || ip.startsWith('fd00:')) return false
-    // Loopback range
-    if (ip.startsWith('::ffff:127.')) return false
+    // Documentation range
+    if (ip.toLowerCase().startsWith('2001:db8')) return false
+    // IPv4-mapped
+    if (ip.startsWith('::ffff:') && ip.includes('.')) {
+      const v4 = ip.substring('::ffff:'.length)
+      return isPublicIP(v4)
+    }
     
     return true
   }
@@ -213,8 +225,8 @@ export async function POST(request: NextRequest) {
         overallScore: result.websiteAnalysis.overallScore,
         agenticFlows: result.websiteAnalysis.agenticFlows,
         aiRelevantChecks: result.websiteAnalysis.aiRelevantChecks,
-        findings: result.websiteAnalysis.findings,
-        recommendations: result.websiteAnalysis.recommendations
+        findings: (result.websiteAnalysis.findings || []).slice(0, 10),
+        recommendations: (result.websiteAnalysis.recommendations || []).slice(0, 10)
       } : null
     }
 

@@ -213,7 +213,7 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
       }
       
       // Count lines of code for text files
-      if (isTextFile(extension)) {
+      if (isTextFile(file)) {
         try {
           const content = await zip.files[file].async('text')
           const lines = content.split('\n').length
@@ -436,7 +436,21 @@ async function calculateRepositorySize(zip: JSZip, files: string[]): Promise<num
   return Math.round((totalSizeBytes / (1024 * 1024)) * 100) / 100
 }
 
-function isTextFile(extension: string | undefined): boolean {
+function isTextFile(filename: string): boolean {
+  if (!filename) return false
+  
+  // Check for extensionless files first
+  const extensionlessFiles = [
+    'dockerfile', 'makefile', 'cmake', 'gradle', 'maven', 'pom', 'sbt', 
+    'build', 'gulpfile', 'gruntfile', 'rakefile', 'gemfile', 'vagrantfile',
+    'procfile', 'heroku', 'gitignore', 'gitattributes', 'dockerignore'
+  ]
+  
+  const basename = filename.toLowerCase().split('/').pop() || ''
+  if (extensionlessFiles.includes(basename)) return true
+  
+  // Check for files with extensions
+  const extension = filename.split('.').pop()?.toLowerCase()
   if (!extension) return false
   
   const textExtensions = [
@@ -445,11 +459,10 @@ function isTextFile(extension: string | undefined): boolean {
     'm', 'mm', 'pl', 'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat',
     'html', 'htm', 'css', 'scss', 'sass', 'less', 'xml', 'json',
     'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'md', 'txt',
-    'rst', 'tex', 'sql', 'dockerfile', 'makefile', 'cmake',
-    'gradle', 'maven', 'pom', 'sbt', 'build', 'gulpfile', 'gruntfile'
+    'rst', 'tex', 'sql'
   ]
   
-  return textExtensions.includes(extension.toLowerCase())
+  return textExtensions.includes(extension)
 }
 
 // Legacy functions removed - now using business-type-analyzer.ts
@@ -469,6 +482,15 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       /^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
       /^(\[?::1\]?|::1)$/.test(host)
     ) throw new Error('Refusing to fetch private/loopback hosts')
+
+    // DNS-level guard: block private, link-local, and unique-local IPs
+    const { lookup } = await import('node:dns/promises')
+    const addrs = await lookup(host, { all: true })
+    const isPrivate = (ip: string) =>
+      /^127\./.test(ip) || /^10\./.test(ip) || /^192\.168\./.test(ip) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) || /^169\.254\./.test(ip) ||
+      ip === '0.0.0.0' || /^::1$/.test(ip) || /^fe80:/i.test(ip) || /^fc00:|^fd00:/i.test(ip)
+    if (addrs.some(a => isPrivate(a.address))) throw new Error('Refusing to fetch hosts resolving to private/link-local IPs')
 
     // Import cheerio dynamically
     const { load } = await import('cheerio')
@@ -618,7 +640,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       hasRobotsTxt: aiChecks.hasRobotsTxt,
     }
 
-    console.log('✅ Business-type-aware AI agent readiness analysis completed:', {
+    if (process.env.DEBUG_AI_ANALYZER === '1') console.log('✅ Business-type-aware AI agent readiness analysis completed:', {
       url: websiteUrl,
       businessType: businessTypeConfig.displayName,
       businessTypeConfidence,

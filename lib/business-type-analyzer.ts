@@ -417,8 +417,13 @@ export function detectBusinessType($: any, html: string, url: string): BusinessT
     
     let score = 0;
     for (const keyword of config.keywords) {
-      if (text.includes(keyword)) score += 1;
-      if (title.includes(keyword)) score += 2;
+      // Use word-boundary regex for text and title to reduce false positives
+      const wordBoundaryRegex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      
+      if (wordBoundaryRegex.test(text)) score += 1;
+      if (wordBoundaryRegex.test(title)) score += 2;
+      
+      // Keep domain checks as substring matches (dot-delimited boundaries)
       if (domain.includes(keyword)) score += 3;
     }
     
@@ -620,7 +625,10 @@ export function analyzeAIRelevantChecks($: any, html: string): AIAgentReadinessR
     hasStructuredData: $('script[type="application/ld+json"]').length > 0,
     hasContactInfo: $('a[href^="tel:"], a[href^="mailto:"]').length > 0 || /phone|email|contact/i.test(text),
     hasPageTitle: $('title').text().trim().length > 0,
-    hasMetaDescription: $('meta[name="description"]').attr('content')?.length > 0,
+    hasMetaDescription: (() => {
+      const desc = $('meta[name="description"]').attr('content')
+      return !!desc && desc.trim().length > 0
+    })(),
     hasSitemap: false, // Will be checked separately
     hasRobotsTxt: false, // Will be checked separately
     contentAccessibility,
@@ -680,6 +688,16 @@ export function generateAIReadinessInsights(
   if (agenticFlows.faqSupport.score < 50) {
     findings.push(`FAQ and support information is limited (${agenticFlows.faqSupport.score}/100)`);
     recommendations.push(`Add comprehensive FAQ section and support documentation`);
+  }
+
+  if (agenticFlows.taskManagement.score < 50) {
+    findings.push(`Task management capabilities are limited (${agenticFlows.taskManagement.score}/100)`);
+    recommendations.push(`Expose schedule visibility, reservation management, and notification workflows`);
+  }
+
+  if (agenticFlows.personalization.score < 50) {
+    findings.push(`Personalization features are minimal (${agenticFlows.personalization.score}/100)`);
+    recommendations.push(`Add profile/preferences capture and basic recommendation logic where appropriate`);
   }
   
   return { findings, recommendations };
