@@ -82,37 +82,41 @@ export class BusinessTypeAnalyzerPlugin implements AnalyzerPlugin {
     if (result.data && 'type' in result.data && result.data.type === 'website') {
       const businessData = result.data.businessType as BusinessTypeAnalysisData
       
-      if (typeof businessData.businessType !== 'string' || businessData.businessType === '') {
-        errors.push('businessType must be a non-empty string')
-      }
-      
-      if (typeof businessData.businessTypeConfidence !== 'number' || 
-          businessData.businessTypeConfidence < 0 || 
-          businessData.businessTypeConfidence > 100) {
-        errors.push('businessTypeConfidence must be a number between 0 and 100')
-      }
-      
-      if (typeof businessData.overallScore !== 'number' || 
-          businessData.overallScore < 0 || 
-          businessData.overallScore > 100) {
-        errors.push('overallScore must be a number between 0 and 100')
-      }
+      if (!businessData) {
+        errors.push('Business type analysis data is missing or malformed')
+      } else {
+        if (typeof businessData.businessType !== 'string' || businessData.businessType === '') {
+          errors.push('businessType must be a non-empty string')
+        }
+        
+        if (typeof businessData.businessTypeConfidence !== 'number' || 
+            businessData.businessTypeConfidence < 0 || 
+            businessData.businessTypeConfidence > 100) {
+          errors.push('businessTypeConfidence must be a number between 0 and 100')
+        }
+        
+        if (typeof businessData.overallScore !== 'number' || 
+            businessData.overallScore < 0 || 
+            businessData.overallScore > 100) {
+          errors.push('overallScore must be a number between 0 and 100')
+        }
 
-      if (!Array.isArray(businessData.industrySpecificInsights)) {
-        errors.push('industrySpecificInsights must be an array')
-      }
+        if (!Array.isArray(businessData.industrySpecificInsights)) {
+          errors.push('industrySpecificInsights must be an array')
+        }
 
-      if (!Array.isArray(businessData.recommendations)) {
-        errors.push('recommendations must be an array')
-      }
+        if (!Array.isArray(businessData.recommendations)) {
+          errors.push('recommendations must be an array')
+        }
 
-      // Check for missing important fields
-      if (businessData.businessTypeConfidence < 50) {
-        warnings.push('Business type confidence is low')
-      }
+        // Check for missing important fields
+        if (businessData.businessTypeConfidence < 50) {
+          warnings.push('Business type confidence is low')
+        }
 
-      if (businessData.overallScore < 50) {
-        warnings.push('Overall score is low')
+        if (businessData.overallScore < 50) {
+          warnings.push('Overall score is low')
+        }
       }
     }
 
