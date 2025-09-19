@@ -180,8 +180,8 @@ describe('PluginRegistry', () => {
       const analyzer = new RepositoryAnalyzerPlugin()
       registry.registerAnalyzer(analyzer)
 
-      expect(registry['analyzers'].has('repository')).toBe(true)
-      expect(registry['analyzers'].get('repository')).toBe(analyzer)
+      expect(registry['analyzers'].has('repository:repository-analyzer')).toBe(true)
+      expect(registry['analyzers'].get('repository:repository-analyzer')).toBe(analyzer)
     })
 
     it('should throw error for duplicate analyzer type', () => {
@@ -201,8 +201,8 @@ describe('PluginRegistry', () => {
       const assessor = new UnifiedAIAssessorPlugin()
       registry.registerAIAssessor(assessor)
 
-      expect(registry['aiAssessors'].has('repository')).toBe(true)
-      expect(registry['aiAssessors'].get('repository')).toBe(assessor)
+      expect(registry['aiAssessors'].has('repository:unified-ai-assessor')).toBe(true)
+      expect(registry['aiAssessors'].get('repository:unified-ai-assessor')).toBe(assessor)
     })
 
     it('should throw error for duplicate assessor type', () => {
@@ -228,7 +228,7 @@ describe('PluginRegistry', () => {
 
     it('should return undefined for unregistered analyzer', () => {
       const result = registry.getAnalyzer('repository')
-      expect(result).toBeUndefined()
+      expect(result).toBeNull()
     })
   })
 
@@ -243,7 +243,7 @@ describe('PluginRegistry', () => {
 
     it('should return undefined for unregistered assessor', () => {
       const result = registry.getAIAssessor('repository')
-      expect(result).toBeUndefined()
+      expect(result).toBeNull()
     })
   })
 

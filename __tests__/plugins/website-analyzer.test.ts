@@ -177,7 +177,21 @@ describe('WebsiteAnalyzerPlugin', () => {
       const result = {
         type: 'repository' as const,
         data: {
-          repository: {}
+          repository: {
+            hasReadme: false,
+            hasContributing: false,
+            hasAgents: false,
+            hasLicense: false,
+            hasWorkflows: false,
+            hasTests: false,
+            languages: [],
+            errorHandling: false,
+            fileCount: 0,
+            linesOfCode: 0,
+            repositorySizeMB: 0,
+            workflowFiles: [],
+            testFiles: []
+          }
         },
         metadata: {
           analyzer: 'test',
@@ -203,7 +217,7 @@ describe('WebsiteAnalyzerPlugin', () => {
             url: 'https://example.com',
             pageTitle: 'Test Website',
             metaDescription: 'Test description',
-            hasStructuredData: 'invalid', // Should be boolean
+            hasStructuredData: 'invalid' as any, // Should be boolean
             hasOpenGraph: true,
             hasTwitterCards: false,
             hasSitemap: true,
@@ -211,8 +225,8 @@ describe('WebsiteAnalyzerPlugin', () => {
             hasFavicon: false,
             hasManifest: false,
             hasServiceWorker: false,
-            contentLength: 'invalid', // Should be number
-            technologies: 'invalid', // Should be array
+            contentLength: 'invalid' as any, // Should be number
+            technologies: 'invalid' as any, // Should be array
             contactInfo: ['test@example.com'],
             socialMediaLinks: [],
             locations: ['New York, NY'],

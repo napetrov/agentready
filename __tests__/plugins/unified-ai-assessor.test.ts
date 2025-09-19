@@ -108,7 +108,9 @@ describe('UnifiedAIAssessorPlugin', () => {
             errorHandling: true,
             fileCount: 150,
             linesOfCode: 5000,
-            repositorySizeMB: 2.5
+            repositorySizeMB: 2.5,
+            workflowFiles: ['ci.yml'],
+            testFiles: ['test.js']
           }
         },
         metadata: {
@@ -184,7 +186,15 @@ describe('UnifiedAIAssessorPlugin', () => {
     it('should throw error for unsupported analysis type', async () => {
       const analysis: AnalysisResult = {
         type: 'business-type' as any,
-        data: { businessType: {} },
+        data: { 
+          businessType: {
+            businessType: 'ecommerce',
+            businessTypeConfidence: 85,
+            overallScore: 75,
+            industrySpecificInsights: ['Good for AI agents'],
+            recommendations: ['Improve structure']
+          }
+        },
         metadata: {
           analyzer: 'test',
           version: '1.0.0',
@@ -204,7 +214,23 @@ describe('UnifiedAIAssessorPlugin', () => {
 
       const analysis: AnalysisResult = {
         type: 'repository',
-        data: { repository: {} },
+        data: { 
+          repository: {
+            hasReadme: false,
+            hasContributing: false,
+            hasAgents: false,
+            hasLicense: false,
+            hasWorkflows: false,
+            hasTests: false,
+            languages: [],
+            errorHandling: false,
+            fileCount: 0,
+            linesOfCode: 0,
+            repositorySizeMB: 0,
+            workflowFiles: [],
+            testFiles: []
+          }
+        },
         metadata: {
           analyzer: 'test',
           version: '1.0.0',
@@ -251,7 +277,23 @@ describe('UnifiedAIAssessorPlugin', () => {
     it('should handle repository analysis', () => {
       const analysis: AnalysisResult = {
         type: 'repository',
-        data: { repository: {} },
+        data: { 
+          repository: {
+            hasReadme: false,
+            hasContributing: false,
+            hasAgents: false,
+            hasLicense: false,
+            hasWorkflows: false,
+            hasTests: false,
+            languages: [],
+            errorHandling: false,
+            fileCount: 0,
+            linesOfCode: 0,
+            repositorySizeMB: 0,
+            workflowFiles: [],
+            testFiles: []
+          }
+        },
         metadata: {
           analyzer: 'test',
           version: '1.0.0',
@@ -266,7 +308,31 @@ describe('UnifiedAIAssessorPlugin', () => {
     it('should handle website analysis', () => {
       const analysis: AnalysisResult = {
         type: 'website',
-        data: { website: {} },
+        data: { 
+          website: {
+            url: 'https://example.com',
+            hasStructuredData: true,
+            hasOpenGraph: true,
+            hasTwitterCards: false,
+            hasSitemap: true,
+            hasRobotsTxt: true,
+            hasFavicon: false,
+            hasManifest: false,
+            hasServiceWorker: false,
+            contentLength: 5000,
+            technologies: ['React'],
+            contactInfo: ['test@example.com'],
+            socialMediaLinks: [],
+            locations: ['New York'],
+            agentReadinessFeatures: {
+              informationGathering: { score: 4, maxScore: 5, details: [], missing: [] },
+              directBooking: { score: 3, maxScore: 5, details: [], missing: [] },
+              faqSupport: { score: 4, maxScore: 5, details: [], missing: [] },
+              taskManagement: { score: 3, maxScore: 5, details: [], missing: [] },
+              personalization: { score: 4, maxScore: 5, details: [], missing: [] }
+            }
+          }
+        },
         metadata: {
           analyzer: 'test',
           version: '1.0.0',
@@ -281,7 +347,15 @@ describe('UnifiedAIAssessorPlugin', () => {
     it('should not handle unsupported analysis types', () => {
       const analysis: AnalysisResult = {
         type: 'business-type' as any,
-        data: { businessType: {} },
+        data: { 
+          businessType: {
+            businessType: 'ecommerce',
+            businessTypeConfidence: 85,
+            overallScore: 75,
+            industrySpecificInsights: ['Good for AI agents'],
+            recommendations: ['Improve structure']
+          }
+        },
         metadata: {
           analyzer: 'test',
           version: '1.0.0',

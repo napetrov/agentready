@@ -153,7 +153,9 @@ describe('RepositoryAnalyzerPlugin', () => {
             errorHandling: true,
             fileCount: 100,
             linesOfCode: 5000,
-            repositorySizeMB: 2.5
+            repositorySizeMB: 2.5,
+            workflowFiles: ['ci.yml'],
+            testFiles: ['test.js']
           }
         },
         metadata: {
@@ -174,7 +176,29 @@ describe('RepositoryAnalyzerPlugin', () => {
       const result = {
         type: 'website' as const,
         data: {
-          website: {}
+          website: {
+            url: 'https://example.com',
+            hasStructuredData: true,
+            hasOpenGraph: true,
+            hasTwitterCards: false,
+            hasSitemap: true,
+            hasRobotsTxt: true,
+            hasFavicon: false,
+            hasManifest: false,
+            hasServiceWorker: false,
+            contentLength: 5000,
+            technologies: ['React'],
+            contactInfo: ['test@example.com'],
+            socialMediaLinks: [],
+            locations: ['New York'],
+            agentReadinessFeatures: {
+              informationGathering: { score: 4, maxScore: 5, details: [], missing: [] },
+              directBooking: { score: 3, maxScore: 5, details: [], missing: [] },
+              faqSupport: { score: 4, maxScore: 5, details: [], missing: [] },
+              taskManagement: { score: 3, maxScore: 5, details: [], missing: [] },
+              personalization: { score: 4, maxScore: 5, details: [], missing: [] }
+            }
+          }
         },
         metadata: {
           analyzer: 'test',
@@ -197,17 +221,19 @@ describe('RepositoryAnalyzerPlugin', () => {
         data: {
           type: 'repository' as const, // Add the type property
           repository: {
-            hasReadme: 'invalid', // Should be boolean
+            hasReadme: 'invalid' as any, // Should be boolean
             hasContributing: true,
             hasAgents: false,
             hasLicense: true,
             hasWorkflows: true,
             hasTests: false,
-            languages: 'invalid', // Should be array
+            languages: 'invalid' as any, // Should be array
             errorHandling: true,
             fileCount: 100,
             linesOfCode: 5000,
-            repositorySizeMB: 2.5
+            repositorySizeMB: 2.5,
+            workflowFiles: ['ci.yml'],
+            testFiles: ['test.js']
           }
         },
         metadata: {

@@ -31,10 +31,30 @@ describe('UnifiedAssessmentEngine', () => {
   describe('constructor', () => {
     it('should initialize with default configuration', () => {
       expect(engine['config']).toEqual({
+        enableAIAssessment: true,
+        enableValidation: true,
+        requireAlignment: false,
+        maxRetries: 2,
         fallbackToStatic: true,
-        maxRetries: 3,
-        retryDelay: 1000,
-        timeout: 30000
+        timeout: 30000,
+        includeDetailedAnalysis: true,
+        metricsConfig: {
+          scoringScale: 100,
+          categoryWeights: {
+            documentation: 0.2,
+            instructionClarity: 0.2,
+            workflowAutomation: 0.2,
+            riskCompliance: 0.2,
+            integrationStructure: 0.1,
+            fileSizeOptimization: 0.1
+          },
+          confidenceThresholds: {
+            low: 0.4,
+            medium: 0.6,
+            high: 0.8
+          },
+          validationRules: []
+        }
       })
     })
 
@@ -42,17 +62,37 @@ describe('UnifiedAssessmentEngine', () => {
       const customConfig = {
         fallbackToStatic: false,
         maxRetries: 1,
-        retryDelay: 500,
         timeout: 15000
       }
       
       const customEngine = new UnifiedAssessmentEngine(customConfig)
-      expect(customEngine['config']).toEqual(customConfig)
+      expect(customEngine['config']).toMatchObject(customConfig)
     })
   })
 
   describe('assess', () => {
     const mockResult: AssessmentResult = {
+      id: 'test-assessment',
+      type: 'repository',
+      url: 'https://github.com/test/repo',
+      timestamp: new Date(),
+      analysis: {
+        repository: {
+          hasReadme: true,
+          hasContributing: true,
+          hasAgents: false,
+          hasLicense: true,
+          hasWorkflows: true,
+          hasTests: false,
+          languages: ['TypeScript'],
+          errorHandling: true,
+          fileCount: 100,
+          linesOfCode: 5000,
+          repositorySizeMB: 2.5,
+          workflowFiles: ['ci.yml'],
+          testFiles: ['test.js']
+        }
+      },
       scores: {
         overall: {
           value: 85,
@@ -60,7 +100,7 @@ describe('UnifiedAssessmentEngine', () => {
           percentage: 85,
           confidence: 80
         },
-        categoryScores: {
+        categories: {
           documentation: {
             value: 18,
             maxValue: 20,
@@ -98,7 +138,7 @@ describe('UnifiedAssessmentEngine', () => {
             confidence: 65
           }
         },
-        confidenceScores: {
+        confidence: {
           overall: 80,
           staticAnalysis: 85,
           aiAssessment: 75
@@ -231,8 +271,8 @@ describe('UnifiedAssessmentEngine', () => {
 
       const result = await engine['performStaticAnalysis'](input)
 
-      expect(result.type).toBe('repository')
-      expect(result.data).toHaveProperty('repository')
+      expect(result).toHaveProperty('repository')
+      expect(result.repository).toBeDefined()
     })
 
     it('should perform website analysis', async () => {
@@ -243,74 +283,60 @@ describe('UnifiedAssessmentEngine', () => {
 
       const result = await engine['performStaticAnalysis'](input)
 
-      expect(result.type).toBe('website')
-      expect(result.data).toHaveProperty('website')
+      expect(result).toHaveProperty('website')
+      expect(result.website).toBeDefined()
     })
   })
 
   describe('generateScores', () => {
     it('should generate scores from analysis result', () => {
-      const analysisResult = {
-        type: 'repository' as const,
-        data: {
-          repository: {
-            hasReadme: true,
-            hasContributing: true,
-            hasAgents: false,
-            hasLicense: true,
-            hasWorkflows: true,
-            hasTests: false,
-            languages: ['TypeScript'],
-            errorHandling: true,
-            fileCount: 100,
-            linesOfCode: 5000,
-            repositorySizeMB: 2.5
-          }
-        },
-        metadata: {
-          analyzer: 'test',
-          version: '1.0.0',
-          timestamp: new Date(),
-          duration: 1000
+      const analysisData = {
+        repository: {
+          hasReadme: true,
+          hasContributing: true,
+          hasAgents: false,
+          hasLicense: true,
+          hasWorkflows: true,
+          hasTests: false,
+          languages: ['TypeScript'],
+          errorHandling: true,
+          fileCount: 100,
+          linesOfCode: 5000,
+          repositorySizeMB: 2.5,
+          workflowFiles: ['ci.yml'],
+          testFiles: ['test.js']
         }
       }
 
-      const scores = engine['generateScores'](analysisResult)
+      const scores = engine['generateScores'](analysisData)
 
       expect(scores.overall).toBeDefined()
-      expect(scores.categoryScores).toBeDefined()
-      expect(scores.confidenceScores).toBeDefined()
+      expect(scores.categories).toBeDefined()
+      expect(scores.confidence).toBeDefined()
     })
   })
 
   describe('generateFindings', () => {
     it('should generate findings from analysis result', () => {
-      const analysisResult = {
-        type: 'repository' as const,
-        data: {
-          repository: {
-            hasReadme: true,
-            hasContributing: true,
-            hasAgents: false,
-            hasLicense: true,
-            hasWorkflows: true,
-            hasTests: false,
-            languages: ['TypeScript'],
-            errorHandling: true,
-            fileCount: 100,
-            linesOfCode: 5000,
-            repositorySizeMB: 2.5
-          }
-        },
-        metadata: {
-          analyzer: 'test',
-          version: '1.0.0',
-          timestamp: new Date(),
-          duration: 1000
+      const analysisData = {
+        repository: {
+          hasReadme: true,
+          hasContributing: true,
+          hasAgents: false,
+          hasLicense: true,
+          hasWorkflows: true,
+          hasTests: false,
+          languages: ['TypeScript'],
+          errorHandling: true,
+          fileCount: 100,
+          linesOfCode: 5000,
+          repositorySizeMB: 2.5,
+          workflowFiles: ['ci.yml'],
+          testFiles: ['test.js']
         }
       }
 
-      const findings = engine['generateFindings'](analysisResult)
+      const findings = engine['generateFindings'](analysisData)
 
       expect(Array.isArray(findings)).toBe(true)
       expect(findings.length).toBeGreaterThan(0)
@@ -319,32 +345,25 @@ describe('UnifiedAssessmentEngine', () => {
 
   describe('generateRecommendations', () => {
     it('should generate recommendations from analysis result', () => {
-      const analysisResult = {
-        type: 'repository' as const,
-        data: {
-          repository: {
-            hasReadme: true,
-            hasContributing: true,
-            hasAgents: false,
-            hasLicense: true,
-            hasWorkflows: true,
-            hasTests: false,
-            languages: ['TypeScript'],
-            errorHandling: true,
-            fileCount: 100,
-            linesOfCode: 5000,
-            repositorySizeMB: 2.5
-          }
-        },
-        metadata: {
-          analyzer: 'test',
-          version: '1.0.0',
-          timestamp: new Date(),
-          duration: 1000
+      const analysisData = {
+        repository: {
+          hasReadme: true,
+          hasContributing: true,
+          hasAgents: false,
+          hasLicense: true,
+          hasWorkflows: true,
+          hasTests: false,
+          languages: ['TypeScript'],
+          errorHandling: true,
+          fileCount: 100,
+          linesOfCode: 5000,
+          repositorySizeMB: 2.5,
+          workflowFiles: ['ci.yml'],
+          testFiles: ['test.js']
         }
       }
 
-      const recommendations = engine['generateRecommendations'](analysisResult)
+      const recommendations = engine['generateRecommendations'](analysisData)
 
       expect(Array.isArray(recommendations)).toBe(true)
       expect(recommendations.length).toBeGreaterThan(0)
@@ -390,6 +409,27 @@ describe('UnifiedAssessmentEngine', () => {
   describe('convertToLegacyFormat', () => {
     it('should convert unified result to legacy format', () => {
       const unifiedResult: AssessmentResult = {
+        id: 'test-assessment',
+        type: 'repository',
+        url: 'https://github.com/test/repo',
+        timestamp: new Date(),
+        analysis: {
+          repository: {
+            hasReadme: true,
+            hasContributing: true,
+            hasAgents: false,
+            hasLicense: true,
+            hasWorkflows: true,
+            hasTests: false,
+            languages: ['TypeScript'],
+            errorHandling: true,
+            fileCount: 100,
+            linesOfCode: 5000,
+            repositorySizeMB: 2.5,
+            workflowFiles: ['ci.yml'],
+            testFiles: ['test.js']
+          }
+        },
         scores: {
           overall: {
             value: 85,
@@ -397,7 +437,7 @@ describe('UnifiedAssessmentEngine', () => {
             percentage: 85,
             confidence: 80
           },
-          categoryScores: {
+          categories: {
             documentation: {
               value: 18,
               maxValue: 20,
@@ -435,7 +475,7 @@ describe('UnifiedAssessmentEngine', () => {
               confidence: 65
             }
           },
-          confidenceScores: {
+          confidence: {
             overall: 80,
             staticAnalysis: 85,
             aiAssessment: 75
