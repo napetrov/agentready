@@ -118,11 +118,11 @@ export class UnifiedMetricsEngine {
    */
   createUnifiedMetric(
     staticValue: number,
-    aiValue: number,
+    aiValue: number | undefined,
     staticConfidence: number = 80,
     aiConfidence: number = 70
   ): UnifiedMetric {
-    const variance = Math.abs(staticValue - aiValue);
+    const variance = aiValue !== undefined ? Math.abs(staticValue - aiValue) : 0;
     const isValidated = variance <= this.config.maxScoreVariance;
     
     // Calculate weighted average

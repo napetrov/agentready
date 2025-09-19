@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **CRITICAL**: Fixed overall readiness score discrepancy where business-type-aware scores (80-100) were being overridden by legacy unified metrics (8) causing incorrect "Needs improvement" ratings
+- **TYPESCRIPT**: Fixed type signature for `createUnifiedMetric` to properly handle `undefined` AI values
 - Documentation gaps for agent onboarding and change management
 - TypeScript compilation errors related to missing `aiAnalysisStatus` property
 - **CRITICAL**: Fixed major inconsistency where website analysis showed repository-focused key findings
