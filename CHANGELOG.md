@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `.cursorrules` with Cursor-recommended instructions for Vercel/Next.js/TypeScript/Node workflows
-- `AGENTS.md` documenting agent operating procedure and links to `dev/ARCHITECTURE.md` and `dev/DEVELOPMENT.md`
+- [`.cursorrules`](.cursorrules) with Cursor-recommended instructions for Vercel/Next.js/TypeScript/Node workflows
+- [`AGENTS.md`](AGENTS.md) documenting agent operating procedure and links to [`dev/ARCHITECTURE.md`](dev/ARCHITECTURE.md) and [`dev/DEVELOPMENT.md`](dev/DEVELOPMENT.md)
 - AI Analysis Status tracking with comprehensive status indicators
 - Enhanced error handling and debugging information display
 - Conditional debug information that only shows when issues are detected

@@ -10,10 +10,10 @@ AI agents working in this repo must follow these rules. These instructions are o
 ## Project Context
 - Framework: Next.js 14 (App Router)
 - Language: TypeScript (strict)
-- Runtime: Node.js 18+ (Vercel serverless)
+- Runtime: Node.js 20.x (Vercel serverless)
 - Styling: Tailwind CSS
 - Testing: Jest with `__mocks__/openai.js`
-- Deployment: Vercel (`vercel.json` present)
+- Deployment: Vercel (via project settings or `vercel.json` if present)
 
 ## Required Workflow
 1) Discovery
@@ -26,7 +26,7 @@ AI agents working in this repo must follow these rules. These instructions are o
    - Avoid unsafe `any`; prefer explicit interfaces.
    - Keep Next.js app router patterns and file structure intact.
 4) Verify
-   - Run: `npm run type-check`, `npm run lint`, `npm test`.
+   - Run: `npm run type-check`, `npm run lint`, `npm run build`, `npm test`.
    - Ensure all tests pass locally. If failing, fix or revert.
 5) Document
    - Update `dev/DEVELOPMENT.md` with what changed and why.
@@ -47,8 +47,8 @@ AI agents working in this repo must follow these rules. These instructions are o
 - Use the provided OpenAI mock; never call real external APIs in tests.
 
 ## Documentation Links
-- Architecture: dev/ARCHITECTURE.md
-- Development Process: dev/DEVELOPMENT.md
+- Architecture: [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md)
+- Development Process: [dev/DEVELOPMENT.md](dev/DEVELOPMENT.md)
 
 ## Change Management
 - All non-trivial edits must be reflected in `CHANGELOG.md` under [Unreleased].

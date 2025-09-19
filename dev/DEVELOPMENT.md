@@ -9,7 +9,10 @@ This document outlines the development process, implementation status, and futur
 ### 2025-09-18
 - Added `.cursorrules` with Cursor-optimized operating rules for Next.js/Vercel/TypeScript/Node.
 - Created `AGENTS.md` linking to `dev/ARCHITECTURE.md` and `dev/DEVELOPMENT.md` with workflow and verification steps.
-- Verified repository compiles, lints, and tests pass locally.
+- Verified repository compiles, lints, and tests pass locally (Node.js 20.x, OS: Linux) using:
+  - `npm run type-check`, `npm run lint`, `npm run build`, `npm test`
+- PR: #6 (Initialize repo and set up agent workflow)
+- Quick links: [Open in Cursor](https://cursor.com/background-agent?bcId=bc-c47564ad-c09e-4235-839e-53ed9995251a) · [Open in Web](https://cursor.com/agents?id=bc-c47564ad-c09e-4235-839e-53ed9995251a)
 - Next agents should continue updating this log with date, changes, and verification steps.
 
 ## ✅ Implementation Status
