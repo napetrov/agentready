@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Business Type Detection Accuracy**: Fixed incorrect classification of technology/software documentation sites as "automotive" by improving keyword specificity and adding dedicated "technology_software" business type
+- **Automotive Keywords**: Made automotive keywords more specific (e.g., "car repair", "auto repair", "vehicle service") to prevent false positives from technical terms containing "auto"
+- **Technology-Specific Assessment**: Added technology_software business type with appropriate keywords (software, api, documentation, developer, intel, github, vector search, etc.) and tailored agentic flow analysis for technology sites
+
 ### Added
 - [`.cursorrules`](.cursorrules) with Cursor-recommended instructions for Vercel/Next.js/TypeScript/Node workflows
 - [`AGENTS.md`](AGENTS.md) documenting agent operating procedure and links to [`dev/ARCHITECTURE.md`](dev/ARCHITECTURE.md) and [`dev/DEVELOPMENT.md`](dev/DEVELOPMENT.md)

@@ -20,6 +20,7 @@ export type BusinessType =
   | 'automotive'
   | 'education'
   | 'financial_services'
+  | 'technology_software'
   | 'unknown';
 
 export interface BusinessTypeConfig {
@@ -328,7 +329,7 @@ export const BUSINESS_TYPE_CONFIGS: Record<BusinessType, BusinessTypeConfig> = {
   automotive: {
     type: 'automotive',
     displayName: 'Automotive',
-    keywords: ['auto', 'car', 'automotive', 'repair', 'service', 'dealership', 'mechanic', 'garage'],
+    keywords: ['automotive', 'car repair', 'auto repair', 'dealership', 'mechanic', 'garage', 'vehicle service', 'auto service'],
     agenticFlowWeights: {
       informationGathering: 0.25,
       directBooking: 0.25,
@@ -379,6 +380,24 @@ export const BUSINESS_TYPE_CONFIGS: Record<BusinessType, BusinessTypeConfig> = {
       products: { weight: 25, description: 'Financial products', examples: ['account types', 'rates', 'terms', 'benefits'] },
       support: { weight: 25, description: 'Customer support', examples: ['customer service', 'financial advisors', 'support hours'] },
       security: { weight: 20, description: 'Security and compliance', examples: ['security measures', 'compliance', 'privacy policy'] },
+    },
+  },
+  technology_software: {
+    type: 'technology_software',
+    displayName: 'Technology & Software',
+    keywords: ['software', 'technology', 'api', 'documentation', 'developer', 'programming', 'code', 'sdk', 'library', 'framework', 'intel', 'github', 'open source', 'technical', 'engineering', 'development', 'vector search', 'similarity search', 'performance library', 'python api', 'javascript', 'typescript', 'java', 'c++', 'rust'],
+    agenticFlowWeights: {
+      informationGathering: 0.40,
+      directBooking: 0.05,
+      faqSupport: 0.35,
+      taskManagement: 0.15,
+      personalization: 0.05,
+    },
+    requiredInformation: {
+      documentation: { weight: 35, description: 'Technical documentation', examples: ['API docs', 'getting started', 'tutorials', 'examples', 'reference'] },
+      installation: { weight: 25, description: 'Installation and setup', examples: ['installation guide', 'requirements', 'dependencies', 'configuration'] },
+      examples: { weight: 20, description: 'Code examples', examples: ['sample code', 'tutorials', 'use cases', 'integration examples'] },
+      support: { weight: 20, description: 'Developer support', examples: ['community', 'issues', 'contributing', 'contact'] },
     },
   },
   unknown: {
@@ -447,22 +466,37 @@ export function analyzeAgenticFlows($: any, html: string, businessType: Business
   const informationGathering = {
     score: 0,
     details: {
-      hasServiceProductInfo: /service|product|menu|catalog|item|offering|solution/i.test(text) || 
-        $('.service, .product, .menu, .catalog, .item').length > 0,
+      hasServiceProductInfo: businessType === 'technology_software' 
+        ? /api|library|framework|sdk|software|tool|service|solution|documentation|tutorial|example/i.test(text) ||
+          $('.api, .library, .framework, .sdk, .documentation, .tutorial, .example, code').length > 0
+        : /service|product|menu|catalog|item|offering|solution/i.test(text) || 
+          $('.service, .product, .menu, .catalog, .item').length > 0,
       hasPricing: /\$[\d,]+|\d+\.\d{2}|\d+\s*(dollars?|usd|eur|gbp|price|cost|fee)/i.test(text) ||
         $('.price, .cost, .fee, [data-price]').length > 0,
-      hasAvailability: /available|hours?|open|closed|schedule|time|slot|appointment/i.test(text) ||
-        $('.hours, .schedule, .availability, .time').length > 0,
+      hasAvailability: businessType === 'technology_software'
+        ? /download|install|available|version|release|changelog|update/i.test(text) ||
+          $('.download, .install, .version, .release, .changelog').length > 0
+        : /available|hours?|open|closed|schedule|time|slot|appointment/i.test(text) ||
+          $('.hours, .schedule, .availability, .time').length > 0,
       hasContactInfo: $('a[href^="tel:"], a[href^="mailto:"]').length > 0 ||
-        /phone|email|contact|call|reach/i.test(text),
-      hasLocation: /address|location|map|directions|street|city|state|zip/i.test(text) ||
-        $('.address, .location, .map, [data-location]').length > 0,
-      hasReviews: /review|rating|stars?|testimonial|feedback/i.test(text) ||
-        $('.review, .rating, .stars, .testimonial').length > 0,
-      hasPolicies: /policy|terms|conditions|refund|cancellation|privacy/i.test(text) ||
-        $('a[href*="policy"], a[href*="terms"], a[href*="privacy"]').length > 0,
-      hasDifferentiators: /special|unique|exclusive|certified|licensed|award/i.test(text) ||
-        $('.special, .unique, .exclusive, .certified').length > 0,
+        /phone|email|contact|call|reach|support|github|issues|discussion/i.test(text),
+      hasLocation: businessType === 'technology_software'
+        ? /repository|github|gitlab|bitbucket|source|code|contribute/i.test(text) ||
+          $('a[href*="github"], a[href*="gitlab"], a[href*="bitbucket"], .repository, .source').length > 0
+        : /address|location|map|directions|street|city|state|zip/i.test(text) ||
+          $('.address, .location, .map, [data-location]').length > 0,
+      hasReviews: businessType === 'technology_software'
+        ? /stars?|forks?|watchers?|contributors?|community|feedback|testimonial/i.test(text) ||
+          $('.stars, .forks, .watchers, .contributors, .community').length > 0
+        : /review|rating|stars?|testimonial|feedback/i.test(text) ||
+          $('.review, .rating, .stars, .testimonial').length > 0,
+      hasPolicies: /policy|terms|conditions|refund|cancellation|privacy|license|mit|apache|gpl/i.test(text) ||
+        $('a[href*="policy"], a[href*="terms"], a[href*="privacy"], a[href*="license"]').length > 0,
+      hasDifferentiators: businessType === 'technology_software'
+        ? /open source|free|performance|optimized|scalable|fast|efficient|benchmark/i.test(text) ||
+          $('.open-source, .free, .performance, .optimized, .scalable').length > 0
+        : /special|unique|exclusive|certified|licensed|award/i.test(text) ||
+          $('.special, .unique, .exclusive, .certified').length > 0,
     }
   };
   
@@ -514,16 +548,28 @@ export function analyzeAgenticFlows($: any, html: string, businessType: Business
   const faqSupport = {
     score: 0,
     details: {
-      hasFaq: /faq|frequently asked|questions|help|support/i.test(text) ||
-        $('.faq, .questions, .help, [data-faq]').length > 0,
-      hasPolicyDocumentation: /policy|terms|conditions|refund|return|cancellation/i.test(text) ||
-        $('a[href*="policy"], a[href*="terms"], a[href*="conditions"]').length > 0,
-      hasUserGuides: /guide|tutorial|how to|instructions|manual|documentation/i.test(text) ||
-        $('.guide, .tutorial, .instructions, .manual').length > 0,
-      hasEligibilityCriteria: /eligible|qualify|requirement|criteria|age|location/i.test(text) ||
-        $('.eligibility, .requirements, .criteria').length > 0,
-      hasSupportContact: $('a[href^="tel:"], a[href^="mailto:"]').length > 0 ||
-        /support|help|contact|assistance/i.test(text),
+      hasFaq: businessType === 'technology_software'
+        ? /faq|frequently asked|questions|help|support|troubleshooting|known issues|issues/i.test(text) ||
+          $('.faq, .questions, .help, [data-faq], .troubleshooting, .issues').length > 0
+        : /faq|frequently asked|questions|help|support/i.test(text) ||
+          $('.faq, .questions, .help, [data-faq]').length > 0,
+      hasPolicyDocumentation: businessType === 'technology_software'
+        ? /policy|terms|conditions|license|mit|apache|gpl|open source|copyright/i.test(text) ||
+          $('a[href*="policy"], a[href*="terms"], a[href*="license"], a[href*="copyright"]').length > 0
+        : /policy|terms|conditions|refund|return|cancellation/i.test(text) ||
+          $('a[href*="policy"], a[href*="terms"], a[href*="conditions"]').length > 0,
+      hasUserGuides: /guide|tutorial|how to|instructions|manual|documentation|getting started|quick start|examples/i.test(text) ||
+        $('.guide, .tutorial, .instructions, .manual, .documentation, .getting-started, .examples').length > 0,
+      hasEligibilityCriteria: businessType === 'technology_software'
+        ? /requirements|prerequisites|dependencies|system requirements|compatibility/i.test(text) ||
+          $('.requirements, .prerequisites, .dependencies, .compatibility').length > 0
+        : /eligible|qualify|requirement|criteria|age|location/i.test(text) ||
+          $('.eligibility, .requirements, .criteria').length > 0,
+      hasSupportContact: businessType === 'technology_software'
+        ? $('a[href^="tel:"], a[href^="mailto:"], a[href*="github"], a[href*="issues"], a[href*="discussions"]').length > 0 ||
+          /support|help|contact|assistance|github|issues|discussions/i.test(text)
+        : $('a[href^="tel:"], a[href^="mailto:"]').length > 0 ||
+          /support|help|contact|assistance/i.test(text),
       hasSearchFunctionality: $('input[type="search"], .search, #search').length > 0 ||
         /search|find|look for/i.test(text),
     }
