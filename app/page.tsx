@@ -936,9 +936,9 @@ export default function Home() {
                       </ul>
                     </div>
                   )}
-                  {result.staticAnalysis.socialMediaLinks && result.staticAnalysis.socialMediaLinks.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium mb-2">Social Media</h4>
+                  <div>
+                    <h4 className="text-md font-medium mb-2">Social Media</h4>
+                    {result.staticAnalysis.socialMediaLinks && result.staticAnalysis.socialMediaLinks.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {result.staticAnalysis.socialMediaLinks.map((social: {platform: string, url: string}, index: number) => (
                           <a 
@@ -955,8 +955,10 @@ export default function Home() {
                           </a>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <p className="text-sm text-gray-500">None discovered</p>
+                    )}
+                  </div>
                 </div>
 
         {/* Business Type Analysis */}

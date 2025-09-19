@@ -828,6 +828,15 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       }
     })
 
+    // Analyze key pages to get comprehensive information
+    console.log('🔍 Analyzing key pages for additional contact info and social media...')
+    const keyPageData = await analyzeKeyPages(websiteUrl, $)
+    
+    // Merge key page data with main page data
+    const allContactInfo = [...new Set([...contactInfo, ...keyPageData.contactInfo])]
+    const allSocialLinks = [...socialLinks, ...keyPageData.socialMediaLinks]
+    const allNavItems = [...new Set([...navItems, ...keyPageData.navigationStructure])]
+
     // Create the new business-type-aware analysis result
     const analysis: WebsiteAnalysisResult = {
       // Basic website info
@@ -850,9 +859,9 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       
       // Technology & Integration (AI-relevant only)
       technologies: Array.from(techSet),
-      socialMediaLinks: [...new Set(socialLinks)],
-      contactInfo: contactInfo,
-      navigationStructure: navItems,
+      socialMediaLinks: allSocialLinks,
+      contactInfo: allContactInfo,
+      navigationStructure: allNavItems,
       
       // Legacy fields for backward compatibility
       hasStructuredData: aiChecks.hasStructuredData,
@@ -882,6 +891,164 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
   } catch (error) {
     console.error('Website analysis error:', error)
     throw new Error(`Failed to analyze website: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+/**
+ * Follow key navigation links to gather comprehensive site information
+ */
+async function analyzeKeyPages(websiteUrl: string, $: any): Promise<{
+  contactInfo: string[],
+  socialMediaLinks: Array<{platform: string, url: string}>,
+  navigationStructure: string[]
+}> {
+  const baseUrl = new URL(websiteUrl)
+  const contactInfo = new Set<string>()
+  const socialMediaLinks: Array<{platform: string, url: string}> = []
+  const socialSet = new Set<string>()
+  const navigationStructure = new Set<string>()
+  
+  // Key pages to check for additional information
+  const keyPagePatterns = [
+    /contact/i,
+    /about/i,
+    /services/i,
+    /pricing/i,
+    /support/i,
+    /help/i,
+    /team/i,
+    /company/i
+  ]
+  
+  // Find links to key pages
+  const keyPageLinks: string[] = []
+  $('a[href]').each((_: number, el: any) => {
+    const href = $(el).attr('href')
+    if (href) {
+      try {
+        const linkUrl = new URL(href, websiteUrl)
+        // Only follow internal links
+        if (linkUrl.hostname === baseUrl.hostname) {
+          const linkText = $(el).text().toLowerCase().trim()
+          const hrefLower = href.toLowerCase()
+          
+          // Check if this looks like a key page
+          if (keyPagePatterns.some(pattern => pattern.test(linkText) || pattern.test(hrefLower))) {
+            keyPageLinks.push(linkUrl.href)
+          }
+        }
+      } catch (e) {
+        // Skip invalid URLs
+      }
+    }
+  })
+  
+  // Limit to first 3 key pages to avoid overwhelming the system
+  const pagesToAnalyze = keyPageLinks.slice(0, 3)
+  
+  console.log(`🔍 Found ${keyPageLinks.length} potential key pages, analyzing ${pagesToAnalyze.length}`)
+  
+  // Analyze each key page
+  for (const pageUrl of pagesToAnalyze) {
+    try {
+      console.log(`📄 Analyzing key page: ${pageUrl}`)
+      
+      // Use the same HTTP strategies as the main page
+      let pageResponse
+      try {
+        pageResponse = await axios.get(pageUrl, {
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'AI-Agent-Readiness-Assessment/1.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+          }
+        })
+      } catch (error: any) {
+        if (error.code === 'HPE_INVALID_HEADER_TOKEN' || error.message?.includes('Parse Error: Invalid header value char')) {
+          // Try fallback strategies for this page too
+          try {
+            pageResponse = await axios.get(pageUrl, { 
+              decompress: false,
+              timeout: 10000,
+              headers: { 'User-Agent': 'AI-Agent-Readiness-Assessment/1.0' }
+            })
+          } catch (strategy1Error: any) {
+            // Skip this page if all strategies fail
+            continue
+          }
+        } else {
+          continue
+        }
+      }
+      
+      const { load } = await import('cheerio')
+      const page$ = load(pageResponse.data)
+      
+      // Extract contact info from this page
+      page$('a[href^="tel:"]').each((_: number, el: any) => {
+        const href = page$(el).attr('href')
+        if (href) {
+          const phoneNumber = href.replace('tel:', '').trim()
+          if (phoneNumber) contactInfo.add(phoneNumber)
+        }
+      })
+      
+      page$('a[href^="mailto:"]').each((_: number, el: any) => {
+        const href = page$(el).attr('href')
+        if (href) {
+          const email = href.replace('mailto:', '').trim()
+          if (email) contactInfo.add(email)
+        }
+      })
+      
+      // Extract social media links from this page
+      page$('a[href]').each((_: number, el: any) => {
+        const href = page$(el).attr('href')
+        if (href) {
+          // GitHub
+          if (href.includes('github.com') && !socialSet.has('github.com')) {
+            socialMediaLinks.push({ platform: 'GitHub', url: href })
+            socialSet.add('github.com')
+          }
+          // Facebook
+          if (href.includes('facebook.com') && !socialSet.has('facebook.com')) {
+            socialMediaLinks.push({ platform: 'Facebook', url: href })
+            socialSet.add('facebook.com')
+          }
+          // Twitter/X
+          if ((href.includes('twitter.com') || href.includes('x.com')) && !socialSet.has('twitter.com') && !socialSet.has('x.com')) {
+            socialMediaLinks.push({ platform: 'Twitter/X', url: href })
+            socialSet.add(href.includes('x.com') ? 'x.com' : 'twitter.com')
+          }
+          // LinkedIn
+          if (href.includes('linkedin.com') && !socialSet.has('linkedin.com')) {
+            socialMediaLinks.push({ platform: 'LinkedIn', url: href })
+            socialSet.add('linkedin.com')
+          }
+        }
+      })
+      
+      // Extract navigation structure
+      page$('nav a, .nav a, .navigation a, .menu a').each((_: number, el: any) => {
+        const text = page$(el).text().trim()
+        if (text && text.length < 50) { // Reasonable navigation item length
+          navigationStructure.add(text)
+        }
+      })
+      
+    } catch (error) {
+      console.warn(`⚠️ Failed to analyze key page ${pageUrl}:`, error)
+      continue
+    }
+  }
+  
+  return {
+    contactInfo: Array.from(contactInfo),
+    socialMediaLinks,
+    navigationStructure: Array.from(navigationStructure)
   }
 }
 

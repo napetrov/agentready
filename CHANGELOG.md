@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Contact Details & Social Media Links**: Restored missing contact information and social media links extraction that were not being displayed in the output
 - **GitHub Social Media Detection**: Added GitHub links to social media extraction for technology sites, with proper platform identification and clickable URLs
 - **Enhanced Contact Extraction**: Improved contact information extraction to include email addresses and phone numbers from both links and text content using regex patterns
+- **Social Media Section Display**: Fixed social media section to always show (with "None discovered" when empty) instead of hiding when no links found
+- **Limited Site Crawling**: Added intelligent key page analysis that follows navigation links to contact, about, services, pricing, support, help, team, and company pages to gather comprehensive site information
+
+### Added
+- **Multi-Page Analysis**: System now analyzes up to 3 key pages per site (contact, about, services, etc.) in addition to the main page for more comprehensive information gathering
+- **Comprehensive Data Merging**: Contact info, social media links, and navigation structure are now merged from main page and key pages with deduplication
 
 ### Added
 - [`.cursorrules`](.cursorrules) with Cursor-recommended instructions for Vercel/Next.js/TypeScript/Node workflows
