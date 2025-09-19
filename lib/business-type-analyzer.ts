@@ -420,6 +420,25 @@ export const BUSINESS_TYPE_CONFIGS: Record<BusinessType, BusinessTypeConfig> = {
   },
 };
 
+// Cache for compiled regex patterns to improve performance
+const regexCache = new Map<string, RegExp>();
+
+/**
+ * Get or create a cached word boundary regex for a keyword
+ */
+function getWordBoundaryRegex(keyword: string): RegExp {
+  const cacheKey = keyword.toLowerCase();
+  
+  if (!regexCache.has(cacheKey)) {
+    // Escape special regex characters and create word boundary pattern
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+    regexCache.set(cacheKey, regex);
+  }
+  
+  return regexCache.get(cacheKey)!;
+}
+
 /**
  * Detect business type based on content analysis
  */
@@ -436,8 +455,8 @@ export function detectBusinessType($: any, html: string, url: string): BusinessT
     
     let score = 0;
     for (const keyword of config.keywords) {
-      // Use word-boundary regex for text and title to reduce false positives
-      const wordBoundaryRegex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      // Use cached word-boundary regex for text and title to reduce false positives
+      const wordBoundaryRegex = getWordBoundaryRegex(keyword);
       
       if (wordBoundaryRegex.test(text)) score += 1;
       if (wordBoundaryRegex.test(title)) score += 2;

@@ -24,7 +24,7 @@ function isPublicIP(ip: string): boolean {
     if (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) return false // 192.0.2.0/24
     if (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) return false // 198.51.100.0/24
     if (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) return false // 203.0.113.0/24
-    if (parts[0] >= 224) return false // 224/4 multicast and 240/4 reserved
+    if (parts[0] >= 224) return false // 224-239: multicast (Class D), 240-255: reserved (Class E)
     
     return true
   }

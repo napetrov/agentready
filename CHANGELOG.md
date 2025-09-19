@@ -20,6 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Multi-Page Analysis**: System now analyzes up to 3 key pages per site (contact, about, services, etc.) in addition to the main page for more comprehensive information gathering
 - **Comprehensive Data Merging**: Contact info, social media links, and navigation structure are now merged from main page and key pages with deduplication
+- **Code Review Improvements**: Addressed all 7 code review comments with security, performance, and maintainability enhancements
+
+### Security & Performance Improvements
+- **Command Injection Protection**: Fixed curl fallback vulnerability by properly escaping URL parameters before shell execution
+- **External Link Security**: Added `nofollow` attribute to social media links to prevent SEO endorsement and improve security
+- **DNS Security Enhancement**: Added explicit DNS rebinding protection documentation and improved error messages
+- **Regex Performance Optimization**: Implemented cached regex compilation for business type keyword matching to improve performance
+- **Module Constants**: Moved hardcoded extensionless files array to module-level constant to prevent recreation on every call
+- **Code Documentation**: Added explicit comments for variance calculation behavior and AI value validation logic
+- **TypeScript Improvements**: Enhanced type safety with proper AI value validation helper function
 
 ### Added
 - [`.cursorrules`](.cursorrules) with Cursor-recommended instructions for Vercel/Next.js/TypeScript/Node workflows

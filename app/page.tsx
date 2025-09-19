@@ -945,7 +945,7 @@ export default function Home() {
                             key={index} 
                             href={social.url}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="noopener noreferrer nofollow"
                             className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition-colors duration-200 inline-flex items-center gap-1"
                           >
                             {social.platform}

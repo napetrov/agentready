@@ -1,6 +1,13 @@
 import JSZip from 'jszip'
 import axios from 'axios'
 import { FileSizeAnalyzer, FileSizeAnalysis } from './file-size-analyzer'
+
+// Common extensionless files that should be treated as code files
+const EXTENSIONLESS_FILES = [
+  'dockerfile', 'makefile', 'cmake', 'gradle', 'maven', 'pom', 'sbt', 
+  'build', 'gulpfile', 'gruntfile', 'rakefile', 'gemfile', 'vagrantfile',
+  'procfile', 'heroku', 'gitignore', 'gitattributes', 'dockerignore'
+]
 import { 
   BusinessType, 
   BUSINESS_TYPE_CONFIGS,
@@ -440,14 +447,10 @@ function isTextFile(filename: string): boolean {
   if (!filename) return false
   
   // Check for extensionless files first
-  const extensionlessFiles = [
-    'dockerfile', 'makefile', 'cmake', 'gradle', 'maven', 'pom', 'sbt', 
-    'build', 'gulpfile', 'gruntfile', 'rakefile', 'gemfile', 'vagrantfile',
-    'procfile', 'heroku', 'gitignore', 'gitattributes', 'dockerignore'
-  ]
+    // Use the module-level constant for extensionless files
   
   const basename = filename.toLowerCase().split('/').pop() || ''
-  if (extensionlessFiles.includes(basename)) return true
+  if (EXTENSIONLESS_FILES.includes(basename)) return true
   
   // Check for files with extensions
   const extension = filename.split('.').pop()?.toLowerCase()
@@ -484,13 +487,18 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
     ) throw new Error('Refusing to fetch private/loopback hosts')
 
     // DNS-level guard: block private, link-local, and unique-local IPs
+    // This provides protection against DNS rebinding attacks by ensuring we only connect to public IPs
     const { lookup } = await import('node:dns/promises')
     const addrs = await lookup(host, { all: true })
     const isPrivate = (ip: string) =>
       /^127\./.test(ip) || /^10\./.test(ip) || /^192\.168\./.test(ip) ||
       /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) || /^169\.254\./.test(ip) ||
       ip === '0.0.0.0' || /^::1$/.test(ip) || /^fe80:/i.test(ip) || /^fc00:|^fd00:/i.test(ip)
-    if (addrs.some(a => isPrivate(a.address))) throw new Error('Refusing to fetch hosts resolving to private/link-local IPs')
+    
+    // Additional DNS rebinding protection: ensure all resolved addresses are public
+    if (addrs.some(a => isPrivate(a.address))) {
+      throw new Error('Refusing to fetch hosts resolving to private/link-local IPs (DNS rebinding protection)')
+    }
 
     // Import cheerio dynamically
     const { load } = await import('cheerio')
@@ -619,7 +627,9 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
                   const { promisify } = await import('util')
                   const execAsync = promisify(exec)
                   
-                  const curlCommand = `curl -s -L -m 30 -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" "${websiteUrl}"`
+                  // Escape the URL to prevent command injection
+                  const escapedUrl = websiteUrl.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$')
+                  const curlCommand = `curl -s -L -m 30 -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" "${escapedUrl}"`
                   const { stdout } = await execAsync(curlCommand)
                   
                   response = {

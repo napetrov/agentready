@@ -114,6 +114,13 @@ export class UnifiedMetricsEngine {
   }
 
   /**
+   * Helper function to validate AI values
+   */
+  private isValidAIValue(aiValue: number | undefined): boolean {
+    return aiValue !== undefined && aiValue !== null && !Number.isNaN(aiValue) && aiValue >= 0
+  }
+
+  /**
    * Create a unified metric from static and AI values
    */
   createUnifiedMetric(
@@ -122,6 +129,8 @@ export class UnifiedMetricsEngine {
     staticConfidence: number = 80,
     aiConfidence: number = 70
   ): UnifiedMetric {
+    // Calculate variance between static and AI scores
+    // If aiValue is undefined, set variance to 0 to indicate that no validation is possible
     const variance = aiValue !== undefined ? Math.abs(staticValue - aiValue) : 0;
     const isValidated = variance <= this.config.maxScoreVariance;
     
@@ -130,9 +139,10 @@ export class UnifiedMetricsEngine {
     let weightedConfidence: number;
     let source: 'static' | 'ai' | 'hybrid';
     
-    if (aiValue !== undefined && aiValue !== null && !Number.isNaN(aiValue)) {
-      // Both static and AI values available
-      weightedValue = (staticValue * this.config.staticWeight) + (aiValue * this.config.aiWeight);
+    if (this.isValidAIValue(aiValue)) {
+      // Both static and AI values available - aiValue is guaranteed to be defined here
+      const validAIValue = aiValue as number;
+      weightedValue = (staticValue * this.config.staticWeight) + (validAIValue * this.config.aiWeight);
       weightedConfidence = (staticConfidence * this.config.staticWeight) + (aiConfidence * this.config.aiWeight);
       source = 'hybrid';
     } else {
