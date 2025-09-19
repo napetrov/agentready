@@ -525,41 +525,128 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
         console.warn(`⚠️  HTTP header parsing error for ${websiteUrl}, trying alternative approach...`)
         
         try {
-          // Try with Node.js built-in fetch as fallback (more lenient with malformed headers)
-          console.log(`🔄 Attempting fallback fetch for ${websiteUrl}...`)
-          const fetchResponse = await fetch(websiteUrl, {
-            method: 'GET',
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            },
-            // Set a timeout using AbortController
-            signal: AbortSignal.timeout(30000),
-          })
+          // Try multiple fallback strategies
+          console.log(`🔄 Attempting fallback strategies for ${websiteUrl}...`)
           
-          if (!fetchResponse.ok) {
-            throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`)
+          // Strategy 1: Try with minimal headers using axios
+          try {
+            console.log(`🔄 Strategy 1: Minimal axios request...`)
+            response = await axios.get(websiteUrl, {
+              timeout: 30000,
+              maxRedirects: 3,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              },
+              // Disable automatic decompression to avoid header parsing issues
+              decompress: false,
+            })
+            console.log(`✅ Strategy 1 (minimal axios) successful for ${websiteUrl}`)
+          } catch (strategy1Error: any) {
+            console.warn(`⚠️  Strategy 1 failed: ${strategy1Error.message}`)
+            
+            // Strategy 2: Try with Node.js built-in fetch (if available)
+            try {
+              console.log(`🔄 Strategy 2: Native fetch...`)
+              if (typeof fetch !== 'undefined') {
+                const fetchResponse = await fetch(websiteUrl, {
+                  method: 'GET',
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  },
+                  // Set a timeout using AbortController
+                  signal: AbortSignal.timeout(30000),
+                })
+                
+                if (!fetchResponse.ok) {
+                  throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`)
+                }
+                
+                const html = await fetchResponse.text()
+                
+                // Create a mock axios response object to maintain compatibility
+                response = {
+                  data: html,
+                  status: fetchResponse.status,
+                  statusText: fetchResponse.statusText,
+                  headers: Object.fromEntries(fetchResponse.headers.entries()),
+                  config: {},
+                  request: {},
+                }
+                console.log(`✅ Strategy 2 (native fetch) successful for ${websiteUrl}`)
+              } else {
+                throw new Error('Native fetch not available')
+              }
+            } catch (strategy2Error: any) {
+              console.warn(`⚠️  Strategy 2 failed: ${strategy2Error.message}`)
+              
+              // Strategy 3: Try with node-fetch (if available)
+              try {
+                console.log(`🔄 Strategy 3: node-fetch...`)
+                const nodeFetch = await import('node-fetch')
+                const fetchResponse = await nodeFetch.default(websiteUrl, {
+                  method: 'GET',
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  },
+                  timeout: 30000,
+                })
+                
+                if (!fetchResponse.ok) {
+                  throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`)
+                }
+                
+                const html = await fetchResponse.text()
+                
+                // Create a mock axios response object to maintain compatibility
+                response = {
+                  data: html,
+                  status: fetchResponse.status,
+                  statusText: fetchResponse.statusText,
+                  headers: Object.fromEntries(fetchResponse.headers.entries()),
+                  config: {},
+                  request: {},
+                }
+                console.log(`✅ Strategy 3 (node-fetch) successful for ${websiteUrl}`)
+              } catch (strategy3Error: any) {
+                console.warn(`⚠️  Strategy 3 failed: ${strategy3Error.message}`)
+                
+                // Strategy 4: Try with curl-like approach using child_process
+                try {
+                  console.log(`🔄 Strategy 4: curl fallback...`)
+                  const { exec } = await import('child_process')
+                  const { promisify } = await import('util')
+                  const execAsync = promisify(exec)
+                  
+                  const curlCommand = `curl -s -L -m 30 -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" "${websiteUrl}"`
+                  const { stdout } = await execAsync(curlCommand)
+                  
+                  response = {
+                    data: stdout,
+                    status: 200,
+                    statusText: 'OK',
+                    headers: {},
+                    config: {},
+                    request: {},
+                  }
+                  console.log(`✅ Strategy 4 (curl) successful for ${websiteUrl}`)
+                } catch (strategy4Error: any) {
+                  console.warn(`⚠️  Strategy 4 failed: ${strategy4Error.message}`)
+                  throw new Error(`All fallback strategies failed. Last error: ${strategy4Error.message}`)
+                }
+              }
+            }
           }
-          
-          const html = await fetchResponse.text()
-          
-          // Create a mock axios response object to maintain compatibility
-          response = {
-            data: html,
-            status: fetchResponse.status,
-            statusText: fetchResponse.statusText,
-            headers: Object.fromEntries(fetchResponse.headers.entries()),
-            config: {},
-            request: {},
-          }
-          
-          console.log(`✅ Fallback fetch successful for ${websiteUrl}`)
         } catch (fallbackError: any) {
-          console.error(`❌ Both primary and fallback HTTP requests failed for ${websiteUrl}:`, {
+          console.error(`❌ All HTTP request strategies failed for ${websiteUrl}:`, {
             primaryError: error.message,
             fallbackError: fallbackError.message,
           })
-          throw new Error(`Failed to fetch website content: ${error.message}. Fallback also failed: ${fallbackError.message}`)
+          
+          // Final fallback: Provide basic analysis based on URL structure
+          console.warn(`🔄 Attempting URL-based analysis fallback for ${websiteUrl}...`)
+          return await createURLBasedAnalysis(websiteUrl, error.message)
         }
       } else {
         throw new Error(`Failed to fetch website content: ${error.message}`)
@@ -726,5 +813,113 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
   } catch (error) {
     console.error('Website analysis error:', error)
     throw new Error(`Failed to analyze website: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+/**
+ * Create a basic analysis when HTTP requests fail
+ * This provides minimal but useful information based on URL structure
+ */
+async function createURLBasedAnalysis(websiteUrl: string, errorMessage: string): Promise<WebsiteAnalysisResult> {
+  const url = new URL(websiteUrl)
+  const domain = url.hostname
+  
+  // Basic business type detection based on domain and path
+  let businessType: BusinessType = 'unknown'
+  let businessTypeConfidence = 30
+  
+  const domainLower = domain.toLowerCase()
+  const pathLower = url.pathname.toLowerCase()
+  
+  // Simple keyword-based detection
+  if (domainLower.includes('health') || domainLower.includes('medical') || domainLower.includes('clinic') || 
+      pathLower.includes('health') || pathLower.includes('medical') || pathLower.includes('clinic') ||
+      pathLower.includes('patient') || pathLower.includes('doctor')) {
+    businessType = 'healthcare'
+    businessTypeConfidence = 70
+  } else if (domainLower.includes('food') || domainLower.includes('restaurant') || domainLower.includes('cafe') ||
+             pathLower.includes('food') || pathLower.includes('restaurant') || pathLower.includes('cafe')) {
+    businessType = 'food_service'
+    businessTypeConfidence = 70
+  } else if (domainLower.includes('hotel') || domainLower.includes('travel') || domainLower.includes('booking') ||
+             pathLower.includes('hotel') || pathLower.includes('travel') || pathLower.includes('booking')) {
+    businessType = 'hospitality'
+    businessTypeConfidence = 70
+  }
+  
+  // Create minimal agentic flows with low scores
+  const agenticFlows = {
+    informationGathering: { score: 20, details: {} },
+    directBooking: { score: 15, details: {} },
+    faqSupport: { score: 10, details: {} },
+    taskManagement: { score: 15, details: {} },
+    personalization: { score: 10, details: {} }
+  }
+  
+  // Calculate minimal overall score
+  const businessTypeConfig = BUSINESS_TYPE_CONFIGS[businessType]
+  const overallScore = Math.round(
+    (agenticFlows.informationGathering.score * businessTypeConfig.agenticFlowWeights.informationGathering) +
+    (agenticFlows.directBooking.score * businessTypeConfig.agenticFlowWeights.directBooking) +
+    (agenticFlows.faqSupport.score * businessTypeConfig.agenticFlowWeights.faqSupport) +
+    (agenticFlows.taskManagement.score * businessTypeConfig.agenticFlowWeights.taskManagement) +
+    (agenticFlows.personalization.score * businessTypeConfig.agenticFlowWeights.personalization)
+  )
+  
+  // Create minimal AI checks
+  const aiChecks = {
+    hasStructuredData: false,
+    hasOpenGraph: false,
+    hasTwitterCards: false,
+    hasSitemap: false,
+    hasRobotsTxt: false,
+    hasContactInfo: false,
+    hasSocialMediaLinks: false,
+    hasNavigationStructure: false,
+    hasPageTitle: false,
+    hasMetaDescription: false,
+    contentAccessibility: 10 // Very low since we can't access content
+  }
+  
+  // Generate minimal insights
+  const insights = {
+    findings: [
+      `Unable to fetch website content due to HTTP header parsing error: ${errorMessage}`,
+      `Basic analysis based on URL structure only`,
+      `Domain: ${domain}`,
+      `Detected business type: ${businessType} (confidence: ${businessTypeConfidence}%)`
+    ],
+    recommendations: [
+      'Fix HTTP header formatting issues on the website',
+      'Ensure all HTTP headers comply with RFC standards',
+      'Consider using a web scraping service for problematic websites',
+      'Add structured data (JSON-LD) to improve AI agent compatibility',
+      'Implement proper error handling for malformed HTTP responses'
+    ]
+  }
+  
+  return {
+    websiteUrl,
+    businessType,
+    businessTypeConfidence,
+    overallScore,
+    agenticFlows,
+    aiRelevantChecks: aiChecks,
+    technologies: [],
+    socialMediaLinks: [],
+    contactInfo: [],
+    navigationStructure: [],
+    contentLength: 0,
+    pageTitle: domain,
+    metaDescription: '',
+    findings: insights.findings,
+    recommendations: insights.recommendations,
+    // Legacy fields for backward compatibility
+    hasStructuredData: false,
+    hasOpenGraph: false,
+    hasTwitterCards: false,
+    hasSitemap: false,
+    hasRobotsTxt: false,
+    linkCount: 0
   }
 }
