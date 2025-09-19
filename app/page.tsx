@@ -899,16 +899,27 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Website technologies */}
-                {result.staticAnalysis.technologies && result.staticAnalysis.technologies.length > 0 && (
+                {/* Detected Technologies - Combined for both websites and repositories */}
+                {((result.staticAnalysis.technologies && result.staticAnalysis.technologies.length > 0) || 
+                  (result.staticAnalysis.languages && result.staticAnalysis.languages.length > 0)) && (
                   <div>
                     <h4 className="text-md font-medium mb-2">Detected Technologies</h4>
                     <div className="flex flex-wrap gap-2">
-                      {result.staticAnalysis.technologies.map((tech: string, index: number) => (
-                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                      {/* Show programming languages first */}
+                      {result.staticAnalysis.languages && result.staticAnalysis.languages.map((lang: string, index: number) => (
+                        <span key={`lang-${index}`} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                          {lang}
+                        </span>
+                      ))}
+                      {/* Then show frameworks/technologies */}
+                      {result.staticAnalysis.technologies && result.staticAnalysis.technologies.map((tech: string, index: number) => (
+                        <span key={`tech-${index}`} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                           {tech}
                         </span>
                       ))}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">
+                      💡 This information helps identify compatibility issues and improvement opportunities
                     </div>
                   </div>
                 )}
@@ -1293,19 +1304,6 @@ export default function Home() {
               </div>
             )}
             
-            {/* Languages */}
-            {result.staticAnalysis.languages && result.staticAnalysis.languages.length > 0 && (
-              <div className="mt-4 p-3 border rounded-lg">
-                <div className="text-sm font-medium mb-2">Programming Languages</div>
-                <div className="flex flex-wrap gap-2">
-                  {result.staticAnalysis.languages.map((lang: string, index: number) => (
-                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                      {lang}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
 

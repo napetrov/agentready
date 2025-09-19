@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Enhanced Contact Extraction**: Improved contact information extraction to include email addresses and phone numbers from both links and text content using regex patterns
 - **Social Media Section Display**: Fixed social media section to always show (with "None discovered" when empty) instead of hiding when no links found
 - **Limited Site Crawling**: Added intelligent key page analysis that follows navigation links to contact, about, services, pricing, support, help, team, and company pages to gather comprehensive site information
+- **Technology Section Consolidation**: Removed duplicate "Programming Languages" section and consolidated into single "Detected Technologies" section with improved visual distinction and helpful context for improvement suggestions
 
 ### Added
 - **Multi-Page Analysis**: System now analyzes up to 3 key pages per site (contact, about, services, etc.) in addition to the main page for more comprehensive information gathering
