@@ -93,48 +93,9 @@ export default function Home() {
       setIsAnalyzing(false)
     }
   }
-        totalContextFiles: number
-        averageContextFileSize: number
-        contextEfficiency: string
-        recommendations: string[]
-      }
-      agentCompatibility: {
-        cursor: number
-        githubCopilot: number
-        claudeWeb: number
-        claudeApi: number
-        overall: number
-      }
-      recommendations: string[]
-    }
-  }
-  websiteAnalysis?: {
-    // Legacy fields for backward compatibility
-    websiteType: 'restaurant' | 'documentation' | 'ecommerce' | 'business' | 'blog' | 'portfolio' | 'unknown'
-    agenticFlows?: {
-      informationGathering: {
-        score: number
-        hasServiceProductInfo: boolean
-        hasPricing: boolean
-        hasAvailability: boolean
-        hasContactInfo: boolean
-        hasLocation: boolean
-        hasReviews: boolean
-        hasPolicies: boolean
-        hasDifferentiators: boolean
-      }
-      directBooking: {
-        score: number
-        hasActionableInstructions: boolean
-        hasBookingRequirements: boolean
-        hasConfirmationProcess: boolean
-        hasPaymentOptions: boolean
-        hasModificationPolicies: boolean
-        hasErrorHandling: boolean
-        hasMobileOptimization: boolean
-      }
-      faqSupport: {
-        score: number
+
+  const handleDownload = () => {
+    if (!result) return
         hasFaq: boolean
         hasPolicyDocumentation: boolean
         hasUserGuides: boolean
@@ -161,42 +122,103 @@ export default function Home() {
         hasDynamicContent: boolean
       }
     }
-    restaurantMetrics?: {
-      hasHours: boolean
-      hasMenu: boolean
-      hasReservations: boolean
-      hasOrdering: boolean
-      hasIngredients: boolean
-      hasCalories: boolean
-      hasLocation: boolean
-      hasPhone: boolean
-      hasDelivery: boolean
-      hasReviews: boolean
+
+  const handleDownload = () => {
+    if (!result) return
+
+    try {
+      import('../lib/report-generator').then(({ generatePDFReport }) => {
+        generatePDFReport(result, inputUrl)
+      }).catch(err => {
+        console.error('PDF generation error:', err)
+        setError('Failed to generate PDF report')
+      })
+    } catch {
+      setError('PDF generation is not available')
     }
-    documentationMetrics?: {
-      hasApiDocs: boolean
-      hasExamples: boolean
-      hasTutorials: boolean
-      hasChangelog: boolean
-      hasVersioning: boolean
-      hasCodeSamples: boolean
-      hasInstallationGuide: boolean
-      hasQuickStart: boolean
-      hasReference: boolean
-      hasCommunity: boolean
+  }
+
+  const detectInputType = (url: string): 'repository' | 'website' => {
+    if (url.includes('github.com')) {
+      return 'repository'
     }
-    ecommerceMetrics?: {
-      hasProductCatalog: boolean
-      hasSearch: boolean
-      hasFilters: boolean
-      hasReviews: boolean
-      hasWishlist: boolean
-      hasCart: boolean
-      hasCheckout: boolean
-      hasPayment: boolean
-      hasShipping: boolean
-      hasReturns: boolean
+    return 'website'
+  }
+
+  const handleUrlChange = (url: string) => {
+    setInputUrl(url)
+    if (url.trim()) {
+      setInputType(detectInputType(url))
     }
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Input Section */}
+      <div className="card">
+        <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <Github className="w-5 h-5 mr-2" />
+          AI Agent Readiness Assessment
+        </h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Input Type
+            </label>
+            <div className="flex space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="repository"
+                  checked={inputType === 'repository'}
+                  onChange={(e) => setInputType(e.target.value as 'repository' | 'website')}
+                  className="mr-2"
+                />
+                Repository
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="website"
+                  checked={inputType === 'website'}
+                  onChange={(e) => setInputType(e.target.value as 'repository' | 'website')}
+                  className="mr-2"
+                />
+                Website
+              </label>
+            </div>
+          </div>
+          
+          <div>
+            <label htmlFor="url" className="block text-sm font-medium mb-2">
+              {inputType === 'repository' ? 'Repository URL' : 'Website URL'}
+            </label>
+            <input
+              type="url"
+              id="url"
+              value={inputUrl}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              placeholder={inputType === 'repository' ? 'https://github.com/owner/repo' : 'https://example.com'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <button
+            onClick={handleAnalyze}
+            disabled={isAnalyzing || !inputUrl.trim()}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="animate-spin w-4 h-4 mr-2" />
+                Analyzing...
+              </>
+            ) : (
+              `Analyze ${inputType}`
+            )}
+          </button>
+        </div>
   }
   // New business-type-aware analysis data
   businessTypeAnalysis?: {
