@@ -53,7 +53,7 @@ export interface StaticAnalysisResult {
   }
   technologies?: string[]
   securityHeaders?: string[]
-  socialMediaLinks?: string[]
+  socialMediaLinks?: Array<{platform: string, url: string}>
   contactInfo?: string[]
   navigationStructure?: string[]
 }
@@ -70,7 +70,7 @@ export interface WebsiteAnalysisResult extends AIAgentReadinessResult {
   
   // Technology & Integration (AI-relevant only)
   technologies: string[]
-  socialMediaLinks: string[]
+  socialMediaLinks: Array<{platform: string, url: string}>
   contactInfo: string[]
   navigationStructure: string[]
   
@@ -728,32 +728,37 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       }
     })
 
-    // Extract social media links (deduplicated)
-    const socialLinks: string[] = []
+    // Extract social media links (deduplicated with URLs)
+    const socialLinks: Array<{platform: string, url: string}> = []
     const socialSet = new Set<string>() // Use Set to prevent duplicates
     
     $('a[href]').each((_, el) => {
       const href = $(el).attr('href')
       if (href) {
-        if (href.includes('facebook.com') && !socialSet.has('Facebook')) {
-          socialLinks.push('Facebook')
-          socialSet.add('Facebook')
+        // Facebook
+        if (href.includes('facebook.com') && !socialSet.has('facebook.com')) {
+          socialLinks.push({ platform: 'Facebook', url: href })
+          socialSet.add('facebook.com')
         }
-        if ((href.includes('twitter.com') || href.includes('x.com')) && !socialSet.has('Twitter/X')) {
-          socialLinks.push('Twitter/X')
-          socialSet.add('Twitter/X')
+        // Twitter/X
+        if ((href.includes('twitter.com') || href.includes('x.com')) && !socialSet.has('twitter.com') && !socialSet.has('x.com')) {
+          socialLinks.push({ platform: 'Twitter/X', url: href })
+          socialSet.add(href.includes('x.com') ? 'x.com' : 'twitter.com')
         }
-        if (href.includes('linkedin.com') && !socialSet.has('LinkedIn')) {
-          socialLinks.push('LinkedIn')
-          socialSet.add('LinkedIn')
+        // LinkedIn
+        if (href.includes('linkedin.com') && !socialSet.has('linkedin.com')) {
+          socialLinks.push({ platform: 'LinkedIn', url: href })
+          socialSet.add('linkedin.com')
         }
-        if (href.includes('instagram.com') && !socialSet.has('Instagram')) {
-          socialLinks.push('Instagram')
-          socialSet.add('Instagram')
+        // Instagram
+        if (href.includes('instagram.com') && !socialSet.has('instagram.com')) {
+          socialLinks.push({ platform: 'Instagram', url: href })
+          socialSet.add('instagram.com')
         }
-        if (href.includes('youtube.com') && !socialSet.has('YouTube')) {
-          socialLinks.push('YouTube')
-          socialSet.add('YouTube')
+        // YouTube
+        if (href.includes('youtube.com') && !socialSet.has('youtube.com')) {
+          socialLinks.push({ platform: 'YouTube', url: href })
+          socialSet.add('youtube.com')
         }
       }
     })

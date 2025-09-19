@@ -100,7 +100,7 @@ interface AssessmentResult {
     }
     technologies?: string[]
     securityHeaders?: string[]
-    socialMediaLinks?: string[]
+    socialMediaLinks?: Array<{platform: string, url: string}>
     contactInfo?: string[]
     navigationStructure?: string[]
     fileSizeAnalysis?: {
@@ -940,10 +940,19 @@ export default function Home() {
                     <div>
                       <h4 className="text-md font-medium mb-2">Social Media</h4>
                       <div className="flex flex-wrap gap-2">
-                        {result.staticAnalysis.socialMediaLinks.map((social: string, index: number) => (
-                          <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                            {social}
-                          </span>
+                        {result.staticAnalysis.socialMediaLinks.map((social: {platform: string, url: string}, index: number) => (
+                          <a 
+                            key={index} 
+                            href={social.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition-colors duration-200 inline-flex items-center gap-1"
+                          >
+                            {social.platform}
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
                         ))}
                       </div>
                     </div>
