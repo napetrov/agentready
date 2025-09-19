@@ -38,12 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EXPANDED**: AI readiness insights to include all 5 agentic flows (taskManagement and personalization)
 - **OPTIMIZED**: API response payload by limiting findings/recommendations to top 10 items
 - **HARDENED**: Security validation with comprehensive SSRF protection and DNS-level checks
+- **CRITICAL FIX**: Overall readiness score now correctly uses business-type-aware scoring instead of legacy unified metrics
 - Improved UI layout by combining separate status and debug sections
 - Enhanced error messages with more detailed debugging information
 - Updated test configuration to use proper API key validation
 - Streamlined frontend display logic for better user experience
 
 ### Fixed
+- **CRITICAL**: Fixed overall readiness score discrepancy where business-type-aware scores (80-100) were being overridden by legacy unified metrics (8) causing incorrect "Needs improvement" ratings
 - Documentation gaps for agent onboarding and change management
 - TypeScript compilation errors related to missing `aiAnalysisStatus` property
 - **CRITICAL**: Fixed major inconsistency where website analysis showed repository-focused key findings

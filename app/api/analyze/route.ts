@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     // Add legacy compatibility fields for existing frontend
     const legacyResult = {
-      readinessScore: result.overallScore.value,
+      readinessScore: result.websiteAnalysis?.overallScore || result.overallScore.value,
       aiAnalysisStatus: {
         enabled: result.assessmentStatus.aiAnalysisEnabled,
         instructionClarity: result.assessmentStatus.aiAnalysisEnabled,
