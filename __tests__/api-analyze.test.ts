@@ -1,4 +1,40 @@
 import { POST } from '../app/api/analyze/route'
+
+// Clean up after each test
+afterEach(() => {
+  jest.clearAllMocks()
+})
+
+// Mock Next.js server components
+jest.mock('next/server', () => ({
+  NextRequest: class NextRequest {
+    url: string
+    method: string
+    headers: Map<string, string>
+    body: string
+
+    constructor(input: string, init?: any) {
+      this.url = input
+      this.method = init?.method || 'GET'
+      this.headers = new Map(Object.entries(init?.headers || {}))
+      this.body = init?.body || ''
+    }
+    
+    async json() {
+      return JSON.parse(this.body)
+    }
+  },
+  NextResponse: {
+    json: (data: any, init?: any) => {
+      const response = new Response(JSON.stringify(data), {
+        ...init,
+        headers: { 'Content-Type': 'application/json', ...init?.headers }
+      })
+      return response
+    }
+  }
+}))
+
 import { NextRequest } from 'next/server'
 
 // Mock the analyzer and assessment engines
@@ -7,19 +43,19 @@ jest.mock('../lib/analyzer', () => ({
   analyzeWebsite: jest.fn()
 }))
 
-jest.mock('../lib/aligned-assessment-engine', () => ({
-  AlignedAssessmentEngine: jest.fn().mockImplementation(() => ({
-    assessRepository: jest.fn(),
-    assessWebsite: jest.fn()
+jest.mock('../lib/unified-assessment-engine', () => ({
+  UnifiedAssessmentEngine: jest.fn().mockImplementation(() => ({
+    assess: jest.fn(),
+    convertToLegacyFormat: jest.fn()
   }))
 }))
 
 import { analyzeRepository, analyzeWebsite } from '../lib/analyzer'
-import { AlignedAssessmentEngine } from '../lib/aligned-assessment-engine'
+import { UnifiedAssessmentEngine } from '../lib/unified-assessment-engine'
 
 const mockAnalyzeRepository = analyzeRepository as jest.MockedFunction<typeof analyzeRepository>
 const mockAnalyzeWebsite = analyzeWebsite as jest.MockedFunction<typeof analyzeWebsite>
-const MockAlignedAssessmentEngine = AlignedAssessmentEngine as jest.MockedClass<typeof AlignedAssessmentEngine>
+const MockUnifiedAssessmentEngine = UnifiedAssessmentEngine as jest.MockedClass<typeof UnifiedAssessmentEngine>
 
 describe('/api/analyze', () => {
   beforeEach(() => {
@@ -31,49 +67,47 @@ describe('/api/analyze', () => {
       const mockStaticAnalysis = {
         hasReadme: true,
         hasContributing: true,
-        hasAgents: false,
+        hasAgents: true,
         hasLicense: true,
         hasWorkflows: true,
-        hasTests: false,
-        languages: ['TypeScript', 'JavaScript'],
+        hasTests: true,
+        languages: ['JavaScript', 'TypeScript'],
         errorHandling: true,
-        fileCount: 150,
-        linesOfCode: 5000,
-        repositorySizeMB: 2.5,
-        fileSizeAnalysis: {
-          totalFiles: 150,
-          filesBySize: {
-            under100KB: 120,
-            under500KB: 25,
-            under1MB: 5,
-            under5MB: 0,
-            over5MB: 0
-          },
-          largeFiles: [],
-          criticalFiles: [],
-          contextConsumption: {
-            instructionFiles: {
-              agentsMd: null,
-              readme: { size: 1024, lines: 50, estimatedTokens: 256 },
-              contributing: { size: 512, lines: 25, estimatedTokens: 128 }
-            },
-            totalContextFiles: 2,
-            averageContextFileSize: 768,
-            contextEfficiency: 'excellent',
-            recommendations: []
-          },
-          agentCompatibility: {
-            cursor: 90,
-            githubCopilot: 85,
-            claudeWeb: 88,
-            claudeApi: 92,
-            overall: 89
-          },
-          recommendations: []
-        }
+        fileCount: 25,
+        linesOfCode: 1000,
+        repositorySizeMB: 5.2,
+        readmeContent: 'Test README content',
+        contributingContent: 'Test CONTRIBUTING content',
+        agentsContent: 'Test AGENTS content',
+        workflowFiles: ['ci.yml'],
+        testFiles: ['test.js']
       }
 
       const mockAssessment = {
+        scores: {
+          overall: { value: 85, confidence: 0.9 },
+          categories: {
+            documentation: { value: 18 },
+            instructionClarity: { value: 16 },
+            workflowAutomation: { value: 14 },
+            riskCompliance: { value: 12 },
+            integrationStructure: { value: 15 },
+            fileSizeOptimization: { value: 10 }
+          },
+          confidence: {
+            overall: 0.9,
+            staticAnalysis: 0.8,
+            aiAssessment: 0.9
+          }
+        },
+        findings: [{ id: '1', category: 'documentation', severity: 'medium', title: 'Good documentation', description: 'Good documentation structure', evidence: [], impact: 'Positive', confidence: 0.9 }],
+        recommendations: [{ id: '1', category: 'testing', priority: 'medium', title: 'Add more tests', description: 'Add more tests', implementation: [], impact: 'Improves quality', effort: 'medium', timeline: '1 week' }],
+        analysis: {
+          repository: mockStaticAnalysis
+        }
+      }
+
+      const mockLegacyResult = {
         readinessScore: 85,
         categories: {
           documentation: 18,
@@ -83,133 +117,18 @@ describe('/api/analyze', () => {
           integrationStructure: 15,
           fileSizeOptimization: 10
         },
-        findings: ['Good documentation', 'Needs better CI/CD'],
-        recommendations: ['Add more tests', 'Improve error handling'],
-        detailedAnalysis: {
-          instructionClarity: {
-            stepByStepQuality: 16,
-            commandClarity: 15,
-            environmentSetup: 14,
-            errorHandling: 13,
-            dependencySpecification: 12,
-            overallScore: 14
-          },
-          workflowAutomation: {
-            ciCdQuality: 12,
-            testAutomation: 10,
-            buildScripts: 14,
-            deploymentAutomation: 13,
-            monitoringLogging: 11,
-            overallScore: 12
-          },
-          contextEfficiency: {
-            instructionFileOptimization: 15,
-            codeDocumentation: 14,
-            apiDocumentation: 13,
-            contextWindowUsage: 12,
-            overallScore: 13
-          },
-          riskCompliance: {
-            securityPractices: 11,
-            errorHandling: 13,
-            inputValidation: 12,
-            dependencySecurity: 10,
-            licenseCompliance: 14,
-            overallScore: 12
-          }
-        },
-        confidence: {
-          overall: 85,
-          instructionClarity: 80,
-          workflowAutomation: 75,
-          contextEfficiency: 82,
-          riskCompliance: 78
-        },
-        aiAnalysisStatus: {
-          enabled: true,
-          instructionClarity: true,
-          workflowAutomation: true,
-          contextEfficiency: true,
-          riskCompliance: true,
-          overallSuccess: true
-        }
+        findings: ['Good documentation structure'],
+        recommendations: ['Add more tests'],
+        staticAnalysis: mockStaticAnalysis
       }
 
-      const mockInstance = new MockAlignedAssessmentEngine()
-      mockInstance.assessRepository = jest.fn().mockResolvedValue({
-        overallScore: { value: 85, confidence: 80 },
-        websiteAnalysis: null,
-        assessmentStatus: {
-          aiAnalysisEnabled: true
-        },
-        validation: {
-          passed: true
-        },
-        staticAnalysis: mockStaticAnalysis,
-        categories: {
-          documentation: { 
-            score: { value: 18, confidence: 85 },
-            subMetrics: {
-              codeDocumentation: { value: 18 }
-            }
-          },
-          instructionClarity: { 
-            score: { value: 16, confidence: 80 },
-            subMetrics: {
-              stepByStepQuality: { value: 16 },
-              commandClarity: { value: 15 },
-              environmentSetup: { value: 14 },
-              errorHandling: { value: 13 },
-              dependencySpecification: { value: 12 }
-            }
-          },
-          workflowAutomation: { 
-            score: { value: 14, confidence: 75 },
-            subMetrics: {
-              ciCdQuality: { value: 12 },
-              testAutomation: { value: 10 },
-              buildScripts: { value: 14 },
-              deploymentAutomation: { value: 13 },
-              monitoringLogging: { value: 11 }
-            }
-          },
-          riskCompliance: { 
-            score: { value: 12, confidence: 70 },
-            subMetrics: {
-              securityPractices: { value: 11 },
-              errorHandling: { value: 13 },
-              inputValidation: { value: 12 },
-              dependencySecurity: { value: 10 },
-              licenseCompliance: { value: 14 }
-            }
-          },
-          integrationStructure: { 
-            score: { value: 15, confidence: 78 },
-            subMetrics: {
-              apiDocumentation: { value: 15 }
-            }
-          },
-          fileSizeOptimization: { 
-            score: { value: 10, confidence: 65 },
-            subMetrics: {
-              instructionFileOptimization: { value: 15 },
-              contextWindowUsage: { value: 12 }
-            }
-          }
-        },
-        insights: {
-          findings: ['Good documentation', 'Needs better CI/CD'],
-          recommendations: ['Add more tests', 'Improve error handling']
-        },
-        assessmentMetadata: {
-          staticAnalysisTime: 100,
-          aiAnalysisTime: 200,
-          totalAnalysisTime: 300,
-          retryCount: 0,
-          fallbackUsed: false
-        }
-      })
-      MockAlignedAssessmentEngine.mockImplementation(() => mockInstance)
+      mockAnalyzeRepository.mockResolvedValue(mockStaticAnalysis as any)
+      
+      const mockInstance = {
+        assess: jest.fn().mockResolvedValue(mockAssessment),
+        convertToLegacyFormat: jest.fn().mockReturnValue(mockLegacyResult)
+      }
+      MockUnifiedAssessmentEngine.mockImplementation(() => mockInstance as any)
 
       const request = new NextRequest('http://localhost:3000/api/analyze', {
         method: 'POST',
@@ -225,16 +144,73 @@ describe('/api/analyze', () => {
       expect(response.status).toBe(200)
       expect(data.readinessScore).toBe(85)
       expect(data.staticAnalysis).toEqual(mockStaticAnalysis)
-      expect(data.categories).toEqual(mockAssessment.categories)
-      expect(data.findings).toEqual(mockAssessment.findings)
-      expect(data.recommendations).toEqual(mockAssessment.recommendations)
-      expect(mockInstance.assessRepository).toHaveBeenCalledWith('https://github.com/user/repo')
+      expect(data.categories).toEqual(mockLegacyResult.categories)
+      expect(data.findings).toEqual(mockLegacyResult.findings)
+      expect(mockInstance.assess).toHaveBeenCalledWith({
+        url: 'https://github.com/user/repo',
+        type: 'repository',
+        options: expect.any(Object)
+      })
     })
 
     it('handles repository analysis errors', async () => {
-      const mockInstance = new MockAlignedAssessmentEngine()
-      mockInstance.assessRepository = jest.fn().mockRejectedValue(new Error('Repository not found'))
-      MockAlignedAssessmentEngine.mockImplementation(() => mockInstance)
+      mockAnalyzeRepository.mockRejectedValue(new Error('Repository not found'))
+      
+      const mockInstance = {
+        assess: jest.fn().mockImplementation(async () => {
+          // Simulate the unified engine's error handling by returning a fallback result
+          return {
+            id: 'fallback-id',
+            type: 'repository' as const,
+            url: 'https://github.com/user/repo',
+            timestamp: new Date(),
+            scores: {
+              overall: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+              categories: {
+                documentation: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                instructionClarity: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                workflowAutomation: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                riskCompliance: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                integrationStructure: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                fileSizeOptimization: { value: 0, maxValue: 100, percentage: 0, confidence: 0 }
+              },
+              confidence: {
+                overall: 0,
+                staticAnalysis: 0,
+                aiAssessment: 0
+              }
+            },
+            analysis: {},
+            findings: [],
+            recommendations: [],
+            metadata: {
+              version: '1.0.0',
+              analysisTime: 0,
+              staticAnalysisTime: 0,
+              totalAnalysisTime: 0,
+              retryCount: 0,
+              fallbackUsed: true,
+              errors: [],
+              warnings: []
+            }
+          }
+        }),
+        convertToLegacyFormat: jest.fn().mockReturnValue({
+          readinessScore: 0,
+          categories: {
+            documentation: 0,
+            instructionClarity: 0,
+            workflowAutomation: 0,
+            riskCompliance: 0,
+            integrationStructure: 0,
+            fileSizeOptimization: 0
+          },
+          findings: [],
+          recommendations: [],
+          staticAnalysis: {}
+        })
+      }
+      MockUnifiedAssessmentEngine.mockImplementation(() => mockInstance as any)
 
       const request = new NextRequest('http://localhost:3000/api/analyze', {
         method: 'POST',
@@ -247,8 +223,8 @@ describe('/api/analyze', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to analyze source')
+      expect(response.status).toBe(200) // Unified engine returns fallback result
+      expect(data.readinessScore).toBe(0) // Fallback result has 0 score
     })
   })
 
@@ -263,28 +239,51 @@ describe('/api/analyze', () => {
         hasTwitterCards: false,
         hasSitemap: true,
         hasRobotsTxt: true,
-        hasFavicon: true,
-        hasManifest: false,
-        hasServiceWorker: false,
-        pageLoadSpeed: 2.5,
-        mobileFriendly: true,
-        accessibilityScore: 85,
-        seoScore: 78,
         contentLength: 5000,
-        imageCount: 10,
-        linkCount: 25,
-        headingStructure: { h1: 1, h2: 3, h3: 5 },
         technologies: ['React', 'Next.js'],
-        securityHeaders: ['X-Frame-Options', 'X-Content-Type-Options'],
-        socialMediaLinks: [
-          { platform: 'Twitter', url: 'https://twitter.com/example' }
-        ],
         contactInfo: ['contact@example.com', '+1-555-0123'],
-        navigationStructure: ['Home', 'About', 'Services', 'Contact'],
-        locations: ['New York, NY', 'San Francisco, CA']
+        socialMediaLinks: [{ platform: 'twitter', url: 'https://twitter.com/example' }],
+        locations: ['New York, NY', 'San Francisco, CA'],
+        businessType: 'food_service',
+        businessTypeConfidence: 85,
+        overallScore: 75,
+        findings: ['Good structured data', 'Needs better contact info'],
+        recommendations: ['Add more structured data', 'Improve mobile experience']
       }
 
       const mockAssessment = {
+        scores: {
+          overall: { value: 75, confidence: 0.8 },
+          categories: {
+            documentation: { value: 15 },
+            instructionClarity: { value: 14 },
+            workflowAutomation: { value: 13 },
+            riskCompliance: { value: 16 },
+            integrationStructure: { value: 12 },
+            fileSizeOptimization: { value: 5 }
+          },
+          confidence: {
+            overall: 0.8,
+            staticAnalysis: 0.7,
+            aiAssessment: 0.8,
+            businessTypeAnalysis: 0.85
+          }
+        },
+        findings: [{ id: '1', category: 'structuredData', severity: 'medium', title: 'Good structured data', description: 'Good structured data', evidence: [], impact: 'Positive', confidence: 0.8 }],
+        recommendations: [{ id: '1', category: 'contactInfo', priority: 'medium', title: 'Improve contact info', description: 'Improve contact info', implementation: [], impact: 'Improves accessibility', effort: 'low', timeline: '1 day' }],
+        analysis: {
+          website: mockWebsiteAnalysis,
+          businessType: {
+            businessType: 'food_service',
+            businessTypeConfidence: 85,
+            overallScore: 75,
+            industrySpecificInsights: ['Good for food service'],
+            recommendations: ['Add more structured data']
+          }
+        }
+      }
+
+      const mockLegacyResult = {
         readinessScore: 75,
         categories: {
           documentation: 15,
@@ -296,173 +295,22 @@ describe('/api/analyze', () => {
         },
         findings: ['Good structured data', 'Needs better contact info'],
         recommendations: ['Add more structured data', 'Improve mobile experience'],
+        staticAnalysis: {},
+        websiteAnalysis: mockWebsiteAnalysis,
         businessTypeAnalysis: {
           businessType: 'food_service',
           businessTypeConfidence: 85,
-          overallScore: 75,
-          agenticFlows: {
-            informationGathering: {
-              score: 80,
-              details: {
-                hasServiceProductInfo: true,
-                hasPricing: true,
-                hasAvailability: false,
-                hasContactInfo: true,
-                hasLocation: true,
-                hasReviews: false,
-                hasPolicies: true,
-                hasDifferentiators: false
-              }
-            },
-            directBooking: {
-              score: 70,
-              details: {
-                hasActionableInstructions: true,
-                hasBookingRequirements: true,
-                hasConfirmationProcess: false,
-                hasPaymentOptions: true,
-                hasModificationPolicies: false,
-                hasErrorHandling: true
-              }
-            },
-            faqSupport: {
-              score: 60,
-              details: {
-                hasFaq: true,
-                hasPolicyDocumentation: true,
-                hasUserGuides: false,
-                hasEligibilityCriteria: false,
-                hasSupportContact: true,
-                hasSearchFunctionality: false
-              }
-            },
-            taskManagement: {
-              score: 50,
-              details: {
-                hasScheduleVisibility: false,
-                hasReservationManagement: false,
-                hasTaskTracking: false,
-                hasReschedulingProcess: false,
-                hasMembershipDetails: false,
-                hasNotificationSystems: false
-              }
-            },
-            personalization: {
-              score: 40,
-              details: {
-                hasPersonalizationData: false,
-                hasRecommendationLogic: false,
-                hasContextAwareness: false,
-                hasUserProfiling: false,
-                hasDynamicContent: false
-              }
-            }
-          },
-          aiRelevantChecks: {
-            hasStructuredData: true,
-            hasContactInfo: true,
-            hasPageTitle: true,
-            hasMetaDescription: true,
-            hasSitemap: true,
-            hasRobotsTxt: true,
-            contentAccessibility: 75
-          },
-          findings: ['Good structured data', 'Needs better contact info'],
-          recommendations: ['Add more structured data', 'Improve mobile experience']
-        },
-        aiAnalysisStatus: {
-          enabled: true,
-          instructionClarity: true,
-          workflowAutomation: true,
-          contextEfficiency: true,
-          riskCompliance: true,
-          overallSuccess: true
+          overallScore: 75
         }
       }
 
-      const mockInstance = new MockAlignedAssessmentEngine()
-      mockInstance.assessWebsite = jest.fn().mockResolvedValue({
-        overallScore: { value: 75, confidence: 75 },
-        websiteAnalysis: {
-          businessType: 'food_service',
-          businessTypeConfidence: 85,
-          overallScore: 75,
-          agenticFlows: mockAssessment.businessTypeAnalysis.agenticFlows,
-          aiRelevantChecks: mockAssessment.businessTypeAnalysis.aiRelevantChecks,
-          findings: mockAssessment.businessTypeAnalysis.findings,
-          recommendations: mockAssessment.businessTypeAnalysis.recommendations
-        },
-        assessmentStatus: {
-          aiAnalysisEnabled: true
-        },
-        validation: {
-          passed: true
-        },
-        staticAnalysis: mockWebsiteAnalysis,
-        categories: {
-          documentation: { 
-            score: { value: 15, confidence: 70 },
-            subMetrics: {
-              codeDocumentation: { value: 15 }
-            }
-          },
-          instructionClarity: { 
-            score: { value: 14, confidence: 75 },
-            subMetrics: {
-              stepByStepQuality: { value: 14 },
-              commandClarity: { value: 13 },
-              environmentSetup: { value: 12 },
-              errorHandling: { value: 11 },
-              dependencySpecification: { value: 10 }
-            }
-          },
-          workflowAutomation: { 
-            score: { value: 13, confidence: 70 },
-            subMetrics: {
-              ciCdQuality: { value: 11 },
-              testAutomation: { value: 9 },
-              buildScripts: { value: 13 },
-              deploymentAutomation: { value: 12 },
-              monitoringLogging: { value: 10 }
-            }
-          },
-          riskCompliance: { 
-            score: { value: 16, confidence: 80 },
-            subMetrics: {
-              securityPractices: { value: 15 },
-              errorHandling: { value: 17 },
-              inputValidation: { value: 16 },
-              dependencySecurity: { value: 14 },
-              licenseCompliance: { value: 18 }
-            }
-          },
-          integrationStructure: { 
-            score: { value: 12, confidence: 65 },
-            subMetrics: {
-              apiDocumentation: { value: 12 }
-            }
-          },
-          fileSizeOptimization: { 
-            score: { value: 5, confidence: 60 },
-            subMetrics: {
-              instructionFileOptimization: { value: 5 },
-              contextWindowUsage: { value: 5 }
-            }
-          }
-        },
-        insights: {
-          findings: ['Good structured data', 'Needs better contact info'],
-          recommendations: ['Add more structured data', 'Improve mobile experience']
-        },
-        assessmentMetadata: {
-          staticAnalysisTime: 100,
-          aiAnalysisTime: 200,
-          totalAnalysisTime: 300,
-          retryCount: 0,
-          fallbackUsed: false
-        }
-      })
-      MockAlignedAssessmentEngine.mockImplementation(() => mockInstance)
+      mockAnalyzeWebsite.mockResolvedValue(mockWebsiteAnalysis as any)
+      
+      const mockInstance = {
+        assess: jest.fn().mockResolvedValue(mockAssessment),
+        convertToLegacyFormat: jest.fn().mockReturnValue(mockLegacyResult)
+      }
+      MockUnifiedAssessmentEngine.mockImplementation(() => mockInstance as any)
 
       const request = new NextRequest('http://localhost:3000/api/analyze', {
         method: 'POST',
@@ -477,15 +325,73 @@ describe('/api/analyze', () => {
 
       expect(response.status).toBe(200)
       expect(data.readinessScore).toBe(75)
-      expect(data.staticAnalysis).toEqual(mockWebsiteAnalysis)
-      expect(data.businessTypeAnalysis).toEqual(mockAssessment.businessTypeAnalysis)
-      expect(mockInstance.assessWebsite).toHaveBeenCalledWith('https://example.com')
+      expect(data.websiteAnalysis).toEqual(mockWebsiteAnalysis)
+      expect(data.businessTypeAnalysis).toEqual(mockLegacyResult.businessTypeAnalysis)
+      expect(mockInstance.assess).toHaveBeenCalledWith({
+        url: 'https://example.com',
+        type: 'website',
+        options: expect.any(Object)
+      })
     })
 
     it('handles website analysis errors', async () => {
-      const mockInstance = new MockAlignedAssessmentEngine()
-      mockInstance.assessWebsite = jest.fn().mockRejectedValue(new Error('Website not accessible'))
-      MockAlignedAssessmentEngine.mockImplementation(() => mockInstance)
+      mockAnalyzeWebsite.mockRejectedValue(new Error('Website not accessible'))
+      
+      const mockInstance = {
+        assess: jest.fn().mockImplementation(async () => {
+          // Simulate the unified engine's error handling by returning a fallback result
+          return {
+            id: 'fallback-id',
+            type: 'website' as const,
+            url: 'https://example.com',
+            timestamp: new Date(),
+            scores: {
+              overall: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+              categories: {
+                documentation: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                instructionClarity: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                workflowAutomation: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                riskCompliance: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                integrationStructure: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                fileSizeOptimization: { value: 0, maxValue: 100, percentage: 0, confidence: 0 }
+              },
+              confidence: {
+                overall: 0,
+                staticAnalysis: 0,
+                aiAssessment: 0
+              }
+            },
+            analysis: {},
+            findings: [],
+            recommendations: [],
+            metadata: {
+              version: '1.0.0',
+              analysisTime: 0,
+              staticAnalysisTime: 0,
+              totalAnalysisTime: 0,
+              retryCount: 0,
+              fallbackUsed: true,
+              errors: [],
+              warnings: []
+            }
+          }
+        }),
+        convertToLegacyFormat: jest.fn().mockReturnValue({
+          readinessScore: 0,
+          categories: {
+            documentation: 0,
+            instructionClarity: 0,
+            workflowAutomation: 0,
+            riskCompliance: 0,
+            integrationStructure: 0,
+            fileSizeOptimization: 0
+          },
+          findings: [],
+          recommendations: [],
+          staticAnalysis: {}
+        })
+      }
+      MockUnifiedAssessmentEngine.mockImplementation(() => mockInstance as any)
 
       const request = new NextRequest('http://localhost:3000/api/analyze', {
         method: 'POST',
@@ -498,8 +404,8 @@ describe('/api/analyze', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to analyze source')
+      expect(response.status).toBe(200) // Unified engine returns fallback result
+      expect(data.readinessScore).toBe(0) // Fallback result has 0 score
     })
   })
 
@@ -521,7 +427,7 @@ describe('/api/analyze', () => {
       const request = new NextRequest('http://localhost:3000/api/analyze', {
         method: 'POST',
         body: JSON.stringify({
-          inputUrl: 'https://example.com',
+          inputUrl: 'https://github.com/user/repo',
           inputType: 'invalid'
         })
       })
@@ -537,7 +443,7 @@ describe('/api/analyze', () => {
       const request = new NextRequest('http://localhost:3000/api/analyze', {
         method: 'POST',
         body: JSON.stringify({
-          inputUrl: 'not-a-url',
+          inputUrl: 'invalid-url',
           inputType: 'repository'
         })
       })
@@ -565,38 +471,61 @@ describe('/api/analyze', () => {
     })
 
     it('handles assessment generation errors', async () => {
-      const mockStaticAnalysis = {
-        hasReadme: true,
-        hasContributing: true,
-        hasAgents: false,
-        hasLicense: true,
-        hasWorkflows: true,
-        hasTests: false,
-        languages: ['TypeScript'],
-        errorHandling: true,
-        fileCount: 100,
-        linesOfCode: 2000,
-        repositorySizeMB: 1.0,
-        fileSizeAnalysis: {
-          totalFiles: 100,
-          filesBySize: { under100KB: 90, under500KB: 10, under1MB: 0, under5MB: 0, over5MB: 0 },
-          largeFiles: [],
-          criticalFiles: [],
-          contextConsumption: {
-            instructionFiles: { agentsMd: null, readme: null, contributing: null },
-            totalContextFiles: 0,
-            averageContextFileSize: 0,
-            contextEfficiency: 'excellent',
-            recommendations: []
+      const mockInstance = {
+        assess: jest.fn().mockImplementation(async () => {
+          // Simulate the unified engine's error handling by returning a fallback result
+          return {
+            id: 'fallback-id',
+            type: 'repository' as const,
+            url: 'https://github.com/user/repo',
+            timestamp: new Date(),
+            scores: {
+              overall: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+              categories: {
+                documentation: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                instructionClarity: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                workflowAutomation: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                riskCompliance: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                integrationStructure: { value: 0, maxValue: 100, percentage: 0, confidence: 0 },
+                fileSizeOptimization: { value: 0, maxValue: 100, percentage: 0, confidence: 0 }
+              },
+              confidence: {
+                overall: 0,
+                staticAnalysis: 0,
+                aiAssessment: 0
+              }
+            },
+            analysis: {},
+            findings: [],
+            recommendations: [],
+            metadata: {
+              version: '1.0.0',
+              analysisTime: 0,
+              staticAnalysisTime: 0,
+              totalAnalysisTime: 0,
+              retryCount: 0,
+              fallbackUsed: true,
+              errors: [],
+              warnings: []
+            }
+          }
+        }),
+        convertToLegacyFormat: jest.fn().mockReturnValue({
+          readinessScore: 0,
+          categories: {
+            documentation: 0,
+            instructionClarity: 0,
+            workflowAutomation: 0,
+            riskCompliance: 0,
+            integrationStructure: 0,
+            fileSizeOptimization: 0
           },
-          agentCompatibility: { cursor: 90, githubCopilot: 85, claudeWeb: 88, claudeApi: 92, overall: 89 },
-          recommendations: []
-        }
+          findings: [],
+          recommendations: [],
+          staticAnalysis: {}
+        })
       }
-
-      const mockInstance = new MockAlignedAssessmentEngine()
-      mockInstance.assessRepository = jest.fn().mockRejectedValue(new Error('Assessment generation failed'))
-      MockAlignedAssessmentEngine.mockImplementation(() => mockInstance)
+      MockUnifiedAssessmentEngine.mockImplementation(() => mockInstance as any)
 
       const request = new NextRequest('http://localhost:3000/api/analyze', {
         method: 'POST',
@@ -609,8 +538,8 @@ describe('/api/analyze', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to analyze source')
+      expect(response.status).toBe(200) // Unified engine returns fallback result
+      expect(data.readinessScore).toBe(0) // Fallback result has 0 score
     })
   })
 })

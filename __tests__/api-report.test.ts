@@ -1,4 +1,56 @@
 import { POST } from '../app/api/report/route'
+
+// Clean up after each test
+afterEach(() => {
+  jest.clearAllMocks()
+})
+
+// Mock Next.js server components
+jest.mock('next/server', () => ({
+  NextRequest: class NextRequest {
+    url: string
+    method: string
+    headers: Map<string, string>
+    body: string
+
+    constructor(input: string, init?: any) {
+      this.url = input
+      this.method = init?.method || 'GET'
+      this.headers = new Map(Object.entries(init?.headers || {}))
+      this.body = init?.body || ''
+    }
+    
+    async json() {
+      return JSON.parse(this.body)
+    }
+  },
+  NextResponse: class NextResponse {
+    body: string
+    status: number
+    statusText: string
+    headers: Map<string, string>
+
+    constructor(body: string, init?: any) {
+      this.body = body
+      this.status = init?.status || 200
+      this.statusText = init?.statusText || 'OK'
+      this.headers = new Map(Object.entries(init?.headers || {}))
+    }
+    
+    async arrayBuffer() {
+      return Buffer.from(this.body)
+    }
+    
+    static json(data: any, init?: any) {
+      const response = new Response(JSON.stringify(data), {
+        ...init,
+        headers: { 'Content-Type': 'application/json', ...init?.headers }
+      })
+      return response
+    }
+  }
+}))
+
 import { NextRequest } from 'next/server'
 
 // Mock the report generator
