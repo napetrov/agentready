@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Multi-Page Analysis**: System now analyzes up to 3 key pages per site (contact, about, services, etc.) in addition to the main page for more comprehensive information gathering
 - **Comprehensive Data Merging**: Contact info, social media links, and navigation structure are now merged from main page and key pages with deduplication
+- **Location Information Extraction**: Added intelligent location extraction from structured data, microdata, text content, and map links for location-relevant business types
+- **Business-Type-Aware Location Display**: Location information is only shown for business types where it matters (restaurants, healthcare, retail, automotive, etc.) - not for software documentation
+- **Location Grouping**: Multiple locations are automatically grouped by city/region for better organization and display
 - **Code Review Improvements**: Addressed all 7 code review comments with security, performance, and maintainability enhancements
 
 ### Security & Performance Improvements

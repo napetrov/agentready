@@ -8,6 +8,48 @@ const EXTENSIONLESS_FILES = [
   'build', 'gulpfile', 'gruntfile', 'rakefile', 'gemfile', 'vagrantfile',
   'procfile', 'heroku', 'gitignore', 'gitattributes', 'dockerignore'
 ]
+
+/**
+ * Group locations by city/region for better organization
+ */
+function groupLocations(locations: string[]): Array<{city: string, addresses: string[]}> {
+  const grouped = new Map<string, string[]>()
+  
+  for (const location of locations) {
+    // Extract city from location string
+    let city = 'Unknown'
+    
+    // Try to extract city from various formats
+    const cityMatch = location.match(/([A-Za-z\s]+),\s*([A-Z]{2})/)
+    if (cityMatch) {
+      city = cityMatch[1].trim()
+    } else {
+      // Look for city patterns in addresses
+      const addressCityMatch = location.match(/\b([A-Za-z\s]{3,20}),\s*[A-Z]{2}\b/)
+      if (addressCityMatch) {
+        city = addressCityMatch[1].trim()
+      } else {
+        // If no clear city, use first part before comma or just the location
+        const parts = location.split(',')
+        if (parts.length > 1) {
+          city = parts[parts.length - 2]?.trim() || parts[0].trim()
+        } else {
+          city = location.trim()
+        }
+      }
+    }
+    
+    if (!grouped.has(city)) {
+      grouped.set(city, [])
+    }
+    grouped.get(city)!.push(location)
+  }
+  
+  return Array.from(grouped.entries()).map(([city, addresses]) => ({
+    city,
+    addresses: [...new Set(addresses)] // Remove duplicates within city
+  }))
+}
 import { 
   BusinessType, 
   BUSINESS_TYPE_CONFIGS,
@@ -80,6 +122,7 @@ export interface WebsiteAnalysisResult extends AIAgentReadinessResult {
   socialMediaLinks: Array<{platform: string, url: string}>
   contactInfo: string[]
   navigationStructure: string[]
+  locations: string[]
   
   // Legacy fields for backward compatibility (deprecated)
   hasStructuredData: boolean
@@ -782,6 +825,10 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
     const contactInfo: string[] = []
     const contactSet = new Set<string>() // Use Set to prevent duplicates
     
+    // Extract location information (deduplicated)
+    const locations: string[] = []
+    const locationSet = new Set<string>() // Use Set to prevent duplicates
+    
     $('a[href^="tel:"]').each((_, el) => {
       const href = $(el).attr('href')
       if (href) {
@@ -826,6 +873,73 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       }
     }
 
+    // Extract location information from structured data and content
+    // 1. Check for structured data (JSON-LD, microdata)
+    $('script[type="application/ld+json"]').each((_, el) => {
+      try {
+        const jsonData = JSON.parse($(el).html() || '')
+        if (jsonData.address) {
+          let address = ''
+          if (typeof jsonData.address === 'string') {
+            address = jsonData.address
+          } else if (jsonData.address.streetAddress) {
+            address = [
+              jsonData.address.streetAddress,
+              jsonData.address.addressLocality,
+              jsonData.address.addressRegion,
+              jsonData.address.postalCode
+            ].filter(Boolean).join(', ')
+          }
+          if (address && !locationSet.has(address.toLowerCase())) {
+            locations.push(address)
+            locationSet.add(address.toLowerCase())
+          }
+        }
+      } catch (e) {
+        // Skip invalid JSON
+      }
+    })
+
+    // 2. Check for microdata address information
+    $('[itemscope][itemtype*="PostalAddress"], .address, [class*="address"]').each((_, el) => {
+      const addressText = $(el).text().trim()
+      if (addressText && addressText.length > 10 && !locationSet.has(addressText.toLowerCase())) {
+        locations.push(addressText)
+        locationSet.add(addressText.toLowerCase())
+      }
+    })
+
+    // 3. Extract addresses from text content using regex patterns
+    const addressRegex = /\b\d+\s+[A-Za-z0-9\s,.-]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct|Place|Pl)[\s,.-]*(?:[A-Za-z\s,.-]+)?(?:[A-Z]{2,3})?[\s,.-]*(?:\d{5}(?:-\d{4})?)?/gi
+    let addressMatch
+    while ((addressMatch = addressRegex.exec(textContent)) !== null) {
+      const address = addressMatch[0].trim()
+      if (address.length > 15 && !locationSet.has(address.toLowerCase())) {
+        locations.push(address)
+        locationSet.add(address.toLowerCase())
+      }
+    }
+
+    // 4. Look for city, state patterns
+    const cityStateRegex = /\b([A-Za-z\s]+),\s*([A-Z]{2})\b/g
+    let cityStateMatch
+    while ((cityStateMatch = cityStateRegex.exec(textContent)) !== null) {
+      const location = cityStateMatch[0].trim()
+      if (!locationSet.has(location.toLowerCase())) {
+        locations.push(location)
+        locationSet.add(location.toLowerCase())
+      }
+    }
+
+    // 5. Check for Google Maps or other map links
+    $('a[href*="maps.google"], a[href*="goo.gl/maps"], a[href*="maps.apple"]').each((_, el) => {
+      const linkText = $(el).text().trim()
+      if (linkText && linkText.length > 5 && !locationSet.has(linkText.toLowerCase())) {
+        locations.push(linkText)
+        locationSet.add(linkText.toLowerCase())
+      }
+    })
+
     // Analyze navigation structure (deduplicated)
     const navItems: string[] = []
     const navSet = new Set<string>() // Use Set to prevent duplicates
@@ -846,6 +960,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
     const allContactInfo = [...new Set([...contactInfo, ...keyPageData.contactInfo])]
     const allSocialLinks = [...socialLinks, ...keyPageData.socialMediaLinks]
     const allNavItems = [...new Set([...navItems, ...keyPageData.navigationStructure])]
+    const allLocations = [...new Set([...locations, ...keyPageData.locations])]
 
     // Create the new business-type-aware analysis result
     const analysis: WebsiteAnalysisResult = {
@@ -872,6 +987,7 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
       socialMediaLinks: allSocialLinks,
       contactInfo: allContactInfo,
       navigationStructure: allNavItems,
+      locations: allLocations,
       
       // Legacy fields for backward compatibility
       hasStructuredData: aiChecks.hasStructuredData,
@@ -910,13 +1026,15 @@ export async function analyzeWebsite(websiteUrl: string): Promise<WebsiteAnalysi
 async function analyzeKeyPages(websiteUrl: string, $: any): Promise<{
   contactInfo: string[],
   socialMediaLinks: Array<{platform: string, url: string}>,
-  navigationStructure: string[]
+  navigationStructure: string[],
+  locations: string[]
 }> {
   const baseUrl = new URL(websiteUrl)
   const contactInfo = new Set<string>()
   const socialMediaLinks: Array<{platform: string, url: string}> = []
   const socialSet = new Set<string>()
   const navigationStructure = new Set<string>()
+  const locations = new Set<string>()
   
   // Key pages to check for additional information
   const keyPagePatterns = [
@@ -1013,6 +1131,48 @@ async function analyzeKeyPages(websiteUrl: string, $: any): Promise<{
           if (email) contactInfo.add(email)
         }
       })
+
+      // Extract location info from this page
+      const pageText = page$('body').text()
+      
+      // Check for structured data
+      page$('script[type="application/ld+json"]').each((_: number, el: any) => {
+        try {
+          const jsonData = JSON.parse(page$(el).html() || '')
+          if (jsonData.address) {
+            let address = ''
+            if (typeof jsonData.address === 'string') {
+              address = jsonData.address
+            } else if (jsonData.address.streetAddress) {
+              address = [
+                jsonData.address.streetAddress,
+                jsonData.address.addressLocality,
+                jsonData.address.addressRegion,
+                jsonData.address.postalCode
+              ].filter(Boolean).join(', ')
+            }
+            if (address) locations.add(address)
+          }
+        } catch (e) {
+          // Skip invalid JSON
+        }
+      })
+
+      // Extract addresses from text content
+      const addressRegex = /\b\d+\s+[A-Za-z0-9\s,.-]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct|Place|Pl)[\s,.-]*(?:[A-Za-z\s,.-]+)?(?:[A-Z]{2,3})?[\s,.-]*(?:\d{5}(?:-\d{4})?)?/gi
+      let addressMatch
+      while ((addressMatch = addressRegex.exec(pageText)) !== null) {
+        const address = addressMatch[0].trim()
+        if (address.length > 15) locations.add(address)
+      }
+
+      // Extract city, state patterns
+      const cityStateRegex = /\b([A-Za-z\s]+),\s*([A-Z]{2})\b/g
+      let cityStateMatch
+      while ((cityStateMatch = cityStateRegex.exec(pageText)) !== null) {
+        const location = cityStateMatch[0].trim()
+        locations.add(location)
+      }
       
       // Extract social media links from this page
       page$('a[href]').each((_: number, el: any) => {
@@ -1058,7 +1218,8 @@ async function analyzeKeyPages(websiteUrl: string, $: any): Promise<{
   return {
     contactInfo: Array.from(contactInfo),
     socialMediaLinks,
-    navigationStructure: Array.from(navigationStructure)
+    navigationStructure: Array.from(navigationStructure),
+    locations: Array.from(locations)
   }
 }
 
@@ -1155,6 +1316,7 @@ async function createURLBasedAnalysis(websiteUrl: string, errorMessage: string):
     socialMediaLinks: [],
     contactInfo: [],
     navigationStructure: [],
+    locations: [],
     contentLength: 0,
     pageTitle: domain,
     metaDescription: '',

@@ -103,6 +103,7 @@ interface AssessmentResult {
     socialMediaLinks?: Array<{platform: string, url: string}>
     contactInfo?: string[]
     navigationStructure?: string[]
+    locations?: string[]
     fileSizeAnalysis?: {
       totalFiles: number
       filesBySize: {
@@ -960,6 +961,56 @@ export default function Home() {
                     )}
                   </div>
                 </div>
+
+                {/* Location Information - Show only for location-relevant business types */}
+                {result.staticAnalysis.locations && result.staticAnalysis.locations.length > 0 && 
+                 result.businessTypeAnalysis && 
+                 ['food_service', 'healthcare', 'retail_ecommerce', 'hospitality', 'automotive', 'home_services', 'beauty_wellness', 'events_experiences', 'fitness_wellness', 'pet_services'].includes(result.businessTypeAnalysis.businessType) && (
+                  <div className="mt-4">
+                    <h4 className="text-md font-medium mb-2">📍 Locations</h4>
+                    <div className="space-y-3">
+                      {(() => {
+                        // Group locations by city
+                        const grouped = new Map<string, string[]>()
+                        
+                        for (const location of result.staticAnalysis.locations) {
+                          // Extract city from location string
+                          let city = 'Other'
+                          const cityMatch = location.match(/([A-Za-z\s]+),\s*([A-Z]{2})/)
+                          if (cityMatch) {
+                            city = cityMatch[1].trim()
+                          } else {
+                            const parts = location.split(',')
+                            if (parts.length > 1) {
+                              city = parts[parts.length - 2]?.trim() || parts[0].trim()
+                            } else {
+                              city = location.trim()
+                            }
+                          }
+                          
+                          if (!grouped.has(city)) {
+                            grouped.set(city, [])
+                          }
+                          grouped.get(city)!.push(location)
+                        }
+                        
+                        return Array.from(grouped.entries()).map(([city, addresses]) => (
+                          <div key={city} className="border rounded-lg p-3 bg-gray-50">
+                            <div className="font-medium text-gray-800 mb-2">{city}</div>
+                            <div className="space-y-1">
+                              {[...new Set(addresses)].map((address, index) => (
+                                <div key={index} className="text-sm text-gray-600 flex items-start">
+                                  <span className="mr-2">📍</span>
+                                  <span>{address}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      })()}
+                    </div>
+                  </div>
+                )}
 
         {/* Business Type Analysis */}
         {result.businessTypeAnalysis && (

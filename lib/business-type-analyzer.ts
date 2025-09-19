@@ -23,6 +23,25 @@ export type BusinessType =
   | 'technology_software'
   | 'unknown';
 
+/**
+ * Check if location information is relevant for a business type
+ */
+export function isLocationRelevant(businessType: BusinessType): boolean {
+  const locationRelevantTypes: BusinessType[] = [
+    'food_service',
+    'healthcare', 
+    'retail_ecommerce',
+    'hospitality',
+    'automotive',
+    'home_services',
+    'beauty_wellness',
+    'events_experiences',
+    'fitness_wellness',
+    'pet_services'
+  ]
+  return locationRelevantTypes.includes(businessType)
+}
+
 export interface BusinessTypeConfig {
   type: BusinessType;
   displayName: string;
