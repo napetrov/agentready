@@ -533,11 +533,6 @@ describe('Home Page Component', () => {
   describe('Website Analysis Display', () => {
     const mockWebsiteResult = {
       readinessScore: 75,
-      businessTypeAnalysis: {
-        businessType: 'food_service',
-        businessTypeConfidence: 85,
-        overallScore: 75
-      },
       categories: {
         documentation: 15,
         instructionClarity: 14,
