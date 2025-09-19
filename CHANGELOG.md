@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- [`.cursorrules`](.cursorrules) with Cursor-recommended instructions for Vercel/Next.js/TypeScript/Node workflows
+- [`AGENTS.md`](AGENTS.md) documenting agent operating procedure and links to [`dev/ARCHITECTURE.md`](dev/ARCHITECTURE.md) and [`dev/DEVELOPMENT.md`](dev/DEVELOPMENT.md)
 - AI Analysis Status tracking with comprehensive status indicators
 - Enhanced error handling and debugging information display
 - Conditional debug information that only shows when issues are detected
@@ -17,12 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript error fixes and improved type safety
 
 ### Changed
+- Improved contributor/agent guidance by centralizing rules and linking architecture/development docs
 - Improved UI layout by combining separate status and debug sections
 - Enhanced error messages with more detailed debugging information
 - Updated test configuration to use proper API key validation
 - Streamlined frontend display logic for better user experience
 
 ### Fixed
+- Documentation gaps for agent onboarding and change management
 - TypeScript compilation errors related to missing `aiAnalysisStatus` property
 - OpenAI API mocking issues that were causing test failures
 - CI pipeline failures due to improper test configuration
