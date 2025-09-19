@@ -24,6 +24,8 @@ import { analyzeRepository, analyzeWebsite } from './analyzer'
 import { generateUnifiedAIAssessment } from './unified-ai-assessment'
 import { generateAIReadinessInsights } from './business-type-analyzer'
 import { FileSizeAnalyzer } from './file-size-analyzer'
+import { orchestrator } from './plugin-based-orchestrator'
+import { registerDefaultPlugins } from './plugin-registry'
 
 export class UnifiedAssessmentEngine {
   private config: UnifiedAssessmentConfig
@@ -63,73 +65,35 @@ export class UnifiedAssessmentEngine {
    */
   async assess(input: AssessmentInput): Promise<AssessmentResult> {
     const startTime = Date.now()
-    let retryCount = 0
-    let errors: any[] = []
-    let warnings: any[] = []
-
+    
     try {
-      // Step 1: Perform static analysis
-      const analysisData = await this.performStaticAnalysis(input)
+      console.log(`🚀 Starting unified assessment for ${input.type}: ${input.url}`)
       
-      // Step 2: Perform AI assessment (if enabled)
-      let aiAssessment
-      if (this.config.enableAIAssessment) {
-        try {
-          aiAssessment = await generateUnifiedAIAssessment(
-            analysisData, 
-            input.type, 
-            input.options
-          )
-        } catch (error) {
-          console.warn('AI assessment failed, continuing with static analysis only:', error)
-          errors.push({
-            code: 'AI_ASSESSMENT_FAILED',
-            message: 'AI assessment failed, using static analysis only',
-            category: 'ai',
-            timestamp: new Date(),
-            recoverable: true
-          })
-        }
+      // Register default plugins if not already registered
+      try {
+        registerDefaultPlugins()
+      } catch (error) {
+        console.warn('⚠️ Failed to register default plugins, falling back to legacy mode:', error)
       }
-
-      // Step 3: Generate scores
-      const scores = this.generateScores(analysisData, aiAssessment)
-
-      // Step 4: Generate insights
-      const findings = this.generateFindings(analysisData, aiAssessment)
-      const recommendations = this.generateRecommendations(analysisData, aiAssessment)
-
-      // Step 5: Create result
-      const result: AssessmentResult = {
-        id: this.generateId(),
-        type: input.type,
-        url: input.url,
-        timestamp: new Date(),
-        scores,
-        analysis: analysisData,
-        aiAssessment,
-        findings,
-        recommendations,
-        metadata: {
-          version: '1.0.0',
-          analysisTime: Date.now() - startTime,
-          staticAnalysisTime: 0, // Will be set by static analysis
-          aiAnalysisTime: aiAssessment ? Date.now() - startTime : undefined,
-          totalAnalysisTime: Date.now() - startTime,
-          retryCount,
-          fallbackUsed: !aiAssessment,
-          errors,
-          warnings
-        }
-      }
-
+      
+      // Use plugin-based orchestrator for assessment
+      const result = await orchestrator.assess(input)
+      
+      // Add duration to metadata
+      result.metadata.duration = Date.now() - startTime
+      
+      console.log(`✅ Assessment completed successfully for ${input.type}`)
       return result
-
     } catch (error) {
-      console.error('Assessment failed:', error)
+      console.error(`❌ Assessment failed for ${input.type}:`, error)
       
-      // Generate fallback result
-      return this.generateFallbackResult(input, error as Error, startTime)
+      // Return fallback result if configured
+      if (this.config.fallbackToStatic) {
+        console.log(`🔄 Returning fallback result for ${input.type}`)
+        return this.generateFallbackResult(input, error as Error, startTime)
+      }
+      
+      throw error
     }
   }
 

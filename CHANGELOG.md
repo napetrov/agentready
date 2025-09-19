@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Plugin Architecture**: Implemented comprehensive plugin system with centralized registry for analyzers and AI assessors
+- **Unified Orchestrator**: Created plugin-based orchestrator for simplified assessment execution
+- **Repository Analyzer Plugin**: Plugin for static analysis of GitHub repositories
+- **Website Analyzer Plugin**: Plugin for static analysis of websites
+- **Business Type Analyzer Plugin**: Plugin for business type analysis and agentic flow assessment
+- **Unified AI Assessor Plugin**: Plugin for AI-powered assessment using unified AI assessment engine
+- **Plugin Registry**: Centralized system for managing and executing plugins with caching and retry logic
+- **Backward Compatibility**: Maintained existing API interfaces while using new plugin system internally
+
 ### Changed
+- **Architecture Unification**: Completed Phase 1 and Phase 2 of the unification process
+- **Simplified Orchestration**: Replaced complex orchestration with clean, linear plugin-based flow
+- **Unified Data Models**: Standardized data structures across all analysis types
+- **Consolidated AI Engines**: Merged multiple AI assessment engines into unified system
+- **Plugin-Based Execution**: All assessments now use plugin architecture for better maintainability and extensibility
 - **Unified Agent Compatibility Analysis**: Merged Static Analysis Results and File Size & AI Agent Compatibility sections into a single, focused Agent Compatibility Analysis section
 - **Agent Framework Support**: Updated agent compatibility to include Cursor, GitHub Copilot, Claude (unified), and Codex with agent-specific details and tooltips
 - **Context Analysis Improvement**: Enhanced context consumption analysis to focus on context tokens rather than lines for better AI agent compatibility assessment
