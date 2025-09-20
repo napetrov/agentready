@@ -10,10 +10,14 @@ import { AIAssessorPlugin, ValidationResult, Insights } from '../plugin-registry
 import { generateUnifiedAIAssessment } from '../unified-ai-assessment'
 
 export class UnifiedAIAssessorPlugin implements AIAssessorPlugin {
-  readonly type: AnalysisType = 'repository'
+  readonly type: AnalysisType
   readonly name = 'unified-ai-assessor'
   readonly version = '1.0.0'
   readonly description = 'Unified AI assessment for repository and website analysis'
+
+  constructor(type: AnalysisType = 'repository') {
+    this.type = type
+  }
 
   /**
    * Perform AI assessment on the analysis result

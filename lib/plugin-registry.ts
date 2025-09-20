@@ -400,8 +400,13 @@ export function registerDefaultPlugins(): void {
     pluginRegistry.registerAnalyzer(websiteAnalyzer)
     pluginRegistry.registerAnalyzer(businessTypeAnalyzer)
     
-    // Register AI assessors
-    pluginRegistry.registerAIAssessor(unifiedAIAssessor)
+    // Register AI assessors for both repository and website types
+    // Create separate instances for each type since the registry uses type as part of the key
+    const repositoryAIAssessor = new UnifiedAIAssessorPlugin('repository')
+    const websiteAIAssessor = new UnifiedAIAssessorPlugin('website')
+    
+    pluginRegistry.registerAIAssessor(repositoryAIAssessor)
+    pluginRegistry.registerAIAssessor(websiteAIAssessor)
     
     console.log('✅ Default plugins registered successfully')
   } catch (error) {
