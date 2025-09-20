@@ -64,7 +64,7 @@ interface AssessmentResult {
     contextEfficiency: number
     riskCompliance: number
   }
-  staticAnalysis: {
+  staticAnalysis?: {
     hasReadme: boolean
     hasContributing: boolean
     hasAgents: boolean
@@ -466,6 +466,17 @@ export default function Home() {
     return 'text-danger-600'
   }
 
+  const getAnalysisData = () => {
+    if (!result) return null
+    
+    // For website analysis, use websiteAnalysis if available, otherwise fall back to staticAnalysis
+    if (inputType === 'website' && result.websiteAnalysis) {
+      return result.websiteAnalysis
+    }
+    
+    return result.staticAnalysis
+  }
+
   const getCategoryDescription = (category: string) => {
     const descriptions: Record<string, string> = {
       documentation: inputType === 'website' 
@@ -633,35 +644,35 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
                     <div className="text-lg font-bold text-blue-600">
-                      {result.staticAnalysis.fileCount || result.staticAnalysis.fileSizeAnalysis?.totalFiles || 0}
+                      {getAnalysisData()?.fileCount || getAnalysisData()?.fileSizeAnalysis?.totalFiles || 0}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
                     <div className="text-lg font-bold text-green-600">
-                      {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
+                      {getAnalysisData()?.linesOfCode?.toLocaleString() || '0'}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
                     <div className="text-lg font-bold text-purple-600">
-                      {result.staticAnalysis.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                      {getAnalysisData()?.repositorySizeMB?.toFixed(2) || '0.00'} MB
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
                     <div className="text-sm font-medium">
-                      {result.staticAnalysis.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                      {getAnalysisData()?.languages?.slice(0, 2).join(', ') || 'Unknown'}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
                     <div className="text-sm font-medium">
                       {[
-                        result.staticAnalysis.hasReadme && 'README',
-                        result.staticAnalysis.hasAgents && 'AGENTS',
-                        result.staticAnalysis.hasContributing && 'CONTRIBUTING',
-                        result.staticAnalysis.hasLicense && 'LICENSE'
+                        getAnalysisData()?.hasReadme && 'README',
+                        getAnalysisData()?.hasAgents && 'AGENTS',
+                        getAnalysisData()?.hasContributing && 'CONTRIBUTING',
+                        getAnalysisData()?.hasLicense && 'LICENSE'
                       ].filter(Boolean).join(', ') || 'None'}
                     </div>
                   </div>
@@ -671,7 +682,7 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Page Title</div>
                     <div className="text-sm font-medium truncate">
-                      {result.staticAnalysis.pageTitle || 'No title'}
+                      {getAnalysisData()?.pageTitle || 'No title'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Critical for AI agent identification
@@ -707,7 +718,7 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Technologies</div>
                     <div className="text-sm font-medium">
-                      {result.staticAnalysis.technologies?.slice(0, 2).join(', ') || 'Unknown'}
+                      {getAnalysisData()?.technologies?.slice(0, 2).join(', ') || 'Unknown'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Framework compatibility for agent integration
@@ -788,33 +799,33 @@ export default function Home() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      result.staticAnalysis.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getAnalysisData()?.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {result.staticAnalysis.hasStructuredData ? '✓' : '✗'}
+                      {getAnalysisData()?.hasStructuredData ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Structured Data</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      result.staticAnalysis.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getAnalysisData()?.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {result.staticAnalysis.hasOpenGraph ? '✓' : '✗'}
+                      {getAnalysisData()?.hasOpenGraph ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Open Graph</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      result.staticAnalysis.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getAnalysisData()?.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {result.staticAnalysis.hasTwitterCards ? '✓' : '✗'}
+                      {getAnalysisData()?.hasTwitterCards ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Twitter Cards</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      result.staticAnalysis.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getAnalysisData()?.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {result.staticAnalysis.hasSitemap ? '✓' : '✗'}
+                      {getAnalysisData()?.hasSitemap ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Sitemap</div>
                   </div>
@@ -834,25 +845,25 @@ export default function Home() {
                   </div>
                   <div className="p-4 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-2">Content Length</div>
-                    <div className="text-2xl font-bold text-purple-600">{result.staticAnalysis.contentLength?.toLocaleString() || 0} chars</div>
+                    <div className="text-2xl font-bold text-purple-600">{getAnalysisData()?.contentLength?.toLocaleString() || 0} chars</div>
                     <div className="text-xs text-gray-500 mt-1">Total content available for analysis</div>
                   </div>
                 </div>
 
                 {/* Detected Technologies - Combined for both websites and repositories */}
-                {((result.staticAnalysis.technologies && result.staticAnalysis.technologies.length > 0) || 
-                  (result.staticAnalysis.languages && result.staticAnalysis.languages.length > 0)) && (
+                {((getAnalysisData()?.technologies && getAnalysisData()?.technologies.length > 0) || 
+                  (getAnalysisData()?.languages && getAnalysisData()?.languages.length > 0)) && (
                   <div>
                     <h4 className="text-md font-medium mb-2">Detected Technologies</h4>
                     <div className="flex flex-wrap gap-2">
                       {/* Show programming languages first */}
-                      {result.staticAnalysis.languages && result.staticAnalysis.languages.map((lang: string, index: number) => (
+                      {getAnalysisData()?.languages && getAnalysisData()?.languages.map((lang: string, index: number) => (
                         <span key={`lang-${index}`} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
                           {lang}
                         </span>
                       ))}
                       {/* Then show frameworks/technologies */}
-                      {result.staticAnalysis.technologies && result.staticAnalysis.technologies.map((tech: string, index: number) => (
+                      {getAnalysisData()?.technologies && getAnalysisData()?.technologies.map((tech: string, index: number) => (
                         <span key={`tech-${index}`} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                           {tech}
                         </span>
@@ -866,11 +877,11 @@ export default function Home() {
 
                 {/* Contact and social info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {result.staticAnalysis.contactInfo && result.staticAnalysis.contactInfo.length > 0 && (
+                  {getAnalysisData()?.contactInfo && getAnalysisData()?.contactInfo.length > 0 && (
                     <div>
                       <h4 className="text-md font-medium mb-2">Contact Information</h4>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        {result.staticAnalysis.contactInfo.slice(0, 3).map((contact: string, index: number) => (
+                        {getAnalysisData()?.contactInfo.slice(0, 3).map((contact: string, index: number) => (
                           <li key={index} className="flex items-center">
                             {contact.includes('@') ? (
                               <>
@@ -890,9 +901,9 @@ export default function Home() {
                   )}
                   <div>
                     <h4 className="text-md font-medium mb-2">Social Media</h4>
-                    {result.staticAnalysis.socialMediaLinks && result.staticAnalysis.socialMediaLinks.length > 0 ? (
+                    {getAnalysisData()?.socialMediaLinks && getAnalysisData()?.socialMediaLinks.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {result.staticAnalysis.socialMediaLinks.map((social: {platform: string, url: string}, index: number) => (
+                        {getAnalysisData()?.socialMediaLinks.map((social: {platform: string, url: string}, index: number) => (
                           <a 
                             key={index} 
                             href={social.url}
@@ -914,7 +925,7 @@ export default function Home() {
                 </div>
 
                 {/* Location Information - Show only for location-relevant business types */}
-                {result.staticAnalysis.locations && result.staticAnalysis.locations.length > 0 && 
+                {getAnalysisData()?.locations && getAnalysisData()?.locations.length > 0 && 
                  result.businessTypeAnalysis && 
                  ['food_service', 'healthcare', 'retail_ecommerce', 'hospitality', 'automotive', 'home_services', 'beauty_wellness', 'events_experiences', 'fitness_wellness', 'pet_services'].includes(result.businessTypeAnalysis.businessType) && (
                   <div className="mt-4">
@@ -924,7 +935,7 @@ export default function Home() {
                         // Group locations by city
                         const grouped = new Map<string, string[]>()
                         
-                        for (const location of result.staticAnalysis.locations) {
+                        for (const location of getAnalysisData()?.locations) {
                           // Extract city from location string
                           let city = 'Other'
                           const cityMatch = location.match(/([A-Za-z\s]+),\s*([A-Z]{2})/)
@@ -1231,7 +1242,7 @@ export default function Home() {
 
 
           {/* Agent Compatibility Analysis - Only for repositories */}
-          {inputType === 'repository' && result.staticAnalysis.fileSizeAnalysis && (
+          {inputType === 'repository' && getAnalysisData()?.fileSizeAnalysis && (
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Agent Compatibility Analysis</h3>
               
@@ -1240,13 +1251,13 @@ export default function Home() {
                 <h4 className="text-md font-medium mb-3">Agent Framework Compatibility</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { key: 'cursor', name: 'Cursor', score: result.staticAnalysis.fileSizeAnalysis.agentCompatibility.cursor || 0 },
-                    { key: 'githubCopilot', name: 'GitHub Copilot', score: result.staticAnalysis.fileSizeAnalysis.agentCompatibility.githubCopilot || 0 },
+                    { key: 'cursor', name: 'Cursor', score: getAnalysisData()?.fileSizeAnalysis.agentCompatibility.cursor || 0 },
+                    { key: 'githubCopilot', name: 'GitHub Copilot', score: getAnalysisData()?.fileSizeAnalysis.agentCompatibility.githubCopilot || 0 },
                     { key: 'claude', name: 'Claude', score: Math.max(
-                      result.staticAnalysis.fileSizeAnalysis.agentCompatibility.claudeWeb || 0,
-                      result.staticAnalysis.fileSizeAnalysis.agentCompatibility.claudeApi || 0
+                      getAnalysisData()?.fileSizeAnalysis.agentCompatibility.claudeWeb || 0,
+                      getAnalysisData()?.fileSizeAnalysis.agentCompatibility.claudeApi || 0
                     ) },
-                    { key: 'codex', name: 'Codex', score: (result.staticAnalysis.fileSizeAnalysis.agentCompatibility as any).codex || 0 }
+                    { key: 'codex', name: 'Codex', score: (getAnalysisData()?.fileSizeAnalysis.agentCompatibility as any).codex || 0 }
                   ].map((agent) => (
                     <div key={agent.key} className="p-3 border rounded-lg text-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
                       <div className="text-sm font-medium capitalize mb-1">{agent.name}</div>
@@ -1262,7 +1273,7 @@ export default function Home() {
                         <div className="font-medium mb-1">{agent.name} Analysis</div>
                         <div>Context Window: {agent.key === 'cursor' ? '200K tokens' : agent.key === 'githubCopilot' ? '8K tokens' : agent.key === 'claude' ? '200K tokens' : '8K tokens'}</div>
                         <div>File Size Impact: {agent.score >= 80 ? 'Optimal' : agent.score >= 60 ? 'Moderate' : 'High'}</div>
-                        <div>Large Files: {result.staticAnalysis.fileSizeAnalysis?.largeFiles.length || 0} detected</div>
+                        <div>Large Files: {getAnalysisData()?.fileSizeAnalysis?.largeFiles.length || 0} detected</div>
                       </div>
                     </div>
                   ))}
@@ -1276,91 +1287,91 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Documentation</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasReadme ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasReadme ? '✓' : '✗'}
+                      <span className={`text-sm ${getAnalysisData()?.hasReadme ? 'text-green-600' : 'text-red-600'}`}>
+                        {getAnalysisData()?.hasReadme ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasReadme ? 'README available' : 'Missing README'}
+                      {getAnalysisData()?.hasReadme ? 'README available' : 'Missing README'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Agent Instructions</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasAgents ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasAgents ? '✓' : '✗'}
+                      <span className={`text-sm ${getAnalysisData()?.hasAgents ? 'text-green-600' : 'text-red-600'}`}>
+                        {getAnalysisData()?.hasAgents ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasAgents ? 'AGENTS.md found' : 'Missing AGENTS.md'}
+                      {getAnalysisData()?.hasAgents ? 'AGENTS.md found' : 'Missing AGENTS.md'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Contributing Guide</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasContributing ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasContributing ? '✓' : '✗'}
+                      <span className={`text-sm ${getAnalysisData()?.hasContributing ? 'text-green-600' : 'text-red-600'}`}>
+                        {getAnalysisData()?.hasContributing ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasContributing ? 'CONTRIBUTING.md available' : 'Missing CONTRIBUTING.md'}
+                      {getAnalysisData()?.hasContributing ? 'CONTRIBUTING.md available' : 'Missing CONTRIBUTING.md'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">License</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasLicense ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasLicense ? '✓' : '✗'}
+                      <span className={`text-sm ${getAnalysisData()?.hasLicense ? 'text-green-600' : 'text-red-600'}`}>
+                        {getAnalysisData()?.hasLicense ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasLicense ? 'LICENSE available' : 'Missing LICENSE'}
+                      {getAnalysisData()?.hasLicense ? 'LICENSE available' : 'Missing LICENSE'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">CI/CD Workflows</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasWorkflows ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasWorkflows ? '✓' : '✗'}
+                      <span className={`text-sm ${getAnalysisData()?.hasWorkflows ? 'text-green-600' : 'text-red-600'}`}>
+                        {getAnalysisData()?.hasWorkflows ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasWorkflows ? 'GitHub Actions found' : 'No workflows detected'}
+                      {getAnalysisData()?.hasWorkflows ? 'GitHub Actions found' : 'No workflows detected'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Test Coverage</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasTests ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasTests ? '✓' : '✗'}
+                      <span className={`text-sm ${getAnalysisData()?.hasTests ? 'text-green-600' : 'text-red-600'}`}>
+                        {getAnalysisData()?.hasTests ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasTests ? 'Test files found' : 'No tests detected'}
+                      {getAnalysisData()?.hasTests ? 'Test files found' : 'No tests detected'}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Large Files Warning - Only show if there are large files */}
-              {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 0 && (
+              {getAnalysisData()?.fileSizeAnalysis.largeFiles.length > 0 && (
                 <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
                   <h4 className="text-md font-medium mb-3 text-yellow-800">⚠️ Large Files Detected</h4>
                   <div className="space-y-2">
-                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.slice(0, 3).map((file, index) => (
+                    {getAnalysisData()?.fileSizeAnalysis.largeFiles.slice(0, 3).map((file, index) => (
                       <div key={index} className="flex justify-between items-center text-sm">
                         <span className="font-medium truncate flex-1 mr-2">{file.path}</span>
                         <span className="text-red-600 font-bold">{file.sizeFormatted}</span>
                       </div>
                     ))}
-                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 3 && (
+                    {getAnalysisData()?.fileSizeAnalysis.largeFiles.length > 3 && (
                       <div className="text-sm text-yellow-700">
-                        ... and {result.staticAnalysis.fileSizeAnalysis.largeFiles.length - 3} more files
+                        ... and {getAnalysisData()?.fileSizeAnalysis.largeFiles.length - 3} more files
                       </div>
                     )}
                   </div>
@@ -1377,38 +1388,38 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium mb-2">Instruction Files Context</div>
                     <div className="space-y-1 text-xs">
-                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd && (
-                        <div>AGENTS.md: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 4)} tokens</div>
+                      {getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd && (
+                        <div>AGENTS.md: ~{Math.round(getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 4)} tokens</div>
                       )}
-                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme && (
-                        <div>README: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 4)} tokens</div>
+                      {getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.readme && (
+                        <div>README: ~{Math.round(getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 4)} tokens</div>
                       )}
-                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing && (
-                        <div>CONTRIBUTING: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 4)} tokens</div>
+                      {getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.contributing && (
+                        <div>CONTRIBUTING: ~{Math.round(getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 4)} tokens</div>
                       )}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium mb-2">Context Efficiency</div>
                     <div className="space-y-1 text-xs">
-                      <div>Total Context Files: {result.staticAnalysis.fileSizeAnalysis.contextConsumption.totalContextFiles}</div>
-                      <div>Average Context: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.averageContextFileSize / 4)} tokens</div>
+                      <div>Total Context Files: {getAnalysisData()?.fileSizeAnalysis.contextConsumption.totalContextFiles}</div>
+                      <div>Average Context: ~{Math.round(getAnalysisData()?.fileSizeAnalysis.contextConsumption.averageContextFileSize / 4)} tokens</div>
                       <div>Efficiency: <span className={`font-medium ${
-                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'excellent' ? 'text-green-600' :
-                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'good' ? 'text-blue-600' :
-                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'moderate' ? 'text-yellow-600' : 'text-red-600'
-                      }`}>{result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency}</span></div>
+                        getAnalysisData()?.fileSizeAnalysis.contextConsumption.contextEfficiency === 'excellent' ? 'text-green-600' :
+                        getAnalysisData()?.fileSizeAnalysis.contextConsumption.contextEfficiency === 'good' ? 'text-blue-600' :
+                        getAnalysisData()?.fileSizeAnalysis.contextConsumption.contextEfficiency === 'moderate' ? 'text-yellow-600' : 'text-red-600'
+                      }`}>{getAnalysisData()?.fileSizeAnalysis.contextConsumption.contextEfficiency}</span></div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Recommendations */}
-              {result.staticAnalysis.fileSizeAnalysis.recommendations.length > 0 && (
+              {getAnalysisData()?.fileSizeAnalysis.recommendations.length > 0 && (
                 <div>
                   <h4 className="text-md font-medium mb-3">Agent Optimization Recommendations</h4>
                   <ul className="space-y-1">
-                    {result.staticAnalysis.fileSizeAnalysis.recommendations.map((rec, index) => (
+                    {getAnalysisData()?.fileSizeAnalysis.recommendations.map((rec, index) => (
                       <li key={index} className="flex items-start text-sm">
                         <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0" />
                         <span>{rec}</span>
