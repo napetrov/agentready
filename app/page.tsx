@@ -477,6 +477,16 @@ export default function Home() {
     return result.staticAnalysis
   }
 
+  const getRepositoryData = () => {
+    if (!result) return null
+    return result.staticAnalysis
+  }
+
+  const getWebsiteData = () => {
+    if (!result) return null
+    return result.websiteAnalysis as any
+  }
+
   const getCategoryDescription = (category: string) => {
     const descriptions: Record<string, string> = {
       documentation: inputType === 'website' 
@@ -644,35 +654,35 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
                     <div className="text-lg font-bold text-blue-600">
-                      {getAnalysisData()?.fileCount || getAnalysisData()?.fileSizeAnalysis?.totalFiles || 0}
+                      {getRepositoryData()?.fileCount || getRepositoryData()?.fileSizeAnalysis?.totalFiles || 0}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
                     <div className="text-lg font-bold text-green-600">
-                      {getAnalysisData()?.linesOfCode?.toLocaleString() || '0'}
+                      {getRepositoryData()?.linesOfCode?.toLocaleString() || '0'}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
                     <div className="text-lg font-bold text-purple-600">
-                      {getAnalysisData()?.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                      {getRepositoryData()?.repositorySizeMB?.toFixed(2) || '0.00'} MB
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
                     <div className="text-sm font-medium">
-                      {getAnalysisData()?.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                      {getRepositoryData()?.languages?.slice(0, 2).join(', ') || 'Unknown'}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
                     <div className="text-sm font-medium">
                       {[
-                        getAnalysisData()?.hasReadme && 'README',
-                        getAnalysisData()?.hasAgents && 'AGENTS',
-                        getAnalysisData()?.hasContributing && 'CONTRIBUTING',
-                        getAnalysisData()?.hasLicense && 'LICENSE'
+                        getRepositoryData()?.hasReadme && 'README',
+                        getRepositoryData()?.hasAgents && 'AGENTS',
+                        getRepositoryData()?.hasContributing && 'CONTRIBUTING',
+                        getRepositoryData()?.hasLicense && 'LICENSE'
                       ].filter(Boolean).join(', ') || 'None'}
                     </div>
                   </div>
@@ -682,7 +692,7 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Page Title</div>
                     <div className="text-sm font-medium truncate">
-                      {getAnalysisData()?.pageTitle || 'No title'}
+                      {getWebsiteData()?.pageTitle || 'No title'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Critical for AI agent identification
@@ -718,7 +728,7 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Technologies</div>
                     <div className="text-sm font-medium">
-                      {getAnalysisData()?.technologies?.slice(0, 2).join(', ') || 'Unknown'}
+                      {getWebsiteData()?.technologies?.slice(0, 2).join(', ') || 'Unknown'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Framework compatibility for agent integration
@@ -799,33 +809,33 @@ export default function Home() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      getAnalysisData()?.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getWebsiteData()?.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {getAnalysisData()?.hasStructuredData ? '✓' : '✗'}
+                      {getWebsiteData()?.hasStructuredData ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Structured Data</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      getAnalysisData()?.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getWebsiteData()?.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {getAnalysisData()?.hasOpenGraph ? '✓' : '✗'}
+                      {getWebsiteData()?.hasOpenGraph ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Open Graph</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      getAnalysisData()?.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getWebsiteData()?.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {getAnalysisData()?.hasTwitterCards ? '✓' : '✗'}
+                      {getWebsiteData()?.hasTwitterCards ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Twitter Cards</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      getAnalysisData()?.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getWebsiteData()?.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {getAnalysisData()?.hasSitemap ? '✓' : '✗'}
+                      {getWebsiteData()?.hasSitemap ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Sitemap</div>
                   </div>
@@ -845,25 +855,30 @@ export default function Home() {
                   </div>
                   <div className="p-4 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-2">Content Length</div>
-                    <div className="text-2xl font-bold text-purple-600">{getAnalysisData()?.contentLength?.toLocaleString() || 0} chars</div>
+                    <div className="text-2xl font-bold text-purple-600">{getWebsiteData()?.contentLength?.toLocaleString() || 0} chars</div>
                     <div className="text-xs text-gray-500 mt-1">Total content available for analysis</div>
                   </div>
                 </div>
 
                 {/* Detected Technologies - Combined for both websites and repositories */}
-                {((getAnalysisData()?.technologies && getAnalysisData()?.technologies.length > 0) || 
-                  (getAnalysisData()?.languages && getAnalysisData()?.languages.length > 0)) && (
+                {(() => {
+                  const websiteData = getWebsiteData()
+                  const repositoryData = getRepositoryData()
+                  const hasWebsiteTech = websiteData?.technologies && websiteData.technologies.length > 0
+                  const hasRepoLanguages = repositoryData?.languages && repositoryData.languages.length > 0
+                  return hasWebsiteTech || hasRepoLanguages
+                })() && (
                   <div>
                     <h4 className="text-md font-medium mb-2">Detected Technologies</h4>
                     <div className="flex flex-wrap gap-2">
                       {/* Show programming languages first */}
-                      {getAnalysisData()?.languages && getAnalysisData()?.languages.map((lang: string, index: number) => (
+                      {getRepositoryData()?.languages?.map((lang: string, index: number) => (
                         <span key={`lang-${index}`} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
                           {lang}
                         </span>
                       ))}
                       {/* Then show frameworks/technologies */}
-                      {getAnalysisData()?.technologies && getAnalysisData()?.technologies.map((tech: string, index: number) => (
+                      {getWebsiteData()?.technologies?.map((tech: string, index: number) => (
                         <span key={`tech-${index}`} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                           {tech}
                         </span>
@@ -877,11 +892,11 @@ export default function Home() {
 
                 {/* Contact and social info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {getAnalysisData()?.contactInfo && getAnalysisData()?.contactInfo.length > 0 && (
+                  {getWebsiteData()?.contactInfo && getWebsiteData()?.contactInfo.length > 0 && (
                     <div>
                       <h4 className="text-md font-medium mb-2">Contact Information</h4>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        {getAnalysisData()?.contactInfo.slice(0, 3).map((contact: string, index: number) => (
+                        {getWebsiteData()?.contactInfo.slice(0, 3).map((contact: string, index: number) => (
                           <li key={index} className="flex items-center">
                             {contact.includes('@') ? (
                               <>
@@ -901,9 +916,9 @@ export default function Home() {
                   )}
                   <div>
                     <h4 className="text-md font-medium mb-2">Social Media</h4>
-                    {getAnalysisData()?.socialMediaLinks && getAnalysisData()?.socialMediaLinks.length > 0 ? (
+                    {getWebsiteData()?.socialMediaLinks && getWebsiteData()?.socialMediaLinks.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {getAnalysisData()?.socialMediaLinks.map((social: {platform: string, url: string}, index: number) => (
+                        {getWebsiteData()?.socialMediaLinks.map((social: {platform: string, url: string}, index: number) => (
                           <a 
                             key={index} 
                             href={social.url}
@@ -925,7 +940,7 @@ export default function Home() {
                 </div>
 
                 {/* Location Information - Show only for location-relevant business types */}
-                {getAnalysisData()?.locations && getAnalysisData()?.locations.length > 0 && 
+                {getWebsiteData()?.locations && getWebsiteData()?.locations.length > 0 && 
                  result.businessTypeAnalysis && 
                  ['food_service', 'healthcare', 'retail_ecommerce', 'hospitality', 'automotive', 'home_services', 'beauty_wellness', 'events_experiences', 'fitness_wellness', 'pet_services'].includes(result.businessTypeAnalysis.businessType) && (
                   <div className="mt-4">
@@ -935,7 +950,7 @@ export default function Home() {
                         // Group locations by city
                         const grouped = new Map<string, string[]>()
                         
-                        for (const location of getAnalysisData()?.locations) {
+                        for (const location of getWebsiteData()?.locations) {
                           // Extract city from location string
                           let city = 'Other'
                           const cityMatch = location.match(/([A-Za-z\s]+),\s*([A-Z]{2})/)
@@ -1242,7 +1257,7 @@ export default function Home() {
 
 
           {/* Agent Compatibility Analysis - Only for repositories */}
-          {inputType === 'repository' && getAnalysisData()?.fileSizeAnalysis && (
+          {inputType === 'repository' && getRepositoryData()?.fileSizeAnalysis && (
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Agent Compatibility Analysis</h3>
               
@@ -1251,13 +1266,13 @@ export default function Home() {
                 <h4 className="text-md font-medium mb-3">Agent Framework Compatibility</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { key: 'cursor', name: 'Cursor', score: getAnalysisData()?.fileSizeAnalysis.agentCompatibility.cursor || 0 },
-                    { key: 'githubCopilot', name: 'GitHub Copilot', score: getAnalysisData()?.fileSizeAnalysis.agentCompatibility.githubCopilot || 0 },
+                    { key: 'cursor', name: 'Cursor', score: getRepositoryData()?.fileSizeAnalysis?.agentCompatibility?.cursor || 0 },
+                    { key: 'githubCopilot', name: 'GitHub Copilot', score: getRepositoryData()?.fileSizeAnalysis?.agentCompatibility?.githubCopilot || 0 },
                     { key: 'claude', name: 'Claude', score: Math.max(
-                      getAnalysisData()?.fileSizeAnalysis.agentCompatibility.claudeWeb || 0,
-                      getAnalysisData()?.fileSizeAnalysis.agentCompatibility.claudeApi || 0
+                      getRepositoryData()?.fileSizeAnalysis?.agentCompatibility?.claudeWeb || 0,
+                      getRepositoryData()?.fileSizeAnalysis?.agentCompatibility?.claudeApi || 0
                     ) },
-                    { key: 'codex', name: 'Codex', score: (getAnalysisData()?.fileSizeAnalysis.agentCompatibility as any).codex || 0 }
+                    { key: 'codex', name: 'Codex', score: (getRepositoryData()?.fileSizeAnalysis?.agentCompatibility as any)?.codex || 0 }
                   ].map((agent) => (
                     <div key={agent.key} className="p-3 border rounded-lg text-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
                       <div className="text-sm font-medium capitalize mb-1">{agent.name}</div>
@@ -1273,7 +1288,7 @@ export default function Home() {
                         <div className="font-medium mb-1">{agent.name} Analysis</div>
                         <div>Context Window: {agent.key === 'cursor' ? '200K tokens' : agent.key === 'githubCopilot' ? '8K tokens' : agent.key === 'claude' ? '200K tokens' : '8K tokens'}</div>
                         <div>File Size Impact: {agent.score >= 80 ? 'Optimal' : agent.score >= 60 ? 'Moderate' : 'High'}</div>
-                        <div>Large Files: {getAnalysisData()?.fileSizeAnalysis?.largeFiles.length || 0} detected</div>
+                        <div>Large Files: {getRepositoryData()?.fileSizeAnalysis?.largeFiles.length || 0} detected</div>
                       </div>
                     </div>
                   ))}
@@ -1287,91 +1302,100 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Documentation</span>
-                      <span className={`text-sm ${getAnalysisData()?.hasReadme ? 'text-green-600' : 'text-red-600'}`}>
-                        {getAnalysisData()?.hasReadme ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasReadme ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasReadme ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {getAnalysisData()?.hasReadme ? 'README available' : 'Missing README'}
+                      {getRepositoryData()?.hasReadme ? 'README available' : 'Missing README'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Agent Instructions</span>
-                      <span className={`text-sm ${getAnalysisData()?.hasAgents ? 'text-green-600' : 'text-red-600'}`}>
-                        {getAnalysisData()?.hasAgents ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasAgents ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasAgents ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {getAnalysisData()?.hasAgents ? 'AGENTS.md found' : 'Missing AGENTS.md'}
+                      {getRepositoryData()?.hasAgents ? 'AGENTS.md found' : 'Missing AGENTS.md'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Contributing Guide</span>
-                      <span className={`text-sm ${getAnalysisData()?.hasContributing ? 'text-green-600' : 'text-red-600'}`}>
-                        {getAnalysisData()?.hasContributing ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasContributing ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasContributing ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {getAnalysisData()?.hasContributing ? 'CONTRIBUTING.md available' : 'Missing CONTRIBUTING.md'}
+                      {getRepositoryData()?.hasContributing ? 'CONTRIBUTING.md available' : 'Missing CONTRIBUTING.md'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">License</span>
-                      <span className={`text-sm ${getAnalysisData()?.hasLicense ? 'text-green-600' : 'text-red-600'}`}>
-                        {getAnalysisData()?.hasLicense ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasLicense ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasLicense ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {getAnalysisData()?.hasLicense ? 'LICENSE available' : 'Missing LICENSE'}
+                      {getRepositoryData()?.hasLicense ? 'LICENSE available' : 'Missing LICENSE'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">CI/CD Workflows</span>
-                      <span className={`text-sm ${getAnalysisData()?.hasWorkflows ? 'text-green-600' : 'text-red-600'}`}>
-                        {getAnalysisData()?.hasWorkflows ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasWorkflows ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasWorkflows ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {getAnalysisData()?.hasWorkflows ? 'GitHub Actions found' : 'No workflows detected'}
+                      {getRepositoryData()?.hasWorkflows ? 'GitHub Actions found' : 'No workflows detected'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Test Coverage</span>
-                      <span className={`text-sm ${getAnalysisData()?.hasTests ? 'text-green-600' : 'text-red-600'}`}>
-                        {getAnalysisData()?.hasTests ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasTests ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasTests ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {getAnalysisData()?.hasTests ? 'Test files found' : 'No tests detected'}
+                      {getRepositoryData()?.hasTests ? 'Test files found' : 'No tests detected'}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Large Files Warning - Only show if there are large files */}
-              {getAnalysisData()?.fileSizeAnalysis.largeFiles.length > 0 && (
+              {(() => {
+                const repoData = getRepositoryData()
+                return repoData?.fileSizeAnalysis?.largeFiles && repoData.fileSizeAnalysis.largeFiles.length > 0
+              })() && (
                 <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
                   <h4 className="text-md font-medium mb-3 text-yellow-800">⚠️ Large Files Detected</h4>
                   <div className="space-y-2">
-                    {getAnalysisData()?.fileSizeAnalysis.largeFiles.slice(0, 3).map((file, index) => (
+                    {getRepositoryData()?.fileSizeAnalysis?.largeFiles?.slice(0, 3).map((file, index) => (
                       <div key={index} className="flex justify-between items-center text-sm">
                         <span className="font-medium truncate flex-1 mr-2">{file.path}</span>
                         <span className="text-red-600 font-bold">{file.sizeFormatted}</span>
                       </div>
                     ))}
-                    {getAnalysisData()?.fileSizeAnalysis.largeFiles.length > 3 && (
+                    {(() => {
+                      const repoData = getRepositoryData()
+                      return repoData?.fileSizeAnalysis?.largeFiles && repoData.fileSizeAnalysis.largeFiles.length > 3
+                    })() && (
                       <div className="text-sm text-yellow-700">
-                        ... and {getAnalysisData()?.fileSizeAnalysis.largeFiles.length - 3} more files
+                        ... and {(() => {
+                          const repoData = getRepositoryData()
+                          return (repoData?.fileSizeAnalysis?.largeFiles?.length || 0) - 3
+                        })()} more files
                       </div>
                     )}
                   </div>
@@ -1388,43 +1412,65 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium mb-2">Instruction Files Context</div>
                     <div className="space-y-1 text-xs">
-                      {getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd && (
-                        <div>AGENTS.md: ~{Math.round(getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 4)} tokens</div>
-                      )}
-                      {getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.readme && (
-                        <div>README: ~{Math.round(getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 4)} tokens</div>
-                      )}
-                      {getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.contributing && (
-                        <div>CONTRIBUTING: ~{Math.round(getAnalysisData()?.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 4)} tokens</div>
-                      )}
+                      {(() => {
+                        const repoData = getRepositoryData()
+                        return repoData?.fileSizeAnalysis?.contextConsumption?.instructionFiles?.agentsMd && (
+                          <div>AGENTS.md: ~{Math.round(repoData.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 4)} tokens</div>
+                        )
+                      })()}
+                      {(() => {
+                        const repoData = getRepositoryData()
+                        return repoData?.fileSizeAnalysis?.contextConsumption?.instructionFiles?.readme && (
+                          <div>README: ~{Math.round(repoData.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 4)} tokens</div>
+                        )
+                      })()}
+                      {(() => {
+                        const repoData = getRepositoryData()
+                        return repoData?.fileSizeAnalysis?.contextConsumption?.instructionFiles?.contributing && (
+                          <div>CONTRIBUTING: ~{Math.round(repoData.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 4)} tokens</div>
+                        )
+                      })()}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium mb-2">Context Efficiency</div>
                     <div className="space-y-1 text-xs">
-                      <div>Total Context Files: {getAnalysisData()?.fileSizeAnalysis.contextConsumption.totalContextFiles}</div>
-                      <div>Average Context: ~{Math.round(getAnalysisData()?.fileSizeAnalysis.contextConsumption.averageContextFileSize / 4)} tokens</div>
-                      <div>Efficiency: <span className={`font-medium ${
-                        getAnalysisData()?.fileSizeAnalysis.contextConsumption.contextEfficiency === 'excellent' ? 'text-green-600' :
-                        getAnalysisData()?.fileSizeAnalysis.contextConsumption.contextEfficiency === 'good' ? 'text-blue-600' :
-                        getAnalysisData()?.fileSizeAnalysis.contextConsumption.contextEfficiency === 'moderate' ? 'text-yellow-600' : 'text-red-600'
-                      }`}>{getAnalysisData()?.fileSizeAnalysis.contextConsumption.contextEfficiency}</span></div>
+                      {(() => {
+                        const repoData = getRepositoryData()
+                        return (
+                          <>
+                            <div>Total Context Files: {repoData?.fileSizeAnalysis?.contextConsumption?.totalContextFiles || 0}</div>
+                            <div>Average Context: ~{Math.round((repoData?.fileSizeAnalysis?.contextConsumption?.averageContextFileSize || 0) / 4)} tokens</div>
+                            <div>Efficiency: <span className={`font-medium ${
+                              repoData?.fileSizeAnalysis?.contextConsumption?.contextEfficiency === 'excellent' ? 'text-green-600' :
+                              repoData?.fileSizeAnalysis?.contextConsumption?.contextEfficiency === 'good' ? 'text-blue-600' :
+                              repoData?.fileSizeAnalysis?.contextConsumption?.contextEfficiency === 'moderate' ? 'text-yellow-600' : 'text-red-600'
+                            }`}>{repoData?.fileSizeAnalysis?.contextConsumption?.contextEfficiency || 'unknown'}</span></div>
+                          </>
+                        )
+                      })()}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Recommendations */}
-              {getAnalysisData()?.fileSizeAnalysis.recommendations.length > 0 && (
+              {(() => {
+                const repoData = getRepositoryData()
+                return repoData?.fileSizeAnalysis?.recommendations && repoData.fileSizeAnalysis.recommendations.length > 0
+              })() && (
                 <div>
                   <h4 className="text-md font-medium mb-3">Agent Optimization Recommendations</h4>
                   <ul className="space-y-1">
-                    {getAnalysisData()?.fileSizeAnalysis.recommendations.map((rec, index) => (
-                      <li key={index} className="flex items-start text-sm">
-                        <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0" />
-                        <span>{rec}</span>
-                      </li>
-                    ))}
+                    {(() => {
+                      const repoData = getRepositoryData()
+                      return repoData?.fileSizeAnalysis?.recommendations?.map((rec, index) => (
+                        <li key={index} className="flex items-start text-sm">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <span>{rec}</span>
+                        </li>
+                      ))
+                    })()}
                   </ul>
                 </div>
               )}
