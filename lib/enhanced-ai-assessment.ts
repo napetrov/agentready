@@ -1,3 +1,8 @@
+/**
+ * @deprecated This module is deprecated and will be removed in a future version.
+ * Use UnifiedAIAssessment with plugin architecture instead.
+ */
+
 import 'server-only'
 import OpenAI from 'openai'
 import { StaticAnalysisSummary } from './ai-assessment'

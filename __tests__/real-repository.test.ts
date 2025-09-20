@@ -2,11 +2,15 @@ import { analyzeRepository } from '../lib/analyzer'
 import { generateAIAssessment } from '../lib/ai-assessment'
 import { generateEnhancedAIAssessment } from '../lib/enhanced-ai-assessment'
 
+// Mock axios to prevent real HTTP requests
+jest.mock('axios')
+const axios = require('axios')
+
 describe('Real Repository Analysis', () => {
   // Mock the GitHub API calls to avoid rate limiting in tests
   beforeEach(() => {
-    // Mock fetch for GitHub API
-    global.fetch = jest.fn()
+    // Mock axios for GitHub API
+    axios.get = jest.fn()
   })
 
   afterEach(() => {
@@ -16,9 +20,9 @@ describe('Real Repository Analysis', () => {
   test('should analyze napetrov/daal repository correctly', async () => {
     // Mock the GitHub API response
     const mockZipData = new ArrayBuffer(1024) // Mock zip data
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      arrayBuffer: () => Promise.resolve(mockZipData)
+    ;(axios.get as jest.Mock).mockResolvedValueOnce({
+      data: mockZipData,
+      status: 200
     })
 
     // Mock JSZip with realistic file sizes
@@ -140,7 +144,7 @@ describe('Real Repository Analysis', () => {
 
   test('should handle repository analysis errors gracefully', async () => {
     // Mock a failed GitHub API response
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'))
+    ;(axios.get as jest.Mock).mockRejectedValueOnce(new Error('Network error'))
 
     await expect(analyzeRepository('https://github.com/invalid/repo')).rejects.toThrow()
   })
