@@ -441,6 +441,25 @@ export default function Home() {
         data.recommendations = []
       }
       
+      // Truncate very large content to prevent memory issues
+      if (data.staticAnalysis?.readmeContent && data.staticAnalysis.readmeContent.length > 10000) {
+        data.staticAnalysis.readmeContent = data.staticAnalysis.readmeContent.substring(0, 10000) + '... [truncated]'
+      }
+      if (data.staticAnalysis?.contributingContent && data.staticAnalysis.contributingContent.length > 10000) {
+        data.staticAnalysis.contributingContent = data.staticAnalysis.contributingContent.substring(0, 10000) + '... [truncated]'
+      }
+      if (data.staticAnalysis?.agentsContent && data.staticAnalysis.agentsContent.length > 10000) {
+        data.staticAnalysis.agentsContent = data.staticAnalysis.agentsContent.substring(0, 10000) + '... [truncated]'
+      }
+      
+      // Limit large arrays to prevent rendering issues
+      if (data.staticAnalysis?.workflowFiles && data.staticAnalysis.workflowFiles.length > 50) {
+        data.staticAnalysis.workflowFiles = data.staticAnalysis.workflowFiles.slice(0, 50)
+      }
+      if (data.staticAnalysis?.testFiles && data.staticAnalysis.testFiles.length > 100) {
+        data.staticAnalysis.testFiles = data.staticAnalysis.testFiles.slice(0, 100)
+      }
+      
       setResult(data)
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -509,7 +528,27 @@ export default function Home() {
   const getRepositoryData = () => {
     if (!result) return null
     try {
-      return result.staticAnalysis || null
+      const data = result.staticAnalysis || null
+      if (data) {
+        // Ensure arrays are not too large for rendering
+        if ((data as any).workflowFiles && (data as any).workflowFiles.length > 50) {
+          (data as any).workflowFiles = (data as any).workflowFiles.slice(0, 50)
+        }
+        if ((data as any).testFiles && (data as any).testFiles.length > 100) {
+          (data as any).testFiles = (data as any).testFiles.slice(0, 100)
+        }
+        // Truncate very large text content
+        if ((data as any).readmeContent && (data as any).readmeContent.length > 5000) {
+          (data as any).readmeContent = (data as any).readmeContent.substring(0, 5000) + '... [truncated for display]'
+        }
+        if ((data as any).contributingContent && (data as any).contributingContent.length > 5000) {
+          (data as any).contributingContent = (data as any).contributingContent.substring(0, 5000) + '... [truncated for display]'
+        }
+        if ((data as any).agentsContent && (data as any).agentsContent.length > 5000) {
+          (data as any).agentsContent = (data as any).agentsContent.substring(0, 5000) + '... [truncated for display]'
+        }
+      }
+      return data
     } catch (error) {
       console.error('Error accessing repository data:', error)
       return null

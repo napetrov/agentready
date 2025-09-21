@@ -171,6 +171,26 @@ export async function POST(request: NextRequest) {
       legacyResult.websiteAnalysis = input.type === 'website' ? {} : null
     }
 
+    // Truncate very large content to prevent client-side issues
+    if (legacyResult.staticAnalysis) {
+      if (legacyResult.staticAnalysis.readmeContent && legacyResult.staticAnalysis.readmeContent.length > 5000) {
+        legacyResult.staticAnalysis.readmeContent = legacyResult.staticAnalysis.readmeContent.substring(0, 5000) + '... [truncated]'
+      }
+      if (legacyResult.staticAnalysis.contributingContent && legacyResult.staticAnalysis.contributingContent.length > 5000) {
+        legacyResult.staticAnalysis.contributingContent = legacyResult.staticAnalysis.contributingContent.substring(0, 5000) + '... [truncated]'
+      }
+      if (legacyResult.staticAnalysis.agentsContent && legacyResult.staticAnalysis.agentsContent.length > 5000) {
+        legacyResult.staticAnalysis.agentsContent = legacyResult.staticAnalysis.agentsContent.substring(0, 5000) + '... [truncated]'
+      }
+      // Limit large arrays
+      if (legacyResult.staticAnalysis.workflowFiles && legacyResult.staticAnalysis.workflowFiles.length > 50) {
+        legacyResult.staticAnalysis.workflowFiles = legacyResult.staticAnalysis.workflowFiles.slice(0, 50)
+      }
+      if (legacyResult.staticAnalysis.testFiles && legacyResult.staticAnalysis.testFiles.length > 100) {
+        legacyResult.staticAnalysis.testFiles = legacyResult.staticAnalysis.testFiles.slice(0, 100)
+      }
+    }
+
     return NextResponse.json(legacyResult)
   } catch (error) {
     console.error('Analysis error:', error)
