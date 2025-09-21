@@ -564,6 +564,58 @@ describe('Home Page Component', () => {
         ],
         locations: ['New York, NY', 'San Francisco, CA']
       },
+      websiteAnalysis: {
+        url: 'https://example.com',
+        pageTitle: 'Example Website',
+        metaDescription: 'A sample website',
+        hasStructuredData: true,
+        hasOpenGraph: true,
+        hasTwitterCards: false,
+        hasSitemap: true,
+        hasRobotsTxt: true,
+        hasFavicon: false,
+        hasManifest: false,
+        hasServiceWorker: false,
+        contentLength: 5000,
+        technologies: ['React', 'Next.js'],
+        contactInfo: ['contact@example.com', '+1-555-0123'],
+        socialMediaLinks: [
+          { platform: 'Twitter', url: 'https://twitter.com/example' }
+        ],
+        locations: ['New York, NY', 'San Francisco, CA'],
+        agentReadinessFeatures: {
+          informationGathering: {
+            score: 80,
+            maxScore: 100,
+            details: ['Service info available', 'Pricing available'],
+            missing: ['Availability info', 'Reviews']
+          },
+          directBooking: {
+            score: 70,
+            maxScore: 100,
+            details: ['Booking instructions available'],
+            missing: ['Confirmation process']
+          },
+          faqSupport: {
+            score: 60,
+            maxScore: 100,
+            details: ['FAQ section available'],
+            missing: ['User guides', 'Search functionality']
+          },
+          taskManagement: {
+            score: 50,
+            maxScore: 100,
+            details: [],
+            missing: ['Schedule visibility', 'Reservation management']
+          },
+          personalization: {
+            score: 40,
+            maxScore: 100,
+            details: [],
+            missing: ['Profile capture', 'Recommendation logic']
+          }
+        }
+      },
       businessTypeAnalysis: {
         businessType: 'food_service',
         businessTypeConfidence: 85,
