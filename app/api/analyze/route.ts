@@ -151,14 +151,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await assessmentEngine.assess(input)
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Analysis timeout')), 45000) // 45 second timeout
+    })
+    
+    const result = await Promise.race([
+      assessmentEngine.assess(input),
+      timeoutPromise
+    ]) as any
 
     // Convert to legacy format for backward compatibility
     const legacyResult = assessmentEngine.convertToLegacyFormat(result)
 
+    // Ensure the response has the required structure to prevent frontend errors
+    if (!legacyResult.staticAnalysis && !legacyResult.websiteAnalysis) {
+      console.warn('Analysis completed but missing analysis data, creating fallback structure')
+      legacyResult.staticAnalysis = input.type === 'repository' ? {} : null
+      legacyResult.websiteAnalysis = input.type === 'website' ? {} : null
+    }
+
     return NextResponse.json(legacyResult)
   } catch (error) {
     console.error('Analysis error:', error)
+    
+    // Handle timeout specifically
+    if (error instanceof Error && error.message === 'Analysis timeout') {
+      return NextResponse.json(
+        { error: 'Analysis timed out. The repository may be too large. Please try a smaller repository.' },
+        { status: 408 } // Request Timeout
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Failed to analyze source' },
       { status: 500 }

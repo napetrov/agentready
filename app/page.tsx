@@ -391,6 +391,9 @@ export default function Home() {
       setError('')
       setResult(null)
 
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+      
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
@@ -400,7 +403,10 @@ export default function Home() {
           inputUrl: sanitizedUrl,
           inputType: inputType
         }),
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -416,9 +422,32 @@ export default function Home() {
         throw new Error('Invalid response format from server')
       }
       
+      // Ensure required properties exist for the frontend
+      if (!data.staticAnalysis && !data.websiteAnalysis) {
+        console.warn('Response missing analysis data:', data)
+        // Create a fallback structure to prevent client-side errors
+        data.staticAnalysis = data.staticAnalysis || null
+        data.websiteAnalysis = data.websiteAnalysis || null
+      }
+      
+      // Ensure the data object has all required properties to prevent runtime errors
+      if (!data.categories) {
+        data.categories = {}
+      }
+      if (!data.findings) {
+        data.findings = []
+      }
+      if (!data.recommendations) {
+        data.recommendations = []
+      }
+      
       setResult(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Analysis timed out. Please try again with a smaller repository.')
+      } else {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      }
     } finally {
       setIsAnalyzing(false)
     }
@@ -479,12 +508,22 @@ export default function Home() {
 
   const getRepositoryData = () => {
     if (!result) return null
-    return result.staticAnalysis
+    try {
+      return result.staticAnalysis || null
+    } catch (error) {
+      console.error('Error accessing repository data:', error)
+      return null
+    }
   }
 
   const getWebsiteData = () => {
     if (!result) return null
-    return result.websiteAnalysis as any
+    try {
+      return (result.websiteAnalysis as any) || null
+    } catch (error) {
+      console.error('Error accessing website data:', error)
+      return null
+    }
   }
 
   const getCategoryDescription = (category: string) => {
@@ -654,7 +693,7 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
                     <div className="text-lg font-bold text-blue-600">
-                      {getRepositoryData()?.fileCount || getRepositoryData()?.fileSizeAnalysis?.totalFiles || 0}
+                      {getRepositoryData()?.fileCount || (getRepositoryData()?.fileSizeAnalysis as any)?.totalFiles || 0}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
