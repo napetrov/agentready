@@ -1477,6 +1477,210 @@ export default function Home() {
             </div>
           )}
 
+          {/* Detailed Analysis - Only for websites */}
+          {inputType === 'website' && getWebsiteData()?.agentReadinessFeatures && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Detailed Analysis</h3>
+              
+              <div className="space-y-6">
+                {/* Information Gathering */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-blue-600">Information Gathering</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-blue-600">{getWebsiteData()?.agentReadinessFeatures.informationGathering.score}/{getWebsiteData()?.agentReadinessFeatures.informationGathering.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.informationGathering.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.informationGathering.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.informationGathering.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.informationGathering.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Booking */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-green-600">Direct Booking</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-green-600">{getWebsiteData()?.agentReadinessFeatures.directBooking.score}/{getWebsiteData()?.agentReadinessFeatures.directBooking.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.directBooking.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.directBooking.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.directBooking.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.directBooking.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* FAQ Support */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-purple-600">FAQ Support</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-purple-600">{getWebsiteData()?.agentReadinessFeatures.faqSupport.score}/{getWebsiteData()?.agentReadinessFeatures.faqSupport.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.faqSupport.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.faqSupport.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.faqSupport.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.faqSupport.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Task Management */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-orange-600">Task Management</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-orange-600">{getWebsiteData()?.agentReadinessFeatures.taskManagement.score}/{getWebsiteData()?.agentReadinessFeatures.taskManagement.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.taskManagement.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.taskManagement.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.taskManagement.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.taskManagement.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Personalization */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-pink-600">Personalization</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-pink-600">{getWebsiteData()?.agentReadinessFeatures.personalization.score}/{getWebsiteData()?.agentReadinessFeatures.personalization.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.personalization.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.personalization.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.personalization.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.personalization.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Detailed Analysis - Only for repositories */}
           {inputType === 'repository' && result.detailedAnalysis && (
             <div className="card">

@@ -40,7 +40,7 @@ export class UnifiedAIAssessorPlugin implements AIAssessorPlugin {
         contextEfficiency: true,
         riskCompliance: true,
         overallSuccess: true,
-        reason: 'AI assessment completed successfully',
+        reason: 'AI assessment analysis completed',
         detailedAnalysis: {
           instructionClarity: {
             stepByStepQuality: 4,
@@ -113,7 +113,7 @@ export class UnifiedAIAssessorPlugin implements AIAssessorPlugin {
     const recommendations: string[] = []
     
     // Extract key findings from assessment (placeholder for now since AIAssessment doesn't have findings)
-    keyFindings.push('AI assessment completed successfully')
+    keyFindings.push('AI-powered analysis completed with detailed insights')
     
     // Extract recommendations from assessment (placeholder for now since AIAssessment doesn't have recommendations)
     recommendations.push('Continue improving AI readiness based on assessment results')

@@ -129,7 +129,7 @@ describe('UnifiedAIAssessorPlugin', () => {
       expect(result.contextEfficiency).toBe(true)
       expect(result.riskCompliance).toBe(true)
       expect(result.overallSuccess).toBe(true)
-      expect(result.reason).toBe('AI assessment completed successfully')
+      expect(result.reason).toBe('AI assessment analysis completed')
       expect(result.detailedAnalysis).toBeDefined()
     })
 
@@ -179,7 +179,7 @@ describe('UnifiedAIAssessorPlugin', () => {
       expect(result.contextEfficiency).toBe(true)
       expect(result.riskCompliance).toBe(true)
       expect(result.overallSuccess).toBe(true)
-      expect(result.reason).toBe('AI assessment completed successfully')
+      expect(result.reason).toBe('AI assessment analysis completed')
       expect(result.detailedAnalysis).toBeDefined()
     })
 

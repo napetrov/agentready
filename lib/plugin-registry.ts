@@ -377,7 +377,13 @@ export const pluginRegistry = new PluginRegistry()
 /**
  * Helper function to register all default plugins
  */
+let pluginsRegistered = false
+
 export function registerDefaultPlugins(): void {
+  if (pluginsRegistered) {
+    return // Skip if already registered
+  }
+  
   console.log('🔌 Registering default plugins...')
   
   try {
@@ -393,7 +399,6 @@ export function registerDefaultPlugins(): void {
     const repositoryAnalyzer = new RepositoryAnalyzerPlugin()
     const websiteAnalyzer = new WebsiteAnalyzerPlugin()
     const businessTypeAnalyzer = new BusinessTypeAnalyzerPlugin()
-    const unifiedAIAssessor = new UnifiedAIAssessorPlugin()
     
     // Register analyzers
     pluginRegistry.registerAnalyzer(repositoryAnalyzer)
@@ -408,6 +413,7 @@ export function registerDefaultPlugins(): void {
     pluginRegistry.registerAIAssessor(repositoryAIAssessor)
     pluginRegistry.registerAIAssessor(websiteAIAssessor)
     
+    pluginsRegistered = true
     console.log('✅ Default plugins registered successfully')
   } catch (error) {
     console.error('❌ Failed to register default plugins:', error)

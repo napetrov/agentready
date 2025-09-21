@@ -746,9 +746,9 @@ describe('Home Page Component', () => {
     it('displays detailed flow analysis', () => {
       expect(screen.getByText('Detailed Flow Analysis for Food service Websites')).toBeInTheDocument()
       expect(screen.getByText('Information Gathering & Comparison')).toBeInTheDocument()
-      expect(screen.getByText('80/100')).toBeInTheDocument()
+      expect(screen.getAllByText('80/100')[0]).toBeInTheDocument()
       expect(screen.getByText('Direct Booking & Reservations')).toBeInTheDocument()
-      expect(screen.getByText('70/100')).toBeInTheDocument()
+      expect(screen.getAllByText('70/100')[0]).toBeInTheDocument()
     })
 
     it('displays contact and social information', () => {

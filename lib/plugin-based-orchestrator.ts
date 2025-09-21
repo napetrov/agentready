@@ -53,7 +53,7 @@ export class PluginBasedOrchestrator {
       
       // Step 2: Execute AI assessment using appropriate assessor
       const aiAssessment = await this.executeAIAssessment(analysis)
-      console.log(`✅ AI assessment completed for ${input.type}`)
+      console.log(`✅ AI assessment analysis completed for ${input.type}`)
       
       // Step 3: Execute additional analysis if needed
       const additionalAnalysis = await this.executeAdditionalAnalysis(input, analysis)
@@ -277,7 +277,7 @@ export class PluginBasedOrchestrator {
       category: 'ai-assessment',
       severity: 'medium',
       title: 'AI assessment completed',
-      description: 'AI assessment completed successfully',
+      description: 'AI assessment analysis completed',
       evidence: ['AI assessment was executed'],
       impact: 'Positive impact on AI readiness',
       confidence: 75
