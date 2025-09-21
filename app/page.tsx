@@ -727,64 +727,69 @@ export default function Home() {
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {inputType === 'repository' ? (
-                <>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {getRepositoryData()?.fileCount || (getRepositoryData()?.fileSizeAnalysis as any)?.totalFiles || 0}
+              {inputType === 'repository' ? (() => {
+                const repoData = getRepositoryData()
+                return (
+                  <>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
+                      <div className="text-lg font-bold text-blue-600">
+                        {repoData?.fileCount || (repoData?.fileSizeAnalysis as any)?.totalFiles || 0}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
-                    <div className="text-lg font-bold text-green-600">
-                      {getRepositoryData()?.linesOfCode?.toLocaleString() || '0'}
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
+                      <div className="text-lg font-bold text-green-600">
+                        {repoData?.linesOfCode?.toLocaleString() || '0'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
-                    <div className="text-lg font-bold text-purple-600">
-                      {getRepositoryData()?.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
+                      <div className="text-lg font-bold text-purple-600">
+                        {repoData?.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
-                    <div className="text-sm font-medium">
-                      {getRepositoryData()?.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
+                      <div className="text-sm font-medium">
+                        {repoData?.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
-                    <div className="text-sm font-medium">
-                      {[
-                        getRepositoryData()?.hasReadme && 'README',
-                        getRepositoryData()?.hasAgents && 'AGENTS',
-                        getRepositoryData()?.hasContributing && 'CONTRIBUTING',
-                        getRepositoryData()?.hasLicense && 'LICENSE'
-                      ].filter(Boolean).join(', ') || 'None'}
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
+                      <div className="text-sm font-medium">
+                        {[
+                          repoData?.hasReadme && 'README',
+                          repoData?.hasAgents && 'AGENTS',
+                          repoData?.hasContributing && 'CONTRIBUTING',
+                          repoData?.hasLicense && 'LICENSE'
+                        ].filter(Boolean).join(', ') || 'None'}
+                      </div>
                     </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Page Title</div>
-                    <div className="text-sm font-medium truncate">
-                      {getWebsiteData()?.pageTitle || 'No title'}
+                  </>
+                )
+              })() : (() => {
+                const websiteData = getWebsiteData()
+                return (
+                  <>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Page Title</div>
+                      <div className="text-sm font-medium truncate">
+                        {websiteData?.pageTitle || 'No title'}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Critical for AI agent identification
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Critical for AI agent identification
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Content Accessibility</div>
+                      <div className="text-lg font-bold text-blue-600">
+                        {result.businessTypeAnalysis?.aiRelevantChecks.contentAccessibility || 0}%
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        How easy it is for AI agents to extract information
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Content Accessibility</div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {result.businessTypeAnalysis?.aiRelevantChecks.contentAccessibility || 0}%
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      How easy it is for AI agents to extract information
-                    </div>
-                  </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Structured Data</div>
                     <div className="text-sm font-medium">
@@ -806,14 +811,15 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Technologies</div>
                     <div className="text-sm font-medium">
-                      {getWebsiteData()?.technologies?.slice(0, 2).join(', ') || 'Unknown'}
+                      {websiteData?.technologies?.slice(0, 2).join(', ') || 'Unknown'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Framework compatibility for agent integration
                     </div>
                   </div>
-                </>
-              )}
+                  </>
+                )
+              })()}
             </div>
           </div>
 
@@ -1053,7 +1059,7 @@ export default function Home() {
                           <div key={city} className="border rounded-lg p-3 bg-gray-50">
                             <div className="font-medium text-gray-800 mb-2">{city}</div>
                             <div className="space-y-1">
-                              {[...new Set(addresses)].map((address, index) => (
+                              {Array.from(new Set(addresses)).map((address, index) => (
                                 <div key={index} className="text-sm text-gray-600 flex items-start">
                                   <span className="mr-2">📍</span>
                                   <span>{address}</span>
