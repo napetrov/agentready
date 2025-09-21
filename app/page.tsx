@@ -880,10 +880,11 @@ export default function Home() {
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {inputType === 'repository' ? (() => {
-                const repoData = getRepositoryData()
-                return (
-                  <ErrorBoundary errorMessage="Error displaying repository information">
+              {inputType === 'repository' ? (
+                (() => {
+                  const repoData = getRepositoryData()
+                  return (
+                    <ErrorBoundary errorMessage="Error displaying repository information">
                     <>
                       <div className="p-3 border rounded-lg">
                         <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
@@ -922,7 +923,11 @@ export default function Home() {
                     </div>
                   </>
                 )
-              })() : (() => {
+                    </ErrorBoundary>
+                  )
+                })()
+              ) : (
+                (() => {
                 const websiteData = getWebsiteData()
                 return (
                   <>
@@ -973,7 +978,8 @@ export default function Home() {
                   </div>
                   </>
                 )
-              })()}
+                })()
+              )}
             </div>
           </div>
 
