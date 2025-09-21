@@ -3,6 +3,91 @@
 import { useState } from 'react'
 import { Github, FileText, Download, Loader2, AlertCircle } from 'lucide-react'
 
+// Error Boundary Component for graceful error handling
+const ErrorBoundary = ({ children, fallback, errorMessage = 'Something went wrong' }: { 
+  children: React.ReactNode, 
+  fallback?: React.ReactNode,
+  errorMessage?: string 
+}) => {
+  try {
+    return <>{children}</>
+  } catch (error) {
+    console.error('❌ Error in ErrorBoundary:', error)
+    return (
+      <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+        <div className="flex items-center text-red-600">
+          <AlertCircle className="w-5 h-5 mr-2" />
+          <span className="text-sm font-medium">{errorMessage}</span>
+        </div>
+        {fallback}
+      </div>
+    )
+  }
+}
+
+// Graceful Degradation Component for when analysis fails
+const GracefulDegradation = ({ error, onRetry }: { 
+  error: string, 
+  onRetry: () => void 
+}) => {
+  const getErrorIcon = (error: string) => {
+    if (error.includes('timeout')) return '⏱️'
+    if (error.includes('network')) return '🌐'
+    if (error.includes('not found')) return '🔍'
+    if (error.includes('forbidden')) return '🔒'
+    if (error.includes('rate limit')) return '🚫'
+    return '⚠️'
+  }
+
+  const getErrorTitle = (error: string) => {
+    if (error.includes('timeout')) return 'Analysis Timed Out'
+    if (error.includes('network')) return 'Network Error'
+    if (error.includes('not found')) return 'Repository Not Found'
+    if (error.includes('forbidden')) return 'Access Forbidden'
+    if (error.includes('rate limit')) return 'Rate Limited'
+    return 'Analysis Failed'
+  }
+
+  const getErrorDescription = (error: string) => {
+    if (error.includes('timeout')) return 'The repository may be too large or the server is busy. Try a smaller repository or try again later.'
+    if (error.includes('network')) return 'Please check your internet connection and try again.'
+    if (error.includes('not found')) return 'The repository may be private, deleted, or the URL may be incorrect.'
+    if (error.includes('forbidden')) return 'The repository may be private or you may have hit a rate limit.'
+    if (error.includes('rate limit')) return 'You have made too many requests. Please wait a few minutes before trying again.'
+    return 'An unexpected error occurred. Please try again.'
+  }
+
+  return (
+    <div className="card">
+      <div className="text-center py-8">
+        <div className="text-6xl mb-4">{getErrorIcon(error)}</div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          {getErrorTitle(error)}
+        </h3>
+        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+          {getErrorDescription(error)}
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={onRetry}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+          <div className="text-sm text-gray-500">
+            <p>If the problem persists, try:</p>
+            <ul className="mt-2 space-y-1">
+              <li>• Using a different repository</li>
+              <li>• Checking the repository URL</li>
+              <li>• Waiting a few minutes before retrying</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface AssessmentResult {
   readinessScore: number
   aiAnalysisStatus?: {
@@ -391,6 +476,8 @@ export default function Home() {
       setError('')
       setResult(null)
 
+      console.log(`🔍 Starting analysis for ${inputType}: ${sanitizedUrl}`)
+
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
       
@@ -408,64 +495,101 @@ export default function Home() {
       
       clearTimeout(timeoutId)
 
+      console.log(`📡 Response status: ${response.status}`)
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage = errorData.message || errorData.error || `Server error: ${response.status}`
+        let errorMessage = `Server error: ${response.status}`
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || errorMessage
+          console.error('❌ Server error details:', errorData)
+        } catch (parseError) {
+          console.error('❌ Failed to parse error response:', parseError)
+        }
         throw new Error(errorMessage)
       }
 
       const data = await response.json()
-      console.log('Analysis result:', data)
+      console.log('✅ Analysis result received:', {
+        readinessScore: data.readinessScore,
+        hasStaticAnalysis: !!data.staticAnalysis,
+        hasWebsiteAnalysis: !!data.websiteAnalysis,
+        categoriesCount: Object.keys(data.categories || {}).length,
+        findingsCount: (data.findings || []).length
+      })
       
-      // Validate the response data
+      // Validate the response data structure
       if (!data || typeof data.readinessScore !== 'number') {
+        console.error('❌ Invalid response format:', data)
         throw new Error('Invalid response format from server')
       }
       
       // Ensure required properties exist for the frontend
       if (!data.staticAnalysis && !data.websiteAnalysis) {
-        console.warn('Response missing analysis data:', data)
-        // Create a fallback structure to prevent client-side errors
-        data.staticAnalysis = data.staticAnalysis || null
-        data.websiteAnalysis = data.websiteAnalysis || null
+        console.warn('⚠️ Response missing analysis data, creating fallback structure')
+        data.staticAnalysis = inputType === 'repository' ? {} : null
+        data.websiteAnalysis = inputType === 'website' ? {} : null
       }
       
       // Ensure the data object has all required properties to prevent runtime errors
-      if (!data.categories) {
-        data.categories = {}
-      }
-      if (!data.findings) {
-        data.findings = []
-      }
-      if (!data.recommendations) {
-        data.recommendations = []
+      data.categories = data.categories || {}
+      data.findings = data.findings || []
+      data.recommendations = data.recommendations || []
+      
+      // Add error boundary for detailed analysis
+      try {
+        data.detailedAnalysis = data.detailedAnalysis || null
+        data.confidence = data.confidence || { overall: 0, staticAnalysis: 0, aiAssessment: 0 }
+      } catch (analysisError) {
+        console.warn('⚠️ Error processing detailed analysis:', analysisError)
+        data.detailedAnalysis = null
+        data.confidence = { overall: 0, staticAnalysis: 0, aiAssessment: 0 }
       }
       
-      // Truncate very large content to prevent memory issues
-      if (data.staticAnalysis?.readmeContent && data.staticAnalysis.readmeContent.length > 10000) {
-        data.staticAnalysis.readmeContent = data.staticAnalysis.readmeContent.substring(0, 10000) + '... [truncated]'
-      }
-      if (data.staticAnalysis?.contributingContent && data.staticAnalysis.contributingContent.length > 10000) {
-        data.staticAnalysis.contributingContent = data.staticAnalysis.contributingContent.substring(0, 10000) + '... [truncated]'
-      }
-      if (data.staticAnalysis?.agentsContent && data.staticAnalysis.agentsContent.length > 10000) {
-        data.staticAnalysis.agentsContent = data.staticAnalysis.agentsContent.substring(0, 10000) + '... [truncated]'
+      // Safely truncate very large content to prevent memory issues
+      if (data.staticAnalysis) {
+        try {
+          if (data.staticAnalysis.readmeContent && data.staticAnalysis.readmeContent.length > 10000) {
+            data.staticAnalysis.readmeContent = data.staticAnalysis.readmeContent.substring(0, 10000) + '... [truncated]'
+          }
+          if (data.staticAnalysis.contributingContent && data.staticAnalysis.contributingContent.length > 10000) {
+            data.staticAnalysis.contributingContent = data.staticAnalysis.contributingContent.substring(0, 10000) + '... [truncated]'
+          }
+          if (data.staticAnalysis.agentsContent && data.staticAnalysis.agentsContent.length > 10000) {
+            data.staticAnalysis.agentsContent = data.staticAnalysis.agentsContent.substring(0, 10000) + '... [truncated]'
+          }
+          
+          // Limit large arrays to prevent memory issues
+          if (data.staticAnalysis.workflowFiles && data.staticAnalysis.workflowFiles.length > 50) {
+            data.staticAnalysis.workflowFiles = data.staticAnalysis.workflowFiles.slice(0, 50)
+          }
+          if (data.staticAnalysis.testFiles && data.staticAnalysis.testFiles.length > 100) {
+            data.staticAnalysis.testFiles = data.staticAnalysis.testFiles.slice(0, 100)
+          }
+        } catch (truncationError) {
+          console.warn('⚠️ Error during content truncation:', truncationError)
+        }
       }
       
-      // Limit large arrays to prevent rendering issues
-      if (data.staticAnalysis?.workflowFiles && data.staticAnalysis.workflowFiles.length > 50) {
-        data.staticAnalysis.workflowFiles = data.staticAnalysis.workflowFiles.slice(0, 50)
-      }
-      if (data.staticAnalysis?.testFiles && data.staticAnalysis.testFiles.length > 100) {
-        data.staticAnalysis.testFiles = data.staticAnalysis.testFiles.slice(0, 100)
-      }
-      
+      console.log('✅ Analysis data processed successfully')
       setResult(data)
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        setError('Analysis timed out. Please try again with a smaller repository.')
+      console.error('❌ Analysis failed:', err)
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Analysis timed out. Please try again with a smaller repository.')
+        } else if (err.message.includes('Failed to fetch')) {
+          setError('Network error. Please check your connection and try again.')
+        } else if (err.message.includes('timeout')) {
+          setError('Analysis timed out. The repository may be too large. Please try a smaller repository.')
+        } else if (err.message.includes('Invalid response format')) {
+          setError('Server returned invalid data. Please try again.')
+        } else {
+          setError(`Analysis failed: ${err.message}`)
+        }
       } else {
-        setError(err instanceof Error ? err.message : 'An error occurred')
+        setError('An unexpected error occurred. Please try again.')
       }
     } finally {
       setIsAnalyzing(false)
@@ -530,27 +654,36 @@ export default function Home() {
     try {
       const data = result.staticAnalysis || null
       if (data) {
-        // Ensure arrays are not too large for rendering
-        if ((data as any).workflowFiles && (data as any).workflowFiles.length > 50) {
-          (data as any).workflowFiles = (data as any).workflowFiles.slice(0, 50)
+        // Safely ensure arrays are not too large for rendering
+        try {
+          if ((data as any).workflowFiles && Array.isArray((data as any).workflowFiles) && (data as any).workflowFiles.length > 50) {
+            (data as any).workflowFiles = (data as any).workflowFiles.slice(0, 50)
+          }
+          if ((data as any).testFiles && Array.isArray((data as any).testFiles) && (data as any).testFiles.length > 100) {
+            (data as any).testFiles = (data as any).testFiles.slice(0, 100)
+          }
+        } catch (arrayError) {
+          console.warn('⚠️ Error processing arrays in repository data:', arrayError)
         }
-        if ((data as any).testFiles && (data as any).testFiles.length > 100) {
-          (data as any).testFiles = (data as any).testFiles.slice(0, 100)
-        }
-        // Truncate very large text content
-        if ((data as any).readmeContent && (data as any).readmeContent.length > 5000) {
-          (data as any).readmeContent = (data as any).readmeContent.substring(0, 5000) + '... [truncated for display]'
-        }
-        if ((data as any).contributingContent && (data as any).contributingContent.length > 5000) {
-          (data as any).contributingContent = (data as any).contributingContent.substring(0, 5000) + '... [truncated for display]'
-        }
-        if ((data as any).agentsContent && (data as any).agentsContent.length > 5000) {
-          (data as any).agentsContent = (data as any).agentsContent.substring(0, 5000) + '... [truncated for display]'
+        
+        // Safely truncate very large text content
+        try {
+          if ((data as any).readmeContent && typeof (data as any).readmeContent === 'string' && (data as any).readmeContent.length > 5000) {
+            (data as any).readmeContent = (data as any).readmeContent.substring(0, 5000) + '... [truncated for display]'
+          }
+          if ((data as any).contributingContent && typeof (data as any).contributingContent === 'string' && (data as any).contributingContent.length > 5000) {
+            (data as any).contributingContent = (data as any).contributingContent.substring(0, 5000) + '... [truncated for display]'
+          }
+          if ((data as any).agentsContent && typeof (data as any).agentsContent === 'string' && (data as any).agentsContent.length > 5000) {
+            (data as any).agentsContent = (data as any).agentsContent.substring(0, 5000) + '... [truncated for display]'
+          }
+        } catch (textError) {
+          console.warn('⚠️ Error processing text content in repository data:', textError)
         }
       }
       return data
     } catch (error) {
-      console.error('Error accessing repository data:', error)
+      console.error('❌ Error accessing repository data:', error)
       return null
     }
   }
@@ -673,15 +806,13 @@ export default function Home() {
             )}
           </button>
           {error && (
-            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200">
-              <div className="flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                <div>
-                  <p className="font-medium">Analysis Failed</p>
-                  <p className="text-sm mt-1">{error}</p>
-                </div>
-              </div>
-            </div>
+            <GracefulDegradation 
+              error={error} 
+              onRetry={() => {
+                setError('')
+                handleAnalyze()
+              }} 
+            />
           )}
         </div>
       </div>
@@ -708,7 +839,29 @@ export default function Home() {
 
       {/* Results Section */}
       {result && (
-        <div className="space-y-6">
+        <ErrorBoundary 
+          errorMessage="Error displaying analysis results"
+          fallback={
+            <div className="card">
+              <div className="text-center py-8">
+                <div className="text-6xl mb-4">⚠️</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Results Display Error
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  The analysis completed successfully, but there was an error displaying the results.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Reload Page
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <div className="space-y-6">
           {/* Source Information */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
@@ -730,13 +883,14 @@ export default function Home() {
               {inputType === 'repository' ? (() => {
                 const repoData = getRepositoryData()
                 return (
-                  <>
-                    <div className="p-3 border rounded-lg">
-                      <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
-                      <div className="text-lg font-bold text-blue-600">
-                        {repoData?.fileCount || (repoData?.fileSizeAnalysis as any)?.totalFiles || 0}
+                  <ErrorBoundary errorMessage="Error displaying repository information">
+                    <>
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
+                        <div className="text-lg font-bold text-blue-600">
+                          {repoData?.fileCount || (repoData?.fileSizeAnalysis as any)?.totalFiles || 0}
+                        </div>
                       </div>
-                    </div>
                     <div className="p-3 border rounded-lg">
                       <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
                       <div className="text-lg font-bold text-green-600">
@@ -1981,6 +2135,7 @@ export default function Home() {
             </ul>
           </div>
         </div>
+        </ErrorBoundary>
       )}
     </div>
   )

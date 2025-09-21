@@ -28,6 +28,7 @@ export class RepositoryAnalyzerPlugin implements AnalyzerPlugin {
     }
 
     const startTime = Date.now()
+    console.log(`🔍 Starting repository analysis for: ${input.url}`)
 
     try {
       // Use the existing analyzer function

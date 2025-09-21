@@ -193,18 +193,52 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(legacyResult)
   } catch (error) {
-    console.error('Analysis error:', error)
+    console.error('❌ Analysis error:', error)
     
-    // Handle timeout specifically
-    if (error instanceof Error && error.message === 'Analysis timeout') {
-      return NextResponse.json(
-        { error: 'Analysis timed out. The repository may be too large. Please try a smaller repository.' },
-        { status: 408 } // Request Timeout
-      )
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message === 'Analysis timeout') {
+        return NextResponse.json(
+          { error: 'Analysis timed out. The repository may be too large. Please try a smaller repository.' },
+          { status: 408 } // Request Timeout
+        )
+      }
+      
+      if (error.message.includes('Invalid GitHub repository URL')) {
+        return NextResponse.json(
+          { error: 'Please provide a valid GitHub repository URL' },
+          { status: 400 }
+        )
+      }
+      
+      if (error.message.includes('Failed to download repository')) {
+        return NextResponse.json(
+          { error: 'Failed to access the repository. It may be private or the URL may be incorrect.' },
+          { status: 404 }
+        )
+      }
+      
+      if (error.message.includes('Repository too large')) {
+        return NextResponse.json(
+          { error: 'Repository is too large to analyze. Please try a smaller repository.' },
+          { status: 413 }
+        )
+      }
+      
+      if (error.message.includes('Rate limit')) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded. Please try again later.' },
+          { status: 429 }
+        )
+      }
     }
     
+    // Generic error response
     return NextResponse.json(
-      { error: 'Failed to analyze source' },
+      { 
+        error: 'Failed to analyze source',
+        details: process.env.NODE_ENV === 'development' ? error : undefined
+      },
       { status: 500 }
     )
   }

@@ -155,18 +155,37 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
         timeout: 30000,
       })
     } catch (error: any) {
+      console.error(`❌ Failed to download main branch for ${owner}/${repo}:`, error.message)
+      
       if (error.response?.status === 404) {
         // Try master branch if main doesn't exist
         try {
+          console.log(`🔄 Trying master branch for ${owner}/${repo}`)
           const zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`
           response = await axios.get(zipUrl, {
             responseType: 'arraybuffer',
             timeout: 30000,
           })
           branch = 'master'
+          console.log(`✅ Successfully downloaded master branch for ${owner}/${repo}`)
         } catch (masterError: any) {
-          throw new Error(`Repository not found. Tried both 'main' and 'master' branches. Error: ${masterError.response?.status || 'Unknown error'}`)
+          console.error(`❌ Failed to download master branch for ${owner}/${repo}:`, masterError.message)
+          if (masterError.response?.status === 404) {
+            throw new Error('Repository not found or is private')
+          } else if (masterError.code === 'ECONNABORTED') {
+            throw new Error('Repository download timed out - repository may be too large')
+          } else if (masterError.response?.status === 403) {
+            throw new Error('Repository access forbidden - may be private or rate limited')
+          } else {
+            throw new Error(`Failed to download repository: ${masterError.message}`)
+          }
         }
+      } else if (error.code === 'ECONNABORTED') {
+        throw new Error('Repository download timed out - repository may be too large')
+      } else if (error.response?.status === 403) {
+        throw new Error('Repository access forbidden - may be private or rate limited')
+      } else if (error.response?.status === 429) {
+        throw new Error('Rate limit exceeded - please try again later')
       } else {
         throw new Error(`Failed to download repository: ${error.message}`)
       }

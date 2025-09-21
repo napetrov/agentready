@@ -55,6 +55,8 @@ global.NextResponse = global.NextResponse || {
       const text = await response.text()
       return Buffer.from(text, 'utf8')
     }
+    // Ensure the response has a json method that returns the data
+    response.json = async () => data
     return response
   }
 }
