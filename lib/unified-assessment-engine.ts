@@ -18,7 +18,8 @@ import {
   ConfidenceScores,
   AssessmentMetadata,
   Finding,
-  Recommendation
+  Recommendation,
+  RepositoryAnalysisData
 } from './unified-types'
 import { analyzeRepository, analyzeWebsite } from './analyzer'
 import { generateUnifiedAIAssessment } from './unified-ai-assessment'
@@ -775,13 +776,40 @@ export class UnifiedAssessmentEngine {
         staticAnalysis: result.scores.confidence.staticAnalysis,
         aiAssessment: result.scores.confidence.aiAssessment
       },
-      staticAnalysis: result.analysis.repository,
+      staticAnalysis: this.truncateRepositoryContent(result.analysis.repository),
       websiteAnalysis: result.analysis.website,
       businessTypeAnalysis: result.analysis.businessType
     }
   }
 
   // Helper methods
+  private truncateRepositoryContent(repoData: RepositoryAnalysisData | undefined): RepositoryAnalysisData | undefined {
+    if (!repoData) return repoData
+
+    const truncated = { ...repoData }
+
+    // Truncate large text content
+    if (truncated.readmeContent && truncated.readmeContent.length > 5000) {
+      truncated.readmeContent = truncated.readmeContent.substring(0, 5000) + '... [truncated]'
+    }
+    if (truncated.contributingContent && truncated.contributingContent.length > 5000) {
+      truncated.contributingContent = truncated.contributingContent.substring(0, 5000) + '... [truncated]'
+    }
+    if (truncated.agentsContent && truncated.agentsContent.length > 5000) {
+      truncated.agentsContent = truncated.agentsContent.substring(0, 5000) + '... [truncated]'
+    }
+
+    // Limit large arrays
+    if (truncated.workflowFiles && truncated.workflowFiles.length > 50) {
+      truncated.workflowFiles = truncated.workflowFiles.slice(0, 50)
+    }
+    if (truncated.testFiles && truncated.testFiles.length > 100) {
+      truncated.testFiles = truncated.testFiles.slice(0, 100)
+    }
+
+    return truncated
+  }
+
   private createScore(value: number, maxValue: number): Score {
     return {
       value: Math.max(0, Math.min(value, maxValue)),
