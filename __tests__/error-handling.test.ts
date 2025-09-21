@@ -210,7 +210,7 @@ describe('Frontend Error Scenarios', () => {
     try {
       await global.fetch('/api/analyze', { signal: controller.signal })
     } catch (error) {
-      expect(error.name).toBe('AbortError')
+      expect((error as Error).name).toBe('AbortError')
     } finally {
       clearTimeout(timeoutId)
     }

@@ -202,7 +202,7 @@ export class RepositoryAnalyzerPlugin implements AnalyzerPlugin {
   /**
    * Validate GitHub URL format
    */
-  private isValidGitHubUrl(url: string): boolean {
+  isValidGitHubUrl(url: string): boolean {
     try {
       const urlObj = new URL(url)
       return urlObj.hostname === 'github.com' && 
