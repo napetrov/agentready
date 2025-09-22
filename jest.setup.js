@@ -57,6 +57,8 @@ global.NextResponse = global.NextResponse || {
     }
     // Ensure the response has a json method that returns the data
     response.json = async () => data
+    // Add status property
+    response.status = init?.status || 200
     return response
   }
 }

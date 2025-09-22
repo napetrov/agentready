@@ -382,8 +382,8 @@ describe('Home Page Component', () => {
       fireEvent.click(button)
       
       await waitFor(() => {
-        expect(screen.getByText('Analysis Failed')).toBeInTheDocument()
-        expect(screen.getByText('Repository not found')).toBeInTheDocument()
+        expect(screen.getByText('Repository Not Found')).toBeInTheDocument()
+        expect(screen.getByText('The repository may be private, deleted, or the URL may be incorrect.')).toBeInTheDocument()
       })
     })
   })
@@ -858,7 +858,7 @@ describe('Home Page Component', () => {
 
   describe('Error Handling', () => {
     it('displays error message for network errors', async () => {
-      ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
+      ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Failed to fetch'))
 
       render(<Home />)
       
@@ -869,8 +869,8 @@ describe('Home Page Component', () => {
       fireEvent.click(button)
       
       await waitFor(() => {
-        expect(screen.getByText('Analysis Failed')).toBeInTheDocument()
-        expect(screen.getByText('Network error')).toBeInTheDocument()
+        expect(screen.getByText('Network Error')).toBeInTheDocument()
+        expect(screen.getByText('Please check your internet connection and try again.')).toBeInTheDocument()
       })
     })
 
@@ -890,7 +890,7 @@ describe('Home Page Component', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Analysis Failed')).toBeInTheDocument()
-        expect(screen.getByText('Invalid response format from server')).toBeInTheDocument()
+        expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument()
       })
     })
   })

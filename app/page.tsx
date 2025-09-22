@@ -31,29 +31,32 @@ const GracefulDegradation = ({ error, onRetry }: {
   onRetry: () => void 
 }) => {
   const getErrorIcon = (error: string) => {
-    if (error.includes('timeout')) return '⏱️'
-    if (error.includes('network')) return '🌐'
-    if (error.includes('not found')) return '🔍'
-    if (error.includes('forbidden')) return '🔒'
-    if (error.includes('rate limit')) return '🚫'
+    const lowerError = error.toLowerCase()
+    if (lowerError.includes('timeout')) return '⏱️'
+    if (lowerError.includes('network')) return '🌐'
+    if (lowerError.includes('not found')) return '🔍'
+    if (lowerError.includes('forbidden')) return '🔒'
+    if (lowerError.includes('rate limit')) return '🚫'
     return '⚠️'
   }
 
   const getErrorTitle = (error: string) => {
-    if (error.includes('timeout')) return 'Analysis Timed Out'
-    if (error.includes('network')) return 'Network Error'
-    if (error.includes('not found')) return 'Repository Not Found'
-    if (error.includes('forbidden')) return 'Access Forbidden'
-    if (error.includes('rate limit')) return 'Rate Limited'
+    const lowerError = error.toLowerCase()
+    if (lowerError.includes('timeout')) return 'Analysis Timed Out'
+    if (lowerError.includes('network')) return 'Network Error'
+    if (lowerError.includes('not found')) return 'Repository Not Found'
+    if (lowerError.includes('forbidden')) return 'Access Forbidden'
+    if (lowerError.includes('rate limit')) return 'Rate Limited'
     return 'Analysis Failed'
   }
 
   const getErrorDescription = (error: string) => {
-    if (error.includes('timeout')) return 'The repository may be too large or the server is busy. Try a smaller repository or try again later.'
-    if (error.includes('network')) return 'Please check your internet connection and try again.'
-    if (error.includes('not found')) return 'The repository may be private, deleted, or the URL may be incorrect.'
-    if (error.includes('forbidden')) return 'The repository may be private or you may have hit a rate limit.'
-    if (error.includes('rate limit')) return 'You have made too many requests. Please wait a few minutes before trying again.'
+    const lowerError = error.toLowerCase()
+    if (lowerError.includes('timeout')) return 'The repository may be too large or the server is busy. Try a smaller repository or try again later.'
+    if (lowerError.includes('network')) return 'Please check your internet connection and try again.'
+    if (lowerError.includes('not found')) return 'The repository may be private, deleted, or the URL may be incorrect.'
+    if (lowerError.includes('forbidden')) return 'The repository may be private or you may have hit a rate limit.'
+    if (lowerError.includes('rate limit')) return 'You have made too many requests. Please wait a few minutes before trying again.'
     return 'An unexpected error occurred. Please try again.'
   }
 
@@ -585,6 +588,8 @@ export default function Home() {
           setError('Analysis timed out. The repository may be too large. Please try a smaller repository.')
         } else if (err.message.includes('Invalid response format')) {
           setError('Server returned invalid data. Please try again.')
+        } else if (err.message.includes('Repository not found')) {
+          setError('Repository not found. Please check the URL and try again.')
         } else {
           setError(`Analysis failed: ${err.message}`)
         }

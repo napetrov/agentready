@@ -33,7 +33,10 @@ describe('Comprehensive Error Handling', () => {
   describe('Repository Analysis Error Scenarios', () => {
     test('should handle 404 errors with proper error message', async () => {
       mockedAxios.get.mockRejectedValueOnce({
-        response: { status: 404 },
+        response: { 
+          status: 404,
+          data: 'Not Found'
+        },
         message: 'Not Found'
       })
 
@@ -127,22 +130,15 @@ describe('Comprehensive Error Handling', () => {
       const originalAnalyzeRepository = require('../lib/analyzer').analyzeRepository
       const mockAnalyzeRepository = jest.fn().mockRejectedValueOnce(new Error('Repository not found'))
       
-      // Replace the function temporarily
-      Object.defineProperty(require('../lib/analyzer'), 'analyzeRepository', {
-        value: mockAnalyzeRepository,
-        writable: true,
-        configurable: true
-      })
+      // Use jest.spyOn instead of Object.defineProperty
+      const analyzerModule = require('../lib/analyzer')
+      jest.spyOn(analyzerModule, 'analyzeRepository').mockImplementation(mockAnalyzeRepository)
 
       await expect(plugin.analyze(input))
         .rejects.toThrow('Repository not found')
 
       // Restore the original function
-      Object.defineProperty(require('../lib/analyzer'), 'analyzeRepository', {
-        value: originalAnalyzeRepository,
-        writable: true,
-        configurable: true
-      })
+      jest.restoreAllMocks()
     })
   })
 
