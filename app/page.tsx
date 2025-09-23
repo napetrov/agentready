@@ -1,7 +1,117 @@
 'use client'
 
 import { useState } from 'react'
+
+// Global error handler for unhandled errors
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    console.error('🚨 Global error caught:', event.error)
+    console.error('🚨 Error details:', {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error
+    })
+  })
+  
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('🚨 Unhandled promise rejection:', event.reason)
+    console.error('🚨 Rejection details:', {
+      reason: event.reason,
+      promise: event.promise
+    })
+  })
+}
 import { Github, FileText, Download, Loader2, AlertCircle } from 'lucide-react'
+
+// Error Boundary Component for graceful error handling
+const ErrorBoundary = ({ children, fallback, errorMessage = 'Something went wrong' }: { 
+  children: React.ReactNode, 
+  fallback?: React.ReactNode,
+  errorMessage?: string 
+}) => {
+  try {
+    return <>{children}</>
+  } catch (error) {
+    console.error('❌ Error in ErrorBoundary:', error)
+    return (
+      <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+        <div className="flex items-center text-red-600">
+          <AlertCircle className="w-5 h-5 mr-2" />
+          <span className="text-sm font-medium">{errorMessage}</span>
+        </div>
+        {fallback}
+      </div>
+    )
+  }
+}
+
+// Graceful Degradation Component for when analysis fails
+const GracefulDegradation = ({ error, onRetry }: { 
+  error: string, 
+  onRetry: () => void 
+}) => {
+  const getErrorIcon = (error: string) => {
+    const lowerError = error.toLowerCase()
+    if (lowerError.includes('timeout')) return '⏱️'
+    if (lowerError.includes('network')) return '🌐'
+    if (lowerError.includes('not found')) return '🔍'
+    if (lowerError.includes('forbidden')) return '🔒'
+    if (lowerError.includes('rate limit')) return '🚫'
+    return '⚠️'
+  }
+
+  const getErrorTitle = (error: string) => {
+    const lowerError = error.toLowerCase()
+    if (lowerError.includes('timeout')) return 'Analysis Timed Out'
+    if (lowerError.includes('network')) return 'Network Error'
+    if (lowerError.includes('not found')) return 'Repository Not Found'
+    if (lowerError.includes('forbidden')) return 'Access Forbidden'
+    if (lowerError.includes('rate limit')) return 'Rate Limited'
+    return 'Analysis Failed'
+  }
+
+  const getErrorDescription = (error: string) => {
+    const lowerError = error.toLowerCase()
+    if (lowerError.includes('timeout')) return 'The repository may be too large or the server is busy. Try a smaller repository or try again later.'
+    if (lowerError.includes('network')) return 'Please check your internet connection and try again.'
+    if (lowerError.includes('not found')) return 'The repository may be private, deleted, or the URL may be incorrect.'
+    if (lowerError.includes('forbidden')) return 'The repository may be private or you may have hit a rate limit.'
+    if (lowerError.includes('rate limit')) return 'You have made too many requests. Please wait a few minutes before trying again.'
+    return 'An unexpected error occurred. Please try again.'
+  }
+
+  return (
+    <div className="card">
+      <div className="text-center py-8">
+        <div className="text-6xl mb-4">{getErrorIcon(error)}</div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          {getErrorTitle(error)}
+        </h3>
+        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+          {getErrorDescription(error)}
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={onRetry}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+          <div className="text-sm text-gray-500">
+            <p>If the problem persists, try:</p>
+            <ul className="mt-2 space-y-1">
+              <li>• Using a different repository</li>
+              <li>• Checking the repository URL</li>
+              <li>• Waiting a few minutes before retrying</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 interface AssessmentResult {
   readinessScore: number
@@ -64,7 +174,7 @@ interface AssessmentResult {
     contextEfficiency: number
     riskCompliance: number
   }
-  staticAnalysis: {
+  staticAnalysis?: {
     hasReadme: boolean
     hasContributing: boolean
     hasAgents: boolean
@@ -391,6 +501,11 @@ export default function Home() {
       setError('')
       setResult(null)
 
+      console.log(`🔍 Starting analysis for ${inputType}: ${sanitizedUrl}`)
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+      
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
@@ -400,25 +515,119 @@ export default function Home() {
           inputUrl: sanitizedUrl,
           inputType: inputType
         }),
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
+
+      console.log(`📡 Response status: ${response.status}`)
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage = errorData.message || errorData.error || `Server error: ${response.status}`
+        let errorMessage = `Server error: ${response.status}`
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || errorMessage
+          console.error('❌ Server error details:', errorData)
+        } catch (parseError) {
+          console.error('❌ Failed to parse error response:', parseError)
+        }
         throw new Error(errorMessage)
       }
 
       const data = await response.json()
-      console.log('Analysis result:', data)
+      console.log('✅ Analysis result received:', {
+        readinessScore: data.readinessScore,
+        hasStaticAnalysis: !!data.staticAnalysis,
+        hasWebsiteAnalysis: !!data.websiteAnalysis,
+        categoriesCount: Object.keys(data.categories || {}).length,
+        findingsCount: (data.findings || []).length
+      })
       
-      // Validate the response data
+      // Validate the response data structure
       if (!data || typeof data.readinessScore !== 'number') {
+        console.error('❌ Invalid response format:', data)
         throw new Error('Invalid response format from server')
       }
       
+      // Ensure required properties exist for the frontend
+      if (!data.staticAnalysis && !data.websiteAnalysis) {
+        console.warn('⚠️ Response missing analysis data, creating fallback structure')
+        data.staticAnalysis = inputType === 'repository' ? {} : null
+        data.websiteAnalysis = inputType === 'website' ? {} : null
+      }
+      
+      // Ensure the data object has all required properties to prevent runtime errors
+      data.categories = data.categories || {}
+      data.findings = data.findings || []
+      data.recommendations = data.recommendations || []
+      
+      // Add error boundary for detailed analysis
+      try {
+        data.detailedAnalysis = data.detailedAnalysis || null
+        data.confidence = data.confidence || { overall: 0, staticAnalysis: 0, aiAssessment: 0 }
+      } catch (analysisError) {
+        console.warn('⚠️ Error processing detailed analysis:', analysisError)
+        data.detailedAnalysis = null
+        data.confidence = { overall: 0, staticAnalysis: 0, aiAssessment: 0 }
+      }
+      
+      // Safely truncate very large content to prevent memory issues
+      if (data.staticAnalysis) {
+        try {
+          if (data.staticAnalysis.readmeContent && data.staticAnalysis.readmeContent.length > 10000) {
+            data.staticAnalysis.readmeContent = data.staticAnalysis.readmeContent.substring(0, 10000) + '... [truncated]'
+          }
+          if (data.staticAnalysis.contributingContent && data.staticAnalysis.contributingContent.length > 10000) {
+            data.staticAnalysis.contributingContent = data.staticAnalysis.contributingContent.substring(0, 10000) + '... [truncated]'
+          }
+          if (data.staticAnalysis.agentsContent && data.staticAnalysis.agentsContent.length > 10000) {
+            data.staticAnalysis.agentsContent = data.staticAnalysis.agentsContent.substring(0, 10000) + '... [truncated]'
+          }
+          
+          // Limit large arrays to prevent memory issues
+          if (data.staticAnalysis.workflowFiles && data.staticAnalysis.workflowFiles.length > 50) {
+            data.staticAnalysis.workflowFiles = data.staticAnalysis.workflowFiles.slice(0, 50)
+          }
+          if (data.staticAnalysis.testFiles && data.staticAnalysis.testFiles.length > 100) {
+            data.staticAnalysis.testFiles = data.staticAnalysis.testFiles.slice(0, 100)
+          }
+        } catch (truncationError) {
+          console.warn('⚠️ Error during content truncation:', truncationError)
+        }
+      }
+      
+      console.log('✅ Analysis data processed successfully')
       setResult(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      console.error('❌ Analysis failed:', err)
+      console.error('❌ Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        type: typeof err
+      })
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Analysis timed out. Please try again with a smaller repository.')
+        } else if (err.message.includes('Failed to fetch')) {
+          setError('Network error. Please check your connection and try again.')
+        } else if (err.message.includes('timeout')) {
+          setError('Analysis timed out. The repository may be too large. Please try a smaller repository.')
+        } else if (err.message.includes('Invalid response format')) {
+          setError('Server returned invalid data. Please try again.')
+        } else if (err.message.includes('Repository not found')) {
+          setError('Repository not found. Please check the URL and try again.')
+        } else if (err.message.includes('Application error')) {
+          setError('Server error occurred. Please try again or contact support.')
+        } else if (err.message.includes('client-side exception')) {
+          setError('Frontend error occurred. Please refresh the page and try again.')
+        } else {
+          setError(`Analysis failed: ${err.message}`)
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again.')
+      }
     } finally {
       setIsAnalyzing(false)
     }
@@ -464,6 +673,66 @@ export default function Home() {
     if (score >= 16) return 'text-success-600'
     if (score >= 12) return 'text-warning-600'
     return 'text-danger-600'
+  }
+
+  const getAnalysisData = () => {
+    if (!result) return null
+    
+    // For website analysis, use websiteAnalysis if available, otherwise fall back to staticAnalysis
+    if (inputType === 'website' && result.websiteAnalysis) {
+      return result.websiteAnalysis
+    }
+    
+    return result.staticAnalysis
+  }
+
+  const getRepositoryData = () => {
+    if (!result) return null
+    try {
+      const data = result.staticAnalysis || null
+      if (data) {
+        // Safely ensure arrays are not too large for rendering
+        try {
+          if ((data as any).workflowFiles && Array.isArray((data as any).workflowFiles) && (data as any).workflowFiles.length > 50) {
+            (data as any).workflowFiles = (data as any).workflowFiles.slice(0, 50)
+          }
+          if ((data as any).testFiles && Array.isArray((data as any).testFiles) && (data as any).testFiles.length > 100) {
+            (data as any).testFiles = (data as any).testFiles.slice(0, 100)
+          }
+        } catch (arrayError) {
+          console.warn('⚠️ Error processing arrays in repository data:', arrayError)
+        }
+        
+        // Safely truncate very large text content
+        try {
+          if ((data as any).readmeContent && typeof (data as any).readmeContent === 'string' && (data as any).readmeContent.length > 5000) {
+            (data as any).readmeContent = (data as any).readmeContent.substring(0, 5000) + '... [truncated for display]'
+          }
+          if ((data as any).contributingContent && typeof (data as any).contributingContent === 'string' && (data as any).contributingContent.length > 5000) {
+            (data as any).contributingContent = (data as any).contributingContent.substring(0, 5000) + '... [truncated for display]'
+          }
+          if ((data as any).agentsContent && typeof (data as any).agentsContent === 'string' && (data as any).agentsContent.length > 5000) {
+            (data as any).agentsContent = (data as any).agentsContent.substring(0, 5000) + '... [truncated for display]'
+          }
+        } catch (textError) {
+          console.warn('⚠️ Error processing text content in repository data:', textError)
+        }
+      }
+      return data
+    } catch (error) {
+      console.error('❌ Error accessing repository data:', error)
+      return null
+    }
+  }
+
+  const getWebsiteData = () => {
+    if (!result) return null
+    try {
+      return (result.websiteAnalysis as any) || null
+    } catch (error) {
+      console.error('Error accessing website data:', error)
+      return null
+    }
   }
 
   const getCategoryDescription = (category: string) => {
@@ -574,15 +843,13 @@ export default function Home() {
             )}
           </button>
           {error && (
-            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200">
-              <div className="flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                <div>
-                  <p className="font-medium">Analysis Failed</p>
-                  <p className="text-sm mt-1">{error}</p>
-                </div>
-              </div>
-            </div>
+            <GracefulDegradation 
+              error={error} 
+              onRetry={() => {
+                setError('')
+                handleAnalyze()
+              }} 
+            />
           )}
         </div>
       </div>
@@ -609,7 +876,29 @@ export default function Home() {
 
       {/* Results Section */}
       {result && (
-        <div className="space-y-6">
+        <ErrorBoundary 
+          errorMessage="Error displaying analysis results"
+          fallback={
+            <div className="card">
+              <div className="text-center py-8">
+                <div className="text-6xl mb-4">⚠️</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Results Display Error
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  The analysis completed successfully, but there was an error displaying the results.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Reload Page
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <div className="space-y-6">
           {/* Source Information */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
@@ -629,63 +918,74 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {inputType === 'repository' ? (
-                <>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {result.staticAnalysis.fileCount || result.staticAnalysis.fileSizeAnalysis?.totalFiles || 0}
+                (() => {
+                  const repoData = getRepositoryData()
+                  return (
+                    <ErrorBoundary errorMessage="Error displaying repository information">
+                    <>
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-sm font-medium text-gray-600 mb-1">Total Files</div>
+                        <div className="text-lg font-bold text-blue-600">
+                          {repoData?.fileCount || (repoData?.fileSizeAnalysis as any)?.totalFiles || 0}
+                        </div>
+                      </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
+                      <div className="text-lg font-bold text-green-600">
+                        {repoData?.linesOfCode?.toLocaleString() || '0'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Lines of Code</div>
-                    <div className="text-lg font-bold text-green-600">
-                      {result.staticAnalysis.linesOfCode?.toLocaleString() || '0'}
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
+                      <div className="text-lg font-bold text-purple-600">
+                        {repoData?.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Repository Size</div>
-                    <div className="text-lg font-bold text-purple-600">
-                      {result.staticAnalysis.repositorySizeMB?.toFixed(2) || '0.00'} MB
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
+                      <div className="text-sm font-medium">
+                        {repoData?.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Primary Languages</div>
-                    <div className="text-sm font-medium">
-                      {result.staticAnalysis.languages?.slice(0, 2).join(', ') || 'Unknown'}
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
+                      <div className="text-sm font-medium">
+                        {[
+                          repoData?.hasReadme && 'README',
+                          repoData?.hasAgents && 'AGENTS',
+                          repoData?.hasContributing && 'CONTRIBUTING',
+                          repoData?.hasLicense && 'LICENSE'
+                        ].filter(Boolean).join(', ') || 'None'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Documentation Files</div>
-                    <div className="text-sm font-medium">
-                      {[
-                        result.staticAnalysis.hasReadme && 'README',
-                        result.staticAnalysis.hasAgents && 'AGENTS',
-                        result.staticAnalysis.hasContributing && 'CONTRIBUTING',
-                        result.staticAnalysis.hasLicense && 'LICENSE'
-                      ].filter(Boolean).join(', ') || 'None'}
-                    </div>
-                  </div>
-                </>
+                  </>
+                )
+                    </ErrorBoundary>
+                  )
+                })()
               ) : (
-                <>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Page Title</div>
-                    <div className="text-sm font-medium truncate">
-                      {result.staticAnalysis.pageTitle || 'No title'}
+                (() => {
+                const websiteData = getWebsiteData()
+                return (
+                  <>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Page Title</div>
+                      <div className="text-sm font-medium truncate">
+                        {websiteData?.pageTitle || 'No title'}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Critical for AI agent identification
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Critical for AI agent identification
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Content Accessibility</div>
+                      <div className="text-lg font-bold text-blue-600">
+                        {result.businessTypeAnalysis?.aiRelevantChecks.contentAccessibility || 0}%
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        How easy it is for AI agents to extract information
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Content Accessibility</div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {result.businessTypeAnalysis?.aiRelevantChecks.contentAccessibility || 0}%
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      How easy it is for AI agents to extract information
-                    </div>
-                  </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Structured Data</div>
                     <div className="text-sm font-medium">
@@ -707,13 +1007,15 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-1">Technologies</div>
                     <div className="text-sm font-medium">
-                      {result.staticAnalysis.technologies?.slice(0, 2).join(', ') || 'Unknown'}
+                      {websiteData?.technologies?.slice(0, 2).join(', ') || 'Unknown'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Framework compatibility for agent integration
                     </div>
                   </div>
-                </>
+                  </>
+                )
+                })()
               )}
             </div>
           </div>
@@ -788,33 +1090,33 @@ export default function Home() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      result.staticAnalysis.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getWebsiteData()?.hasStructuredData ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {result.staticAnalysis.hasStructuredData ? '✓' : '✗'}
+                      {getWebsiteData()?.hasStructuredData ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Structured Data</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      result.staticAnalysis.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getWebsiteData()?.hasOpenGraph ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {result.staticAnalysis.hasOpenGraph ? '✓' : '✗'}
+                      {getWebsiteData()?.hasOpenGraph ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Open Graph</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      result.staticAnalysis.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getWebsiteData()?.hasTwitterCards ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {result.staticAnalysis.hasTwitterCards ? '✓' : '✗'}
+                      {getWebsiteData()?.hasTwitterCards ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Twitter Cards</div>
                   </div>
                   <div className="text-center p-3 border rounded-lg">
                     <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      result.staticAnalysis.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
+                      getWebsiteData()?.hasSitemap ? 'bg-success-100 text-success-600' : 'bg-gray-100 text-gray-400'
                     }`}>
-                      {result.staticAnalysis.hasSitemap ? '✓' : '✗'}
+                      {getWebsiteData()?.hasSitemap ? '✓' : '✗'}
                     </div>
                     <div className="text-sm font-medium">Sitemap</div>
                   </div>
@@ -834,25 +1136,30 @@ export default function Home() {
                   </div>
                   <div className="p-4 border rounded-lg">
                     <div className="text-sm font-medium text-gray-600 mb-2">Content Length</div>
-                    <div className="text-2xl font-bold text-purple-600">{result.staticAnalysis.contentLength?.toLocaleString() || 0} chars</div>
+                    <div className="text-2xl font-bold text-purple-600">{getWebsiteData()?.contentLength?.toLocaleString() || 0} chars</div>
                     <div className="text-xs text-gray-500 mt-1">Total content available for analysis</div>
                   </div>
                 </div>
 
                 {/* Detected Technologies - Combined for both websites and repositories */}
-                {((result.staticAnalysis.technologies && result.staticAnalysis.technologies.length > 0) || 
-                  (result.staticAnalysis.languages && result.staticAnalysis.languages.length > 0)) && (
+                {(() => {
+                  const websiteData = getWebsiteData()
+                  const repositoryData = getRepositoryData()
+                  const hasWebsiteTech = websiteData?.technologies && websiteData.technologies.length > 0
+                  const hasRepoLanguages = repositoryData?.languages && repositoryData.languages.length > 0
+                  return hasWebsiteTech || hasRepoLanguages
+                })() && (
                   <div>
                     <h4 className="text-md font-medium mb-2">Detected Technologies</h4>
                     <div className="flex flex-wrap gap-2">
                       {/* Show programming languages first */}
-                      {result.staticAnalysis.languages && result.staticAnalysis.languages.map((lang: string, index: number) => (
+                      {getRepositoryData()?.languages?.map((lang: string, index: number) => (
                         <span key={`lang-${index}`} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
                           {lang}
                         </span>
                       ))}
                       {/* Then show frameworks/technologies */}
-                      {result.staticAnalysis.technologies && result.staticAnalysis.technologies.map((tech: string, index: number) => (
+                      {getWebsiteData()?.technologies?.map((tech: string, index: number) => (
                         <span key={`tech-${index}`} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                           {tech}
                         </span>
@@ -866,11 +1173,11 @@ export default function Home() {
 
                 {/* Contact and social info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {result.staticAnalysis.contactInfo && result.staticAnalysis.contactInfo.length > 0 && (
+                  {getWebsiteData()?.contactInfo && getWebsiteData()?.contactInfo.length > 0 && (
                     <div>
                       <h4 className="text-md font-medium mb-2">Contact Information</h4>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        {result.staticAnalysis.contactInfo.slice(0, 3).map((contact: string, index: number) => (
+                        {getWebsiteData()?.contactInfo.slice(0, 3).map((contact: string, index: number) => (
                           <li key={index} className="flex items-center">
                             {contact.includes('@') ? (
                               <>
@@ -890,9 +1197,9 @@ export default function Home() {
                   )}
                   <div>
                     <h4 className="text-md font-medium mb-2">Social Media</h4>
-                    {result.staticAnalysis.socialMediaLinks && result.staticAnalysis.socialMediaLinks.length > 0 ? (
+                    {getWebsiteData()?.socialMediaLinks && getWebsiteData()?.socialMediaLinks.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {result.staticAnalysis.socialMediaLinks.map((social: {platform: string, url: string}, index: number) => (
+                        {getWebsiteData()?.socialMediaLinks.map((social: {platform: string, url: string}, index: number) => (
                           <a 
                             key={index} 
                             href={social.url}
@@ -914,7 +1221,7 @@ export default function Home() {
                 </div>
 
                 {/* Location Information - Show only for location-relevant business types */}
-                {result.staticAnalysis.locations && result.staticAnalysis.locations.length > 0 && 
+                {getWebsiteData()?.locations && getWebsiteData()?.locations.length > 0 && 
                  result.businessTypeAnalysis && 
                  ['food_service', 'healthcare', 'retail_ecommerce', 'hospitality', 'automotive', 'home_services', 'beauty_wellness', 'events_experiences', 'fitness_wellness', 'pet_services'].includes(result.businessTypeAnalysis.businessType) && (
                   <div className="mt-4">
@@ -924,7 +1231,7 @@ export default function Home() {
                         // Group locations by city
                         const grouped = new Map<string, string[]>()
                         
-                        for (const location of result.staticAnalysis.locations) {
+                        for (const location of getWebsiteData()?.locations) {
                           // Extract city from location string
                           let city = 'Other'
                           const cityMatch = location.match(/([A-Za-z\s]+),\s*([A-Z]{2})/)
@@ -949,7 +1256,7 @@ export default function Home() {
                           <div key={city} className="border rounded-lg p-3 bg-gray-50">
                             <div className="font-medium text-gray-800 mb-2">{city}</div>
                             <div className="space-y-1">
-                              {[...new Set(addresses)].map((address, index) => (
+                              {Array.from(new Set(addresses)).map((address, index) => (
                                 <div key={index} className="text-sm text-gray-600 flex items-start">
                                   <span className="mr-2">📍</span>
                                   <span>{address}</span>
@@ -1231,7 +1538,7 @@ export default function Home() {
 
 
           {/* Agent Compatibility Analysis - Only for repositories */}
-          {inputType === 'repository' && result.staticAnalysis.fileSizeAnalysis && (
+          {inputType === 'repository' && getRepositoryData()?.fileSizeAnalysis && (
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Agent Compatibility Analysis</h3>
               
@@ -1240,13 +1547,13 @@ export default function Home() {
                 <h4 className="text-md font-medium mb-3">Agent Framework Compatibility</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { key: 'cursor', name: 'Cursor', score: result.staticAnalysis.fileSizeAnalysis.agentCompatibility.cursor || 0 },
-                    { key: 'githubCopilot', name: 'GitHub Copilot', score: result.staticAnalysis.fileSizeAnalysis.agentCompatibility.githubCopilot || 0 },
+                    { key: 'cursor', name: 'Cursor', score: getRepositoryData()?.fileSizeAnalysis?.agentCompatibility?.cursor || 0 },
+                    { key: 'githubCopilot', name: 'GitHub Copilot', score: getRepositoryData()?.fileSizeAnalysis?.agentCompatibility?.githubCopilot || 0 },
                     { key: 'claude', name: 'Claude', score: Math.max(
-                      result.staticAnalysis.fileSizeAnalysis.agentCompatibility.claudeWeb || 0,
-                      result.staticAnalysis.fileSizeAnalysis.agentCompatibility.claudeApi || 0
+                      getRepositoryData()?.fileSizeAnalysis?.agentCompatibility?.claudeWeb || 0,
+                      getRepositoryData()?.fileSizeAnalysis?.agentCompatibility?.claudeApi || 0
                     ) },
-                    { key: 'codex', name: 'Codex', score: (result.staticAnalysis.fileSizeAnalysis.agentCompatibility as any).codex || 0 }
+                    { key: 'codex', name: 'Codex', score: (getRepositoryData()?.fileSizeAnalysis?.agentCompatibility as any)?.codex || 0 }
                   ].map((agent) => (
                     <div key={agent.key} className="p-3 border rounded-lg text-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
                       <div className="text-sm font-medium capitalize mb-1">{agent.name}</div>
@@ -1262,7 +1569,7 @@ export default function Home() {
                         <div className="font-medium mb-1">{agent.name} Analysis</div>
                         <div>Context Window: {agent.key === 'cursor' ? '200K tokens' : agent.key === 'githubCopilot' ? '8K tokens' : agent.key === 'claude' ? '200K tokens' : '8K tokens'}</div>
                         <div>File Size Impact: {agent.score >= 80 ? 'Optimal' : agent.score >= 60 ? 'Moderate' : 'High'}</div>
-                        <div>Large Files: {result.staticAnalysis.fileSizeAnalysis?.largeFiles.length || 0} detected</div>
+                        <div>Large Files: {getRepositoryData()?.fileSizeAnalysis?.largeFiles.length || 0} detected</div>
                       </div>
                     </div>
                   ))}
@@ -1276,91 +1583,100 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Documentation</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasReadme ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasReadme ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasReadme ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasReadme ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasReadme ? 'README available' : 'Missing README'}
+                      {getRepositoryData()?.hasReadme ? 'README available' : 'Missing README'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Agent Instructions</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasAgents ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasAgents ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasAgents ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasAgents ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasAgents ? 'AGENTS.md found' : 'Missing AGENTS.md'}
+                      {getRepositoryData()?.hasAgents ? 'AGENTS.md found' : 'Missing AGENTS.md'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Contributing Guide</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasContributing ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasContributing ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasContributing ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasContributing ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasContributing ? 'CONTRIBUTING.md available' : 'Missing CONTRIBUTING.md'}
+                      {getRepositoryData()?.hasContributing ? 'CONTRIBUTING.md available' : 'Missing CONTRIBUTING.md'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">License</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasLicense ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasLicense ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasLicense ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasLicense ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasLicense ? 'LICENSE available' : 'Missing LICENSE'}
+                      {getRepositoryData()?.hasLicense ? 'LICENSE available' : 'Missing LICENSE'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">CI/CD Workflows</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasWorkflows ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasWorkflows ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasWorkflows ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasWorkflows ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasWorkflows ? 'GitHub Actions found' : 'No workflows detected'}
+                      {getRepositoryData()?.hasWorkflows ? 'GitHub Actions found' : 'No workflows detected'}
                     </div>
                   </div>
                   
                   <div className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Test Coverage</span>
-                      <span className={`text-sm ${result.staticAnalysis.hasTests ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.staticAnalysis.hasTests ? '✓' : '✗'}
+                      <span className={`text-sm ${getRepositoryData()?.hasTests ? 'text-green-600' : 'text-red-600'}`}>
+                        {getRepositoryData()?.hasTests ? '✓' : '✗'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      {result.staticAnalysis.hasTests ? 'Test files found' : 'No tests detected'}
+                      {getRepositoryData()?.hasTests ? 'Test files found' : 'No tests detected'}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Large Files Warning - Only show if there are large files */}
-              {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 0 && (
+              {(() => {
+                const repoData = getRepositoryData()
+                return repoData?.fileSizeAnalysis?.largeFiles && repoData.fileSizeAnalysis.largeFiles.length > 0
+              })() && (
                 <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
                   <h4 className="text-md font-medium mb-3 text-yellow-800">⚠️ Large Files Detected</h4>
                   <div className="space-y-2">
-                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.slice(0, 3).map((file, index) => (
+                    {getRepositoryData()?.fileSizeAnalysis?.largeFiles?.slice(0, 3).map((file, index) => (
                       <div key={index} className="flex justify-between items-center text-sm">
                         <span className="font-medium truncate flex-1 mr-2">{file.path}</span>
                         <span className="text-red-600 font-bold">{file.sizeFormatted}</span>
                       </div>
                     ))}
-                    {result.staticAnalysis.fileSizeAnalysis.largeFiles.length > 3 && (
+                    {(() => {
+                      const repoData = getRepositoryData()
+                      return repoData?.fileSizeAnalysis?.largeFiles && repoData.fileSizeAnalysis.largeFiles.length > 3
+                    })() && (
                       <div className="text-sm text-yellow-700">
-                        ... and {result.staticAnalysis.fileSizeAnalysis.largeFiles.length - 3} more files
+                        ... and {(() => {
+                          const repoData = getRepositoryData()
+                          return (repoData?.fileSizeAnalysis?.largeFiles?.length || 0) - 3
+                        })()} more files
                       </div>
                     )}
                   </div>
@@ -1377,46 +1693,272 @@ export default function Home() {
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium mb-2">Instruction Files Context</div>
                     <div className="space-y-1 text-xs">
-                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd && (
-                        <div>AGENTS.md: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 4)} tokens</div>
-                      )}
-                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme && (
-                        <div>README: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 4)} tokens</div>
-                      )}
-                      {result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing && (
-                        <div>CONTRIBUTING: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 4)} tokens</div>
-                      )}
+                      {(() => {
+                        const repoData = getRepositoryData()
+                        return repoData?.fileSizeAnalysis?.contextConsumption?.instructionFiles?.agentsMd && (
+                          <div>AGENTS.md: ~{Math.round(repoData.fileSizeAnalysis.contextConsumption.instructionFiles.agentsMd.size / 4)} tokens</div>
+                        )
+                      })()}
+                      {(() => {
+                        const repoData = getRepositoryData()
+                        return repoData?.fileSizeAnalysis?.contextConsumption?.instructionFiles?.readme && (
+                          <div>README: ~{Math.round(repoData.fileSizeAnalysis.contextConsumption.instructionFiles.readme.size / 4)} tokens</div>
+                        )
+                      })()}
+                      {(() => {
+                        const repoData = getRepositoryData()
+                        return repoData?.fileSizeAnalysis?.contextConsumption?.instructionFiles?.contributing && (
+                          <div>CONTRIBUTING: ~{Math.round(repoData.fileSizeAnalysis.contextConsumption.instructionFiles.contributing.size / 4)} tokens</div>
+                        )
+                      })()}
                     </div>
                   </div>
                   <div className="p-3 border rounded-lg">
                     <div className="text-sm font-medium mb-2">Context Efficiency</div>
                     <div className="space-y-1 text-xs">
-                      <div>Total Context Files: {result.staticAnalysis.fileSizeAnalysis.contextConsumption.totalContextFiles}</div>
-                      <div>Average Context: ~{Math.round(result.staticAnalysis.fileSizeAnalysis.contextConsumption.averageContextFileSize / 4)} tokens</div>
-                      <div>Efficiency: <span className={`font-medium ${
-                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'excellent' ? 'text-green-600' :
-                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'good' ? 'text-blue-600' :
-                        result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency === 'moderate' ? 'text-yellow-600' : 'text-red-600'
-                      }`}>{result.staticAnalysis.fileSizeAnalysis.contextConsumption.contextEfficiency}</span></div>
+                      {(() => {
+                        const repoData = getRepositoryData()
+                        return (
+                          <>
+                            <div>Total Context Files: {repoData?.fileSizeAnalysis?.contextConsumption?.totalContextFiles || 0}</div>
+                            <div>Average Context: ~{Math.round((repoData?.fileSizeAnalysis?.contextConsumption?.averageContextFileSize || 0) / 4)} tokens</div>
+                            <div>Efficiency: <span className={`font-medium ${
+                              repoData?.fileSizeAnalysis?.contextConsumption?.contextEfficiency === 'excellent' ? 'text-green-600' :
+                              repoData?.fileSizeAnalysis?.contextConsumption?.contextEfficiency === 'good' ? 'text-blue-600' :
+                              repoData?.fileSizeAnalysis?.contextConsumption?.contextEfficiency === 'moderate' ? 'text-yellow-600' : 'text-red-600'
+                            }`}>{repoData?.fileSizeAnalysis?.contextConsumption?.contextEfficiency || 'unknown'}</span></div>
+                          </>
+                        )
+                      })()}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Recommendations */}
-              {result.staticAnalysis.fileSizeAnalysis.recommendations.length > 0 && (
+              {(() => {
+                const repoData = getRepositoryData()
+                return repoData?.fileSizeAnalysis?.recommendations && repoData.fileSizeAnalysis.recommendations.length > 0
+              })() && (
                 <div>
                   <h4 className="text-md font-medium mb-3">Agent Optimization Recommendations</h4>
                   <ul className="space-y-1">
-                    {result.staticAnalysis.fileSizeAnalysis.recommendations.map((rec, index) => (
-                      <li key={index} className="flex items-start text-sm">
-                        <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0" />
-                        <span>{rec}</span>
-                      </li>
-                    ))}
+                    {(() => {
+                      const repoData = getRepositoryData()
+                      return repoData?.fileSizeAnalysis?.recommendations?.map((rec, index) => (
+                        <li key={index} className="flex items-start text-sm">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <span>{rec}</span>
+                        </li>
+                      ))
+                    })()}
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Detailed Analysis - Only for websites */}
+          {inputType === 'website' && getWebsiteData()?.agentReadinessFeatures && (
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Detailed Analysis</h3>
+              
+              <div className="space-y-6">
+                {/* Information Gathering */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-blue-600">Information Gathering</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-blue-600">{getWebsiteData()?.agentReadinessFeatures.informationGathering.score}/{getWebsiteData()?.agentReadinessFeatures.informationGathering.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.informationGathering.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.informationGathering.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.informationGathering.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.informationGathering.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Booking */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-green-600">Direct Booking</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-green-600">{getWebsiteData()?.agentReadinessFeatures.directBooking.score}/{getWebsiteData()?.agentReadinessFeatures.directBooking.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.directBooking.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.directBooking.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.directBooking.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.directBooking.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* FAQ Support */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-purple-600">FAQ Support</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-purple-600">{getWebsiteData()?.agentReadinessFeatures.faqSupport.score}/{getWebsiteData()?.agentReadinessFeatures.faqSupport.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.faqSupport.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.faqSupport.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.faqSupport.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.faqSupport.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Task Management */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-orange-600">Task Management</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-orange-600">{getWebsiteData()?.agentReadinessFeatures.taskManagement.score}/{getWebsiteData()?.agentReadinessFeatures.taskManagement.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.taskManagement.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.taskManagement.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.taskManagement.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.taskManagement.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Personalization */}
+                <div>
+                  <h4 className="text-md font-medium mb-3 text-pink-600">Personalization</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Score</div>
+                      <div className="text-lg font-bold text-pink-600">{getWebsiteData()?.agentReadinessFeatures.personalization.score}/{getWebsiteData()?.agentReadinessFeatures.personalization.maxScore}</div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Available Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.personalization.details.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.personalization.details.map((detail: string, index: number) => (
+                              <li key={index} className="text-green-600">✓ {detail}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Missing Features</div>
+                      <div className="text-sm">
+                        {getWebsiteData()?.agentReadinessFeatures.personalization.missing.length > 0 ? (
+                          <ul className="space-y-1">
+                            {getWebsiteData()?.agentReadinessFeatures.personalization.missing.map((missing: string, index: number) => (
+                              <li key={index} className="text-red-600">✗ {missing}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-green-600">All features available</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1636,6 +2178,7 @@ export default function Home() {
             </ul>
           </div>
         </div>
+        </ErrorBoundary>
       )}
     </div>
   )

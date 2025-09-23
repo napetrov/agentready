@@ -1,5 +1,18 @@
 import { generatePDFReport } from '../lib/report-generator'
 
+// Mock TextEncoder for jsPDF
+global.TextEncoder = global.TextEncoder || class TextEncoder {
+  encode(input: string) {
+    return Buffer.from(input, 'utf8')
+  }
+}
+
+global.TextDecoder = global.TextDecoder || class TextDecoder {
+  decode(input: Buffer) {
+    return Buffer.from(input).toString('utf8')
+  }
+}
+
 describe('generatePDFReport', () => {
   test('should generate PDF with minimal data', async () => {
     const minimalData = {

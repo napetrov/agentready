@@ -1,6 +1,9 @@
 /**
  * Aligned Assessment Engine
  * 
+ * @deprecated This module is deprecated and will be removed in a future version.
+ * Use UnifiedAssessmentEngine with plugin architecture instead.
+ * 
  * Integrates static checks and AI analytics with consistent metrics collection.
  * Ensures alignment between different assessment methods.
  */

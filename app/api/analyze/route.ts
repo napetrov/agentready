@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { analyzeRepository, analyzeWebsite, WebsiteAnalysisResult } from '../../../lib/analyzer'
-import { generateEnhancedAIAssessment, generateWebsiteAIAssessment } from '../../../lib/enhanced-ai-assessment'
-import { AlignedAssessmentEngine } from '../../../lib/aligned-assessment-engine'
+import { UnifiedAssessmentEngine } from '../../../lib/unified-assessment-engine'
+import { AssessmentInput } from '../../../lib/unified-types'
 import { promises as dns } from 'dns'
 
 // Helper function to check if an IP address is public/routable
@@ -72,8 +71,11 @@ async function validateHostname(hostname: string): Promise<boolean> {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 API analyze route called')
+  
   try {
     const { inputUrl, inputType } = await request.json()
+    console.log('📝 Request data:', { inputUrl, inputType })
 
     if (!inputUrl) {
       return NextResponse.json(
@@ -128,113 +130,109 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Initialize aligned assessment engine
-    const assessmentEngine = new AlignedAssessmentEngine({
+    // Initialize unified assessment engine
+    const assessmentEngine = new UnifiedAssessmentEngine({
+      enableAIAssessment: true,
       enableValidation: true,
-      requireAlignment: false, // Set to true for strict alignment requirements
+      requireAlignment: false,
       maxRetries: 2,
-      fallbackToStatic: true
+      fallbackToStatic: true,
+      timeout: 30000,
+      includeDetailedAnalysis: true
     })
 
-    // Perform aligned assessment based on input type
-    let result: any
-    
-    if (inputType === 'repository') {
-      result = await assessmentEngine.assessRepository(inputUrl)
-    } else {
-      result = await assessmentEngine.assessWebsite(inputUrl)
+    // Perform unified assessment
+    const input: AssessmentInput = {
+      url: inputUrl,
+      type: inputType as 'repository' | 'website',
+      options: {
+        enableAIAssessment: true,
+        enableValidation: true,
+        maxRetries: 2,
+        timeout: 30000,
+        includeDetailedAnalysis: true
+      }
     }
 
-    // Add legacy compatibility fields for existing frontend
-    const legacyResult = {
-      readinessScore: result.websiteAnalysis?.overallScore || result.overallScore.value,
-      aiAnalysisStatus: {
-        enabled: result.assessmentStatus.aiAnalysisEnabled,
-        instructionClarity: result.assessmentStatus.aiAnalysisEnabled,
-        workflowAutomation: result.assessmentStatus.aiAnalysisEnabled,
-        contextEfficiency: result.assessmentStatus.aiAnalysisEnabled,
-        riskCompliance: result.assessmentStatus.aiAnalysisEnabled,
-        overallSuccess: result.assessmentStatus.aiAnalysisEnabled && result.validation.passed
-      },
-      staticAnalysis: result.staticAnalysis || {},
-      websiteAnalysis: result.websiteAnalysis || null,
-      categories: {
-        documentation: result.categories.documentation.score.value,
-        instructionClarity: result.categories.instructionClarity.score.value,
-        workflowAutomation: result.categories.workflowAutomation.score.value,
-        riskCompliance: result.categories.riskCompliance.score.value,
-        integrationStructure: result.categories.integrationStructure.score.value,
-        fileSizeOptimization: result.categories.fileSizeOptimization.score.value
-      },
-      findings: result.insights.findings.slice(0, 10), // Use unified insights
-      recommendations: result.insights.recommendations.slice(0, 10), // Use unified insights
-      detailedAnalysis: {
-        instructionClarity: {
-          stepByStepQuality: result.categories.instructionClarity.subMetrics.stepByStepQuality?.value || 0,
-          commandClarity: result.categories.instructionClarity.subMetrics.commandClarity?.value || 0,
-          environmentSetup: result.categories.instructionClarity.subMetrics.environmentSetup?.value || 0,
-          errorHandling: result.categories.instructionClarity.subMetrics.errorHandling?.value || 0,
-          dependencySpecification: result.categories.instructionClarity.subMetrics.dependencySpecification?.value || 0,
-          overallScore: result.categories.instructionClarity.score.value
-        },
-        workflowAutomation: {
-          ciCdQuality: result.categories.workflowAutomation.subMetrics.ciCdQuality?.value || 0,
-          testAutomation: result.categories.workflowAutomation.subMetrics.testAutomation?.value || 0,
-          buildScripts: result.categories.workflowAutomation.subMetrics.buildScripts?.value || 0,
-          deploymentAutomation: result.categories.workflowAutomation.subMetrics.deploymentAutomation?.value || 0,
-          monitoringLogging: result.categories.workflowAutomation.subMetrics.monitoringLogging?.value || 0,
-          overallScore: result.categories.workflowAutomation.score.value
-        },
-        contextEfficiency: {
-          instructionFileOptimization: result.categories.fileSizeOptimization.subMetrics.instructionFileOptimization?.value || 0,
-          codeDocumentation: result.categories.documentation.subMetrics.codeDocumentation?.value || 0,
-          apiDocumentation: result.categories.integrationStructure.subMetrics.apiDocumentation?.value || 0,
-          contextWindowUsage: result.categories.fileSizeOptimization.subMetrics.contextWindowUsage?.value || 0,
-          overallScore: result.categories.fileSizeOptimization.score.value
-        },
-        riskCompliance: {
-          securityPractices: result.categories.riskCompliance.subMetrics.securityPractices?.value || 0,
-          errorHandling: result.categories.riskCompliance.subMetrics.errorHandling?.value || 0,
-          inputValidation: result.categories.riskCompliance.subMetrics.inputValidation?.value || 0,
-          dependencySecurity: result.categories.riskCompliance.subMetrics.dependencySecurity?.value || 0,
-          licenseCompliance: result.categories.riskCompliance.subMetrics.licenseCompliance?.value || 0,
-          overallScore: result.categories.riskCompliance.score.value
-        }
-      },
-      confidence: {
-        overall: result.overallScore.confidence,
-        instructionClarity: result.categories.instructionClarity.score.confidence,
-        workflowAutomation: result.categories.workflowAutomation.score.confidence,
-        contextEfficiency: result.categories.fileSizeOptimization.score.confidence,
-        riskCompliance: result.categories.riskCompliance.score.confidence
-      },
-      // Include new aligned assessment data
-      alignedAssessment: {
-        validation: result.validation,
-        assessmentMetadata: result.assessmentMetadata,
-        unifiedMetrics: {
-          overallScore: result.overallScore,
-          categories: result.categories,
-          assessmentStatus: result.assessmentStatus
-        }
-      },
-      // Business-type-aware website analysis data
-      businessTypeAnalysis: result.websiteAnalysis ? {
-        businessType: result.websiteAnalysis.businessType,
-        businessTypeConfidence: result.websiteAnalysis.businessTypeConfidence,
-        overallScore: result.websiteAnalysis.overallScore,
-        agenticFlows: result.websiteAnalysis.agenticFlows,
-        aiRelevantChecks: result.websiteAnalysis.aiRelevantChecks,
-        findings: (result.websiteAnalysis.findings || []).slice(0, 10),
-        recommendations: (result.websiteAnalysis.recommendations || []).slice(0, 10)
-      } : null
+    // Add timeout to prevent hanging
+    console.log('⏱️ Setting up timeout and starting assessment...')
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Analysis timeout')), 45000) // 45 second timeout
+    })
+    
+    console.log('📊 Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set' : 'Not set'
+    })
+    
+    const result = await Promise.race([
+      assessmentEngine.assess(input),
+      timeoutPromise
+    ]) as any
+    
+    console.log('✅ Assessment completed successfully')
+
+    // Convert to legacy format for backward compatibility
+    const legacyResult = assessmentEngine.convertToLegacyFormat(result)
+
+    // Ensure the response has the required structure to prevent frontend errors
+    if (!legacyResult.staticAnalysis && !legacyResult.websiteAnalysis) {
+      console.warn('Analysis completed but missing analysis data, creating fallback structure')
+      legacyResult.staticAnalysis = input.type === 'repository' ? {} : null
+      legacyResult.websiteAnalysis = input.type === 'website' ? {} : null
     }
+
+    // Content truncation is now handled in convertToLegacyFormat method
 
     return NextResponse.json(legacyResult)
   } catch (error) {
-    console.error('Analysis error:', error)
+    console.error('❌ Analysis error:', error)
+    
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message === 'Analysis timeout') {
+        return NextResponse.json(
+          { error: 'Analysis timed out. The repository may be too large. Please try a smaller repository.' },
+          { status: 408 } // Request Timeout
+        )
+      }
+      
+      if (error.message.includes('Invalid GitHub repository URL')) {
+        return NextResponse.json(
+          { error: 'Please provide a valid GitHub repository URL' },
+          { status: 400 }
+        )
+      }
+      
+      if (error.message.includes('Failed to download repository')) {
+        return NextResponse.json(
+          { error: 'Failed to access the repository. It may be private or the URL may be incorrect.' },
+          { status: 404 }
+        )
+      }
+      
+      if (error.message.includes('Repository too large')) {
+        return NextResponse.json(
+          { error: 'Repository is too large to analyze. Please try a smaller repository.' },
+          { status: 413 }
+        )
+      }
+      
+      if (error.message.includes('Rate limit')) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded. Please try again later.' },
+          { status: 429 }
+        )
+      }
+    }
+    
+    // Generic error response
     return NextResponse.json(
-      { error: 'Failed to analyze source' },
+      { 
+        error: 'Failed to analyze source',
+        details: process.env.NODE_ENV === 'development' ? error : undefined
+      },
       { status: 500 }
     )
   }
