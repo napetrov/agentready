@@ -1,6 +1,28 @@
 'use client'
 
 import { useState } from 'react'
+
+// Global error handler for unhandled errors
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    console.error('🚨 Global error caught:', event.error)
+    console.error('🚨 Error details:', {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error
+    })
+  })
+  
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('🚨 Unhandled promise rejection:', event.reason)
+    console.error('🚨 Rejection details:', {
+      reason: event.reason,
+      promise: event.promise
+    })
+  })
+}
 import { Github, FileText, Download, Loader2, AlertCircle } from 'lucide-react'
 
 // Error Boundary Component for graceful error handling
@@ -578,6 +600,12 @@ export default function Home() {
       setResult(data)
     } catch (err) {
       console.error('❌ Analysis failed:', err)
+      console.error('❌ Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        type: typeof err
+      })
       
       if (err instanceof Error) {
         if (err.name === 'AbortError') {
@@ -590,6 +618,10 @@ export default function Home() {
           setError('Server returned invalid data. Please try again.')
         } else if (err.message.includes('Repository not found')) {
           setError('Repository not found. Please check the URL and try again.')
+        } else if (err.message.includes('Application error')) {
+          setError('Server error occurred. Please try again or contact support.')
+        } else if (err.message.includes('client-side exception')) {
+          setError('Frontend error occurred. Please refresh the page and try again.')
         } else {
           setError(`Analysis failed: ${err.message}`)
         }

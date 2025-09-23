@@ -71,8 +71,11 @@ async function validateHostname(hostname: string): Promise<boolean> {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 API analyze route called')
+  
   try {
     const { inputUrl, inputType } = await request.json()
+    console.log('📝 Request data:', { inputUrl, inputType })
 
     if (!inputUrl) {
       return NextResponse.json(
@@ -152,14 +155,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Add timeout to prevent hanging
+    console.log('⏱️ Setting up timeout and starting assessment...')
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Analysis timeout')), 45000) // 45 second timeout
+    })
+    
+    console.log('📊 Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set' : 'Not set'
     })
     
     const result = await Promise.race([
       assessmentEngine.assess(input),
       timeoutPromise
     ]) as any
+    
+    console.log('✅ Assessment completed successfully')
 
     // Convert to legacy format for backward compatibility
     const legacyResult = assessmentEngine.convertToLegacyFormat(result)
