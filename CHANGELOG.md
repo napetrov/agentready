@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Public-facing AgentReady README with repository-readiness positioning, current status, API notes, and development commands.
+- Product architecture documentation for the local scanner, evidence model, finding model, detectors, checks, policy packs, reporters, and v0.1 scope.
+- Feature roadmap covering v0.1 local scanning, v0.2 CI/policy automation, and deeper v0.3 analysis.
+- Use-case documentation for maintainer preflight, PR gates, agent onboarding, enterprise rollout, public repository signaling, and benchmarking.
+- Language/tooling notes documenting the TypeScript/Node v0.1 choice and CI expectations.
+- MIT license file.
+
+### Changed
+- Simplified public CI to a focused Node 20 verification workflow for type checking, linting, tests, build, and informational dependency audit.
+- Replaced OpenAI-shaped fake test keys with clearly invalid test placeholders to avoid public secret-scanning noise.
+- Removed the `prepare` lifecycle hook so clean installs do not depend on local git-hook setup.
+
 ### Changed
 - **Unified Agent Compatibility Analysis**: Merged Static Analysis Results and File Size & AI Agent Compatibility sections into a single, focused Agent Compatibility Analysis section
 - **Agent Framework Support**: Updated agent compatibility to include Cursor, GitHub Copilot, Claude (unified), and Codex with agent-specific details and tooltips

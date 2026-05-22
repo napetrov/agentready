@@ -189,7 +189,7 @@ describe('generateEnhancedAIAssessment', () => {
   })
 
   test('should handle API errors gracefully', async () => {
-    process.env.OPENAI_API_KEY = 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+    process.env.OPENAI_API_KEY = 'test-openai-key-placeholder'
     process.env.MOCK_OPENAI_MODE = 'error'
     
     // Spy on console.error to verify error logging
