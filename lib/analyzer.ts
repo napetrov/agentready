@@ -1,6 +1,10 @@
 import JSZip from 'jszip'
 import axios from 'axios'
 import { FileSizeAnalyzer, FileSizeAnalysis } from './file-size-analyzer'
+import {
+  detectInstructionSurfaces,
+  InstructionSurfaceEvidence,
+} from './repo-readiness/instruction-surface-detector'
 
 // Common extensionless files that should be treated as code files
 const EXTENSIONLESS_FILES = [
@@ -75,6 +79,7 @@ export interface StaticAnalysisResult {
   readmeContent?: string
   contributingContent?: string
   agentsContent?: string
+  instructionSurfaces?: InstructionSurfaceEvidence[]
   workflowFiles: string[]
   testFiles: string[]
   fileSizeAnalysis?: FileSizeAnalysis
@@ -189,6 +194,10 @@ export async function analyzeRepository(repoUrl: string): Promise<StaticAnalysis
       fileCount: files.length,
       linesOfCode: 0,
       repositorySizeMB: 0,
+      instructionSurfaces: detectInstructionSurfaces(
+        files.map(path => ({ path })),
+        { archiveRoot: `${repo}-${branch}` },
+      ),
       workflowFiles: [],
       testFiles: [],
     }

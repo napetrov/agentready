@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Technology Section Consolidation**: Removed duplicate "Programming Languages" section and consolidated into single "Detected Technologies" section with improved visual distinction and helpful context for improvement suggestions
 
 ### Added
+- Instruction surface detector with typed evidence for AGENTS.md, Claude Code, GitHub Copilot, Cursor, Gemini, Windsurf, Cline, and Roo Code rule files.
 - **Multi-Page Analysis**: System now analyzes up to 3 key pages per site (contact, about, services, etc.) in addition to the main page for more comprehensive information gathering
 - **Comprehensive Data Merging**: Contact info, social media links, and navigation structure are now merged from main page and key pages with deduplication
 - **Location Information Extraction**: Added intelligent location extraction from structured data, microdata, text content, and map links for location-relevant business types
