@@ -17,6 +17,7 @@ describe('detectInstructionSurfaces', () => {
     })
     expect(result[0].ecosystems).toContain('codex')
     expect(result[0].ecosystems).toContain('github-copilot')
+    expect(result[0].ecosystems).toContain('cursor')
 
     expect(result[1]).toMatchObject({
       path: 'apps/web/AGENTS.md',
@@ -53,6 +54,10 @@ describe('detectInstructionSurfaces', () => {
       scope: 'capability',
       activation: 'on-demand',
     })
+    expect(result.find(item => item.path === '.claude/rules/testing.md')).toMatchObject({
+      scope: 'unknown',
+      activation: 'unknown',
+    })
   })
 
   test('detects tool-specific and legacy rule surfaces', () => {
@@ -68,11 +73,17 @@ describe('detectInstructionSurfaces', () => {
       { path: '.clinerules/security.md' },
       { path: '.roo/rules-code/review.md' },
       { path: '.roorules-debug' },
+      { path: '.roomodes' },
     ])
 
     expect(result.find(item => item.path === '.github/copilot-instructions.md')).toMatchObject({
       ecosystems: ['github-copilot'],
       scope: 'root',
+    })
+    expect(result.find(item => item.path === '.github/instructions/react.instructions.md')).toMatchObject({
+      ecosystems: ['github-copilot'],
+      scope: 'unknown',
+      activation: 'unknown',
     })
     expect(result.find(item => item.path === '.github/agents/reviewer.agent.md')).toMatchObject({
       scope: 'capability',
@@ -81,6 +92,19 @@ describe('detectInstructionSurfaces', () => {
     expect(result.find(item => item.path === '.cursorrules')).toMatchObject({
       legacy: true,
       scope: 'legacy',
+    })
+    expect(result.find(item => item.path === '.cursor/rules/frontend.mdc')).toMatchObject({
+      scope: 'unknown',
+      activation: 'unknown',
+    })
+    expect(result.find(item => item.path === '.windsurf/rules/project.md')).toMatchObject({
+      scope: 'unknown',
+      activation: 'unknown',
+    })
+    expect(result.find(item => item.path === '.windsurfrules')?.ecosystems).toContain('cline')
+    expect(result.find(item => item.path === '.clinerules/security.md')).toMatchObject({
+      scope: 'root',
+      activation: 'unknown',
     })
     expect(result.find(item => item.path === '.roo/rules-code/review.md')).toMatchObject({
       scope: 'mode-specific',
@@ -93,6 +117,10 @@ describe('detectInstructionSurfaces', () => {
       legacy: true,
       mode: 'debug',
     })
+    expect(result.find(item => item.path === '.roomodes')).toMatchObject({
+      scope: 'mode-specific',
+      activation: 'mode-scoped',
+    })
   })
 
   test('adds context-friction note for large instruction files', () => {
@@ -101,6 +129,65 @@ describe('detectInstructionSurfaces', () => {
     ])
 
     expect(result[0].notes).toContain('Instruction file is large enough to create context-friction risk.')
+  })
+
+  test('classifies root and nested Codex overrides consistently', () => {
+    const result = detectInstructionSurfaces([
+      { path: 'AGENTS.override.md' },
+      { path: 'apps/api/AGENTS.override.md' },
+    ])
+
+    expect(result.find(item => item.path === 'AGENTS.override.md')).toMatchObject({
+      scope: 'root',
+      activation: 'always',
+      directoryScope: undefined,
+    })
+    expect(result.find(item => item.path === 'apps/api/AGENTS.override.md')).toMatchObject({
+      scope: 'path-specific',
+      activation: 'path-scoped',
+      directoryScope: 'apps/api',
+    })
+  })
+
+  test('detects compatible root instruction files across ecosystems', () => {
+    const result = detectInstructionSurfaces([
+      { path: 'CLAUDE.md' },
+      { path: 'GEMINI.md' },
+      { path: 'agents.md' },
+      { path: 'apps/web/agents.md' },
+    ])
+
+    expect(result.find(item => item.path === 'CLAUDE.md')?.ecosystems).toEqual([
+      'claude-code',
+      'github-copilot',
+    ])
+    expect(result.find(item => item.path === 'GEMINI.md')?.ecosystems).toEqual([
+      'gemini',
+      'github-copilot',
+    ])
+    expect(result.find(item => item.path === 'agents.md')).toMatchObject({
+      ecosystems: ['windsurf'],
+      scope: 'root',
+    })
+    expect(result.find(item => item.path === 'apps/web/agents.md')).toMatchObject({
+      ecosystems: ['windsurf'],
+      scope: 'path-specific',
+      directoryScope: 'apps/web',
+    })
+  })
+
+  test('ignores non-instruction files under Roo rule directories', () => {
+    const result = detectInstructionSurfaces([
+      { path: '.roo/rules/project.md' },
+      { path: '.roo/rules/assets/logo.png' },
+      { path: '.roo/rules-code/review.txt' },
+      { path: '.roo/rules-code/generated.json' },
+    ])
+
+    expect(result.map(item => item.path)).toEqual([
+      '.roo/rules-code/review.txt',
+      '.roo/rules/project.md',
+    ])
   })
 
   test('rejects paths that are not safe repository-relative paths', () => {
