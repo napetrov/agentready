@@ -103,6 +103,38 @@ describe('detectInstructionSurfaces', () => {
     expect(result[0].notes).toContain('Instruction file is large enough to create context-friction risk.')
   })
 
+  test('rejects paths that are not safe repository-relative paths', () => {
+    const result = detectInstructionSurfaces([
+      { path: '../AGENTS.md' },
+      { path: '/AGENTS.md' },
+      { path: 'C:\\repo\\AGENTS.md' },
+      { path: '..\\CLAUDE.local.md' },
+      { path: 'apps/../AGENTS.md' },
+      { path: './AGENTS.md' },
+    ])
+
+    expect(result).toEqual([])
+  })
+
+  test('strips GitHub archive root before classifying instruction scope', () => {
+    const result = detectInstructionSurfaces([
+      { path: 'repo-main/AGENTS.md', sizeBytes: 1200 },
+      { path: 'repo-main/apps/web/AGENTS.md', sizeBytes: 900 },
+    ])
+
+    expect(result).toHaveLength(2)
+    expect(result[0]).toMatchObject({
+      path: 'AGENTS.md',
+      scope: 'root',
+      activation: 'always',
+    })
+    expect(result[1]).toMatchObject({
+      path: 'apps/web/AGENTS.md',
+      scope: 'path-specific',
+      directoryScope: 'apps/web',
+    })
+  })
+
   test('ignores unrelated files', () => {
     const result = detectInstructionSurfaces([
       { path: 'README.md' },

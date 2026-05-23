@@ -29,7 +29,6 @@ export type InstructionActivation =
 export interface RepositoryFileReference {
   path: string
   sizeBytes?: number
-  content?: string
 }
 
 export interface InstructionSurfaceEvidence {
@@ -59,7 +58,53 @@ interface InstructionPattern {
 
 const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '')
 
+const archiveRootPattern = /-(main|master|develop|development|trunk|[a-f0-9]{7,40})$/i
+
 const normalizePath = (path: string): string => trimSlashes(path.replace(/\\/g, '/'))
+
+const normalizeRepositoryPath = (path: string): string | undefined => {
+  const forwardSlashPath = path.replace(/\\/g, '/')
+
+  if (forwardSlashPath.startsWith('/') || /^[a-z]:\//i.test(forwardSlashPath)) {
+    return undefined
+  }
+
+  const normalized = trimSlashes(forwardSlashPath)
+
+  if (!normalized) {
+    return undefined
+  }
+
+  const segments = normalized.split('/')
+  if (segments.some(segment => !segment || segment === '.' || segment === '..')) {
+    return undefined
+  }
+
+  return segments.join('/')
+}
+
+const findArchiveRoot = (paths: string[]): string | undefined => {
+  if (paths.length === 0) {
+    return undefined
+  }
+
+  const firstPathSegments = paths[0].split('/')
+  const root = firstPathSegments[0]
+
+  if (!root || firstPathSegments.length < 2 || !archiveRootPattern.test(root)) {
+    return undefined
+  }
+
+  return paths.every(path => path.startsWith(`${root}/`)) ? root : undefined
+}
+
+const stripArchiveRoot = (path: string, archiveRoot?: string): string => {
+  if (!archiveRoot || !path.startsWith(`${archiveRoot}/`)) {
+    return path
+  }
+
+  return path.slice(archiveRoot.length + 1)
+}
 
 const parentDirectory = (path: string): string | undefined => {
   const normalized = normalizePath(path)
@@ -268,9 +313,14 @@ const instructionPatterns: InstructionPattern[] = [
 
 export function detectInstructionSurfaces(files: RepositoryFileReference[]): InstructionSurfaceEvidence[] {
   const evidence: InstructionSurfaceEvidence[] = []
+  const normalizedFiles = files
+    .map(file => ({ ...file, normalizedPath: normalizeRepositoryPath(file.path) }))
+    .filter((file): file is RepositoryFileReference & { normalizedPath: string } => file.normalizedPath !== undefined)
 
-  for (const file of files) {
-    const normalizedPath = normalizePath(file.path)
+  const archiveRoot = findArchiveRoot(normalizedFiles.map(file => file.normalizedPath))
+
+  for (const file of normalizedFiles) {
+    const normalizedPath = stripArchiveRoot(file.normalizedPath, archiveRoot)
     const matchedPatterns = instructionPatterns.filter(pattern => pattern.match(normalizedPath))
 
     for (const pattern of matchedPatterns) {
