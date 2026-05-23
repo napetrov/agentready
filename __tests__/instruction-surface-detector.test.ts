@@ -68,6 +68,7 @@ describe('detectInstructionSurfaces', () => {
       { path: '.cursor/rules/frontend.mdc' },
       { path: '.cursorrules' },
       { path: 'GEMINI.md' },
+      { path: 'packages/api/GEMINI.md' },
       { path: '.windsurf/rules/project.md' },
       { path: '.windsurfrules' },
       { path: '.clinerules/security.md' },
@@ -82,8 +83,8 @@ describe('detectInstructionSurfaces', () => {
     })
     expect(result.find(item => item.path === '.github/instructions/react.instructions.md')).toMatchObject({
       ecosystems: ['github-copilot'],
-      scope: 'unknown',
-      activation: 'unknown',
+      scope: 'path-specific',
+      activation: 'path-scoped',
     })
     expect(result.find(item => item.path === '.github/agents/reviewer.agent.md')).toMatchObject({
       scope: 'capability',
@@ -105,6 +106,11 @@ describe('detectInstructionSurfaces', () => {
     expect(result.find(item => item.path === '.clinerules/security.md')).toMatchObject({
       scope: 'root',
       activation: 'unknown',
+    })
+    expect(result.find(item => item.path === 'packages/api/GEMINI.md')).toMatchObject({
+      scope: 'path-specific',
+      activation: 'path-scoped',
+      directoryScope: 'packages/api',
     })
     expect(result.find(item => item.path === '.roo/rules-code/review.md')).toMatchObject({
       scope: 'mode-specific',
@@ -153,8 +159,6 @@ describe('detectInstructionSurfaces', () => {
     const result = detectInstructionSurfaces([
       { path: 'CLAUDE.md' },
       { path: 'GEMINI.md' },
-      { path: 'agents.md' },
-      { path: 'apps/web/agents.md' },
     ])
 
     expect(result.find(item => item.path === 'CLAUDE.md')?.ecosystems).toEqual([
@@ -165,15 +169,6 @@ describe('detectInstructionSurfaces', () => {
       'gemini',
       'github-copilot',
     ])
-    expect(result.find(item => item.path === 'agents.md')).toMatchObject({
-      ecosystems: ['windsurf'],
-      scope: 'root',
-    })
-    expect(result.find(item => item.path === 'apps/web/agents.md')).toMatchObject({
-      ecosystems: ['windsurf'],
-      scope: 'path-specific',
-      directoryScope: 'apps/web',
-    })
   })
 
   test('ignores non-instruction files under Roo rule directories', () => {
@@ -188,6 +183,20 @@ describe('detectInstructionSurfaces', () => {
       '.roo/rules-code/review.txt',
       '.roo/rules/project.md',
     ])
+    expect(result.find(item => item.path === '.roo/rules/project.md')).toMatchObject({
+      scope: 'root',
+      activation: 'always',
+      directoryScope: undefined,
+    })
+  })
+
+  test('ignores lowercase agents.md files on case-sensitive repository paths', () => {
+    const result = detectInstructionSurfaces([
+      { path: 'agents.md' },
+      { path: 'apps/web/agents.md' },
+    ])
+
+    expect(result).toEqual([])
   })
 
   test('rejects paths that are not safe repository-relative paths', () => {
@@ -198,6 +207,8 @@ describe('detectInstructionSurfaces', () => {
       { path: '..\\CLAUDE.local.md' },
       { path: 'apps/../AGENTS.md' },
       { path: './AGENTS.md' },
+      { path: 'apps/web/AGENTS.md\nREADME.md' },
+      { path: 'apps/web/\u202eAGENTS.md' },
     ])
 
     expect(result).toEqual([])
@@ -205,6 +216,7 @@ describe('detectInstructionSurfaces', () => {
 
   test('strips GitHub archive root before classifying instruction scope', () => {
     const result = detectInstructionSurfaces([
+      { path: 'repo-main/' },
       { path: 'repo-main/AGENTS.md', sizeBytes: 1200 },
       { path: 'repo-main/apps/web/AGENTS.md', sizeBytes: 900 },
     ])
@@ -219,6 +231,19 @@ describe('detectInstructionSurfaces', () => {
       path: 'apps/web/AGENTS.md',
       scope: 'path-specific',
       directoryScope: 'apps/web',
+    })
+  })
+
+  test('does not infer archive root from filtered nested paths', () => {
+    const result = detectInstructionSurfaces([
+      { path: 'repo-main/AGENTS.md' },
+    ])
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      path: 'repo-main/AGENTS.md',
+      scope: 'path-specific',
+      directoryScope: 'repo-main',
     })
   })
 

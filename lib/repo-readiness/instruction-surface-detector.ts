@@ -44,6 +44,10 @@ export interface InstructionSurfaceEvidence {
   notes: string[]
 }
 
+export interface DetectInstructionSurfaceOptions {
+  archiveRoot?: string
+}
+
 interface InstructionPattern {
   match: (normalizedPath: string) => boolean
   ecosystems: InstructionEcosystem[]
@@ -59,13 +63,18 @@ interface InstructionPattern {
 const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '')
 
 const archiveRootPattern = /-(main|master|develop|development|trunk|[a-f0-9]{7,40})$/i
+const unsafePathCharacterPattern = /[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/
 
 const normalizePath = (path: string): string => trimSlashes(path.replace(/\\/g, '/'))
 
 const normalizeRepositoryPath = (path: string): string | undefined => {
   const forwardSlashPath = path.replace(/\\/g, '/')
 
-  if (forwardSlashPath.startsWith('/') || /^[a-z]:\//i.test(forwardSlashPath)) {
+  if (
+    forwardSlashPath.startsWith('/')
+    || /^[a-z]:\//i.test(forwardSlashPath)
+    || unsafePathCharacterPattern.test(forwardSlashPath)
+  ) {
     return undefined
   }
 
@@ -83,19 +92,33 @@ const normalizeRepositoryPath = (path: string): string | undefined => {
   return segments.join('/')
 }
 
-const findArchiveRoot = (paths: string[]): string | undefined => {
+const findArchiveRoot = (paths: string[], explicitArchiveRoot?: string): string | undefined => {
   if (paths.length === 0) {
     return undefined
   }
 
-  const firstPathSegments = paths[0].split('/')
-  const root = firstPathSegments[0]
+  const normalizedArchiveRoot = explicitArchiveRoot ? normalizeRepositoryPath(explicitArchiveRoot) : undefined
+  if (normalizedArchiveRoot && !normalizedArchiveRoot.includes('/')) {
+    return paths.every(path => path === normalizedArchiveRoot || path.startsWith(`${normalizedArchiveRoot}/`))
+      ? normalizedArchiveRoot
+      : undefined
+  }
 
-  if (!root || firstPathSegments.length < 2 || !archiveRootPattern.test(root)) {
+  const firstFilePath = paths.find(path => path.includes('/'))
+  if (!firstFilePath) {
     return undefined
   }
 
-  return paths.every(path => path.startsWith(`${root}/`)) ? root : undefined
+  const firstPathSegments = firstFilePath.split('/')
+  const root = firstPathSegments[0]
+
+  if (!root || !archiveRootPattern.test(root)) {
+    return undefined
+  }
+
+  return paths.includes(root) && paths.every(path => path === root || path.startsWith(`${root}/`))
+    ? root
+    : undefined
 }
 
 const stripArchiveRoot = (path: string, archiveRoot?: string): string => {
@@ -150,27 +173,12 @@ const instructionPatterns: InstructionPattern[] = [
     note: 'Nested agent instructions usually apply to the containing directory.',
   },
   {
-    match: path => path.toLowerCase() === 'agents.md' && path !== 'AGENTS.md',
-    ecosystems: ['windsurf'],
-    scope: 'root',
-    activation: 'always',
-    note: 'Lowercase agents.md is recognized by Windsurf.',
-  },
-  {
-    match: path => path.toLowerCase().endsWith('/agents.md') && !path.endsWith('/AGENTS.md'),
-    ecosystems: ['windsurf'],
-    scope: 'path-specific',
-    activation: 'path-scoped',
-    directoryScope: path => directoryBeforeFile(path, path.split('/').pop() ?? 'agents.md'),
-    note: 'Lowercase nested agents.md is recognized by Windsurf.',
-  },
-  {
     match: path => path === 'AGENTS.override.md' || path.endsWith('/AGENTS.override.md'),
     ecosystems: ['codex'],
     scope: (path: string) => (path === 'AGENTS.override.md' ? 'root' : 'path-specific'),
     activation: (path: string) => (path === 'AGENTS.override.md' ? 'always' : 'path-scoped'),
     directoryScope: path => directoryBeforeFile(path, 'AGENTS.override.md'),
-    note: 'Repository-level Codex override instruction file; local home overrides should stay uncommitted.',
+    note: 'Repository-level Codex override instruction file.',
   },
   {
     match: path => path === 'CLAUDE.md',
@@ -228,8 +236,8 @@ const instructionPatterns: InstructionPattern[] = [
   {
     match: path => path.startsWith('.github/instructions/') && path.endsWith('.instructions.md'),
     ecosystems: ['github-copilot'],
-    scope: 'unknown',
-    activation: 'unknown',
+    scope: 'path-specific',
+    activation: 'path-scoped',
     note: 'GitHub Copilot instruction file; frontmatter controls path applicability.',
   },
   {
@@ -266,7 +274,7 @@ const instructionPatterns: InstructionPattern[] = [
     match: path => path.endsWith('/GEMINI.md'),
     ecosystems: ['gemini'],
     scope: 'path-specific',
-    activation: 'always',
+    activation: 'path-scoped',
     directoryScope: path => directoryBeforeFile(path, 'GEMINI.md'),
     note: 'Gemini project context file.',
   },
@@ -303,10 +311,9 @@ const instructionPatterns: InstructionPattern[] = [
   {
     match: path => path.startsWith('.roo/rules/') && (path.endsWith('.md') || path.endsWith('.txt')),
     ecosystems: ['roo-code'],
-    scope: 'path-specific',
+    scope: 'root',
     activation: 'always',
-    directoryScope: parentDirectory,
-    note: 'Roo Code workspace rule file.',
+    note: 'Roo Code workspace rule file applied across modes.',
   },
   {
     match: path => /^\.roo\/rules-[^/]+\//.test(path) && (path.endsWith('.md') || path.endsWith('.txt')),
@@ -335,13 +342,16 @@ const instructionPatterns: InstructionPattern[] = [
   },
 ]
 
-export function detectInstructionSurfaces(files: RepositoryFileReference[]): InstructionSurfaceEvidence[] {
+export function detectInstructionSurfaces(
+  files: RepositoryFileReference[],
+  options: DetectInstructionSurfaceOptions = {},
+): InstructionSurfaceEvidence[] {
   const evidence: InstructionSurfaceEvidence[] = []
   const normalizedFiles = files
     .map(file => ({ ...file, normalizedPath: normalizeRepositoryPath(file.path) }))
     .filter((file): file is RepositoryFileReference & { normalizedPath: string } => file.normalizedPath !== undefined)
 
-  const archiveRoot = findArchiveRoot(normalizedFiles.map(file => file.normalizedPath))
+  const archiveRoot = findArchiveRoot(normalizedFiles.map(file => file.normalizedPath), options.archiveRoot)
 
   for (const file of normalizedFiles) {
     const normalizedPath = stripArchiveRoot(file.normalizedPath, archiveRoot)

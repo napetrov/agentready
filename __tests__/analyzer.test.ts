@@ -95,7 +95,7 @@ describe('analyzeRepository', () => {
   })
 
   test('should analyze a valid repository successfully', async () => {
-    const result = await analyzeRepository('https://github.com/user/repo')
+    const result = await analyzeRepository('https://github.com/user/test-repo')
     
     expect(result).toBeDefined()
     expect(result.hasReadme).toBe(true)
@@ -111,6 +111,11 @@ describe('analyzeRepository', () => {
     expect(result.readmeContent).toContain('Test README')
     expect(result.contributingContent).toContain('Contributing')
     expect(result.agentsContent).toContain('AI Agents')
+    expect(result.instructionSurfaces).toContainEqual(expect.objectContaining({
+      path: 'AGENTS.md',
+      scope: 'root',
+      activation: 'always',
+    }))
   })
 
   test('should handle repository with no documentation', async () => {
@@ -134,6 +139,7 @@ describe('analyzeRepository', () => {
     expect(result.hasWorkflows).toBe(false)
     expect(result.hasTests).toBe(false)
     expect(result.fileCount).toBe(1)
+    expect(result.instructionSurfaces).toEqual([])
   })
 
   test('should detect programming languages correctly', async () => {
