@@ -7,7 +7,7 @@ import { StaticAnalysisSummary } from '../lib/ai-assessment'
 describe('Comprehensive Assessment Integration', () => {
   // Set up API key for tests
   beforeAll(() => {
-    process.env.OPENAI_API_KEY = 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+    process.env.OPENAI_API_KEY = 'test-openai-key-placeholder'
   })
 
   afterAll(() => {

@@ -1,152 +1,109 @@
-# AI Agent Readiness Assessment Tool
+# AgentReady
 
-A comprehensive tool for assessing GitHub repositories' readiness for AI agent interaction and automation. This MVP combines static code analysis with AI-powered assessment to provide detailed readiness scores and actionable recommendations.
+AgentReady is an open-source scanner for AI coding-agent readiness.
 
-## 🚀 Live Demo
+The core question is:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/ai-agent-readiness-assessment)
+> Can an AI coding agent understand this repository, choose the right context, make a bounded change, verify it, and leave humans with a reviewable result?
 
-## ✨ Features
+AgentReady is currently a Next.js application with repository and website analysis capabilities. The next product direction is a local-first repository readiness scanner and scorecard for coding agents such as Codex, Claude Code, GitHub Copilot, Cursor, Windsurf, Cline, Roo, and Gemini.
 
-- **🔍 Static Analysis**: Automatically detects documentation, CI/CD workflows, tests, and error handling
-- **🤖 AI Assessment**: Uses OpenAI GPT-5-nano to evaluate repository readiness across 5 key categories
-- **📊 Comprehensive Scoring**: 0-100 overall score with detailed category breakdowns
-- **📄 Report Generation**: Generates both JSON and PDF reports
-- **🎨 Modern UI**: Clean, responsive interface with real-time progress indication
+## What It Scans
 
-## 🎯 Assessment Categories
+AgentReady should help teams understand whether a repository exposes the information and capabilities an autonomous coding agent needs:
 
-The tool evaluates repositories across 5 categories (0-20 points each):
+- agent instruction surfaces such as `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/*.mdc`, and tool-specific rule files
+- repository shape, packages, services, docs, generated files, and ownership signals
+- safe install, build, lint, typecheck, test, and targeted verification commands
+- CI workflows and how they map to local checks
+- context-efficiency risks such as huge always-on instruction files or oversized source files
+- safety boundaries such as secrets hygiene, dangerous scripts, deploy/publish paths, and ignore/deny rules
+- capability surfaces such as MCP servers, skills, hooks, plugins, and LSP/code-intelligence configuration
 
-1. **📚 Documentation Completeness**: README, CONTRIBUTING, AGENTS docs, code comments
-2. **📖 Instruction Clarity**: Clear setup instructions, API documentation, usage examples
-3. **🔄 Workflow Automation**: CI/CD, automated testing, deployment scripts
-4. **🛡️ Risk & Compliance**: Error handling, security considerations, license compliance
-5. **🏗️ Integration & Structure**: Code organization, modularity, API design
+## Why It Exists
 
-## 🚀 Quick Start
+Most repositories were not designed for autonomous agents. Even when CI passes, agents can still struggle because they cannot find local conventions, choose the right commands, avoid generated files, or understand which change is risky.
 
-### Prerequisites
-- Node.js 18+ 
-- OpenAI API key
+AgentReady treats repository readiness as agent operability, not generic code quality.
 
-### Installation
+## Current App
 
-1. **Clone and install**
-   ```bash
-   git clone https://github.com/yourusername/ai-agent-readiness-assessment.git
-   cd ai-agent-readiness-assessment
-   npm install
-   ```
+The current implementation provides:
 
-2. **Set up environment**
-   ```bash
-   cp .env.example .env.local
-   # Edit .env.local and add your OpenAI API key
-   ```
+- GitHub repository URL analysis
+- static repository checks
+- AI-assisted assessment
+- score breakdowns and findings
+- JSON and PDF report generation
+- a Next.js web UI
 
-3. **Run development server**
-   ```bash
-   npm run dev
-   ```
+## Product Direction
 
-4. **Open in browser**
-   Navigate to `http://localhost:3000`
+The target architecture separates evidence collection from policy:
 
-## 📖 Usage
+- **Detectors** observe facts about the repository.
+- **Checks** evaluate those facts against rules.
+- **Policy packs** define opinionated requirements for teams, languages, or frameworks.
+- **Reporters** render console, JSON, markdown, and later SARIF output.
+- **Scoring** converts evidence and findings into an experimental readiness score.
 
-1. Enter a GitHub repository URL (e.g., `https://github.com/vercel/next.js`)
-2. Click "Analyze Repository" to start the assessment
-3. View the comprehensive analysis including:
-   - Overall readiness score (0-100)
-   - Category breakdown with visual progress bars
-   - Static analysis results grid
-   - Key findings and actionable recommendations
-4. Download a professional PDF report
+The initial scanner should be descriptive before prescriptive. It should show the instruction/capability landscape, identify obvious gaps and friction, and avoid pretending that one file or one framework is universally correct.
 
-## 🛠️ Technology Stack
+## Documentation
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, Node.js
-- **AI**: OpenAI GPT-5-nano
-- **Analysis**: JSZip for repository processing
-- **Reports**: jsPDF for PDF generation
-- **Deployment**: Vercel (serverless)
+- [Architecture](docs/product/architecture.md)
+- [Feature Roadmap](docs/product/features.md)
+- [Use Cases](docs/product/use-cases.md)
+- [Language And Tooling](docs/product/language-and-tooling.md)
+- [Development Guide](dev/DEVELOPMENT.md)
+- [Current Technical Architecture](dev/ARCHITECTURE.md)
 
-## 🧪 Testing
+## Development
+
+Prerequisites:
+
+- Node.js 18+
+- npm
+- optional `OPENAI_API_KEY` for real AI assessment calls
+
+Install and run:
 
 ```bash
-# Run tests
-npm test
-
-# Run with coverage
-npm run test:coverage
-
-# Manual testing
-node dev/test-scripts/test-simple.js
-./dev/test-scripts/test-deployed.sh your-app.vercel.app
+npm ci
+npm run dev
 ```
 
-## 🚀 Deployment
+Open `http://localhost:3000`.
 
-### Vercel (Recommended)
+Run verification:
 
-1. Push to GitHub
-2. Connect repository to Vercel
-3. Add environment variables (`OPENAI_API_KEY`)
-4. Deploy
+```bash
+npm run type-check
+npm run lint
+npm test
+npm run build
+```
 
-## 📚 Documentation
-
-- **[Architecture](dev/ARCHITECTURE.md)** - System design and technical details
-- **[Development](dev/DEVELOPMENT.md)** - Development process and roadmap
-- **[Deployment](dev/DEPLOYMENT.md)** - Deployment instructions and troubleshooting
-- **[Testing](dev/TESTING.md)** - Testing strategies and tools
-- **[Features](dev/FEATURES.md)** - Complete feature list and capabilities
-
-## 🔧 API Reference
+## API
 
 ### `POST /api/analyze`
-Analyze a GitHub repository for AI agent readiness.
 
-**Request:**
+Analyze a public GitHub repository or website URL.
+
 ```json
 {
-  "repoUrl": "https://github.com/username/repository"
-}
-```
-
-**Response:**
-```json
-{
-  "readinessScore": 85,
-  "categories": {
-    "documentation": 18,
-    "instructionClarity": 16,
-    "workflowAutomation": 17,
-    "riskCompliance": 15,
-    "integrationStructure": 19
-  },
-  "findings": ["Finding 1", "Finding 2"],
-  "recommendations": ["Recommendation 1", "Recommendation 2"],
-  "staticAnalysis": { /* Static analysis results */ }
+  "repoUrl": "https://github.com/owner/repository"
 }
 ```
 
 ### `POST /api/report`
+
 Generate a PDF report from assessment results.
 
-## 🤝 Contributing
+## Status
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a Pull Request
+This repository is pre-1.0. The score is experimental and should be treated as a structured signal, not a compliance certification.
 
-## 📄 License
+## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-Made with ❤️ for the AI community
+MIT. See [LICENSE](LICENSE).
