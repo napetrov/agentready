@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Local-first AgentReady scanner foundation with `scan` and `diff` CLI commands for repository readiness checks on cloned checkouts.
+- Repository inventory, documentation, command, CI, instruction-surface, large-file, binary, generated, and minified-file readiness findings.
+- Contract validation, markdown reporting, fixture repositories, and CLI smoke checks for local readiness scans.
+- AgentReady CI self-scan step so pull requests validate the local scanner path.
 - Public-facing AgentReady README with repository-readiness positioning, current status, API notes, and development commands.
 - Product architecture documentation for the local scanner, evidence model, finding model, detectors, checks, policy packs, reporters, and v0.1 scope.
 - Feature roadmap covering v0.1 local scanning, v0.2 CI/policy automation, and deeper v0.3 analysis.
