@@ -18,6 +18,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
@@ -40,6 +41,24 @@ jobs:
         env:
           OPENAI_API_KEY: test-openai-key-placeholder
           GITHUB_TOKEN: test-github-token
+
+      - name: AgentReady self scan
+        run: npm run agentready -- scan . --json --compact
+
+      - name: AgentReady fixture smoke
+        run: npm run agentready:fixtures
+
+      - name: AgentReady PR regression gate
+        if: github.event_name == 'pull_request'
+        run: npm run agentready -- diff --base "origin/${BASE_REF}" --head HEAD . --json --compact --fail-on-regression
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - name: AgentReady markdown report
+        if: github.event_name == 'pull_request'
+        run: npm run agentready -- diff --base "origin/${BASE_REF}" --head HEAD . --markdown
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
       - name: Build
         run: npm run build
