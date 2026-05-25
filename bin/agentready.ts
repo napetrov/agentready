@@ -48,6 +48,14 @@ const parseArgs = (argv: string[]): { command?: string; options: CliOptions } =>
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index]
+    const readOptionValue = (flag: string): string => {
+      const value = rest[index + 1]
+      if (!value || value.startsWith('--')) {
+        throw new Error(`${flag} requires a value`)
+      }
+      index += 1
+      return value
+    }
 
     if (arg === '--json') {
       options.json = true
@@ -58,11 +66,9 @@ const parseArgs = (argv: string[]): { command?: string; options: CliOptions } =>
     } else if (arg === '--fail-on-regression') {
       options.failOnRegression = true
     } else if (arg === '--base') {
-      options.base = rest[index + 1]
-      index += 1
+      options.base = readOptionValue('--base')
     } else if (arg === '--head') {
-      options.head = rest[index + 1]
-      index += 1
+      options.head = readOptionValue('--head')
     } else if (!arg.startsWith('--')) {
       options.path = arg
     } else {

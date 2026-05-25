@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process'
-import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
+import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'fs'
 import path from 'path'
 import {
   detectInstructionSurfaces,
@@ -171,8 +171,20 @@ const isLikelyBinary = (absolutePath: string, extension: string): boolean => {
     return true
   }
 
-  const sample = readFileSync(absolutePath, { flag: 'r' }).subarray(0, 4096)
-  return sample.includes(0)
+  let fd: number | undefined
+  try {
+    fd = openSync(absolutePath, 'r')
+    const sample = Buffer.alloc(4096)
+    const bytesRead = readSync(fd, sample, 0, sample.length, 0)
+    return sample.subarray(0, bytesRead).includes(0)
+  } catch (error) {
+    console.warn(`AgentReady: unable to sample file for binary detection (${absolutePath}): ${error instanceof Error ? error.message : String(error)}`)
+    return false
+  } finally {
+    if (fd !== undefined) {
+      closeSync(fd)
+    }
+  }
 }
 
 const isGeneratedPath = (repoPath: string): boolean => generatedPathPatterns.some(pattern => pattern.test(repoPath))
@@ -239,7 +251,12 @@ const readJsonFile = (root: string, repoPath: string): unknown | undefined => {
     return undefined
   }
 
-  return JSON.parse(readFileSync(absolutePath, 'utf8'))
+  try {
+    return JSON.parse(readFileSync(absolutePath, 'utf8'))
+  } catch (error) {
+    console.error(`AgentReady: readJsonFile could not parse ${absolutePath}: ${error instanceof Error ? error.message : String(error)}`)
+    return undefined
+  }
 }
 
 const detectPackageManager = (files: LocalReadinessFile[]): LocalReadinessReport['commands']['packageManager'] => {
@@ -265,6 +282,7 @@ const buildFindings = (
   report: Omit<LocalReadinessReport, 'findings' | 'summary'>,
 ): ReadinessFinding[] => {
   const findings: ReadinessFinding[] = []
+  const expectsNodeCommands = Boolean(report.commands.packageManager)
 
   if (report.docs.readme.length === 0) {
     findings.push({
@@ -284,7 +302,7 @@ const buildFindings = (
     })
   }
 
-  if (!report.commands.hasTest) {
+  if (expectsNodeCommands && !report.commands.hasTest) {
     findings.push({
       id: 'commands.test.missing',
       title: 'No test command detected',
@@ -293,7 +311,7 @@ const buildFindings = (
     })
   }
 
-  if (!report.commands.hasLint) {
+  if (expectsNodeCommands && !report.commands.hasLint) {
     findings.push({
       id: 'commands.lint.missing',
       title: 'No lint command detected',
@@ -302,7 +320,7 @@ const buildFindings = (
     })
   }
 
-  if (!report.commands.hasTypeCheck && files.some(file => ['.ts', '.tsx'].includes(file.extension))) {
+  if (expectsNodeCommands && !report.commands.hasTypeCheck && files.some(file => ['.ts', '.tsx'].includes(file.extension))) {
     findings.push({
       id: 'commands.typecheck.missing',
       title: 'TypeScript repository has no type-check command',
@@ -376,7 +394,8 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
   const absoluteRoot = path.resolve(root)
   const files = walkFiles(absoluteRoot)
   const filePaths = files.map(file => file.path)
-  const scripts = getPackageScripts(absoluteRoot)
+  const packageManager = detectPackageManager(files)
+  const scripts = packageManager ? getPackageScripts(absoluteRoot) : []
   const instructionInput: RepositoryFileReference[] = files.map(file => ({
     path: file.path,
     sizeBytes: file.sizeBytes,
@@ -392,7 +411,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
       environment: filePaths.filter(filePath => /(^|\/)(\.env\.example|\.env\.sample|env\.example)$/i.test(filePath)).sort(),
     },
     commands: {
-      packageManager: detectPackageManager(files),
+      packageManager,
       scripts,
       hasBuild: hasAnyScript(scripts, ['build']),
       hasTest: hasAnyScript(scripts, ['test', 'test:unit', 'test:ci']),
@@ -440,6 +459,10 @@ const scanGitTree = (root: string, ref: string, options: ScanOptions): LocalRead
   const currentBranch = runGit(root, ['rev-parse', '--abbrev-ref', 'HEAD'])
   const currentCommit = runGit(root, ['rev-parse', 'HEAD'])
   const restoreRef = currentBranch === 'HEAD' ? currentCommit : currentBranch
+  const status = runGit(root, ['status', '--porcelain'])
+  if (status.length > 0) {
+    throw new Error('scanGitTree cannot checkout refs with uncommitted changes; please commit or stash before running readiness diff')
+  }
 
   try {
     runGit(root, ['checkout', '--quiet', ref])
@@ -559,6 +582,27 @@ const isSeverity = (value: unknown): value is ReadinessSeverity => (
   value === 'info' || value === 'warning' || value === 'error'
 )
 
+const isPackageManager = (value: unknown): value is NonNullable<LocalReadinessReport['commands']['packageManager']> => (
+  value === 'npm' || value === 'pnpm' || value === 'yarn' || value === 'bun'
+)
+
+const validateLocalReadinessFileContract = (file: unknown, pathPrefix: string): string[] => {
+  const errors: string[] = []
+  if (!isObject(file)) {
+    return [`${pathPrefix} must be an object`]
+  }
+
+  for (const key of ['path', 'extension']) {
+    if (typeof file[key] !== 'string') errors.push(`${pathPrefix}.${key} must be a string`)
+  }
+  if (typeof file.sizeBytes !== 'number') errors.push(`${pathPrefix}.sizeBytes must be a number`)
+  for (const key of ['binary', 'generated', 'minified', 'documentation', 'test', 'source']) {
+    if (typeof file[key] !== 'boolean') errors.push(`${pathPrefix}.${key} must be a boolean`)
+  }
+
+  return errors
+}
+
 const validateFindingContract = (finding: unknown, pathPrefix: string): string[] => {
   const errors: string[] = []
   if (!isObject(finding)) {
@@ -616,8 +660,8 @@ export function validateLocalReadinessReportContract(report: unknown): ContractV
   if (!isObject(report.commands)) {
     errors.push('commands must be an object')
   } else {
-    if ('packageManager' in report.commands && typeof report.commands.packageManager !== 'string') {
-      errors.push('commands.packageManager must be a string when present')
+    if ('packageManager' in report.commands && report.commands.packageManager !== undefined && !isPackageManager(report.commands.packageManager)) {
+      errors.push('commands.packageManager must be npm, pnpm, yarn, or bun when present')
     }
     if (!isStringArray(report.commands.scripts)) errors.push('commands.scripts must be a string array')
     for (const key of ['hasBuild', 'hasTest', 'hasLint', 'hasTypeCheck']) {
@@ -630,7 +674,13 @@ export function validateLocalReadinessReportContract(report: unknown): ContractV
   }
 
   if (!Array.isArray(report.instructions)) errors.push('instructions must be an array')
-  if (!Array.isArray(report.files)) errors.push('files must be an array')
+  if (!Array.isArray(report.files)) {
+    errors.push('files must be an array')
+  } else {
+    report.files.forEach((file, index) => {
+      errors.push(...validateLocalReadinessFileContract(file, `files[${index}]`))
+    })
+  }
 
   if (!Array.isArray(report.findings)) {
     errors.push('findings must be an array')

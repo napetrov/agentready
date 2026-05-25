@@ -6,6 +6,12 @@ This document outlines the development process, implementation status, and futur
 
 ## 📝 Agent Progress Log
 
+### 2026-05-24
+- **LOCAL-FIRST AGENTREADY SCANNER**: Added `npm run agentready -- scan [path]` for repository inventory, documentation, command, CI, instruction-surface, large-file, binary, generated-file, and minified-file readiness checks.
+- **PR DIFF READINESS GATE**: Added `npm run agentready -- diff --base <ref> --head <ref> [path] --fail-on-regression` to compare git refs and fail on new warning/error readiness regressions.
+- **MACHINE AND REVIEW OUTPUTS**: Added JSON contract validation plus `--markdown` output for scan and diff reports so CI can validate the scanner path and produce PR-comment-ready summaries.
+- **CI SELF-SCAN**: The CI verify job now runs AgentReady self-scan, fixture smoke tests, PR regression diff, and markdown report generation before build.
+
 ### 2025-01-17 (Evening)
 - **MAJOR UI REFACTOR**: Unified and streamlined repository analysis sections for better agent compatibility focus
 - **MERGED SECTIONS**: Combined Static Analysis Results and File Size & AI Agent Compatibility into single "Agent Compatibility Analysis" section

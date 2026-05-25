@@ -98,6 +98,41 @@ describe('local readiness', () => {
     expect(formatScanMarkdown(report)).toContain('Repository has no README')
   })
 
+  test('does not require package scripts for non-Node repositories', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run go test ./... before committing.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'main.go', 'package main\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.commands.packageManager).toBeUndefined()
+    expect(report.commands.scripts).toEqual([])
+    expect(listFindingIds(report)).not.toEqual(expect.arrayContaining([
+      'commands.test.missing',
+      'commands.lint.missing',
+      'commands.typecheck.missing',
+    ]))
+  })
+
+  test('continues scanning when package.json is malformed', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run tests before committing.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', '{')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.commands.packageManager).toBe('npm')
+    expect(report.commands.scripts).toEqual([])
+    expect(listFindingIds(report)).toEqual(expect.arrayContaining([
+      'commands.test.missing',
+      'commands.lint.missing',
+    ]))
+  })
+
   test('flags large checked-in files and minified assets as PR risk', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
@@ -166,6 +201,24 @@ describe('local readiness', () => {
     expect(formatDiffMarkdown(report)).toContain('New regressions')
   })
 
+  test('diff fails clearly when the working tree is dirty', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'base'])
+    runGit(root, ['switch', '-c', 'feature'])
+    writeRepoFile(root, 'dirty.txt', 'uncommitted\n')
+
+    expect(() => diffLocalReadiness(root, {
+      base: 'main',
+      head: 'feature',
+      now: fixedNow,
+    })).toThrow('scanGitTree cannot checkout refs with uncommitted changes')
+  })
+
   test('contract validation catches malformed scan reports', () => {
     const validation = validateLocalReadinessReportContract({
       root: 123,
@@ -180,13 +233,38 @@ describe('local readiness', () => {
           recommendation: '',
         },
       ],
+      files: [
+        123,
+        {
+          path: 'src/index.ts',
+          sizeBytes: 'bad',
+          extension: '.ts',
+          binary: false,
+          generated: false,
+          minified: false,
+          documentation: false,
+          test: false,
+          source: true,
+        },
+      ],
+      commands: {
+        packageManager: 'pip',
+        scripts: ['test'],
+        hasBuild: false,
+        hasTest: true,
+        hasLint: false,
+        hasTypeCheck: false,
+      },
     })
 
     expect(validation.valid).toBe(false)
     expect(validation.errors).toEqual(expect.arrayContaining([
       'root must be a string',
       'summary.score must be a number',
+      'commands.packageManager must be npm, pnpm, yarn, or bun when present',
       'findings[0].severity must be info, warning, or error',
+      'files[0] must be an object',
+      'files[1].sizeBytes must be a number',
     ]))
   })
 })

@@ -65,6 +65,9 @@ if (badSummary.score >= 100 || badSummary.findings === 0) {
 }
 
 const markdownScan = runAgentReady(['scan', badFixture, '--markdown'])
+if (markdownScan.status === 0) {
+  throw new Error('markdown scan for bad fixture should fail because it has error-severity readiness findings')
+}
 if (!markdownScan.stdout.includes('## AgentReady scan') || !markdownScan.stdout.includes('### Findings')) {
   throw new Error('markdown scan output is missing expected sections')
 }
