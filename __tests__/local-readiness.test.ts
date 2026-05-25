@@ -163,6 +163,107 @@ describe('local readiness', () => {
     ]))
   })
 
+  test('loads config to ignore intentional paths and allow minified assets', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: {
+        lint: 'eslint .',
+        test: 'jest',
+      },
+    }))
+    writeRepoFile(root, '.agentready.json', JSON.stringify({
+      ignorePaths: ['data/**'],
+      allowMinifiedFiles: true,
+    }))
+    writeRepoFile(root, 'public/app.min.js', 'var a=1;')
+    writeRepoFile(root, 'data/model.bin', Buffer.alloc(1_100_000, 1))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.files.map(file => file.path)).not.toContain('data/model.bin')
+    expect(report.summary.largeFiles).toBe(0)
+    expect(report.summary.minifiedFiles).toBe(1)
+    expect(listFindingIds(report)).not.toEqual(expect.arrayContaining([
+      'files.large:data/model.bin',
+      'files.minified:public/app.min.js',
+    ]))
+  })
+
+  test('applies configured large-file thresholds and warning policy', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: {
+        lint: 'eslint .',
+        test: 'jest',
+      },
+    }))
+    writeRepoFile(root, 'agentready.config.json', JSON.stringify({
+      largeFileWarningBytes: 100,
+      largeFileErrorBytes: 200,
+      errorOnWarnings: true,
+    }))
+    writeRepoFile(root, 'data/sample.txt', 'x'.repeat(150))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.summary.largeFiles).toBe(1)
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'files.large:data/sample.txt',
+        severity: 'error',
+      }),
+    ]))
+  })
+
+  test('supports explicit config paths', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: {
+        lint: 'eslint .',
+        test: 'jest',
+      },
+    }))
+    writeRepoFile(root, 'config/agentready.json', JSON.stringify({
+      ignorePaths: ['public/app.min.js'],
+    }))
+    writeRepoFile(root, 'public/app.min.js', 'var a=1;')
+
+    const report = scanLocalReadiness(root, {
+      now: fixedNow,
+      configPath: 'config/agentready.json',
+    })
+
+    expect(report.files.map(file => file.path)).not.toContain('public/app.min.js')
+    expect(listFindingIds(report)).not.toContain('files.minified:public/app.min.js')
+  })
+
+  test('rejects invalid config values', () => {
+    root = createTempRepo()
+    writeRepoFile(root, '.agentready.json', JSON.stringify({
+      ignorePaths: 'data/**',
+    }))
+
+    expect(() => scanLocalReadiness(root, { now: fixedNow })).toThrow('.ignorePaths must be an array of strings')
+  })
+
+  test('rejects missing explicit config paths', () => {
+    root = createTempRepo()
+
+    expect(() => scanLocalReadiness(root, {
+      now: fixedNow,
+      configPath: 'missing.json',
+    })).toThrow('AgentReady config file not found')
+  })
+
   test('diff reports new readiness regressions between refs', () => {
     root = createTempRepo()
     runGit(root, ['init', '--initial-branch=main'])

@@ -19,6 +19,7 @@ interface CliOptions {
   failOnRegression: boolean
   base?: string
   head?: string
+  configPath?: string
   path: string
 }
 
@@ -27,8 +28,8 @@ const printUsage = (): void => {
 
 Usage:
   npm run agentready -- scan [path] [--json] [--compact]
-  npm run agentready -- scan [path] [--markdown]
-  npm run agentready -- diff --base <ref> --head <ref> [path] [--json] [--compact] [--markdown] [--fail-on-regression]
+  npm run agentready -- scan [path] [--markdown] [--config <path>]
+  npm run agentready -- diff --base <ref> --head <ref> [path] [--json] [--compact] [--markdown] [--fail-on-regression] [--config <path>]
 
 Examples:
   npm run agentready -- scan .
@@ -69,6 +70,8 @@ const parseArgs = (argv: string[]): { command?: string; options: CliOptions } =>
       options.base = readOptionValue('--base')
     } else if (arg === '--head') {
       options.head = readOptionValue('--head')
+    } else if (arg === '--config') {
+      options.configPath = readOptionValue('--config')
     } else if (!arg.startsWith('--')) {
       options.path = arg
     } else {
@@ -88,7 +91,7 @@ const run = (): number => {
   }
 
   if (command === 'scan') {
-    const report = scanLocalReadiness(options.path)
+    const report = scanLocalReadiness(options.path, { configPath: options.configPath })
     const validation = validateLocalReadinessReportContract(report)
     if (!validation.valid) {
       throw new Error(`scan report contract validation failed: ${validation.errors.join('; ')}`)
@@ -114,6 +117,7 @@ const run = (): number => {
     const report = diffLocalReadiness(options.path, {
       base: options.base,
       head: options.head,
+      configPath: options.configPath,
     })
     const validation = validateReadinessDiffReportContract(report)
     if (!validation.valid) {

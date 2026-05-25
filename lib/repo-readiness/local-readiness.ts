@@ -34,6 +34,14 @@ export interface ContractValidationResult {
   errors: string[]
 }
 
+export interface LocalReadinessConfig {
+  ignorePaths: string[]
+  largeFileWarningBytes: number
+  largeFileErrorBytes: number
+  allowMinifiedFiles: boolean
+  errorOnWarnings: boolean
+}
+
 export interface LocalReadinessReport {
   root: string
   generatedAt: string
@@ -92,6 +100,8 @@ export interface ReadinessDiffReport {
 
 export interface ScanOptions {
   now?: Date
+  configPath?: string
+  config?: Partial<LocalReadinessConfig>
 }
 
 export interface DiffOptions extends ScanOptions {
@@ -110,6 +120,14 @@ const ignoredDirectories = new Set([
   '.turbo',
   '.vercel',
 ])
+
+const defaultConfig: LocalReadinessConfig = {
+  ignorePaths: [],
+  largeFileWarningBytes: 1_000_000,
+  largeFileErrorBytes: 5_000_000,
+  allowMinifiedFiles: false,
+  errorOnWarnings: false,
+}
 
 const sourceExtensions = new Set([
   '.c',
@@ -166,6 +184,122 @@ const toRepositoryPath = (root: string, filePath: string): string => (
 
 const isIgnoredDirectory = (directoryName: string): boolean => ignoredDirectories.has(directoryName)
 
+const normalizeRepoPath = (repoPath: string): string => repoPath.replace(/\\/g, '/').replace(/^\.?\//, '')
+
+const escapeRegex = (value: string): string => value.replace(/[|\\{}()[\]^$+?.]/g, '\\$&')
+
+const globToRegex = (pattern: string): RegExp => {
+  const normalized = normalizeRepoPath(pattern)
+  let source = ''
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const char = normalized[index]
+    const next = normalized[index + 1]
+
+    if (char === '*' && next === '*') {
+      source += '.*'
+      index += 1
+    } else if (char === '*') {
+      source += '[^/]*'
+    } else {
+      source += escapeRegex(char)
+    }
+  }
+
+  return new RegExp(`^${source}$`)
+}
+
+const pathMatchesPattern = (repoPath: string, pattern: string): boolean => {
+  const normalizedPath = normalizeRepoPath(repoPath)
+  const normalizedPattern = normalizeRepoPath(pattern)
+
+  if (normalizedPattern.length === 0) {
+    return false
+  }
+
+  if (!normalizedPattern.includes('*')) {
+    return normalizedPath === normalizedPattern || normalizedPath.startsWith(`${normalizedPattern}/`)
+  }
+
+  return globToRegex(normalizedPattern).test(normalizedPath)
+}
+
+const shouldIgnorePath = (repoPath: string, config: LocalReadinessConfig): boolean => (
+  config.ignorePaths.some(pattern => pathMatchesPattern(repoPath, pattern))
+)
+
+const coerceConfig = (rawConfig: unknown, source: string): Partial<LocalReadinessConfig> => {
+  if (!isObject(rawConfig)) {
+    throw new Error(`${source} must be a JSON object`)
+  }
+
+  const config: Partial<LocalReadinessConfig> = {}
+
+  if ('ignorePaths' in rawConfig) {
+    if (!isStringArray(rawConfig.ignorePaths)) {
+      throw new Error(`${source}.ignorePaths must be an array of strings`)
+    }
+    config.ignorePaths = rawConfig.ignorePaths.map(normalizeRepoPath)
+  }
+
+  for (const key of ['largeFileWarningBytes', 'largeFileErrorBytes'] as const) {
+    if (key in rawConfig) {
+      const value = rawConfig[key]
+      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+        throw new Error(`${source}.${key} must be a non-negative integer`)
+      }
+      config[key] = value
+    }
+  }
+
+  for (const key of ['allowMinifiedFiles', 'errorOnWarnings'] as const) {
+    if (key in rawConfig) {
+      const value = rawConfig[key]
+      if (typeof value !== 'boolean') {
+        throw new Error(`${source}.${key} must be a boolean`)
+      }
+      config[key] = value
+    }
+  }
+
+  return config
+}
+
+const readConfigFile = (configPath: string): Partial<LocalReadinessConfig> => {
+  let rawConfig: unknown
+  try {
+    rawConfig = JSON.parse(readFileSync(configPath, 'utf8'))
+  } catch (error) {
+    throw new Error(`Could not read AgentReady config ${configPath}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  return coerceConfig(rawConfig, configPath)
+}
+
+const loadConfig = (root: string, options: ScanOptions): LocalReadinessConfig => {
+  const configCandidates = options.configPath
+    ? [path.resolve(root, options.configPath)]
+    : ['.agentready.json', 'agentready.config.json'].map(candidate => path.join(root, candidate))
+
+  const fileConfig = configCandidates.find(candidate => existsSync(candidate))
+  if (options.configPath && !fileConfig) {
+    throw new Error(`AgentReady config file not found: ${path.resolve(root, options.configPath)}`)
+  }
+
+  const loadedConfig = fileConfig ? readConfigFile(fileConfig) : {}
+  const merged = {
+    ...defaultConfig,
+    ...loadedConfig,
+    ...options.config,
+  }
+
+  if (merged.largeFileErrorBytes < merged.largeFileWarningBytes) {
+    throw new Error('largeFileErrorBytes must be greater than or equal to largeFileWarningBytes')
+  }
+
+  return merged
+}
+
 const isLikelyBinary = (absolutePath: string, extension: string): boolean => {
   if (binaryExtensions.has(extension)) {
     return true
@@ -204,7 +338,7 @@ const isSourcePath = (repoPath: string, extension: string): boolean => (
   && !testFilePattern.test(repoPath)
 )
 
-const walkFiles = (root: string, directory = root): LocalReadinessFile[] => {
+const walkFiles = (root: string, config: LocalReadinessConfig, directory = root): LocalReadinessFile[] => {
   const entries = readdirSync(directory, { withFileTypes: true })
   const files: LocalReadinessFile[] = []
 
@@ -214,9 +348,14 @@ const walkFiles = (root: string, directory = root): LocalReadinessFile[] => {
     }
 
     const absolutePath = path.join(directory, entry.name)
+    const repoPath = toRepositoryPath(root, absolutePath)
+
+    if (shouldIgnorePath(repoPath, config)) {
+      continue
+    }
 
     if (entry.isDirectory()) {
-      files.push(...walkFiles(root, absolutePath))
+      files.push(...walkFiles(root, config, absolutePath))
       continue
     }
 
@@ -224,7 +363,6 @@ const walkFiles = (root: string, directory = root): LocalReadinessFile[] => {
       continue
     }
 
-    const repoPath = toRepositoryPath(root, absolutePath)
     const stat = statSync(absolutePath)
     const extension = path.extname(entry.name).toLowerCase()
     const binary = isLikelyBinary(absolutePath, extension)
@@ -280,9 +418,11 @@ const uniqueSorted = (values: string[]): string[] => [...new Set(values)].sort()
 const buildFindings = (
   files: LocalReadinessFile[],
   report: Omit<LocalReadinessReport, 'findings' | 'summary'>,
+  config: LocalReadinessConfig,
 ): ReadinessFinding[] => {
   const findings: ReadinessFinding[] = []
   const expectsNodeCommands = Boolean(report.commands.packageManager)
+  const warningSeverity: ReadinessSeverity = config.errorOnWarnings ? 'error' : 'warning'
 
   if (report.docs.readme.length === 0) {
     findings.push({
@@ -297,7 +437,7 @@ const buildFindings = (
     findings.push({
       id: 'docs.architecture.missing',
       title: 'Non-trivial repository has no architecture documentation',
-      severity: 'warning',
+      severity: warningSeverity,
       recommendation: 'Add architecture notes that explain module boundaries, data flow, and where agents should make changes.',
     })
   }
@@ -315,7 +455,7 @@ const buildFindings = (
     findings.push({
       id: 'commands.lint.missing',
       title: 'No lint command detected',
-      severity: 'warning',
+      severity: warningSeverity,
       recommendation: 'Expose a lint command so agents can catch style and static analysis regressions before review.',
     })
   }
@@ -324,7 +464,7 @@ const buildFindings = (
     findings.push({
       id: 'commands.typecheck.missing',
       title: 'TypeScript repository has no type-check command',
-      severity: 'warning',
+      severity: warningSeverity,
       recommendation: 'Expose a type-check command and run it in CI.',
     })
   }
@@ -333,7 +473,7 @@ const buildFindings = (
     findings.push({
       id: 'ci.workflow.missing',
       title: 'No CI workflow detected',
-      severity: 'warning',
+      severity: warningSeverity,
       recommendation: 'Add CI that runs install, lint, type-check, tests, and build where applicable.',
     })
   }
@@ -342,7 +482,7 @@ const buildFindings = (
     findings.push({
       id: 'instructions.missing',
       title: 'No agent instruction surface detected',
-      severity: 'warning',
+      severity: warningSeverity,
       recommendation: 'Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands.',
     })
   }
@@ -351,27 +491,27 @@ const buildFindings = (
     findings.push({
       id: `instructions.local-private:${surface.path}`,
       title: 'Local/private agent instruction file is present',
-      severity: 'warning',
+      severity: warningSeverity,
       path: surface.path,
       recommendation: 'Keep local-private instruction files out of shared repository history unless this is intentional.',
     })
   }
 
-  for (const file of files.filter(file => file.sizeBytes > 1_000_000 && !file.generated)) {
+  for (const file of files.filter(file => file.sizeBytes > config.largeFileWarningBytes && !file.generated)) {
     findings.push({
       id: `files.large:${file.path}`,
       title: 'Large checked-in file can create agent context friction',
-      severity: file.sizeBytes > 5_000_000 ? 'error' : 'warning',
+      severity: file.sizeBytes > config.largeFileErrorBytes ? 'error' : warningSeverity,
       path: file.path,
       recommendation: 'Move large assets/data out of the main source tree or document why agents should ignore them.',
     })
   }
 
-  for (const file of files.filter(file => file.minified)) {
+  for (const file of files.filter(file => file.minified && !config.allowMinifiedFiles)) {
     findings.push({
       id: `files.minified:${file.path}`,
       title: 'Minified file is checked into the repository',
-      severity: 'warning',
+      severity: warningSeverity,
       path: file.path,
       recommendation: 'Prefer generated build output outside source control, or ignore it in AgentReady policy if intentional.',
     })
@@ -392,7 +532,8 @@ const calculateScore = (findings: ReadinessFinding[]): number => {
 
 export function scanLocalReadiness(root: string, options: ScanOptions = {}): LocalReadinessReport {
   const absoluteRoot = path.resolve(root)
-  const files = walkFiles(absoluteRoot)
+  const config = loadConfig(absoluteRoot, options)
+  const files = walkFiles(absoluteRoot, config)
   const filePaths = files.map(file => file.path)
   const packageManager = detectPackageManager(files)
   const scripts = packageManager ? getPackageScripts(absoluteRoot) : []
@@ -425,7 +566,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     files,
   }
 
-  const findings = buildFindings(files, partialReport)
+  const findings = buildFindings(files, partialReport, config)
 
   return {
     ...partialReport,
@@ -436,7 +577,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
       sourceFiles: files.filter(file => file.source).length,
       testFiles: files.filter(file => file.test).length,
       documentationFiles: files.filter(file => file.documentation).length,
-      largeFiles: files.filter(file => file.sizeBytes > 1_000_000).length,
+      largeFiles: files.filter(file => file.sizeBytes > config.largeFileWarningBytes).length,
       binaryFiles: files.filter(file => file.binary).length,
       generatedFiles: files.filter(file => file.generated).length,
       minifiedFiles: files.filter(file => file.minified).length,

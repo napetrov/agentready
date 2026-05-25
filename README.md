@@ -84,6 +84,27 @@ npm test
 npm run build
 ```
 
+Run a local readiness scan:
+
+```bash
+npm run agentready -- scan .
+npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
+```
+
+Optional scanner config can live in `.agentready.json` or `agentready.config.json`:
+
+```json
+{
+  "ignorePaths": ["fixtures/**", "public/vendor/**"],
+  "largeFileWarningBytes": 1000000,
+  "largeFileErrorBytes": 5000000,
+  "allowMinifiedFiles": false,
+  "errorOnWarnings": false
+}
+```
+
+Use `--config <path>` to load a config file from another location.
+
 ## API
 
 ### `POST /api/analyze`
