@@ -32,6 +32,8 @@ The current implementation provides:
 
 - GitHub repository URL analysis
 - static repository checks
+- local repository readiness scans and PR diffs
+- instruction and capability surface detection
 - AI-assisted assessment
 - score breakdowns and findings
 - JSON and PDF report generation

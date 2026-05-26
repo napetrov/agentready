@@ -6,6 +6,10 @@ import {
   InstructionSurfaceEvidence,
   RepositoryFileReference,
 } from './instruction-surface-detector'
+import {
+  CapabilitySurfaceEvidence,
+  detectCapabilitySurfaces,
+} from './capability-surface-detector'
 
 export type ReadinessSeverity = 'info' | 'warning' | 'error'
 
@@ -75,6 +79,7 @@ export interface LocalReadinessReport {
     workflowFiles: string[]
   }
   instructions: InstructionSurfaceEvidence[]
+  capabilities: CapabilitySurfaceEvidence[]
   findings: ReadinessFinding[]
   files: LocalReadinessFile[]
 }
@@ -563,6 +568,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
       workflowFiles: filePaths.filter(filePath => filePath.startsWith('.github/workflows/')).sort(),
     },
     instructions: detectInstructionSurfaces(instructionInput),
+    capabilities: detectCapabilitySurfaces(instructionInput),
     files,
   }
 
@@ -647,6 +653,7 @@ export function formatScanSummary(report: LocalReadinessReport): string {
   const lines = [
     `AgentReady score: ${report.summary.score}/100`,
     `Files: ${report.summary.totalFiles} (${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs)`,
+    `Capability surfaces: ${report.capabilities.length}`,
     `Findings: ${report.findings.length}`,
   ]
 
@@ -673,6 +680,7 @@ export function formatScanMarkdown(report: LocalReadinessReport): string {
     '',
     `Score: **${report.summary.score}/100**`,
     `Files: ${report.summary.totalFiles} total, ${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs`,
+    `Capability surfaces: ${report.capabilities.length}`,
     `Findings: ${report.findings.length}`,
     '',
     '### Findings',
@@ -761,6 +769,29 @@ const validateFindingContract = (finding: unknown, pathPrefix: string): string[]
   return errors
 }
 
+const validateCapabilityContract = (capability: unknown, pathPrefix: string): string[] => {
+  const errors: string[] = []
+  if (!isObject(capability)) {
+    return [`${pathPrefix} must be an object`]
+  }
+
+  if (typeof capability.path !== 'string' || capability.path.length === 0) errors.push(`${pathPrefix}.path must be a non-empty string`)
+  if (typeof capability.kind !== 'string' || capability.kind.length === 0) errors.push(`${pathPrefix}.kind must be a non-empty string`)
+  if (!isStringArray(capability.ecosystems)) errors.push(`${pathPrefix}.ecosystems must be a string array`)
+  if ('name' in capability && capability.name !== undefined && typeof capability.name !== 'string') {
+    errors.push(`${pathPrefix}.name must be a string when present`)
+  }
+  if ('directoryScope' in capability && capability.directoryScope !== undefined && typeof capability.directoryScope !== 'string') {
+    errors.push(`${pathPrefix}.directoryScope must be a string when present`)
+  }
+  if ('sizeBytes' in capability && capability.sizeBytes !== undefined && typeof capability.sizeBytes !== 'number') {
+    errors.push(`${pathPrefix}.sizeBytes must be a number when present`)
+  }
+  if (!isStringArray(capability.notes)) errors.push(`${pathPrefix}.notes must be a string array`)
+
+  return errors
+}
+
 export function validateLocalReadinessReportContract(report: unknown): ContractValidationResult {
   const errors: string[] = []
 
@@ -815,6 +846,14 @@ export function validateLocalReadinessReportContract(report: unknown): ContractV
   }
 
   if (!Array.isArray(report.instructions)) errors.push('instructions must be an array')
+  if (!Array.isArray(report.capabilities)) {
+    errors.push('capabilities must be an array')
+  } else {
+    report.capabilities.forEach((capability, index) => {
+      errors.push(...validateCapabilityContract(capability, `capabilities[${index}]`))
+    })
+  }
+
   if (!Array.isArray(report.files)) {
     errors.push('files must be an array')
   } else {

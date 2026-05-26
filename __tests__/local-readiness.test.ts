@@ -163,6 +163,37 @@ describe('local readiness', () => {
     ]))
   })
 
+  test('reports capability surfaces separately from instruction surfaces', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, '.mcp.json', JSON.stringify({ mcpServers: {} }))
+    writeRepoFile(root, '.claude/skills/security-review/SKILL.md', '# Skill\n')
+    writeRepoFile(root, '.husky/pre-commit', 'npm test\n')
+    writeRepoFile(root, 'plugins/slack/.codex-plugin/plugin.json', JSON.stringify({ name: 'slack' }))
+    writeRepoFile(root, 'packages/web/tsconfig.json', JSON.stringify({ compilerOptions: {} }))
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: {
+        lint: 'eslint .',
+        test: 'jest',
+      },
+    }))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.capabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: '.mcp.json', kind: 'mcp-server-config' }),
+      expect.objectContaining({ path: '.claude/skills/security-review/SKILL.md', kind: 'skill' }),
+      expect.objectContaining({ path: '.husky/pre-commit', kind: 'hook' }),
+      expect.objectContaining({ path: 'plugins/slack/.codex-plugin/plugin.json', kind: 'plugin' }),
+      expect.objectContaining({ path: 'packages/web/tsconfig.json', kind: 'code-intelligence' }),
+    ]))
+    expect(report.instructions.map(surface => surface.path)).toContain('.claude/skills/security-review/SKILL.md')
+    expect(formatScanMarkdown(report)).toContain('Capability surfaces: 5')
+    expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
+  })
+
   test('loads config to ignore intentional paths and allow minified assets', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
