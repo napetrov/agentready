@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AgentReady scanner config support via `.agentready.json`, `agentready.config.json`, or `--config <path>`.
+- Configurable ignore path patterns, large-file thresholds, minified-file policy, and warning escalation for local readiness scans.
 - Local-first AgentReady scanner foundation with `scan` and `diff` CLI commands for repository readiness checks on cloned checkouts.
 - Repository inventory, documentation, command, CI, instruction-surface, large-file, binary, generated, and minified-file readiness findings.
 - Contract validation, markdown reporting, fixture repositories, and CLI smoke checks for local readiness scans.
