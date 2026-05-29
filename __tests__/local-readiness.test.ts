@@ -337,6 +337,35 @@ describe('local readiness', () => {
     expect(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' })).toContain('dirty.txt')
   })
 
+  test('diff scopes findings to the requested subdirectory', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'packages/foo/README.md', '# Foo\n')
+    writeRepoFile(root, 'packages/foo/AGENTS.md', 'Run npm test.\n')
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'base'])
+    runGit(root, ['switch', '-c', 'feature'])
+    // A large file outside the scoped subdirectory must not count as a regression.
+    writeRepoFile(root, 'root-blob.dat', Buffer.alloc(1_200_000, 1))
+    // A large file inside the scoped subdirectory must count as a regression.
+    writeRepoFile(root, 'packages/foo/foo-blob.dat', Buffer.alloc(1_200_000, 1))
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'add risky files'])
+
+    const report = diffLocalReadiness(path.join(root, 'packages', 'foo'), {
+      base: 'main',
+      head: 'feature',
+      now: fixedNow,
+    })
+
+    const regressionIds = report.regressions.map(finding => finding.id)
+    expect(regressionIds).toContain('files.large:foo-blob.dat')
+    expect(regressionIds).not.toContain('files.large:root-blob.dat')
+    expect(report.headReport.files.map(file => file.path)).not.toContain('root-blob.dat')
+  })
+
   test('contract validation catches malformed scan reports', () => {
     const validation = validateLocalReadinessReportContract({
       root: 123,

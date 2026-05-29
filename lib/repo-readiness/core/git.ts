@@ -16,9 +16,15 @@ const runGit = (cwd: string, args: string[]): string => (
  * `git worktree`. Unlike checking out refs in place, this never mutates the
  * caller's working tree, branch, or index, and works even when the working
  * tree has uncommitted changes.
+ *
+ * `fn` receives the path inside the worktree that corresponds to `root`, so a
+ * scoped `root` (e.g. a `packages/foo` subdirectory in a monorepo) is preserved
+ * rather than widened to the repository top-level.
  */
-export function withWorktree<T>(root: string, ref: string, fn: (worktreePath: string) => T): T {
-  const repoTop = runGit(root, ['rev-parse', '--show-toplevel'])
+export function withWorktree<T>(root: string, ref: string, fn: (scopedPath: string) => T): T {
+  const absoluteRoot = path.resolve(root)
+  const repoTop = runGit(absoluteRoot, ['rev-parse', '--show-toplevel'])
+  const relativeScanPath = path.relative(repoTop, absoluteRoot)
   const tempDir = mkdtempSync(path.join(tmpdir(), 'agentready-worktree-'))
   const worktreePath = path.join(tempDir, 'tree')
 
@@ -27,7 +33,7 @@ export function withWorktree<T>(root: string, ref: string, fn: (worktreePath: st
     // that are also checked out in the main worktree (e.g. the current branch)
     // are still scannable.
     runGit(repoTop, ['worktree', 'add', '--quiet', '--detach', worktreePath, ref])
-    return fn(worktreePath)
+    return fn(path.join(worktreePath, relativeScanPath))
   } finally {
     try {
       runGit(repoTop, ['worktree', 'remove', '--force', worktreePath])
