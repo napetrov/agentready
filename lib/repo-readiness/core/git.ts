@@ -1,0 +1,45 @@
+import { execFileSync } from 'child_process'
+import { mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import path from 'path'
+
+const runGit = (cwd: string, args: string[]): string => (
+  execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim()
+)
+
+/**
+ * Runs `fn` against a detached, throwaway checkout of `ref` using a temporary
+ * `git worktree`. Unlike checking out refs in place, this never mutates the
+ * caller's working tree, branch, or index, and works even when the working
+ * tree has uncommitted changes.
+ *
+ * `fn` receives the path inside the worktree that corresponds to `root`, so a
+ * scoped `root` (e.g. a `packages/foo` subdirectory in a monorepo) is preserved
+ * rather than widened to the repository top-level.
+ */
+export function withWorktree<T>(root: string, ref: string, fn: (scopedPath: string) => T): T {
+  const absoluteRoot = path.resolve(root)
+  const repoTop = runGit(absoluteRoot, ['rev-parse', '--show-toplevel'])
+  const relativeScanPath = path.relative(repoTop, absoluteRoot)
+  const tempDir = mkdtempSync(path.join(tmpdir(), 'agentready-worktree-'))
+  const worktreePath = path.join(tempDir, 'tree')
+
+  try {
+    // `--detach` checks out the ref's commit without moving any branch, so refs
+    // that are also checked out in the main worktree (e.g. the current branch)
+    // are still scannable.
+    runGit(repoTop, ['worktree', 'add', '--quiet', '--detach', worktreePath, ref])
+    return fn(path.join(worktreePath, relativeScanPath))
+  } finally {
+    try {
+      runGit(repoTop, ['worktree', 'remove', '--force', worktreePath])
+    } catch {
+      // Best-effort cleanup of the worktree registration.
+    }
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+}

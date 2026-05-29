@@ -1,23 +1,27 @@
 # Feature Roadmap
 
-## v0.1: Repository Readiness Scanner
+## v0.1: Repository Readiness Scanner — delivered
 
 Goal: produce useful local evidence without requiring a hosted service.
 
-Features:
+Delivered:
 
-- local CLI entrypoint, likely `agentready scan`
-- default scan of the current directory
+- local CLI entrypoint `agentready scan` (default scan of the current directory)
 - instruction-file detector for common agent tools
-- repo-shape detector for packages, apps, services, docs, tests, and generated paths
-- package-manager and task-runner detector
-- command-surface detector for install, lint, typecheck, test, build, format, and targeted checks
+- repo-shape / file-inventory detector for source, tests, docs, generated, binary, and minified paths
+- package-manager detector and a multi-ecosystem command-surface detector (Node, Make, Go, Rust, Python)
 - CI workflow detector for GitHub Actions
-- capability-surface detector for MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
-- context-friction detector for large files and oversized always-on instruction files
-- safety detector for dangerous scripts, deploy/publish paths, local/private instruction files, and missing ignore rules
-- console and JSON reporters
+- context-friction detection for large files and oversized always-on instruction files
+- detection of local/private instruction files
+- console, JSON, and markdown reporters
 - experimental readiness score
+- `agentready diff` between git refs with a regression gate (worktree-based, never mutates the working tree)
+- npm package with a `bin` and a `dist` build for `npx` usage
+
+Still planned in the v0.1 family:
+
+- capability-surface detector for MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
+- safety detector for dangerous scripts and deploy/publish paths
 
 ## v0.2: Automation And Policy
 

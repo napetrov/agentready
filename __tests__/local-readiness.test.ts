@@ -23,7 +23,9 @@ const writeRepoFile = (root: string, repoPath: string, content: string | Buffer)
 }
 
 const runGit = (root: string, args: string[]): void => {
-  execFileSync('git', args, {
+  // Disable commit signing so isolated fixture repositories can commit without
+  // the host's global signing configuration.
+  execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], {
     cwd: root,
     stdio: ['ignore', 'ignore', 'pipe'],
   })
@@ -302,22 +304,66 @@ describe('local readiness', () => {
     expect(formatDiffMarkdown(report)).toContain('New regressions')
   })
 
-  test('diff fails clearly when the working tree is dirty', () => {
+  test('diff scans refs via worktrees without touching a dirty working tree', () => {
     root = createTempRepo()
     runGit(root, ['init', '--initial-branch=main'])
     runGit(root, ['config', 'user.email', 'agentready@example.com'])
     runGit(root, ['config', 'user.name', 'AgentReady Test'])
     writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: {
+        lint: 'eslint .',
+        test: 'jest',
+      },
+    }))
     runGit(root, ['add', '.'])
     runGit(root, ['commit', '-m', 'base'])
     runGit(root, ['switch', '-c', 'feature'])
+    // Leave an uncommitted change in the working tree; the diff must still run.
     writeRepoFile(root, 'dirty.txt', 'uncommitted\n')
 
-    expect(() => diffLocalReadiness(root, {
+    const report = diffLocalReadiness(root, {
       base: 'main',
       head: 'feature',
       now: fixedNow,
-    })).toThrow('scanGitTree cannot checkout refs with uncommitted changes')
+    })
+
+    expect(validateReadinessDiffReportContract(report)).toEqual({ valid: true, errors: [] })
+    // The dirty file is never committed, so it does not appear in either scan.
+    expect(report.headReport.files.map(file => file.path)).not.toContain('dirty.txt')
+    // The working tree is left intact after scanning.
+    expect(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' })).toContain('dirty.txt')
+  })
+
+  test('diff scopes findings to the requested subdirectory', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'packages/foo/README.md', '# Foo\n')
+    writeRepoFile(root, 'packages/foo/AGENTS.md', 'Run npm test.\n')
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'base'])
+    runGit(root, ['switch', '-c', 'feature'])
+    // A large file outside the scoped subdirectory must not count as a regression.
+    writeRepoFile(root, 'root-blob.dat', Buffer.alloc(1_200_000, 1))
+    // A large file inside the scoped subdirectory must count as a regression.
+    writeRepoFile(root, 'packages/foo/foo-blob.dat', Buffer.alloc(1_200_000, 1))
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'add risky files'])
+
+    const report = diffLocalReadiness(path.join(root, 'packages', 'foo'), {
+      base: 'main',
+      head: 'feature',
+      now: fixedNow,
+    })
+
+    const regressionIds = report.regressions.map(finding => finding.id)
+    expect(regressionIds).toContain('files.large:foo-blob.dat')
+    expect(regressionIds).not.toContain('files.large:root-blob.dat')
+    expect(report.headReport.files.map(file => file.path)).not.toContain('root-blob.dat')
   })
 
   test('contract validation catches malformed scan reports', () => {
