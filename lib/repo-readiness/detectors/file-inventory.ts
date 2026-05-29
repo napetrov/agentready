@@ -144,7 +144,15 @@ export const walkFiles = (root: string, config: LocalReadinessConfig, directory 
       continue
     }
 
-    const stat = statSync(absolutePath)
+    let stat
+    try {
+      stat = statSync(absolutePath)
+    } catch (error) {
+      // Tolerate files that disappear mid-walk or cannot be stat'd (permissions),
+      // matching how binary sampling already handles read errors.
+      console.warn(`AgentReady: unable to stat file, skipping (${absolutePath}): ${error instanceof Error ? error.message : String(error)}`)
+      continue
+    }
     const extension = path.extname(entry.name).toLowerCase()
     const binary = isLikelyBinary(absolutePath, extension)
 

@@ -5,9 +5,11 @@ const markdownFindingList = (findings: ReadinessFinding[]): string[] => {
     return ['No findings.']
   }
 
-  return findings.slice(0, 10).map(finding => (
-    `- **${finding.severity.toUpperCase()}**: ${finding.title}${finding.path ? ` (${finding.path})` : ''}. ${finding.recommendation}`
-  ))
+  return findings.slice(0, 10).map(finding => {
+    const location = finding.path ? ` (${finding.path})` : ''
+    const recommendation = finding.recommendation?.trim() ? ` ${finding.recommendation}` : ''
+    return `- **${finding.severity.toUpperCase()}**: ${finding.title}${location}.${recommendation}`
+  })
 }
 
 export function formatScanMarkdown(report: LocalReadinessReport): string {
