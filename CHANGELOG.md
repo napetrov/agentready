@@ -1,25 +1,38 @@
 # Changelog
 
-All notable changes to the AI Agent Readiness Assessment Tool will be documented in this file.
+All notable changes to AgentReady will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Removed
+- The entire Next.js web application: browser UI, `POST /api/analyze` and `POST /api/report` routes, the OpenAI-based assessment engines (`ai-assessment`, `enhanced-ai-assessment`, `aligned-assessment-engine`, `unified-metrics-engine`, `metrics-validator`), website/business-type analysis, the file-size analyzer, and PDF report generation — along with their tests and the OpenAI mock.
+- Next.js, React, Tailwind, and Vercel configuration and dependencies. AgentReady is now a pure local-first CLI/library with no runtime dependencies and no network calls at scan time.
+- Repository debris (`temp_architecture_analysis.md`, `test-file-size.js`) and legacy web-app development docs.
+
+### Changed
+- Restructured the scanner into a layered architecture under `lib/repo-readiness/`: `core/` (scan engine, config, scoring, contracts, git, types), `detectors/`, `checks/`, and `reporters/`. The public API is preserved via a barrel module.
+- Hardened `diff` to scan git refs in isolated `git worktree` checkouts instead of checking out refs in place; it no longer mutates the working tree and works with uncommitted changes.
+- Renamed the package to `agentready` and added a `bin` plus a `tsc` build to `dist/`, so it installs and runs via `npx`.
+- Switched tooling to standalone ESLint (`@typescript-eslint`) and Jest via `ts-jest`; CI and tests run fully offline with no API keys.
+- Rewrote README, AGENTS.md, `.cursorrules`, and the development/product docs for the local-first CLI, and refreshed the architecture/roadmap to mark implemented vs planned work.
+
 ### Added
-- AgentReady scanner config support via `.agentready.json`, `agentready.config.json`, or `--config <path>`.
-- Configurable ignore path patterns, large-file thresholds, minified-file policy, and warning escalation for local readiness scans.
-- Local-first AgentReady scanner foundation with `scan` and `diff` CLI commands for repository readiness checks on cloned checkouts.
+- Multi-ecosystem command-surface detection (Node, Make, Go, Rust, Python); command-related findings are gated on a recognized ecosystem so non-Node repositories are not penalized.
+- AgentReady scanner config support via `.agentready.json`, `agentready.config.json`, or `--config <path>`, with configurable ignore paths, large-file thresholds, minified-file policy, and warning escalation.
+- Local-first `scan` and `diff` CLI commands with console, JSON, compact, and markdown output.
 - Repository inventory, documentation, command, CI, instruction-surface, large-file, binary, generated, and minified-file readiness findings.
-- Contract validation, markdown reporting, fixture repositories, and CLI smoke checks for local readiness scans.
-- AgentReady CI self-scan step so pull requests validate the local scanner path.
-- Public-facing AgentReady README with repository-readiness positioning, current status, API notes, and development commands.
-- Product architecture documentation for the local scanner, evidence model, finding model, detectors, checks, policy packs, reporters, and v0.1 scope.
-- Feature roadmap covering v0.1 local scanning, v0.2 CI/policy automation, and deeper v0.3 analysis.
-- Use-case documentation for maintainer preflight, PR gates, agent onboarding, enterprise rollout, public repository signaling, and benchmarking.
-- Language/tooling notes documenting the TypeScript/Node v0.1 choice and CI expectations.
-- MIT license file.
+- Contract validation, fixture repositories, and a CLI smoke runner; CI self-scan and PR regression gate.
+- Instruction-surface detector with typed evidence across Codex, Claude Code, GitHub Copilot, Cursor, Gemini, Windsurf, Cline, and Roo Code.
+- Product and development documentation, and an MIT license file.
+
+## Archived — pre-pivot web application
+
+The entries below describe the original AI Agent Readiness Assessment web
+application, which has been removed in the pivot to a local-first CLI. They are
+retained for historical context only.
 
 ### Changed
 - Simplified public CI to a focused Node 20 verification workflow for type checking, linting, tests, build, and informational dependency audit.

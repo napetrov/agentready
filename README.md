@@ -1,95 +1,78 @@
 # AgentReady
 
-AgentReady is an open-source scanner for AI coding-agent readiness.
+AgentReady is an open-source, local-first scanner for AI coding-agent readiness.
 
 The core question is:
 
 > Can an AI coding agent understand this repository, choose the right context, make a bounded change, verify it, and leave humans with a reviewable result?
 
-AgentReady is currently a Next.js application with repository and website analysis capabilities. The next product direction is a local-first repository readiness scanner and scorecard for coding agents such as Codex, Claude Code, GitHub Copilot, Cursor, Windsurf, Cline, Roo, and Gemini.
+AgentReady is a command-line tool and library. It scans a repository on disk, observes facts with deterministic detectors, evaluates them against built-in checks, and emits a readiness report and an experimental score. It does not call any external service and never executes the repository's own scripts.
+
+It is designed around the major coding agents — Codex, Claude Code, GitHub Copilot, Cursor, Windsurf, Cline, Roo, and Gemini.
 
 ## What It Scans
 
-AgentReady should help teams understand whether a repository exposes the information and capabilities an autonomous coding agent needs:
+AgentReady helps teams understand whether a repository exposes the information and capabilities an autonomous coding agent needs:
 
 - agent instruction surfaces such as `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/*.mdc`, and tool-specific rule files
-- repository shape, packages, services, docs, generated files, and ownership signals
-- safe install, build, lint, typecheck, test, and targeted verification commands
+- repository shape: source, tests, docs, generated files, and binary/minified assets
+- verification command surfaces across ecosystems (Node scripts, Makefiles, Go, Rust, Python)
 - CI workflows and how they map to local checks
-- context-efficiency risks such as huge always-on instruction files or oversized source files
-- safety boundaries such as secrets hygiene, dangerous scripts, deploy/publish paths, and ignore/deny rules
-- capability surfaces such as MCP servers, skills, hooks, plugins, and LSP/code-intelligence configuration
+- context-efficiency risks such as oversized always-on instruction files or large checked-in files
+- documentation entrypoints (README, CONTRIBUTING, architecture/development notes, environment templates)
 
 ## Why It Exists
 
 Most repositories were not designed for autonomous agents. Even when CI passes, agents can still struggle because they cannot find local conventions, choose the right commands, avoid generated files, or understand which change is risky.
 
-AgentReady treats repository readiness as agent operability, not generic code quality.
+AgentReady treats repository readiness as agent operability, not generic code quality. It is descriptive before prescriptive: early output shows what is present, what is missing, what overlaps, and what may create friction.
 
-## Current App
+## Architecture
 
-The current implementation provides:
+Evidence collection is separated from policy:
 
-- GitHub repository URL analysis
-- static repository checks
-- AI-assisted assessment
-- score breakdowns and findings
-- JSON and PDF report generation
-- a Next.js web UI
+- **Detectors** observe facts about the repository (`lib/repo-readiness/detectors/`).
+- **Checks** evaluate those facts against rules and emit findings (`lib/repo-readiness/checks/`).
+- **Scoring** converts findings into an experimental readiness score (`lib/repo-readiness/core/scoring.ts`).
+- **Reporters** render console, JSON, and markdown output (`lib/repo-readiness/reporters/`).
+- The **scan engine** wires these together (`lib/repo-readiness/core/scan-engine.ts`).
 
-## Product Direction
+See [docs/product/architecture.md](docs/product/architecture.md) for the full model.
 
-The target architecture separates evidence collection from policy:
+## Install And Run
 
-- **Detectors** observe facts about the repository.
-- **Checks** evaluate those facts against rules.
-- **Policy packs** define opinionated requirements for teams, languages, or frameworks.
-- **Reporters** render console, JSON, markdown, and later SARIF output.
-- **Scoring** converts evidence and findings into an experimental readiness score.
-
-The initial scanner should be descriptive before prescriptive. It should show the instruction/capability landscape, identify obvious gaps and friction, and avoid pretending that one file or one framework is universally correct.
-
-## Documentation
-
-- [Architecture](docs/product/architecture.md)
-- [Feature Roadmap](docs/product/features.md)
-- [Use Cases](docs/product/use-cases.md)
-- [Language And Tooling](docs/product/language-and-tooling.md)
-- [Development Guide](dev/DEVELOPMENT.md)
-- [Current Technical Architecture](dev/ARCHITECTURE.md)
-
-## Development
-
-Prerequisites:
-
-- Node.js 18+
-- npm
-- optional `OPENAI_API_KEY` for real AI assessment calls
-
-Install and run:
+Prerequisites: Node.js 18+.
 
 ```bash
 npm ci
-npm run dev
-```
-
-Open `http://localhost:3000`.
-
-Run verification:
-
-```bash
-npm run type-check
-npm run lint
-npm test
-npm run build
-```
-
-Run a local readiness scan:
-
-```bash
 npm run agentready -- scan .
+```
+
+Once published you can run it without cloning:
+
+```bash
+npx agentready scan .
+```
+
+### Scan
+
+```bash
+npm run agentready -- scan .            # human summary
+npm run agentready -- scan . --json     # machine-readable report
+npm run agentready -- scan . --markdown # markdown report
+```
+
+### Diff (PR readiness)
+
+`diff` compares two git refs and fails on new regressions. It uses a temporary
+`git worktree`, so it never mutates your working tree and works even with
+uncommitted changes:
+
+```bash
 npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
 ```
+
+### Configuration
 
 Optional scanner config can live in `.agentready.json` or `agentready.config.json`:
 
@@ -105,21 +88,25 @@ Optional scanner config can live in `.agentready.json` or `agentready.config.jso
 
 Use `--config <path>` to load a config file from another location.
 
-## API
+## Documentation
 
-### `POST /api/analyze`
+- [Architecture](docs/product/architecture.md)
+- [Feature Roadmap](docs/product/features.md)
+- [Use Cases](docs/product/use-cases.md)
+- [Language And Tooling](docs/product/language-and-tooling.md)
+- [Development Guide](dev/DEVELOPMENT.md)
 
-Analyze a public GitHub repository or website URL.
+## Development
 
-```json
-{
-  "repoUrl": "https://github.com/owner/repository"
-}
+```bash
+npm ci
+npm run type-check
+npm run lint
+npm test
+npm run build
 ```
 
-### `POST /api/report`
-
-Generate a PDF report from assessment results.
+`npm run build` compiles the CLI and library to `dist/` via `tsconfig.build.json`.
 
 ## Status
 

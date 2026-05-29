@@ -63,6 +63,9 @@ interface InstructionPattern {
 const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '')
 
 const archiveRootPattern = /-(main|master|develop|development|trunk|[a-f0-9]{7,40})$/i
+// Intentionally matches control and bidirectional-override characters used in
+// path-spoofing attempts; such characters are rejected from instruction paths.
+// eslint-disable-next-line no-control-regex
 const unsafePathCharacterPattern = /[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/
 
 const normalizePath = (path: string): string => trimSlashes(path.replace(/\\/g, '/'))

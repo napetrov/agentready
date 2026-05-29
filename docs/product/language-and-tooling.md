@@ -1,66 +1,57 @@
 # Language And Tooling
 
-## v0.1 Implementation Choice
+## Implementation Choice
 
-AgentReady v0.1 should use TypeScript and Node.js.
+AgentReady is implemented in TypeScript on Node.js.
 
 Reasons:
 
-- natural fit for npm, `npx`, and GitHub Action distribution
-- easy parsing of `package.json`, lockfiles, workspaces, and common JS/TS monorepos
-- good CLI libraries and filesystem tooling
+- natural fit for npm, `npx`, and (later) GitHub Action distribution
+- easy parsing of `package.json`, lockfiles, workspaces, and common monorepos
+- good CLI and filesystem tooling
 - fast iteration while the evidence model is still changing
-- existing repository already uses Next.js, TypeScript, Jest, and npm
 
-## Risks
+## Keeping It Language-Agnostic
 
-The scanner must not become JavaScript-only.
+The scanner must not become JavaScript-only. The evidence model and detectors
+are language-neutral; JS/TS is one detector family among several.
 
-Mitigations:
+In practice today:
 
-- keep the evidence model language-agnostic
-- make detectors pluggable
-- treat JS/TS checks as one detector family, not the whole product
-- avoid scoring rules that punish non-JS repositories by default
+- the command-surface detector recognizes Node, Make, Go, Rust, and Python
+- command-related findings are gated on a recognized command ecosystem, so
+  non-JS repositories are not punished for lacking npm scripts
+- adding a language means adding a detector, not changing the core
 
 ## Runtime Surfaces
 
-Planned distribution:
+Current distribution:
 
-- local CLI: `npx agentready scan`
-- npm package
+- local CLI: `npm run agentready -- scan .`
+- published npm package with a `bin` (`npx agentready scan`) once released
+
+Planned/possible distribution:
+
 - GitHub Action after the local scanner is stable
-- hosted web UI later, if useful
+- GitHub release binary, Homebrew, or Docker image
+- hosted report viewer later, if useful
 
-Possible future distribution:
+## Current Stack
 
-- GitHub release binary
-- Homebrew
-- Docker image
+- TypeScript (strict), Node.js 18+
+- ESLint + `@typescript-eslint`
+- Jest + ts-jest (offline)
+- `tsc` build to `dist/`
 
-## Current Repo Stack
-
-Current application stack:
-
-- Next.js 14
-- React 18
-- TypeScript
-- Tailwind CSS
-- Jest
-- OpenAI SDK
-- JSZip
-- jsPDF
-- Vercel-oriented deployment config
+No web framework, no runtime dependencies, and no network calls at scan time.
 
 ## CI Expectations
 
-Public CI should run:
+Public CI runs:
 
 - dependency install with `npm ci`
-- TypeScript check
-- lint
-- Jest tests
-- production build
-- npm audit as informational or high-severity gate
+- TypeScript check, lint, Jest tests, build
+- AgentReady self-scan, fixture smoke, and a PR regression diff
+- `npm audit` as an informational check
 
-The scanner itself should later have fixture-based tests for each detector family.
+Each detector family is exercised by fixture-based and unit tests.

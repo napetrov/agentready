@@ -1,41 +1,48 @@
 # Agents Guide
 
-This repository is configured for autonomous agents working in Cursor.
-
-Quick links: [Open in Cursor](https://cursor.com/background-agent?bcId=bc-c47564ad-c09e-4235-839e-53ed9995251a) · [Open in Web](https://cursor.com/agents?id=bc-c47564ad-c09e-4235-839e-53ed9995251a)
+AgentReady is a local-first, command-line repository readiness scanner for AI
+coding agents, written in TypeScript. It has no web app, no hosted service, and
+makes no network calls while scanning.
 
 Read these documents first:
 
 - Architecture overview: [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md)
 - Development guide and roadmap: [dev/DEVELOPMENT.md](dev/DEVELOPMENT.md)
+- Product direction: [docs/product/architecture.md](docs/product/architecture.md) and [docs/product/features.md](docs/product/features.md)
 
 ## Operating Procedure
-1. Read `dev/ARCHITECTURE.md` to understand the system and constraints (Next.js 14, TypeScript, Vercel serverless).
+
+1. Read `dev/ARCHITECTURE.md` to understand the detector → check → reporter model and constraints.
 2. Review `dev/DEVELOPMENT.md` for current status, coding standards, and roadmap.
 3. Draft a brief plan before implementation. Keep edits small and reversible.
-4. Implement with strict TypeScript, follow project structure, and maintain tests.
+4. Implement with strict TypeScript. Add new behavior as a detector and/or check rather than growing a monolith.
 5. Verify with:
    - `npm run type-check`
    - `npm run lint`
-   - `npm run build`
    - `npm test`
+   - `npm run build`
+   - `npm run agentready -- scan .`
+   - `npm run agentready:fixtures`
 6. Document progress:
    - Add a progress note to `dev/DEVELOPMENT.md` (date, change, rationale, verification).
    - Update `CHANGELOG.md` under [Unreleased] with Added/Changed/Fixed as applicable.
-   - Update component-specific `agents.md` files (e.g., services/api/agents.md, services/worker/agents.md) when changes are localized.
 
-## Environment & Secrets
-- Use `.env.local` (never commit secrets). On Vercel, set env vars in project settings.
-- `OPENAI_API_KEY`: required for production/runtime and any real API usage; optional for local tests (Jest uses mocks).
-- `GITHUB_TOKEN`: optional; needed only for GitHub API features.
+## Project Layout
+
+- `bin/` — CLI entrypoints (`agentready scan` / `diff`, and the fixture smoke runner).
+- `lib/repo-readiness/` — the scanner library:
+  - `core/` — scan engine, config, scoring, contracts, git worktree helpers, shared types.
+  - `detectors/` — file inventory, command surfaces, docs/CI, instruction surfaces.
+  - `checks/` — built-in readiness rules that turn evidence into findings.
+  - `reporters/` — console, JSON, and markdown output.
+- `fixtures/readiness/` — good/bad repositories exercised by the fixture smoke test.
+- `__tests__/` — Jest tests (run offline via ts-jest).
 
 ## Testing & Safety
-- Tests must pass locally with Jest. Use `__mocks__/openai.js`; do not call real APIs.
+
+- Tests must pass locally with Jest and run fully offline.
+- The scanner must never execute the scanned repository's scripts or reach the network.
+- When changing report shapes, update the contract validators in `lib/repo-readiness/core/contracts.ts`.
 - Avoid large, breaking edits. Prefer incremental, typed changes with clear error handling.
 
-## Deployment
-- The app targets Vercel. Keep serverless constraints in mind (timeouts/memory).
-- Do not introduce long-running synchronous operations in API routes.
-
 For further details, consult the linked docs above and `.cursorrules` in the repo root.
-

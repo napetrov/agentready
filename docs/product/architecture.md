@@ -27,37 +27,42 @@ Can an AI coding agent:
 
 ## System Model
 
+The target model is below; `[x]` marks what is implemented today and `[ ]`
+marks what is still planned. The implemented modules live under
+`lib/repo-readiness/` and `bin/`.
+
 ```text
 agentready
   core/
-    scan-engine
-    repo-discovery
-    evidence-model
-    finding-model
-    scoring-model
-    policy-engine
+    [x] scan-engine        (scan + diff orchestration)
+    [x] evidence-model     (typed report/evidence shapes)
+    [x] finding-model      (findings with stable ids)
+    [x] scoring-model      (experimental severity-based score)
+    [x] config-loading
+    [x] git worktree helper (safe ref scanning for diff)
+    [ ] policy-engine
   detectors/
-    instruction-files
-    repo-shape
-    package-managers
-    ci-workflows
-    command-surfaces
-    capability-surfaces
-    generated-files
-    ownership
-    risk-signals
+    [x] instruction-files
+    [x] repo-shape / file-inventory
+    [x] package-managers
+    [x] ci-workflows
+    [x] command-surfaces   (Node, Make, Go, Rust, Python)
+    [x] docs
+    [ ] capability-surfaces (MCP, skills, hooks, plugins, LSP)
+    [ ] ownership
+    [ ] risk-signals
   checks/
-    configurable-rule-runner
-    built-in-rules
-    policy-packs
+    [x] built-in-rules
+    [ ] configurable-rule-runner
+    [ ] policy-packs
   reporters/
-    console
-    json
-    markdown
-    sarif-later
+    [x] console
+    [x] json
+    [x] markdown
+    [ ] sarif
   cli/
-    commands
-    config-loading
+    [x] commands (scan, diff)
+    [x] config-loading
 ```
 
 ## Main Concepts
@@ -114,31 +119,34 @@ type Finding = {
 };
 ```
 
-## v0.1 Scope
+## v0.1 Scope (implemented)
 
-The first implementation should prioritize local repository scanning:
+Local repository scanning, available today:
 
 - detect instruction/config files across major coding-agent tools
-- detect repo shape and package/workspace roots
-- detect package managers and command surfaces
+- detect repo shape, file classification, and package/workspace roots
+- detect package managers and command surfaces across Node, Make, Go, Rust, and Python
 - detect CI workflows and summarize available checks
-- detect obvious capability surfaces such as MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
 - detect large files and large always-on instruction files as context-friction signals
-- detect generated files and common ignore patterns
-- detect dangerous package scripts heuristically
-- emit console and JSON reports
+- detect generated, binary, and minified files
+- emit console, JSON, and markdown reports
 - produce an experimental score
+- `diff` two git refs (via worktrees) and gate on regressions
+
+Still planned for the v0.1 family:
+
+- capability surfaces such as MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
+- heuristic detection of dangerous package scripts
 
 ## Deferred
 
-These should not be default v0.1 requirements:
+These should not be default requirements yet:
 
 - mandatory `AGENTS.md`
 - required sections inside instruction files
-- framework-specific policy such as Prisma, Vercel, or TypeScript-only rules
+- framework-specific policy such as Prisma or TypeScript-only rules
 - prompt cassette or eval rules
 - SARIF
-- GitHub Action as the first implementation surface
 - executing arbitrary repository commands by default
 
 ## Design Principle
