@@ -55,6 +55,11 @@ export const createMemoryCache = (): AnalyzeCache => {
  * A filesystem cache writing one JSON file per key under `dir`. Reads tolerate
  * missing/corrupt files by returning a miss, so a damaged cache degrades to
  * recomputation rather than failing the run.
+ *
+ * The key folds in the model, prompt version, and schema version, so bumping any
+ * of them changes the key: old entries become unreachable (never a stale hit)
+ * but are not pruned. The cache is therefore safe to leave in place across
+ * upgrades; delete the directory (or pass `--no-cache`) to reclaim space.
  */
 export const createFileCache = (dir: string): AnalyzeCache => {
   const fileFor = (key: string): string => path.join(dir, `${key}.json`)

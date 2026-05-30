@@ -79,11 +79,16 @@ describe('host-delegated flow', () => {
     expect(malformed.augmentedScore.augmented).toBe(report.summary.score)
   })
 
-  it('ignores responses for unknown analyzers', () => {
+  it('ignores responses for unknown analyzers and warns', () => {
     root = makeRepo('# AGENTS\n')
     const report = scanLocalReadiness(root)
-    const augmented = ingestHostResponses(report, [{ analyzerId: 'nonexistent', model: 'm@1', output: {} }], { now: fixedNow })
+    const warnings: string[] = []
+    const augmented = ingestHostResponses(report, [{ analyzerId: 'nonexistent', model: 'm@1', output: {} }], {
+      now: fixedNow,
+      onWarn: m => warnings.push(m),
+    })
     expect(augmented.insights).toEqual([])
+    expect(warnings.join(' ')).toMatch(/no host-delegating analyzer "nonexistent"/)
   })
 })
 

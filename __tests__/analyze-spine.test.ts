@@ -138,6 +138,21 @@ describe('runner (fail-open spine)', () => {
     expect(second.output).toEqual({ verdict: 'ok' })
   })
 
+  it('does not return a cross-model false cache hit', async () => {
+    const request = makeRequest()
+    const cache = createMemoryCache()
+    // Same adapter id and request, different concrete model → must be a miss.
+    const modelA = createReplayProvider([{ key: replayKey(request), response: response({ from: 'A' }) }], { model: 'model-a' })
+    const modelB = createReplayProvider([{ key: replayKey(request), response: response({ from: 'B' }) }], { model: 'model-b' })
+
+    const a = await createRunner({ provider: modelA, cache, schemaVersion: 'v1' }).run(request, 'p')
+    expect(a.output).toEqual({ from: 'A' })
+
+    const b = await createRunner({ provider: modelB, cache, schemaVersion: 'v1' }).run(request, 'p')
+    expect(b.cached).toBe(false)
+    expect(b.output).toEqual({ from: 'B' })
+  })
+
   it('skips the call when the budget is exhausted', async () => {
     const request = makeRequest({ maxTokens: 100 })
     const provider = createReplayProvider([{ key: replayKey(request), response: response({}) }])

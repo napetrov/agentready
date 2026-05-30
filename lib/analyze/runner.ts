@@ -51,7 +51,9 @@ export const createRunner = (options: RunnerOptions): Runner => {
     providerId: provider.id,
     async run(request, promptVersion): Promise<RunOutcome> {
       const key = cacheKey({
-        model: `${provider.id}:${request.task}`,
+        // Fold in the concrete model so switching models is a clean miss, not a
+        // false hit. Falls back to the adapter id when the model is unknown.
+        model: `${provider.id}:${provider.model ?? 'unknown'}:${request.task}`,
         promptVersion,
         schemaVersion,
         input: `${request.system}\n${request.input}\n${JSON.stringify(request.outputSchema)}`,

@@ -26,15 +26,17 @@ export interface GitHubModelsOptions {
  * `github-models`, but it speaks the OpenAI-compatible protocol underneath.
  */
 export const createGitHubModelsProvider = (options: GitHubModelsOptions): LlmProvider => {
+  const model = options.model ?? DEFAULT_GITHUB_MODEL
   const inner = createOpenAiCompatProvider({
     baseUrl: options.baseUrl ?? DEFAULT_GITHUB_MODELS_BASE_URL,
-    model: options.model ?? DEFAULT_GITHUB_MODEL,
+    model,
     apiKey: options.token,
     fetchImpl: options.fetchImpl,
   })
   // Re-id so provenance and logs name the actual token source.
   return {
     id: 'github-models',
+    model,
     complete: request => inner.complete(request),
   }
 }

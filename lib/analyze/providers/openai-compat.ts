@@ -73,6 +73,7 @@ export const createOpenAiCompatProvider = (options: OpenAiCompatOptions): LlmPro
 
   return {
     id: 'openai-compat',
+    model: options.model,
     async complete(request: LlmRequest): Promise<LlmResponse> {
       const headers: Record<string, string> = { 'content-type': 'application/json' }
       if (options.apiKey) {

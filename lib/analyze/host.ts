@@ -78,17 +78,23 @@ export const buildHostRequests = (
 export const ingestHostResponses = (
   report: LocalReadinessReport,
   responses: HostAnalysisResponse[],
-  options: { analyzers?: Analyzer[]; now?: Date } = {},
+  options: { analyzers?: Analyzer[]; now?: Date; onWarn?: (message: string) => void } = {},
 ): AugmentedReport => {
   const analyzers = options.analyzers ?? defaultAnalyzers
+  const warn = options.onWarn ?? ((message: string) => console.error(message))
   const byId = new Map(analyzers.filter(isHostDelegating).map(a => [a.id, a]))
 
   const insights = responses.flatMap(response => {
     const analyzer = byId.get(response.analyzerId)
-    if (!analyzer) return []
+    if (!analyzer) {
+      warn(`AgentReady analyze: no host-delegating analyzer "${response.analyzerId}", ignoring its response`)
+      return []
+    }
     try {
       return analyzer.buildInsights(response.output, response.model, report)
-    } catch {
+    } catch (error) {
+      // Fail-open, but surface it so host integrators can debug a bad response.
+      warn(`AgentReady analyze: analyzer "${response.analyzerId}" failed to ingest a host response: ${error instanceof Error ? error.message : String(error)}`)
       return []
     }
   })

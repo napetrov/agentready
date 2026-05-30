@@ -69,13 +69,22 @@ const buildInsights = (output: unknown, model: string, report: LocalReadinessRep
 
   const known = new Set(targetPaths(report))
   const insights: LlmInsight[] = []
+  const seenIds = new Set<string>()
   for (const item of parsed.data.contradictions) {
     // Every cited path must be a real instruction surface, and at least two.
     const validPaths = item.paths.filter(p => known.has(p))
     if (validPaths.length < 2) continue
     const sorted = [...validPaths].sort()
+    // The id folds in BOTH the topic slug and the sorted path set, so two
+    // distinct contradictions with similar topics (or the same topic across
+    // different file pairs) get distinct ids instead of colliding.
+    const topicSlug = item.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'conflict'
+    const pathSlug = sorted.join('|')
+    const id = `analysis.contradiction:${topicSlug}:${pathSlug}`
+    if (seenIds.has(id)) continue // collapse exact duplicates from the model
+    seenIds.add(id)
     insights.push({
-      id: `analysis.contradiction:${item.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
+      id,
       kind: 'contradiction',
       target: sorted.join(', '),
       verdict: `Conflicting guidance on ${item.topic}`,

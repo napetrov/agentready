@@ -56,6 +56,13 @@ export interface LlmResponse {
 export interface LlmProvider {
   /** Stable adapter id, e.g. `anthropic`, `openai-compat`, `github-models`, `host`. */
   readonly id: string
+  /**
+   * The concrete model the provider is configured to call (e.g. `gpt-4o`,
+   * `llama3.1`). Folded into the cache key so switching models is a clean cache
+   * miss rather than a false hit. Adapters that cannot know their model ahead of
+   * time may omit this.
+   */
+  readonly model?: string
   /** Run a single structured completion. Implementations should be fail-open at the call site. */
   complete(request: LlmRequest): Promise<LlmResponse>
 }

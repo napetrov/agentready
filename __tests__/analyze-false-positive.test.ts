@@ -34,7 +34,10 @@ describe('false-positive analyzer', () => {
     writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'jest', lint: 'eslint .' } }))
     const report = scanLocalReadiness(root)
-    expect(falsePositiveAnalyzer.applicable(report)).toBe(falsePositiveAnalyzer.applicable(report))
+    // This repo yields only repo-level findings (e.g. ci.workflow.missing), none
+    // of which carry a path, so there is nothing for the analyzer to triage.
+    expect(report.findings.some(f => f.path)).toBe(false)
+    expect(falsePositiveAnalyzer.applicable(report)).toBe(false)
   })
 
   it('emits a false-positive insight only for a real finding id flagged true', () => {

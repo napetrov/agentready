@@ -89,6 +89,24 @@ describe('contradiction analyzer', () => {
     expect(insights[0].kind).toBe('contradiction')
     expect(insights[0].scoreImpact).toBe(-8)
   })
+
+  it('gives distinct ids to different conflicts and collapses exact duplicates', () => {
+    root = makeRepo({ 'AGENTS.md': 'a\n', '.cursorrules': 'b\n', 'CLAUDE.md': 'c\n' })
+    const report = scanLocalReadiness(root)
+    const output = {
+      contradictions: [
+        // Same topic, different file pairs → must NOT collide.
+        { paths: ['AGENTS.md', '.cursorrules'], topic: 'package manager', confidence: 0.9, rationale: 'x' },
+        { paths: ['AGENTS.md', 'CLAUDE.md'], topic: 'package manager', confidence: 0.8, rationale: 'y' },
+        // Exact duplicate of the first → collapsed.
+        { paths: ['.cursorrules', 'AGENTS.md'], topic: 'package manager', confidence: 0.7, rationale: 'z' },
+      ],
+    }
+    const insights = contradictionAnalyzer.buildInsights(output, 'm@1', report)
+    const ids = insights.map(i => i.id)
+    expect(new Set(ids).size).toBe(ids.length) // all ids unique
+    expect(insights).toHaveLength(2) // two distinct pairs; duplicate collapsed
+  })
 })
 
 describe('analyzeReport with task routing', () => {

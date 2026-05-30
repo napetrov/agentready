@@ -31,11 +31,12 @@ export const replayKey = (request: LlmRequest): string =>
  */
 export const createReplayProvider = (
   fixtures: ReplayFixture[],
-  options: { id?: string; onMiss?: (key: string) => LlmResponse } = {},
+  options: { id?: string; model?: string; onMiss?: (key: string) => LlmResponse } = {},
 ): LlmProvider => {
   const byKey = new Map(fixtures.map(f => [f.key, f.response]))
   return {
     id: options.id ?? 'replay',
+    ...(options.model !== undefined ? { model: options.model } : {}),
     async complete(request: LlmRequest): Promise<LlmResponse> {
       const key = replayKey(request)
       const hit = byKey.get(key)
