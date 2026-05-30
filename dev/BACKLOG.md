@@ -37,7 +37,7 @@ Verified against the current `main`/branch code before accepting:
 | Changesets + npm provenance/trusted publishing | Deferred | Adopt alongside the first release / package split. |
 | Renovate or Dependabot | Accepted (S) | Pick Dependabot for native-GitHub simplicity now; revisit Renovate if/when monorepo. |
 | OpenTelemetry instrumentation | Deferred (optional) | Only for large-repo benchmarking/CI diagnostics, never default local scans. |
-| Heavyweight LLM framework in core | Rejected | Conflicts with deterministic/offline guarantee. Any `explain`/`fix` LLM mode must live in a separate, optional package. |
+| LLM / agentic analytics layer | Accepted as an optional, opt-in layer | Reverses the earlier "rejected in core" stance: the layer is **not** part of the deterministic core scan. It runs as a separate, opt-in stage/package that reasons over the emitted JSON evidence to validate, triage, and enrich findings at defined steps. The core scan stays offline, deterministic, and never-execute; the LLM layer is off by default and clearly separated. Evaluation/design details to be worked out in a follow-up PR. |
 | Hosted viewer / dashboard / public badge | Deferred | Stays in "Later"; not the shortest path to CI adoption. |
 | Repo About still links `agentready.vercel.app` | Accepted (S, non-code) | Cleanup of GitHub repo metadata; not in-tree. Tracked here so it isn't lost. |
 
@@ -63,22 +63,35 @@ Verified against the current `main`/branch code before accepting:
 
 ## P1 — CLI & config ergonomics
 
-- [~] **Normalized CLI flags.** Added `--format summary|json|markdown|sarif` and
+- [x] **Normalized CLI flags.** Added `--format summary|json|markdown|sarif` and
   `--output <file>` to `bin/agentready.ts` (legacy `--json`/`--markdown`/`--sarif`
-  still accepted). Still to do: swap the hand-rolled parser for Commander and add
-  `--policy`/`--fail-on <severity>`/`--min-score` to the CLI (they exist on the
-  Action today). _(M)_
-- [ ] **Adopt cosmiconfig** for config discovery, restricted to **data-only**
+  still accepted). Added `--fail-on <severity>` and `--min-score <n>` to `scan`
+  and `diff`, sharing the Action's gate semantics via a new `core/gate.ts`
+  (`evaluateScanGate`/`evaluateDiffGate`); `diff` now also gates on new
+  error-severity findings by default, matching the Action. The hand-rolled parser
+  was replaced with **Commander**, adding per-command `--help`, validated option
+  choices, and clearer parse errors. `--policy` is deferred until policy packs
+  exist (P2). _(M)_
+- [x] **Adopt cosmiconfig** for config discovery, restricted to **data-only**
   formats — JSON, YAML, and `package.json#agentready` — in addition to the
-  current explicit `--config`. Disable cosmiconfig's JS/TS loaders: loading
-  executable config from the scanned tree would run repo code before any
-  detector, breaking the never-execute-scripts / offline guarantee. If
-  executable config is ever wanted, it must be gated behind an explicit,
-  trusted, non-default path. _(S)_
-- [ ] **`explain <finding-id>`** — print rule description, rationale, references,
-  and remediation examples. Non-failing. _(S)_
-- [ ] **`init`** — scaffold starter config, a policy-pack template, and an
-  optional `AGENTS.md`. Non-failing unless opting into overwrite. _(M)_
+  explicit `--config`. cosmiconfig's JS/TS loaders are disabled two ways: the
+  executable extensions are omitted from the search places, and the default
+  JS/TS loaders are overridden with a refusing loader (cosmiconfig *merges*
+  custom loaders over defaults, so omission alone is insufficient). Discovery is
+  rooted at the scanned dir (no walking up). A malformed `package.json` degrades
+  discovery gracefully instead of crashing the scan; schema validation still
+  fails on semantically invalid config. The Action build marks `typescript`
+  external so cosmiconfig's unreachable TS loader does not bloat the bundle
+  (back to ~520kB). _(S)_
+- [x] **`explain <finding-id>`** — `agentready explain <finding-id|rule-id>`
+  prints the rule's title, rationale, remediation, and references from the new
+  `checks/catalog.ts` rule catalog (`--list` enumerates rules, `--json` emits
+  structured output). Non-failing. A drift test asserts every finding the
+  detectors emit has a catalog entry. _(S)_
+- [x] **`init`** — `agentready init [path] [--agents] [--force]` scaffolds a
+  starter `.agentready.json` and, with `--agents`, a starter `AGENTS.md`. Skips
+  existing files unless `--force`; non-failing. The policy-pack template is
+  deferred until policy packs exist (P2). _(M)_
 
 ## P1 — First-party GitHub Action
 
@@ -104,9 +117,10 @@ Verified against the current `main`/branch code before accepting:
 - [x] **SARIF reporter.** `reporters/sarif.ts` (`formatScanSarif`) emits SARIF
   2.1.0, collapsing `rule:instance` finding ids into stable rules with per-result
   levels and file locations. Exposed as `--format sarif` and via the Action.
-- [ ] **Code-scanning upload path.** The Action writes the SARIF file and outputs
-  its path; document/recommend `github/codeql-action/upload-sarif` in the
-  consuming workflow. _(S)_
+- [x] **Code-scanning upload path.** The Action writes the SARIF file and outputs
+  its path (`sarif-report-path`); the README workflow example recommends wiring
+  `github/codeql-action/upload-sarif@v3` to that output with the
+  `security-events: write` permission. _(S)_
 
 ## P2 — File-handling reuse
 
@@ -125,6 +139,45 @@ Verified against the current `main`/branch code before accepting:
   policy-pack ingestion over the AgentReady JSON evidence (OPA/Conftest-style).
   Add `@agentready/policy-default` once the package split happens. _(L)_
 - [ ] **Instruction-file overlap / contradiction checks.** _(M)_
+
+## P2 — LLM / agentic analytics layer (optional, opt-in)
+
+This is a planned part of the design, not a rejected idea. The goal is to use
+LLM/agentic reasoning at defined steps to perform validation and enrichment that
+deterministic detectors cannot do well on their own (e.g. judging whether an
+`AGENTS.md` is actually useful, reconciling contradictory instruction files,
+explaining a finding in repo-specific terms, proposing remediations). The hard
+constraint is separation of concerns:
+
+- **Core stays deterministic.** The scan/diff engine, detectors, checks, scoring,
+  and the JSON/SARIF contracts remain offline, deterministic, and never-execute.
+  The LLM layer consumes the *already-produced* evidence; it never gates the core
+  scan and is never required to produce a report.
+- **Opt-in and isolated.** Lives in a separate package/stage (e.g.
+  `@agentready/analyze` or an `agentready analyze` subcommand) behind explicit
+  flags and credentials. Off by default; absence changes nothing about core
+  output. No network calls happen in the core path.
+- **Auditable I/O.** Inputs/outputs are the versioned evidence schemas plus a
+  typed "insight" schema, so LLM output is structured, attributable to finding
+  IDs, and diffable. Determinism knobs (model, temperature, seed where
+  available) and a record/replay fixture mode for tests.
+
+Proposed steps where the layer can plug in (to be refined in the next PR):
+
+- [ ] **Evidence validation / false-positive triage.** Have the layer review
+  deterministic findings against file evidence and flag likely false
+  positives/negatives, emitting confidence + rationale rather than mutating
+  scores. _(L)_
+- [ ] **Instruction-surface quality judgment.** Assess whether instruction files
+  (`AGENTS.md`, `.cursorrules`, etc.) are actually actionable for an agent, not
+  just present. Pairs with the deterministic overlap/contradiction checks. _(M)_
+- [ ] **Finding explanation / remediation.** Power a richer `explain`/`fix` mode
+  with repo-specific rationale and patch suggestions, gated behind the opt-in
+  layer. _(M)_
+- [ ] **Evaluation harness for the layer itself.** Define how we measure the
+  layer's usefulness (agreement with human review, false-positive reduction,
+  task-friction correlation from the benchmark harness) before trusting it.
+  **Design + metrics to be agreed in the follow-up PR.** _(L)_
 
 ## P2 — Companion-tool orchestration (do not reimplement)
 
@@ -154,7 +207,10 @@ Verified against the current `main`/branch code before accepting:
 
 ## Explicit non-goals (reaffirmed)
 
-- No LLM framework in the core scanner; scans stay deterministic, offline, and
-  never execute repo scripts. Any `explain`/`fix` LLM mode is a separate package.
+- No LLM framework **in the core scanner**; the scan/diff engine, detectors,
+  checks, and scoring stay deterministic, offline, and never execute repo
+  scripts. LLM/agentic analytics is a planned but **separate, opt-in layer** that
+  consumes emitted evidence (see "LLM / agentic analytics layer" above); it never
+  runs in the core path or gates a scan.
 - No hosted viewer, dashboard, badge, or trend service in core (stays "Later").
 - Custom secret/SAST heuristics are out of scope; orchestrate mature tools.

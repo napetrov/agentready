@@ -45,6 +45,26 @@ export {
 
 export { defaultConfig, loadConfig } from './core/config'
 
+export { scaffoldInit } from './core/scaffold'
+export type { InitOptions, InitResult } from './core/scaffold'
+
+export {
+  evaluateDiffGate,
+  evaluateScanGate,
+  meetsThreshold,
+  FAIL_ON_SEVERITIES,
+} from './core/gate'
+export type { FailOnSeverity, GateOptions, GateResult } from './core/gate'
+
+export {
+  RULE_CATALOG,
+  formatRuleDoc,
+  getRuleDoc,
+  listRuleIds,
+  ruleKeyFor,
+} from './checks/catalog'
+export type { RuleDoc } from './checks/catalog'
+
 export {
   localReadinessConfigSchema,
   localReadinessReportSchema,

@@ -63,9 +63,12 @@ npm run agentready -- scan .                              # human summary
 npm run agentready -- scan . --format json                # machine-readable report
 npm run agentready -- scan . --format markdown            # markdown report
 npm run agentready -- scan . --format sarif --output a.sarif # SARIF for code scanning
+npm run agentready -- scan . --fail-on warning --min-score 80 # gate the exit code
 ```
 
-The legacy `--json` / `--markdown` / `--sarif` flags are still accepted.
+The legacy `--json` / `--markdown` / `--sarif` flags are still accepted. Both
+`scan` and `diff` support `--fail-on <off|info|warning|error>` (default `error`)
+and `--min-score <0-100>`; the process exits non-zero when a gate trips.
 
 ### Diff (PR readiness)
 
@@ -75,6 +78,27 @@ uncommitted changes:
 
 ```bash
 npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
+```
+
+### Explain a finding
+
+`explain` prints the rationale, remediation, and references for a readiness
+rule. Pass a finding id from a report or a bare rule id:
+
+```bash
+npm run agentready -- explain commands.test.missing
+npm run agentready -- explain files.large:assets/blob.bin
+npm run agentready -- explain --list            # all documented rule ids
+```
+
+### Init
+
+`init` scaffolds a starter `.agentready.json` (and, with `--agents`, a starter
+`AGENTS.md`). Existing files are left untouched unless you pass `--force`:
+
+```bash
+npm run agentready -- init .            # write .agentready.json
+npm run agentready -- init . --agents   # also scaffold AGENTS.md
 ```
 
 ### GitHub Action
@@ -117,7 +141,13 @@ Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
 
 ### Configuration
 
-Optional scanner config can live in `.agentready.json` or `agentready.config.json`:
+Optional scanner config is discovered (via [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig),
+restricted to **data-only** formats) from any of: `package.json#agentready`,
+`.agentready.json`, `agentready.config.json`, `.agentreadyrc[.json|.yaml|.yml]`,
+or `agentready.config.yaml`/`.yml`. Discovery is rooted at the scanned directory
+and never walks up into parent directories. Executable config (`.js`/`.ts`/...)
+is deliberately **not** loaded — AgentReady never executes repository code — so
+JS/TS config files are refused rather than run.
 
 ```json
 {
@@ -129,7 +159,7 @@ Optional scanner config can live in `.agentready.json` or `agentready.config.jso
 }
 ```
 
-Use `--config <path>` to load a config file from another location. Validate a
+Use `--config <path>` to load a config file from another location (JSON or YAML). Validate a
 config and print the normalized effective settings with:
 
 ```bash

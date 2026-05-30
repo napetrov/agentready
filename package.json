@@ -40,7 +40,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "build:action": "ncc build lib/action/index.ts -o action/dist --minify --no-source-map-register",
+    "build:action": "ncc build lib/action/index.ts -o action/dist --minify --no-source-map-register --external typescript",
     "agentready": "tsx bin/agentready.ts",
     "agentready:fixtures": "tsx bin/agentready-fixture-smoke.ts",
     "agentready:pack-smoke": "tsx bin/agentready-pack-smoke.ts",
@@ -55,6 +55,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "commander": "^12.1.0",
+    "cosmiconfig": "^9.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
