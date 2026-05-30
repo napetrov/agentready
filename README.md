@@ -101,6 +101,31 @@ npm run agentready -- init .            # write .agentready.json
 npm run agentready -- init . --agents   # also scaffold AGENTS.md
 ```
 
+### Analyze (optional LLM augmentation)
+
+`analyze` runs a deterministic scan and then an **optional, opt-in** LLM layer
+that judges things deterministic checks cannot — e.g. whether an `AGENTS.md` is
+actually actionable, not merely present. It produces an *augmented* report: the
+deterministic score is never changed; a separate, clearly-labeled augmented
+score and an itemized list of adjustments are reported alongside it.
+
+The layer is off unless a provider is configured via the environment (otherwise
+`analyze` runs deterministic-only). One adapter covers hosted OpenAI and local
+servers (Ollama, vLLM, LM Studio):
+
+```bash
+# Local model (no data leaves your machine):
+OLLAMA_HOST=http://localhost:11434 npm run agentready -- analyze .
+
+# Any OpenAI-compatible endpoint:
+AGENTREADY_LLM_BASE_URL=https://api.openai.com/v1 \
+AGENTREADY_LLM_MODEL=gpt-4o-mini OPENAI_API_KEY=sk-... \
+  npm run agentready -- analyze . --format markdown
+```
+
+The deterministic `scan`/`diff` commands never call a model and are unaffected.
+See [docs/product/llm-analytics-design.md](docs/product/llm-analytics-design.md).
+
 ### GitHub Action
 
 Gate pull requests on readiness with the bundled action. It writes a job

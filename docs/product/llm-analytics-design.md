@@ -328,9 +328,13 @@ reviewable and shippable:
   (`createRunner`: cache → budget → provider, never throws), and the
   record/replay provider (`createReplayProvider`/`createRecordingProvider`) so
   tests never hit a live model.
-- **PR D — First analyzer + scoring.** Instruction-quality analyzer, augmented
-  score plumbing, and an `agentready analyze` CLI surface (deterministic stays
-  default).
+- **PR D — First analyzer + scoring.** ✅ The instruction-quality analyzer (the
+  first Tier-2 judgment), `computeAugmentedScore` (folds validated insights,
+  weighted by confidence, leaving the deterministic score untouched), the
+  `analyzeReport` orchestrator (fail-open; deterministic-only without a
+  provider), augmented-report reporters (summary + markdown, both showing both
+  scores), and the `agentready analyze` CLI command with env-based provider
+  auto-detection. End-to-end verified against a local OpenAI-compatible model.
 - **PR E — GitHub-native CI.** GitHub Models adapter, Action wiring
   (`models: read`), and keyless-OIDC documentation.
 - **PR F — Host integration.** MCP server / host-delegated path and the

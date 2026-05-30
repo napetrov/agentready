@@ -59,3 +59,14 @@ export type { BudgetTracker, BudgetOptions } from './budget'
 
 export { createRunner } from './runner'
 export type { Runner, RunnerOptions, RunOutcome } from './runner'
+
+// Analyzers, scoring, orchestration, and reporting.
+export type { Analyzer, AnalyzerContext } from './analyzers/types'
+export { instructionQualityAnalyzer } from './analyzers/instruction-quality'
+
+export { computeAugmentedScore } from './scoring'
+
+export { analyzeReport, defaultAnalyzers } from './analyze'
+export type { AnalyzeOptions } from './analyze'
+
+export { formatAugmentedSummary, formatAugmentedMarkdown } from './reporter'
