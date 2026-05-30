@@ -314,9 +314,13 @@ reviewable and shippable:
   `schemas/augmented-report.json`), the `LlmProvider` port (types only), contract
   validators, and the `./analyze` library export. Lives in `lib/analyze/`; the
   deterministic core does not import it.
-- **PR B — Package + provider abstraction.** `@agentready/analyze` skeleton,
-  provider port, environment auto-detection, and the OpenAI-compatible adapter
-  (covers local models).
+- **PR B — Package + provider abstraction.** ✅ Environment-based provider
+  auto-detection (`detectProvider`) and the OpenAI-compatible adapter
+  (`createOpenAiCompatProvider`) — one adapter covering hosted OpenAI and local
+  servers (Ollama/vLLM/LM Studio) via a base URL, with injectable `fetch` for
+  offline tests. Requests pin temperature 0 + JSON output; errors throw (the
+  pipeline applies fail-open). Detection order: explicit base URL → Ollama →
+  OpenAI key; none set ⇒ deterministic-only.
 - **PR C — Efficiency spine.** Input slicing, content-hash cache, token budgets,
   fail-open, and the record/replay test harness.
 - **PR D — First analyzer + scoring.** Instruction-quality analyzer, augmented

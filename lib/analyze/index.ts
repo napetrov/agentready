@@ -37,3 +37,9 @@ export {
   validateAugmentedReportContract,
   validateLlmInsightContract,
 } from './contracts'
+
+export { createOpenAiCompatProvider } from './providers/openai-compat'
+export type { FetchLike, OpenAiCompatOptions } from './providers/openai-compat'
+
+export { detectProvider } from './detect'
+export type { DetectedProvider, DetectionEnv } from './detect'
