@@ -55,6 +55,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "commander": "^12.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

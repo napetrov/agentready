@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Repository debris (`temp_architecture_analysis.md`, `test-file-size.js`) and legacy web-app development docs.
 
 ### Changed
+- Migrated the CLI from a hand-rolled argument parser to [Commander](https://github.com/tj/commander.js). Commands, positional `path`, and all flags (including legacy `--json`/`--markdown`/`--sarif`) are unchanged; the migration adds per-command `--help`, validated `--format`/`--fail-on` choices, and clearer error messages for unknown options/commands and missing required `diff` refs.
 - Restructured the scanner into a layered architecture under `lib/repo-readiness/`: `core/` (scan engine, config, scoring, contracts, git, types), `detectors/`, `checks/`, and `reporters/`. The public API is preserved via a barrel module.
 - Hardened `diff` to scan git refs in isolated `git worktree` checkouts instead of checking out refs in place; it no longer mutates the working tree and works with uncommitted changes.
 - Renamed the package to `agentready` and added a `bin` plus a `tsc` build to `dist/`, so it installs and runs via `npx`.

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { writeFileSync } from 'fs'
+import { Command, InvalidArgumentError, Option } from 'commander'
 import {
   compactDiffReport,
   compactReport,
@@ -23,20 +24,17 @@ type OutputFormat = 'summary' | 'json' | 'markdown' | 'sarif'
 
 const OUTPUT_FORMATS: OutputFormat[] = ['summary', 'json', 'markdown', 'sarif']
 
-interface CliOptions {
-  json: boolean
-  markdown: boolean
-  compact: boolean
-  sarif: boolean
+/** Options shared by the `scan` and `diff` commands. */
+interface ReportOptions {
+  json?: boolean
+  markdown?: boolean
+  sarif?: boolean
+  compact?: boolean
   format?: OutputFormat
   output?: string
-  failOnRegression: boolean
-  failOnSeverity?: FailOnSeverity
+  config?: string
+  failOn?: FailOnSeverity
   minScore?: number
-  base?: string
-  head?: string
-  configPath?: string
-  path: string
 }
 
 /**
@@ -44,7 +42,7 @@ interface CliOptions {
  * the legacy `--sarif`/`--json`/`--markdown` flags map to a format, defaulting
  * to the human summary.
  */
-const resolveFormat = (options: CliOptions): OutputFormat => {
+const resolveFormat = (options: ReportOptions): OutputFormat => {
   if (options.format) return options.format
   if (options.sarif) return 'sarif'
   if (options.json) return 'json'
@@ -53,203 +51,150 @@ const resolveFormat = (options: CliOptions): OutputFormat => {
 }
 
 /** Writes rendered output to `--output <path>` when set, otherwise to stdout. */
-const emit = (content: string, options: CliOptions): void => {
-  if (options.output) {
-    writeFileSync(options.output, content.endsWith('\n') ? content : `${content}\n`)
+const emit = (content: string, output?: string): void => {
+  if (output) {
+    writeFileSync(output, content.endsWith('\n') ? content : `${content}\n`)
   } else {
     console.log(content)
   }
 }
 
-const printUsage = (): void => {
-  console.log(`AgentReady local readiness checker
+/** Parses and validates the `--min-score` value (0-100). */
+const parseMinScore = (value: string): number => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+    throw new InvalidArgumentError('value must be a number between 0 and 100')
+  }
+  return parsed
+}
 
-Usage:
-  npm run agentready -- scan [path] [--format summary|json|markdown|sarif] [--compact] [--output <file>] [--config <path>] [--fail-on <severity>] [--min-score <n>]
-  npm run agentready -- diff --base <ref> --head <ref> [path] [--format ...] [--compact] [--output <file>] [--fail-on-regression] [--fail-on <severity>] [--min-score <n>] [--config <path>]
-  npm run agentready -- validate-config [path] [--config <path>] [--json]
+/**
+ * Adds the output/gating options common to `scan` and `diff`. The legacy
+ * `--json`/`--markdown`/`--sarif` boolean flags remain accepted alongside the
+ * canonical `--format`.
+ */
+const withReportOptions = (command: Command): Command =>
+  command
+    .addOption(new Option('--format <fmt>', 'output format').choices(OUTPUT_FORMATS))
+    .option('--json', 'shorthand for --format json')
+    .option('--markdown', 'shorthand for --format markdown')
+    .option('--sarif', 'shorthand for --format sarif')
+    .option('--compact', 'omit per-file detail from json output')
+    .option('--output <file>', 'write the report to a file instead of stdout')
+    .option('--config <path>', 'path to an explicit config file')
+    .addOption(
+      new Option('--fail-on <severity>', 'fail on findings at or above this severity').choices(FAIL_ON_SEVERITIES),
+    )
+    .option('--min-score <n>', 'fail when the score drops below n (0-100)', parseMinScore)
 
-Output:
-  --format <fmt>   summary (default), json, markdown, or sarif
-  --output <file>  write the report to a file instead of stdout
-  --compact        omit per-file detail from json output
-  (legacy --json / --markdown / --sarif flags are still accepted)
+const program = new Command()
 
-Gating (exit code 1 when a gate trips):
-  --fail-on <sev>      fail on findings at or above off|info|warning|error (default error)
-  --min-score <n>      fail when the score drops below n (0-100)
-  --fail-on-regression (diff only) fail when a readiness regression is introduced
-
+program
+  .name('agentready')
+  .description('AgentReady local readiness checker — deterministic, offline repository scanning for AI coding agents.')
+  .showHelpAfterError()
+  .addHelpText(
+    'after',
+    `
 Examples:
-  npm run agentready -- scan .
-  npm run agentready -- scan . --format sarif --output agentready.sarif
-  npm run agentready -- scan . --fail-on warning --min-score 80
-  npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
-  npm run agentready -- validate-config .
-`)
-}
+  agentready scan .
+  agentready scan . --format sarif --output agentready.sarif
+  agentready scan . --fail-on warning --min-score 80
+  agentready diff --base origin/main --head HEAD . --fail-on-regression
+  agentready validate-config .`,
+  )
 
-const parseArgs = (argv: string[]): { command?: string; options: CliOptions } => {
-  const [command, ...rest] = argv
-  const options: CliOptions = {
-    json: false,
-    markdown: false,
-    compact: false,
-    sarif: false,
-    failOnRegression: false,
-    path: '.',
+withReportOptions(
+  program
+    .command('scan')
+    .description('Scan a repository for agent readiness')
+    .argument('[path]', 'path to scan', '.'),
+).action((path: string, options: ReportOptions) => {
+  const report = scanLocalReadiness(path, { configPath: options.config })
+  const validation = validateLocalReadinessReportContract(report)
+  if (!validation.valid) {
+    throw new Error(`scan report contract validation failed: ${validation.errors.join('; ')}`)
   }
 
-  for (let index = 0; index < rest.length; index += 1) {
-    const arg = rest[index]
-    const readOptionValue = (flag: string): string => {
-      const value = rest[index + 1]
-      if (!value || value.startsWith('--')) {
-        throw new Error(`${flag} requires a value`)
-      }
-      index += 1
-      return value
-    }
-
-    if (arg === '--json') {
-      options.json = true
-    } else if (arg === '--markdown') {
-      options.markdown = true
-    } else if (arg === '--sarif') {
-      options.sarif = true
-    } else if (arg === '--compact') {
-      options.compact = true
-    } else if (arg === '--format') {
-      const value = readOptionValue('--format')
-      if (!(OUTPUT_FORMATS as string[]).includes(value)) {
-        throw new Error(`--format must be one of: ${OUTPUT_FORMATS.join(', ')}`)
-      }
-      options.format = value as OutputFormat
-    } else if (arg === '--output') {
-      options.output = readOptionValue('--output')
-    } else if (arg === '--fail-on-regression') {
-      options.failOnRegression = true
-    } else if (arg === '--fail-on') {
-      const value = readOptionValue('--fail-on')
-      if (!(FAIL_ON_SEVERITIES as string[]).includes(value)) {
-        throw new Error(`--fail-on must be one of: ${FAIL_ON_SEVERITIES.join(', ')}`)
-      }
-      options.failOnSeverity = value as FailOnSeverity
-    } else if (arg === '--min-score') {
-      const value = readOptionValue('--min-score')
-      const parsed = Number(value)
-      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
-        throw new Error('--min-score must be a number between 0 and 100')
-      }
-      options.minScore = parsed
-    } else if (arg === '--base') {
-      options.base = readOptionValue('--base')
-    } else if (arg === '--head') {
-      options.head = readOptionValue('--head')
-    } else if (arg === '--config') {
-      options.configPath = readOptionValue('--config')
-    } else if (!arg.startsWith('--')) {
-      options.path = arg
-    } else {
-      throw new Error(`Unknown option: ${arg}`)
-    }
+  const format = resolveFormat(options)
+  if (format === 'json') {
+    emit(JSON.stringify(options.compact ? compactReport(report) : report, null, 2), options.output)
+  } else if (format === 'markdown') {
+    emit(formatScanMarkdown(report), options.output)
+  } else if (format === 'sarif') {
+    emit(JSON.stringify(formatScanSarif(report), null, 2), options.output)
+  } else {
+    emit(formatScanSummary(report), options.output)
   }
 
-  return { command, options }
-}
+  const gate = evaluateScanGate(report, { failOnSeverity: options.failOn, minScore: options.minScore })
+  if (gate.failed) {
+    console.error(`Readiness gate failed: ${gate.failureReasons.join('; ')}`)
+    process.exitCode = 1
+  }
+})
 
-const run = (): number => {
-  const { command, options } = parseArgs(process.argv.slice(2))
-
-  if (!command || command === 'help' || command === '--help' || command === '-h') {
-    printUsage()
-    return 0
+withReportOptions(
+  program
+    .command('diff')
+    .description('Diff readiness between two git refs')
+    .argument('[path]', 'path to scan', '.')
+    .requiredOption('--base <ref>', 'base git ref')
+    .requiredOption('--head <ref>', 'head git ref')
+    .option('--fail-on-regression', 'fail when a readiness regression is introduced'),
+).action((path: string, options: ReportOptions & { base: string; head: string; failOnRegression?: boolean }) => {
+  const report = diffLocalReadiness(path, {
+    base: options.base,
+    head: options.head,
+    configPath: options.config,
+  })
+  const validation = validateReadinessDiffReportContract(report)
+  if (!validation.valid) {
+    throw new Error(`diff report contract validation failed: ${validation.errors.join('; ')}`)
   }
 
-  if (command === 'scan') {
-    const report = scanLocalReadiness(options.path, { configPath: options.configPath })
-    const validation = validateLocalReadinessReportContract(report)
-    if (!validation.valid) {
-      throw new Error(`scan report contract validation failed: ${validation.errors.join('; ')}`)
-    }
-    const format = resolveFormat(options)
-    if (format === 'json') {
-      emit(JSON.stringify(options.compact ? compactReport(report) : report, null, 2), options)
-    } else if (format === 'markdown') {
-      emit(formatScanMarkdown(report), options)
-    } else if (format === 'sarif') {
-      emit(JSON.stringify(formatScanSarif(report), null, 2), options)
-    } else {
-      emit(formatScanSummary(report), options)
-    }
-
-    const gate = evaluateScanGate(report, {
-      failOnSeverity: options.failOnSeverity,
-      minScore: options.minScore,
-    })
-    if (gate.failed) {
-      console.error(`Readiness gate failed: ${gate.failureReasons.join('; ')}`)
-    }
-    return gate.failed ? 1 : 0
+  const format = resolveFormat(options)
+  if (format === 'json') {
+    emit(JSON.stringify(options.compact ? compactDiffReport(report) : report, null, 2), options.output)
+  } else if (format === 'markdown') {
+    emit(formatDiffMarkdown(report), options.output)
+  } else if (format === 'sarif') {
+    // SARIF describes the head state; PR code scanning surfaces head findings.
+    emit(JSON.stringify(formatScanSarif(report.headReport), null, 2), options.output)
+  } else {
+    emit(formatDiffSummary(report), options.output)
   }
 
-  if (command === 'validate-config') {
+  const gate = evaluateDiffGate(report, {
+    failOnSeverity: options.failOn,
+    failOnRegression: options.failOnRegression,
+    minScore: options.minScore,
+  })
+  if (gate.failed) {
+    console.error(`Readiness gate failed: ${gate.failureReasons.join('; ')}`)
+    process.exitCode = 1
+  }
+})
+
+program
+  .command('validate-config')
+  .description('Validate discovered/explicit config and print the effective configuration')
+  .argument('[path]', 'path to scan', '.')
+  .option('--config <path>', 'path to an explicit config file')
+  .option('--json', 'print only the normalized JSON config')
+  .action((path: string, options: { config?: string; json?: boolean }) => {
     // loadConfig validates the discovered/explicit config and merges it over
     // the defaults; it throws with a readable message on invalid input.
-    const effectiveConfig = loadConfig(options.path, { configPath: options.configPath })
+    const effectiveConfig = loadConfig(path, { configPath: options.config })
 
-    if (options.json) {
-      console.log(JSON.stringify(effectiveConfig, null, 2))
-    } else {
+    if (!options.json) {
       console.log('AgentReady config is valid. Effective configuration:')
-      console.log(JSON.stringify(effectiveConfig, null, 2))
     }
-
-    return 0
-  }
-
-  if (command === 'diff') {
-    if (!options.base || !options.head) {
-      throw new Error('diff requires --base <ref> and --head <ref>')
-    }
-
-    const report = diffLocalReadiness(options.path, {
-      base: options.base,
-      head: options.head,
-      configPath: options.configPath,
-    })
-    const validation = validateReadinessDiffReportContract(report)
-    if (!validation.valid) {
-      throw new Error(`diff report contract validation failed: ${validation.errors.join('; ')}`)
-    }
-    const format = resolveFormat(options)
-    if (format === 'json') {
-      emit(JSON.stringify(options.compact ? compactDiffReport(report) : report, null, 2), options)
-    } else if (format === 'markdown') {
-      emit(formatDiffMarkdown(report), options)
-    } else if (format === 'sarif') {
-      // SARIF describes the head state; PR code scanning surfaces head findings.
-      emit(JSON.stringify(formatScanSarif(report.headReport), null, 2), options)
-    } else {
-      emit(formatDiffSummary(report), options)
-    }
-
-    const gate = evaluateDiffGate(report, {
-      failOnSeverity: options.failOnSeverity,
-      failOnRegression: options.failOnRegression,
-      minScore: options.minScore,
-    })
-    if (gate.failed) {
-      console.error(`Readiness gate failed: ${gate.failureReasons.join('; ')}`)
-    }
-    return gate.failed ? 1 : 0
-  }
-
-  throw new Error(`Unknown command: ${command}`)
-}
+    console.log(JSON.stringify(effectiveConfig, null, 2))
+  })
 
 try {
-  process.exitCode = run()
+  program.parse(process.argv)
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error))
   process.exitCode = 1
