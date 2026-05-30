@@ -43,3 +43,19 @@ export type { FetchLike, OpenAiCompatOptions } from './providers/openai-compat'
 
 export { detectProvider } from './detect'
 export type { DetectedProvider, DetectionEnv } from './detect'
+
+export { createReplayProvider, createRecordingProvider, replayKey } from './providers/replay'
+export type { ReplayFixture } from './providers/replay'
+
+// Efficiency spine: slicing, caching, budgets, and the fail-open runner.
+export { sliceFiles, summarizeEvidence, fileExists } from './slicing'
+export type { SliceOptions, SlicedInput } from './slicing'
+
+export { cacheKey, nullCache, createMemoryCache, createFileCache } from './cache'
+export type { AnalyzeCache, CacheKeyParts } from './cache'
+
+export { createBudgetTracker } from './budget'
+export type { BudgetTracker, BudgetOptions } from './budget'
+
+export { createRunner } from './runner'
+export type { Runner, RunnerOptions, RunOutcome } from './runner'

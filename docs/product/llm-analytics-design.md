@@ -321,8 +321,13 @@ reviewable and shippable:
   offline tests. Requests pin temperature 0 + JSON output; errors throw (the
   pipeline applies fail-open). Detection order: explicit base URL → Ollama →
   OpenAI key; none set ⇒ deterministic-only.
-- **PR C — Efficiency spine.** Input slicing, content-hash cache, token budgets,
-  fail-open, and the record/replay test harness.
+- **PR C — Efficiency spine.** ✅ Evidence slicing (`sliceFiles` +
+  `summarizeEvidence`, byte-budgeted), the content-hash cache
+  (`createFileCache`/`createMemoryCache`, key folds model + prompt + schema +
+  input), token budgets (`createBudgetTracker`), the fail-open runner
+  (`createRunner`: cache → budget → provider, never throws), and the
+  record/replay provider (`createReplayProvider`/`createRecordingProvider`) so
+  tests never hit a live model.
 - **PR D — First analyzer + scoring.** Instruction-quality analyzer, augmented
   score plumbing, and an `agentready analyze` CLI surface (deterministic stays
   default).
