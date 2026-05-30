@@ -18,6 +18,7 @@ export function formatScanMarkdown(report: LocalReadinessReport): string {
     '',
     `Score: **${report.summary.score}/100**`,
     `Files: ${report.summary.totalFiles} total, ${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs`,
+    `Capabilities: ${report.capabilities.length}; safety signals: ${report.safetySignals.length}`,
     `Findings: ${report.findings.length}`,
     '',
     '### Findings',

@@ -48,7 +48,8 @@ agentready
     [x] ci-workflows
     [x] command-surfaces   (Node, Make, Go, Rust, Python)
     [x] docs
-    [ ] capability-surfaces (MCP, skills, hooks, plugins, LSP)
+    [x] capability-surfaces (MCP, skills, hooks, plugins, LSP)
+    [x] safety-signals     (dangerous package scripts, deploy/publish)
     [ ] ownership
     [ ] risk-signals
   checks/
@@ -129,14 +130,13 @@ Local repository scanning, available today:
 - detect CI workflows and summarize available checks
 - detect large files and large always-on instruction files as context-friction signals
 - detect generated, binary, and minified files
+- detect agent capability surfaces (MCP configs, skills, hooks, plugins, and code-intelligence/LSP config)
+- heuristic detection of dangerous package scripts (install hooks, destructive commands, network-piped shells, deploy/publish)
 - emit console, JSON, and markdown reports
 - produce an experimental score
 - `diff` two git refs (via worktrees) and gate on regressions
 
-Still planned for the v0.1 family:
-
-- capability surfaces such as MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
-- heuristic detection of dangerous package scripts
+The v0.1 family is complete; v0.2 (automation and policy) is the next milestone.
 
 ## Deferred
 

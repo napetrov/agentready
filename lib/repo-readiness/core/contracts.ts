@@ -1,4 +1,10 @@
-import type { ContractValidationResult, PackageManager, ReadinessSeverity } from './types'
+import type {
+  CapabilityKind,
+  ContractValidationResult,
+  PackageManager,
+  ReadinessSeverity,
+  SafetyCategory,
+} from './types'
 import { isObject, isStringArray } from './util'
 
 const isSeverity = (value: unknown): value is ReadinessSeverity => (
@@ -8,6 +14,47 @@ const isSeverity = (value: unknown): value is ReadinessSeverity => (
 const isPackageManager = (value: unknown): value is PackageManager => (
   value === 'npm' || value === 'pnpm' || value === 'yarn' || value === 'bun'
 )
+
+const capabilityKinds: CapabilityKind[] = ['mcp', 'skill', 'hook', 'plugin', 'lsp']
+const isCapabilityKind = (value: unknown): value is CapabilityKind => (
+  typeof value === 'string' && (capabilityKinds as string[]).includes(value)
+)
+
+const safetyCategories: SafetyCategory[] = ['install-hook', 'destructive', 'network-exec', 'deploy']
+const isSafetyCategory = (value: unknown): value is SafetyCategory => (
+  typeof value === 'string' && (safetyCategories as string[]).includes(value)
+)
+
+const validateCapabilityContract = (capability: unknown, pathPrefix: string): string[] => {
+  const errors: string[] = []
+  if (!isObject(capability)) {
+    return [`${pathPrefix} must be an object`]
+  }
+
+  if (!isCapabilityKind(capability.kind)) errors.push(`${pathPrefix}.kind must be mcp, skill, hook, plugin, or lsp`)
+  if (typeof capability.path !== 'string') errors.push(`${pathPrefix}.path must be a string`)
+  if (typeof capability.tool !== 'string') errors.push(`${pathPrefix}.tool must be a string`)
+  if (!isStringArray(capability.notes)) errors.push(`${pathPrefix}.notes must be a string array`)
+
+  return errors
+}
+
+const validateSafetySignalContract = (signal: unknown, pathPrefix: string): string[] => {
+  const errors: string[] = []
+  if (!isObject(signal)) {
+    return [`${pathPrefix} must be an object`]
+  }
+
+  if (!isSafetyCategory(signal.category)) {
+    errors.push(`${pathPrefix}.category must be install-hook, destructive, network-exec, or deploy`)
+  }
+  for (const key of ['source', 'script', 'command']) {
+    if (typeof signal[key] !== 'string') errors.push(`${pathPrefix}.${key} must be a string`)
+  }
+  if (!isStringArray(signal.notes)) errors.push(`${pathPrefix}.notes must be a string array`)
+
+  return errors
+}
 
 const validateLocalReadinessFileContract = (file: unknown, pathPrefix: string): string[] => {
   const errors: string[] = []
@@ -98,6 +145,23 @@ export function validateLocalReadinessReportContract(report: unknown): ContractV
   }
 
   if (!Array.isArray(report.instructions)) errors.push('instructions must be an array')
+
+  if (!Array.isArray(report.capabilities)) {
+    errors.push('capabilities must be an array')
+  } else {
+    report.capabilities.forEach((capability, index) => {
+      errors.push(...validateCapabilityContract(capability, `capabilities[${index}]`))
+    })
+  }
+
+  if (!Array.isArray(report.safetySignals)) {
+    errors.push('safetySignals must be an array')
+  } else {
+    report.safetySignals.forEach((signal, index) => {
+      errors.push(...validateSafetySignalContract(signal, `safetySignals[${index}]`))
+    })
+  }
+
   if (!Array.isArray(report.files)) {
     errors.push('files must be an array')
   } else {
