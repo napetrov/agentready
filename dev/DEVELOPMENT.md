@@ -52,16 +52,40 @@ Implemented (v0.1):
 
 ## Roadmap
 
-See [docs/product/features.md](../docs/product/features.md) for the full roadmap.
-Near-term candidates:
+See [docs/product/features.md](../docs/product/features.md) for the milestone
+view and [dev/BACKLOG.md](BACKLOG.md) for the prioritized task breakdown.
 
-- GitHub Action + automatic markdown PR comment.
-- Built-in policy packs and instruction-file overlap/contradiction checks.
-- Capability-surface detector (MCP configs, skills, hooks, plugins, LSP config).
-- SARIF output.
-- Broader command/package detection (Gradle/Maven, .NET, additional Python tooling).
+Near-term (P0/P1) candidates, sequenced for adoption:
+
+- Declare a real library API: `main`/`exports` (+ schema subpaths) and an
+  `npm pack` install smoke test.
+- Schema-driven config and report contracts (Zod → published JSON Schema),
+  plus a `validate-config` command.
+- CLI on Commander + cosmiconfig (JSON/YAML/JS config); add `explain` and `init`.
+- First-party GitHub Action (JS wrapper) with job summary, SARIF upload, and
+  optional markdown PR comment.
+- SARIF output mapped to stable rule IDs.
+
+Then (P2+): semantic CI-workflow parsing, built-in policy packs and
+instruction-file overlap/contradiction checks, capability-surface detector
+(MCP configs, skills, hooks, plugins, LSP config), companion-tool ingestion
+(actionlint, Gitleaks, OSV-Scanner/Trivy, Scorecard), file-handling reuse
+(fast-glob/ignore/picomatch/isbinaryfile/yaml), and broader command/package
+detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
+
+### 2026-05-30
+- **TRIAGED EXTERNAL EVALUATION INTO THE BACKLOG**: Added [dev/BACKLOG.md](BACKLOG.md)
+  with a prioritized, effort-tagged task breakdown and an accept/defer/reject
+  triage of the review's recommendations.
+- **RESEQUENCED THE ROADMAP**: Pulled package API/`exports`, schema-driven
+  config, the GitHub Action, and SARIF ahead of deeper analysis in
+  `docs/product/features.md`; kept hosted viewer/dashboard/badge deferred and
+  reaffirmed the no-LLM-in-core, offline, never-execute-scripts guarantees.
+- **VERIFIED THE FEEDBACK** against code before accepting: `package.json` has a
+  `bin` but no `main`/`exports`; `detectCiWorkflows` only lists workflow file
+  paths (no semantic parsing); Jest global coverage threshold is 40%.
 
 ### 2026-05-29
 - **REMOVED THE LEGACY WEB APP**: Deleted the Next.js UI, API routes, OpenAI-based
