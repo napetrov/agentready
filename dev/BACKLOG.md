@@ -33,7 +33,7 @@ Verified against the current `main`/branch code before accepting:
 | Semantic CI-workflow parsing (vs file listing) | Accepted | Confirmed gap: `detectCiWorkflows` only lists `.github/workflows/*`. Parse steps; delegate correctness to actionlint/ShellCheck. |
 | Companion-tool ingestion (actionlint, Gitleaks, OSV-Scanner, Trivy, Scorecard) | Accepted (later, L) | AgentReady orchestrates/aggregates; do not reimplement these scanners. |
 | Raise coverage thresholds above 40% | Accepted | Confirmed: `jest.config.js` global threshold is 40%. Raise incrementally; add product-level smoke/snapshot tests. |
-| Package family split (`@agentready/core|cli|action|policy-default|schemas`) | Deferred | Worthwhile once API is stable; defer the monorepo split until exports + schemas land to avoid churn. |
+| Package family split (`@agentready/core`, `cli`, `action`, `policy-default`, `schemas`) | Deferred | Worthwhile once API is stable; defer the monorepo split until exports + schemas land to avoid churn. |
 | Changesets + npm provenance/trusted publishing | Deferred | Adopt alongside the first release / package split. |
 | Renovate or Dependabot | Accepted (S) | Pick Dependabot for native-GitHub simplicity now; revisit Renovate if/when monorepo. |
 | OpenTelemetry instrumentation | Deferred (optional) | Only for large-repo benchmarking/CI diagnostics, never default local scans. |

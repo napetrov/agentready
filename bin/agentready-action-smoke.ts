@@ -28,6 +28,8 @@ interface RunResult {
   status: number
   outputs: Record<string, string>
   summary: string
+  /** Kept alive so callers can assert on generated artifacts before cleanup. */
+  workDir: string
 }
 
 const runAction = (inputs: Record<string, string>): RunResult => {
@@ -56,8 +58,10 @@ const runAction = (inputs: Record<string, string>): RunResult => {
   }
   const summary = existsSync(summaryFile) ? readFileSync(summaryFile, 'utf8') : ''
 
-  rmSync(workDir, { recursive: true, force: true })
-  return { status: result.status ?? 1, outputs, summary }
+  // Cleanup is the caller's responsibility: report artifacts (e.g. the SARIF
+  // file under INPUT_OUTPUT_DIR) live inside workDir and must survive until the
+  // caller has asserted on them.
+  return { status: result.status ?? 1, outputs, summary, workDir }
 }
 
 const goodFixture = path.join('fixtures', 'readiness', 'good-repo')
@@ -72,17 +76,21 @@ const good = runAction({
   'job-summary': 'true',
   'upload-sarif': 'true',
 })
-if (good.status !== 0) {
-  fail(`good fixture should pass, status=${good.status}`)
-}
-if (good.outputs.score !== '100' || good.outputs['findings-count'] !== '0') {
-  fail(`unexpected outputs for good fixture: ${JSON.stringify(good.outputs)}`)
-}
-if (!good.outputs['sarif-report-path'] || !existsSync(good.outputs['sarif-report-path'])) {
-  fail('expected a SARIF report path output that points to a real file')
-}
-if (!good.summary.includes('## AgentReady scan')) {
-  fail('expected the job summary to contain the markdown scan report')
+try {
+  if (good.status !== 0) {
+    fail(`good fixture should pass, status=${good.status}`)
+  }
+  if (good.outputs.score !== '100' || good.outputs['findings-count'] !== '0') {
+    fail(`unexpected outputs for good fixture: ${JSON.stringify(good.outputs)}`)
+  }
+  if (!good.outputs['sarif-report-path'] || !existsSync(good.outputs['sarif-report-path'])) {
+    fail('expected a SARIF report path output that points to a real file')
+  }
+  if (!good.summary.includes('## AgentReady scan')) {
+    fail('expected the job summary to contain the markdown scan report')
+  }
+} finally {
+  rmSync(good.workDir, { recursive: true, force: true })
 }
 
 // A repo with error-severity findings fails the default gate but still reports.
@@ -94,11 +102,15 @@ const bad = runAction({
   'job-summary': 'true',
   'upload-sarif': 'false',
 })
-if (bad.status === 0) {
-  fail('bad fixture should fail the default severity gate')
-}
-if (!bad.outputs.score || bad.outputs['findings-count'] === '0') {
-  fail(`bad fixture should still emit outputs: ${JSON.stringify(bad.outputs)}`)
+try {
+  if (bad.status === 0) {
+    fail('bad fixture should fail the default severity gate')
+  }
+  if (!bad.outputs.score || bad.outputs['findings-count'] === '0') {
+    fail(`bad fixture should still emit outputs: ${JSON.stringify(bad.outputs)}`)
+  }
+} finally {
+  rmSync(bad.workDir, { recursive: true, force: true })
 }
 
 console.log('AgentReady action smoke passed')

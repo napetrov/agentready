@@ -78,7 +78,7 @@ try {
     ],
     tempDir,
   )
-  if (install.status === 0 && (requireCheck.status !== 0 || !requireCheck.stdout.includes('library-ok'))) {
+  if (requireCheck.status !== 0 || !requireCheck.stdout.includes('library-ok')) {
     fail(`library import check failed: ${requireCheck.stderr || requireCheck.stdout}`)
   }
 

@@ -50,7 +50,7 @@ export const instructionActivationSchema = z.enum([
   'unknown',
 ])
 
-export const readinessFindingSchema = z.object({
+export const readinessFindingSchema = z.strictObject({
   id: z.string().min(1),
   title: z.string().min(1),
   severity: severitySchema,
@@ -58,7 +58,7 @@ export const readinessFindingSchema = z.object({
   recommendation: z.string().min(1),
 })
 
-export const localReadinessFileSchema = z.object({
+export const localReadinessFileSchema = z.strictObject({
   path: z.string(),
   sizeBytes: z.number(),
   extension: z.string(),
@@ -70,7 +70,7 @@ export const localReadinessFileSchema = z.object({
   source: z.boolean(),
 })
 
-export const commandEvidenceSchema = z.object({
+export const commandEvidenceSchema = z.strictObject({
   packageManager: packageManagerSchema.optional(),
   ecosystems: z.array(commandEcosystemSchema),
   scripts: z.array(z.string()),
@@ -80,14 +80,14 @@ export const commandEvidenceSchema = z.object({
   hasTypeCheck: z.boolean(),
 })
 
-export const capabilitySurfaceSchema = z.object({
+export const capabilitySurfaceSchema = z.strictObject({
   kind: capabilityKindSchema,
   path: z.string(),
   tool: z.string(),
   notes: z.array(z.string()),
 })
 
-export const safetySignalSchema = z.object({
+export const safetySignalSchema = z.strictObject({
   category: safetyCategorySchema,
   source: z.string(),
   script: z.string(),
@@ -95,7 +95,7 @@ export const safetySignalSchema = z.object({
   notes: z.array(z.string()),
 })
 
-export const instructionSurfaceSchema = z.object({
+export const instructionSurfaceSchema = z.strictObject({
   path: z.string(),
   ecosystems: z.array(instructionEcosystemSchema),
   scope: instructionScopeSchema,
@@ -108,10 +108,10 @@ export const instructionSurfaceSchema = z.object({
   notes: z.array(z.string()),
 })
 
-export const localReadinessReportSchema = z.object({
+export const localReadinessReportSchema = z.strictObject({
   root: z.string(),
   generatedAt: z.string(),
-  summary: z.object({
+  summary: z.strictObject({
     score: z.number(),
     totalFiles: z.number(),
     totalBytes: z.number(),
@@ -123,14 +123,14 @@ export const localReadinessReportSchema = z.object({
     generatedFiles: z.number(),
     minifiedFiles: z.number(),
   }),
-  docs: z.object({
+  docs: z.strictObject({
     readme: z.array(z.string()),
     contributing: z.array(z.string()),
     architecture: z.array(z.string()),
     environment: z.array(z.string()),
   }),
   commands: commandEvidenceSchema,
-  ci: z.object({
+  ci: z.strictObject({
     workflowFiles: z.array(z.string()),
   }),
   instructions: z.array(instructionSurfaceSchema),
@@ -140,13 +140,13 @@ export const localReadinessReportSchema = z.object({
   files: z.array(localReadinessFileSchema),
 })
 
-export const readinessDiffReportSchema = z.object({
+export const readinessDiffReportSchema = z.strictObject({
   base: z.string(),
   head: z.string(),
   generatedAt: z.string(),
   baseReport: localReadinessReportSchema,
   headReport: localReadinessReportSchema,
-  summary: z.object({
+  summary: z.strictObject({
     scoreDelta: z.number(),
     filesDelta: z.number(),
     bytesDelta: z.number(),

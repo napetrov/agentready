@@ -110,9 +110,10 @@ steps:
 ```
 
 Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
-`fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`, and
-`upload-sarif`; outputs include `score`, `findings-count`, `regressions-count`,
-and the report paths. See [`action.yml`](action.yml) for the full contract.
+`fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
+`upload-sarif`, `output-dir`, and `tool-version`; outputs include `score`,
+`findings-count`, `regressions-count`, and the report paths. See
+[`action.yml`](action.yml) for the authoritative contract.
 
 ### Configuration
 

@@ -22,8 +22,8 @@ const parseInputs = (): ActionInputs => {
 
   const minScoreRaw = optionalInput('min-score')
   const minScore = minScoreRaw === undefined ? undefined : Number(minScoreRaw)
-  if (minScore !== undefined && Number.isNaN(minScore)) {
-    throw new Error('min-score must be a number')
+  if (minScore !== undefined && (!Number.isFinite(minScore) || minScore < 0 || minScore > 100)) {
+    throw new Error('min-score must be a finite number between 0 and 100')
   }
 
   return {

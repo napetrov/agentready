@@ -4,9 +4,16 @@ import { z } from 'zod'
 import {
   localReadinessConfigSchema,
   localReadinessReportSchema,
+  scanLocalReadiness,
 } from '../lib/repo-readiness/local-readiness'
 
 const repoRoot = path.join(__dirname, '..')
+const tsxBin = path.join(
+  repoRoot,
+  'node_modules',
+  '.bin',
+  process.platform === 'win32' ? 'tsx.cmd' : 'tsx',
+)
 
 describe('config schema', () => {
   it('accepts a valid partial config', () => {
@@ -36,6 +43,16 @@ describe('config schema', () => {
   })
 })
 
+describe('report schema strictness', () => {
+  it('rejects unknown keys so runtime parsing matches the JSON Schema', () => {
+    const report = scanLocalReadiness(path.join(repoRoot, 'fixtures', 'readiness', 'good-repo'), {
+      now: new Date('2026-05-30T00:00:00.000Z'),
+    })
+    expect(localReadinessReportSchema.safeParse(report).success).toBe(true)
+    expect(localReadinessReportSchema.safeParse({ ...report, surprise: true }).success).toBe(false)
+  })
+})
+
 describe('JSON Schema generation', () => {
   it('produces a draft-07 object schema for reports', () => {
     const jsonSchema = z.toJSONSchema(localReadinessReportSchema, { target: 'draft-7' }) as Record<string, unknown>
@@ -46,7 +63,7 @@ describe('JSON Schema generation', () => {
   it('keeps committed schemas in sync with the source schemas', () => {
     // Mirrors the CI drift gate so a stale schemas/ directory fails locally too.
     expect(() =>
-      execFileSync('npx', ['tsx', 'bin/agentready-emit-schemas.ts', '--check'], {
+      execFileSync(tsxBin, ['bin/agentready-emit-schemas.ts', '--check'], {
         cwd: repoRoot,
         stdio: 'pipe',
       }),
