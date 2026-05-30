@@ -21,7 +21,13 @@ npm test
 npm run build
 npm run agentready -- scan .
 npm run agentready:fixtures
+npm run agentready:pack-smoke
+npm run agentready:schemas -- --check
+npm run agentready:action-smoke
 ```
+
+When a contract or config shape changes, update `lib/repo-readiness/core/schemas.ts`
+and regenerate the published JSON Schema with `npm run agentready:schemas`.
 
 ## Coding Standards
 
@@ -52,16 +58,80 @@ Implemented (v0.1):
 
 ## Roadmap
 
-See [docs/product/features.md](../docs/product/features.md) for the full roadmap.
-Near-term candidates:
+See [docs/product/features.md](../docs/product/features.md) for the milestone
+view and [dev/BACKLOG.md](BACKLOG.md) for the prioritized task breakdown.
 
-- GitHub Action + automatic markdown PR comment.
-- Built-in policy packs and instruction-file overlap/contradiction checks.
-- Capability-surface detector (MCP configs, skills, hooks, plugins, LSP config).
-- SARIF output.
-- Broader command/package detection (Gradle/Maven, .NET, additional Python tooling).
+Near-term (P0/P1) candidates, sequenced for adoption:
+
+- Declare a real library API: `main`/`exports` (+ schema subpaths) and an
+  `npm pack` install smoke test.
+- Schema-driven config and report contracts (Zod → published JSON Schema),
+  plus a `validate-config` command.
+- CLI on Commander + cosmiconfig (data-only JSON/YAML/`package.json` config, no
+  executable config from the scanned tree); add `explain` and `init`.
+- First-party GitHub Action (JS wrapper) with job summary, SARIF upload, and
+  optional markdown PR comment.
+- SARIF output mapped to stable rule IDs.
+
+Then (P2+): semantic CI-workflow parsing, built-in policy packs and
+instruction-file overlap/contradiction checks, capability-surface detector
+(MCP configs, skills, hooks, plugins, LSP config), companion-tool ingestion
+(actionlint, Gitleaks, OSV-Scanner/Trivy, Scorecard), file-handling reuse
+(fast-glob/ignore/picomatch/isbinaryfile/yaml), and broader command/package
+detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
+
+### 2026-05-30 (action + sarif)
+- **ADDED SARIF OUTPUT**: `reporters/sarif.ts` emits SARIF 2.1.0, collapsing
+  `rule:instance` finding ids into stable rules with per-result levels and file
+  locations. Exposed via a new `--format summary|json|markdown|sarif` flag and
+  `--output <file>` on the CLI (legacy `--json`/`--markdown`/`--sarif` still
+  accepted).
+- **SHIPPED A FIRST-PARTY GITHUB ACTION**: `action.yml` + `lib/action/` bundled
+  with `ncc` to `action/dist/index.js`. The gate logic (`lib/action/run.ts`) is
+  dependency-free and unit-tested; the Actions runtime contract is reimplemented
+  in `lib/action/runtime.ts` to avoid bundling `@actions/http-client`/`undici`
+  (keeps the bundle ~420 kB and audit-clean). `bin/agentready-action-smoke.ts`
+  drives the bundled action end-to-end in CI, with a bundle-freshness gate.
+- Build the action bundle with `npm run build:action` after changing
+  `lib/action/`; CI fails if the committed bundle is stale.
+
+### 2026-05-30 (schemas)
+- **MADE ZOD THE CONTRACT SOURCE OF TRUTH**: Added `core/schemas.ts` with Zod
+  schemas for the config, scan report, and diff report, guarded by compile-time
+  checks against the `types.ts` interfaces. Rewrote `core/contracts.ts` and
+  `core/config.ts` to validate against them, replacing the handwritten
+  validators while keeping the public API and readable error messages.
+- **PUBLISHED VERSIONED JSON SCHEMA**: `bin/agentready-emit-schemas.ts`
+  (`npm run agentready:schemas`) derives `schemas/*.json` from the Zod schemas;
+  the files are published via a `./schemas/*` export and CI fails on drift
+  (`--check`).
+- **ADDED `validate-config`**: New CLI command validates discovered/explicit
+  config and prints the normalized effective config (`--json` supported).
+
+### 2026-05-30 (later)
+- **DECLARED A REAL LIBRARY API**: Added `main`, `types`, and `exports` (with a
+  `./package.json` subpath) to `package.json`, pointing at the built barrel at
+  `dist/lib/repo-readiness/index.js`. The README's "command-line tool and
+  library" claim is now backed by package metadata.
+- **ADDED A PACK/INSTALL SMOKE TEST**: `bin/agentready-pack-smoke.ts`
+  (`npm run agentready:pack-smoke`) packs the tarball, installs it into a
+  throwaway project, and asserts both the library import and the `agentready`
+  bin work. Wired it into CI and added a `package-entrypoints` unit test that
+  keeps the entry-point metadata internally consistent.
+
+### 2026-05-30
+- **TRIAGED EXTERNAL EVALUATION INTO THE BACKLOG**: Added [dev/BACKLOG.md](BACKLOG.md)
+  with a prioritized, effort-tagged task breakdown and an accept/defer/reject
+  triage of the review's recommendations.
+- **RESEQUENCED THE ROADMAP**: Pulled package API/`exports`, schema-driven
+  config, the GitHub Action, and SARIF ahead of deeper analysis in
+  `docs/product/features.md`; kept hosted viewer/dashboard/badge deferred and
+  reaffirmed the no-LLM-in-core, offline, never-execute-scripts guarantees.
+- **VERIFIED THE FEEDBACK** against code before accepting: `package.json` has a
+  `bin` but no `main`/`exports`; `detectCiWorkflows` only lists workflow file
+  paths (no semantic parsing); Jest global coverage threshold is 40%.
 
 ### 2026-05-29
 - **REMOVED THE LEGACY WEB APP**: Deleted the Next.js UI, API routes, OpenAI-based

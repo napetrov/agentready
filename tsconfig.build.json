@@ -8,5 +8,5 @@
     "sourceMap": false
   },
   "include": ["lib/**/*.ts", "bin/**/*.ts"],
-  "exclude": ["node_modules", "dist", "coverage", "__tests__/**/*"]
+  "exclude": ["node_modules", "dist", "coverage", "__tests__/**/*", "lib/action/**/*"]
 }

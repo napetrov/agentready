@@ -59,10 +59,13 @@ npx agentready scan .
 ### Scan
 
 ```bash
-npm run agentready -- scan .            # human summary
-npm run agentready -- scan . --json     # machine-readable report
-npm run agentready -- scan . --markdown # markdown report
+npm run agentready -- scan .                              # human summary
+npm run agentready -- scan . --format json                # machine-readable report
+npm run agentready -- scan . --format markdown            # markdown report
+npm run agentready -- scan . --format sarif --output a.sarif # SARIF for code scanning
 ```
+
+The legacy `--json` / `--markdown` / `--sarif` flags are still accepted.
 
 ### Diff (PR readiness)
 
@@ -73,6 +76,44 @@ uncommitted changes:
 ```bash
 npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
 ```
+
+### GitHub Action
+
+Gate pull requests on readiness with the bundled action. It writes a job
+summary, sets outputs, and can emit SARIF for code scanning:
+
+```yaml
+permissions:
+  contents: read
+  security-events: write
+
+steps:
+  - uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
+  - uses: actions/setup-node@v4
+    with:
+      node-version: 20
+  - id: agentready
+    uses: napetrov/agentready@main
+    with:
+      mode: diff
+      base-ref: origin/${{ github.base_ref || 'main' }}
+      head-ref: HEAD
+      fail-on-regression: true
+      min-score: 80
+      upload-sarif: true
+  - if: always() && steps.agentready.outputs.sarif-report-path
+    uses: github/codeql-action/upload-sarif@v3
+    with:
+      sarif_file: ${{ steps.agentready.outputs.sarif-report-path }}
+```
+
+Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
+`fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
+`upload-sarif`, `output-dir`, and `tool-version`; outputs include `score`,
+`findings-count`, `regressions-count`, and the report paths. See
+[`action.yml`](action.yml) for the authoritative contract.
 
 ### Configuration
 
@@ -88,7 +129,16 @@ Optional scanner config can live in `.agentready.json` or `agentready.config.jso
 }
 ```
 
-Use `--config <path>` to load a config file from another location.
+Use `--config <path>` to load a config file from another location. Validate a
+config and print the normalized effective settings with:
+
+```bash
+npm run agentready -- validate-config .
+```
+
+The config and report shapes are published as JSON Schema under `schemas/`
+(also available via the package's `./schemas/*` export), generated from the
+same schemas the scanner validates against.
 
 ## Documentation
 

@@ -43,5 +43,15 @@ export {
   validateReadinessDiffReportContract,
 } from './core/contracts'
 
+export { defaultConfig, loadConfig } from './core/config'
+
+export {
+  localReadinessConfigSchema,
+  localReadinessReportSchema,
+  readinessDiffReportSchema,
+} from './core/schemas'
+
 export { formatDiffSummary, formatScanSummary } from './reporters/console'
 export { formatDiffMarkdown, formatScanMarkdown } from './reporters/markdown'
+export { formatScanSarif } from './reporters/sarif'
+export type { SarifLog, SarifOptions } from './reporters/sarif'

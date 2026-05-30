@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 import type { LocalReadinessConfig, ScanOptions } from './types'
-import { isObject, isStringArray, normalizeRepoPath } from './util'
+import { localReadinessConfigSchema } from './schemas'
+import { normalizeRepoPath } from './util'
 
 export const defaultConfig: LocalReadinessConfig = {
   ignorePaths: [],
@@ -12,37 +13,17 @@ export const defaultConfig: LocalReadinessConfig = {
 }
 
 const coerceConfig = (rawConfig: unknown, source: string): Partial<LocalReadinessConfig> => {
-  if (!isObject(rawConfig)) {
-    throw new Error(`${source} must be a JSON object`)
+  const result = localReadinessConfigSchema.safeParse(rawConfig)
+  if (!result.success) {
+    const details = result.error.issues
+      .map(issue => `${source}${issue.path.length ? `.${issue.path.join('.')}` : ''} ${issue.message}`)
+      .join('; ')
+    throw new Error(details)
   }
 
-  const config: Partial<LocalReadinessConfig> = {}
-
-  if ('ignorePaths' in rawConfig) {
-    if (!isStringArray(rawConfig.ignorePaths)) {
-      throw new Error(`${source}.ignorePaths must be an array of strings`)
-    }
-    config.ignorePaths = rawConfig.ignorePaths.map(normalizeRepoPath)
-  }
-
-  for (const key of ['largeFileWarningBytes', 'largeFileErrorBytes'] as const) {
-    if (key in rawConfig) {
-      const value = rawConfig[key]
-      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
-        throw new Error(`${source}.${key} must be a non-negative integer`)
-      }
-      config[key] = value
-    }
-  }
-
-  for (const key of ['allowMinifiedFiles', 'errorOnWarnings'] as const) {
-    if (key in rawConfig) {
-      const value = rawConfig[key]
-      if (typeof value !== 'boolean') {
-        throw new Error(`${source}.${key} must be a boolean`)
-      }
-      config[key] = value
-    }
+  const config: Partial<LocalReadinessConfig> = { ...result.data }
+  if (config.ignorePaths) {
+    config.ignorePaths = config.ignorePaths.map(normalizeRepoPath)
   }
 
   return config

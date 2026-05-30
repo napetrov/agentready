@@ -1,5 +1,14 @@
 # Feature Roadmap
 
+The detailed, prioritized work breakdown lives in
+[dev/BACKLOG.md](../../dev/BACKLOG.md). This file holds the milestone view.
+
+Sequencing note: consumption surfaces (package API/exports, schema-driven
+config, a first-party GitHub Action, and SARIF) are prioritized ahead of deeper
+analysis because they unlock adoption immediately. Import-graph analysis,
+hosted viewers, badges, and dashboards stay deferred. The readiness model,
+instruction-surface detection, finding IDs, and worktree `diff` remain custom.
+
 ## v0.1: Repository Readiness Scanner — delivered
 
 Goal: produce useful local evidence without requiring a hosted service.
@@ -22,30 +31,42 @@ Delivered:
 
 The v0.1 family is now complete.
 
-## v0.2: Automation And Policy
+## v0.2: Consumable Surface — package, config, action, SARIF
 
-Goal: make the scanner useful in pull requests and team standards.
+Goal: make the scanner trivial to install as a library, run in CI, and feed
+into code scanning. Highest-priority work; see the backlog for task detail.
 
 Features:
 
-- GitHub Action
+- stable library API: declare `main`/`exports` (and schema subpaths) so the
+  README's "library" claim is real
+- schema-driven config and report contracts (Zod → published JSON Schema),
+  replacing the handwritten validators
+- CLI ergonomics on Commander + cosmiconfig (data-only JSON/YAML/`package.json`
+  config; no executable config from the scanned tree), plus
+  `validate-config`, `explain`, and `init` commands
+- first-party GitHub Action (thin JS wrapper) with inputs/outputs, job summary,
+  and optional PR annotation
 - markdown PR report
-- config file
-- built-in policy packs
-- stale path and command validation
-- instruction-file overlap and contradiction checks
-- repository-specific thresholds
+- SARIF output and code-scanning upload
+- file-handling reuse (fast-glob / ignore / picomatch / isbinaryfile / yaml)
 
-## v0.3: Deeper Analysis
+## v0.3: Policy And Deeper Analysis
 
-Goal: connect findings to real agent friction.
+Goal: connect findings to real agent friction and team standards.
 
 Features:
 
-- SARIF output
+- semantic CI-workflow parsing (vs file listing); delegate workflow correctness
+  to actionlint / ShellCheck rather than reimplementing
+- built-in policy packs and repository-specific thresholds
+- instruction-file overlap and contradiction checks
+- stale path and command validation
+- companion-tool ingestion (actionlint, Gitleaks, OSV-Scanner/Trivy, Scorecard)
+  with AgentReady as the report hub
 - import graph and boundary checks
 - git churn and risk signals
-- language/framework policy packs
+- language/framework policy packs (Java/.NET, broader Python tooling)
 - CODEOWNERS and PR-template analysis
 - benchmark harness for comparing score dimensions against real agent performance
 
