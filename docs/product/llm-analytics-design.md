@@ -105,6 +105,107 @@ decide whether a PR merges.
 - **Contracts via Zod**, mirroring the existing `core/schemas.ts` approach, with
   versioned JSON Schema published for the insight and augmented-report shapes.
 
+### 5.1 The seam is data, not a code dependency
+
+The single hard rule that makes everything else safe: **the deterministic core
+never imports the analytics layer; the layer only consumes the core's
+already-emitted JSON evidence.** The boundary is the existing report contract, so
+the layer is physically incapable of changing core behavior, adding a network
+call to the core path, or executing repo code.
+
+```
+ scan / diff   →   evidence (JSON)   →   @agentready/analyze   →   augmented report
+ (unchanged)       (existing contract)    (new, optional)           (deterministic report
+                                                                     + insights + augmentedScore)
+```
+
+### 5.2 The provider contract
+
+Everything provider-specific hides behind one small port, so every adapter
+(Anthropic, OpenAI-compatible/local, GitHub Models, Bedrock/Vertex/Azure,
+host-injected) is interchangeable. Sketch (illustrative, not final):
+
+```ts
+interface LlmProvider {
+  readonly id: string                                 // "anthropic" | "openai-compat" | "github-models" | "host" | ...
+  complete(req: LlmRequest): Promise<LlmResponse>     // structured in, structured out
+}
+
+interface LlmRequest {
+  task: AnalyzerTask        // routing key + token-budget owner
+  system: string
+  input: string             // the sliced evidence (never the whole repo)
+  outputSchema: JsonSchema  // the provider must return JSON matching this
+  maxTokens: number
+}
+
+interface LlmResponse {
+  insights: unknown         // Zod-validated against the analyzer's insight schema before use
+  model: string             // stamped onto every insight (model@version)
+  usage?: { inputTokens: number; outputTokens: number }
+}
+```
+
+This is what makes the four token-provisioning stories in §6 collapse to "pick an
+adapter": the **pipeline never changes**, only which `LlmProvider` is wired in.
+
+### 5.3 Run lifecycle (the analyzer pipeline)
+
+Inside `@agentready/analyze`, a run is a six-step pipeline. **Every step is
+fail-open** — any error/timeout drops that insight and the run continues; the
+deterministic report is always returned intact.
+
+1. **Select** — from the deterministic findings + evidence, pick only the
+   *ambiguous* subset worth a model call (e.g. judge `AGENTS.md` only if it
+   exists; run contradiction checks only with ≥2 instruction surfaces). Nothing
+   else is sent to a model.
+2. **Slice** — build a bounded input per analyzer: the relevant file(s) plus a
+   tree *summary*, never the whole repo. Hard per-task token budget.
+3. **Cache lookup** — key = `hash(model, promptVersion, schemaVersion,
+   slicedInput)`. A hit skips the call entirely. In CI most inputs are unchanged
+   → mostly hits; `diff` mode only analyzes changed docs.
+4. **Provider call** — the analyzer hands an `LlmRequest` to the `LlmProvider`
+   chosen by the routing table (task → `(provider, model)`) and gets candidate
+   insights back.
+5. **Validate & attribute** — each insight is Zod-validated, keyed to a finding
+   id (or a new `analysis.*` id), and stamped with `model@version` +
+   `promptVersion`. Malformed model output is dropped, not trusted.
+6. **Fold** — compute `augmentedScore` from the *validated* insights (each
+   weighted by confidence, itemized), leaving the deterministic `score`
+   unchanged. Emit the augmented report.
+
+### 5.4 How each surface invokes the layer
+
+| Surface | Invocation | Token source | Gating |
+|---|---|---|---|
+| **CLI** | new `agentready analyze [path]` (deterministic `scan`/`diff` stay default + untouched) | config / env adapter | deterministic by default; `--gate-on augmented` opt-in |
+| **GitHub Action** | new `analyze: true` input + provider inputs | GitHub Models via built-in `GITHUB_TOKEN` (default), or OIDC / secret | deterministic by default; `gate-on: augmented` opt-in |
+| **MCP / host-delegated** | AgentReady exposes evidence + analyzer prompts as MCP tools; host's model reasons and returns insights | the host's — AgentReady holds no keys | n/a (advisory) |
+| **Library (DI)** | `analyze(evidence, { provider })` | caller-injected `LlmProvider` | caller decides |
+
+### 5.5 Configuration
+
+Discovered through the existing data-only config mechanism (no executable
+config). Off unless explicitly enabled; provider/model routing and budgets live
+under an `analyze` key, e.g.:
+
+```jsonc
+{
+  "analyze": {
+    "enabled": false,
+    "provider": "auto",              // auto-detect; or "github-models" | "openai-compat" | "anthropic" | "host"
+    "routing": {                      // task → model, overriding the §7 defaults
+      "triage": "claude-haiku-4-5",
+      "contradiction": "claude-sonnet-4-6",
+      "remediation": "claude-opus-4-8"
+    },
+    "budgets": { "perTaskTokens": 4000, "perRunTokens": 60000 },
+    "cache": { "dir": ".agentready/analyze-cache" },
+    "gateOn": "deterministic"         // or "augmented" (explicit opt-in)
+  }
+}
+```
+
 ## 6. Token sources and real-world integration
 
 The whole point of the abstraction is that "where do the tokens come from?" has
@@ -144,12 +245,13 @@ part of the cache key so versions never collide.
 
 Defaults (overridable); all run at low temperature with structured output.
 
-| Task | Tier | Examples |
-|---|---|---|
-| FP triage, instruction-quality scoring | small / fast | Haiku, GPT-4o-mini, Llama-3.1-8B (local), GitHub Models small tier |
-| Cross-doc contradiction / overlap | mid | Sonnet, GPT-4o, Llama-3.1-70B |
-| Remediation / patch generation | strong | Opus / Sonnet, GPT-4-class |
+| Routing key | Task | Tier | Examples |
+|---|---|---|---|
+| `triage` | FP triage, instruction-quality scoring | small / fast | Haiku, GPT-4o-mini, Llama-3.1-8B (local), GitHub Models small tier |
+| `contradiction` | Cross-doc contradiction / overlap | mid | Sonnet, GPT-4o, Llama-3.1-70B |
+| `remediation` | Remediation / patch generation | strong | Opus / Sonnet, GPT-4-class |
 
+The routing keys are the same ones used in the `analyze.routing` config (§5.5).
 Escalate to a stronger model only on demand (e.g. remediation requested).
 
 ## 8. Efficiency and cost controls
