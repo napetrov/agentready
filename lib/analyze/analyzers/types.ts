@@ -1,5 +1,6 @@
 import type { LocalReadinessReport } from '../../repo-readiness/core/types'
 import type { LlmInsight } from '../types'
+import type { AnalyzerTask } from '../provider'
 import type { Runner } from '../runner'
 import type { SliceOptions, SlicedInput } from '../slicing'
 
@@ -21,6 +22,8 @@ export interface AnalyzerContext {
 export interface Analyzer {
   /** Stable analyzer id, used in logs and insight ids. */
   readonly id: string
+  /** The routing task this analyzer's calls belong to (selects the model). */
+  readonly task: AnalyzerTask
   /** Whether this analyzer has anything to analyze for the given evidence. */
   applicable(report: LocalReadinessReport): boolean
   /** Produce insights. Must be fail-open (never throws; returns [] on failure). */

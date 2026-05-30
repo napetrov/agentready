@@ -3,24 +3,28 @@ import type { AugmentedReport, LlmInsight } from './types'
 import type { LlmProvider } from './provider'
 import type { Analyzer } from './analyzers/types'
 import { instructionQualityAnalyzer } from './analyzers/instruction-quality'
+import { contradictionAnalyzer } from './analyzers/contradiction'
 import { type AnalyzeCache, nullCache } from './cache'
 import { type BudgetOptions, createBudgetTracker } from './budget'
-import { createRunner } from './runner'
+import { createRunner, type Runner } from './runner'
+import { type ProviderRouting, resolveProvider, routingProviderIds, singleProviderRouting } from './routing'
 import { computeAugmentedScore } from './scoring'
 
-// The orchestrator: given a deterministic report and a provider, run the
-// applicable analyzers through the fail-open spine and fold their insights into
-// an augmented report. Fail-open throughout — with no provider, or if every
-// analyzer yields nothing, it returns a deterministic-only augmented report
-// (the base score unchanged, no insights). The deterministic report is never
-// mutated.
+// The orchestrator: given a deterministic report and a provider (or a task→model
+// routing table), run the applicable analyzers through the fail-open spine and
+// fold their insights into an augmented report. Fail-open throughout — with no
+// provider, or if every analyzer yields nothing, it returns a deterministic-only
+// augmented report (the base score unchanged, no insights). The deterministic
+// report is never mutated.
 
-/** The default analyzer registry. Grows in later PRs (contradiction, triage, ...). */
-export const defaultAnalyzers: Analyzer[] = [instructionQualityAnalyzer]
+/** The default analyzer registry. */
+export const defaultAnalyzers: Analyzer[] = [instructionQualityAnalyzer, contradictionAnalyzer]
 
 export interface AnalyzeOptions {
-  /** Provider to use; when omitted, the run is deterministic-only. */
+  /** Provider to use; when omitted (and no routing), the run is deterministic-only. */
   provider?: LlmProvider
+  /** Task→model routing; overrides `provider`. Lets analyzers use different models. */
+  routing?: ProviderRouting
   /** Analyzers to run; defaults to `defaultAnalyzers`. */
   analyzers?: Analyzer[]
   /** Result cache; defaults to no caching. */
@@ -58,23 +62,38 @@ export const analyzeReport = async (
   const generatedAt = (options.now ?? new Date()).toISOString()
   const analyzers = (options.analyzers ?? defaultAnalyzers).filter(analyzer => analyzer.applicable(report))
 
-  if (!options.provider || analyzers.length === 0) {
-    return deterministicOnly(report, generatedAt, options.provider ? [options.provider.id] : [], 0)
+  const routing: ProviderRouting | undefined =
+    options.routing ?? (options.provider ? singleProviderRouting(options.provider) : undefined)
+
+  if (!routing || analyzers.length === 0) {
+    return deterministicOnly(report, generatedAt, routing ? routingProviderIds(routing) : [], 0)
   }
 
-  const runner = createRunner({
-    provider: options.provider,
-    cache: options.cache ?? nullCache,
-    budget: createBudgetTracker(options.budget),
-    schemaVersion: options.schemaVersion ?? DEFAULT_SCHEMA_VERSION,
-    onWarn: options.onWarn,
-  })
+  // One runner per provider, so analyzers routed to the same model share a
+  // budget and cache view while differently-routed analyzers stay independent.
+  const sharedCache = options.cache ?? nullCache
+  const sharedBudget = createBudgetTracker(options.budget)
+  const runners = new Map<string, Runner>()
+  const runnerFor = (provider: LlmProvider): Runner => {
+    const existing = runners.get(provider.id)
+    if (existing) return existing
+    const runner = createRunner({
+      provider,
+      cache: sharedCache,
+      budget: sharedBudget,
+      schemaVersion: options.schemaVersion ?? DEFAULT_SCHEMA_VERSION,
+      onWarn: options.onWarn,
+    })
+    runners.set(provider.id, runner)
+    return runner
+  }
 
   const insights: LlmInsight[] = []
   let considered = 0
   for (const analyzer of analyzers) {
     considered += 1
     try {
+      const runner = runnerFor(resolveProvider(routing, analyzer.task))
       insights.push(...(await analyzer.run({ root, report, runner })))
     } catch (error) {
       // Analyzers are expected to be fail-open; this is a final backstop.
@@ -90,7 +109,7 @@ export const analyzeReport = async (
     augmentedScore: computeAugmentedScore(report.summary.score, insights),
     analysis: {
       enabled: insights.length > 0,
-      providers: [options.provider.id],
+      providers: routingProviderIds(routing),
       insightsConsidered: considered,
       insightsApplied: insights.length,
     },

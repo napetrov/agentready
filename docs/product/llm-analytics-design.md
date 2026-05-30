@@ -351,8 +351,12 @@ reviewable and shippable:
   request/insight logic powers both paths. Ships a dependency-free MCP stdio
   server (`agentready-mcp` bin, `./mcp` export) exposing `agentready_scan`,
   `agentready_analyze_prepare`, and `agentready_analyze_finalize`.
-- **PR G — More analyzers + routing.** Contradiction/overlap, false-positive
-  triage, remediation; the task→model routing table.
+- **PR G — More analyzers + routing.** ✅ (partial) The cross-surface
+  contradiction analyzer (flags genuine conflicts between ≥2 instruction
+  surfaces) and the task→model routing table (`ProviderRouting`: per-task
+  provider with a default, so triage and contradiction can use different models;
+  analyzers declare their `task`). Contradiction is host-delegating, so it works
+  over MCP too. False-positive triage and remediation analyzers remain to do.
 - **PR H — Evaluation harness.** Gold set, metrics, and calibration reporting.
 
 ## 13. Open questions

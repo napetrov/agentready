@@ -104,6 +104,7 @@ const buildInsights = (output: unknown, model: string, report: LocalReadinessRep
 
 export const instructionQualityAnalyzer: HostDelegatingAnalyzer = {
   id: 'instruction-quality',
+  task: 'triage',
 
   applicable(report: LocalReadinessReport): boolean {
     return targetPaths(report).length > 0

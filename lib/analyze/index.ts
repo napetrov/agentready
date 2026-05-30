@@ -66,6 +66,10 @@ export type { Runner, RunnerOptions, RunOutcome } from './runner'
 // Analyzers, scoring, orchestration, and reporting.
 export type { Analyzer, AnalyzerContext } from './analyzers/types'
 export { instructionQualityAnalyzer } from './analyzers/instruction-quality'
+export { contradictionAnalyzer } from './analyzers/contradiction'
+
+export { resolveProvider, singleProviderRouting, routingProviderIds } from './routing'
+export type { ProviderRouting } from './routing'
 
 export { computeAugmentedScore } from './scoring'
 
