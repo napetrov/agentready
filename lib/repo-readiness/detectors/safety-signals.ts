@@ -107,8 +107,17 @@ const readPackageScripts = (root: string): Record<string, string> => {
  * hooks that run code automatically, destructive shell commands, scripts that
  * pipe network downloads into a shell, and deploy/publish paths. This lets an
  * agent (and its reviewers) know which commands are unsafe to run blindly.
+ *
+ * `filePaths` is the ignore-aware scan inventory; when `package.json` has been
+ * filtered out of it (e.g. a vendored subproject excluded via `ignorePaths`)
+ * the detector reports nothing, so safety findings never come from a manifest
+ * the rest of the pipeline is ignoring.
  */
-export const detectSafetySignals = (root: string): SafetySignalEvidence[] => {
+export const detectSafetySignals = (root: string, filePaths: string[]): SafetySignalEvidence[] => {
+  if (!filePaths.includes('package.json')) {
+    return []
+  }
+
   const scripts = readPackageScripts(root)
   const signals: SafetySignalEvidence[] = []
 
