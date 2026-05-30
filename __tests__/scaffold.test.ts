@@ -38,6 +38,14 @@ describe('scaffoldInit', () => {
     expect(existsSync(path.join(sub, 'AGENTS.md'))).toBe(true)
   })
 
+  it('bootstraps a not-yet-existing target directory', () => {
+    const fresh = path.join(root, 'does', 'not', 'exist', 'yet')
+    expect(existsSync(fresh)).toBe(false)
+    const result = scaffoldInit(fresh)
+    expect(result.created).toEqual(['.agentready.json'])
+    expect(existsSync(path.join(fresh, '.agentready.json'))).toBe(true)
+  })
+
   it('skips existing files unless force is set', () => {
     writeFileSync(path.join(root, '.agentready.json'), '{"allowMinifiedFiles": true}')
 

@@ -27,11 +27,43 @@ const refuseExecutableConfig: Loader = (filepath: string) => {
   )
 }
 
-const dataLoaders: Loaders = {
+// Strict data-only loaders, used for explicit `--config`: a parse error there
+// should surface to the user rather than be silently ignored.
+const strictDataLoaders: Loaders = {
   '.json': defaultLoadersSync['.json'],
   '.yaml': defaultLoadersSync['.yaml'],
   '.yml': defaultLoadersSync['.yml'],
   noExt: defaultLoadersSync['.yaml'],
+  '.js': refuseExecutableConfig,
+  '.cjs': refuseExecutableConfig,
+  '.mjs': refuseExecutableConfig,
+  '.ts': refuseExecutableConfig,
+}
+
+// Discovery is tolerant of unparsable candidates. cosmiconfig's `search()`
+// aborts the whole search when a loader throws, so a malformed `package.json`
+// (the first search place) would otherwise suppress a perfectly valid
+// `.agentready.json` sibling. We return an empty object instead: for
+// `package.json` cosmiconfig extracts the `agentready` property (yielding
+// `undefined` → "not found" → keep looking), and for other candidates an empty
+// config is simply ignored. Either way one broken file can't shadow the rest.
+// We still refuse executable config outright.
+const tolerant = (loader: Loader): Loader => (filepath, content) => {
+  try {
+    return loader(filepath, content)
+  } catch (error) {
+    console.error(
+      `AgentReady: ignoring unparsable config candidate ${filepath}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    return {}
+  }
+}
+
+const discoveryLoaders: Loaders = {
+  '.json': tolerant(defaultLoadersSync['.json']),
+  '.yaml': tolerant(defaultLoadersSync['.yaml']),
+  '.yml': tolerant(defaultLoadersSync['.yml']),
+  noExt: tolerant(defaultLoadersSync['.yaml']),
   '.js': refuseExecutableConfig,
   '.cjs': refuseExecutableConfig,
   '.mjs': refuseExecutableConfig,
@@ -54,10 +86,10 @@ const SEARCH_PLACES = [
   'agentready.config.yml',
 ]
 
-const createExplorer = (root: string) =>
+const createExplorer = (root: string, loaders: Loaders) =>
   cosmiconfigSync(MODULE_NAME, {
     searchPlaces: SEARCH_PLACES,
-    loaders: dataLoaders,
+    loaders,
     // Restrict discovery to the scanned root; do not walk up into parent
     // directories (which could pull in unrelated, possibly untrusted config).
     stopDir: root,
@@ -83,7 +115,7 @@ const coerceConfig = (rawConfig: unknown, source: string): Partial<LocalReadines
 const loadExplicitConfig = (root: string, configPath: string): Partial<LocalReadinessConfig> => {
   const explicit = path.resolve(root, configPath)
   try {
-    const result = createExplorer(root).load(explicit)
+    const result = createExplorer(root, strictDataLoaders).load(explicit)
     return result && !result.isEmpty ? coerceConfig(result.config, result.filepath) : {}
   } catch (error) {
     if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
@@ -96,21 +128,11 @@ const loadExplicitConfig = (root: string, configPath: string): Partial<LocalRead
 }
 
 const discoverConfig = (root: string): Partial<LocalReadinessConfig> => {
-  let result: ReturnType<ReturnType<typeof createExplorer>['search']>
-  try {
-    result = createExplorer(root).search(root)
-  } catch (error) {
-    // Discovery walks data-only candidates (including package.json). A malformed
-    // sibling file must not crash the scan — the file-level detectors already
-    // tolerate, e.g., a broken package.json. Degrade to "no discovered config"
-    // and warn. Explicit --config (loadExplicitConfig) stays strict.
-    console.error(
-      `AgentReady: ignoring config discovery error: ${error instanceof Error ? error.message : String(error)}`,
-    )
-    return {}
-  }
-  // Schema validation errors from coerceConfig are intentionally *not* caught:
-  // a structurally valid but semantically invalid config should still fail.
+  // The discovery loaders skip unparsable candidates (returning null) so a
+  // malformed sibling can't abort the search or shadow a valid config. Schema
+  // validation errors from coerceConfig are intentionally *not* swallowed: a
+  // structurally valid but semantically invalid config should still fail.
+  const result = createExplorer(root, discoveryLoaders).search(root)
   return result && !result.isEmpty ? coerceConfig(result.config, result.filepath) : {}
 }
 

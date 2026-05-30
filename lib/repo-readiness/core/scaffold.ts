@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import path from 'path'
 import { defaultConfig } from './config'
 
@@ -60,6 +60,10 @@ export const scaffoldInit = (root: string, options: InitOptions = {}): InitResul
   if (options.agents) {
     targets.push({ name: 'AGENTS.md', content: AGENTS_TEMPLATE })
   }
+
+  // Allow bootstrapping a fresh directory (`agentready init ./new-dir`) without
+  // a preceding mkdir; writeFileSync would otherwise throw ENOENT.
+  mkdirSync(root, { recursive: true })
 
   const created: string[] = []
   const skipped: string[] = []

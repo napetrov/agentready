@@ -66,12 +66,20 @@ describe('config discovery (data-only, cosmiconfig)', () => {
     expect(() => loadConfig(root, { configPath: 'agentready.config.js' })).toThrow(/will not execute config file/)
   })
 
-  it('degrades gracefully when package.json is malformed during discovery', () => {
+  it('skips a malformed package.json and still discovers a valid sibling config', () => {
     write(root, 'package.json', '{ not json')
     write(root, '.agentready.json', JSON.stringify({ allowMinifiedFiles: true }))
-    // A broken package.json must not crash discovery; we still get defaults
-    // merged with whatever loads, and a warning is emitted.
-    expect(() => loadConfig(root, {})).not.toThrow()
+    // package.json is the first search place; a parse error there must not abort
+    // discovery or shadow the valid .agentready.json sibling.
+    const config = loadConfig(root, {})
+    expect(config.allowMinifiedFiles).toBe(true)
+    expect(errorSpy).toHaveBeenCalled()
+  })
+
+  it('falls back to defaults (without crashing) when only a malformed config exists', () => {
+    write(root, 'package.json', '{ not json')
+    const config = loadConfig(root, {})
+    expect(config.allowMinifiedFiles).toBe(false)
     expect(errorSpy).toHaveBeenCalled()
   })
 
