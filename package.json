@@ -25,6 +25,10 @@
       "types": "./dist/lib/repo-readiness/index.d.ts",
       "default": "./dist/lib/repo-readiness/index.js"
     },
+    "./analyze": {
+      "types": "./dist/lib/analyze/index.d.ts",
+      "default": "./dist/lib/analyze/index.js"
+    },
     "./schemas/*": "./schemas/*",
     "./package.json": "./package.json"
   },

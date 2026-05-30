@@ -46,4 +46,11 @@ describe('package entry points', () => {
   it('exposes package.json via a subpath export', () => {
     expect(packageJson.exports?.['./package.json']).toBe('./package.json')
   })
+
+  it('exposes the analyze contracts via a subpath export pointing into dist', () => {
+    const analyzeExport = packageJson.exports?.['./analyze'] as { types?: string; default?: string } | undefined
+    expect(analyzeExport).toBeDefined()
+    expect(analyzeExport?.types).toMatch(/(^|\/)dist\//)
+    expect(analyzeExport?.default).toMatch(/(^|\/)dist\//)
+  })
 })

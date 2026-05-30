@@ -308,9 +308,12 @@ This is a first-class workstream, not an afterthought:
 This document is **PR 0** (design). Subsequent PRs, each independently
 reviewable and shippable:
 
-- **PR 0 — Design (this).** Doc + epic breakdown; backlog cross-link.
-- **PR A — Contracts.** Zod `LlmInsight` + augmented-report schemas, versioned
-  JSON Schema, and the `LlmProvider` interface (no implementation).
+- **PR 0 — Design (this).** Doc + epic breakdown; backlog cross-link. ✅
+- **PR A — Contracts.** ✅ Zod `LlmInsight` + augmented-report schemas (with
+  compile-time drift guards), published JSON Schema (`schemas/llm-insight.json`,
+  `schemas/augmented-report.json`), the `LlmProvider` port (types only), contract
+  validators, and the `./analyze` library export. Lives in `lib/analyze/`; the
+  deterministic core does not import it.
 - **PR B — Package + provider abstraction.** `@agentready/analyze` skeleton,
   provider port, environment auto-detection, and the OpenAI-compatible adapter
   (covers local models).

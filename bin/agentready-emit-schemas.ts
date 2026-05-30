@@ -13,6 +13,7 @@ import {
   localReadinessReportSchema,
   readinessDiffReportSchema,
 } from '../lib/repo-readiness/local-readiness'
+import { augmentedReportSchema, llmInsightSchema } from '../lib/analyze'
 
 const repoRoot = process.cwd()
 const schemasDir = path.join(repoRoot, 'schemas')
@@ -48,6 +49,18 @@ const entries: SchemaEntry[] = [
     id: 'readiness-diff-report',
     title: 'AgentReady diff report',
     schema: readinessDiffReportSchema,
+  },
+  {
+    file: 'llm-insight.schema.json',
+    id: 'llm-insight',
+    title: 'AgentReady LLM insight',
+    schema: llmInsightSchema,
+  },
+  {
+    file: 'augmented-report.schema.json',
+    id: 'augmented-report',
+    title: 'AgentReady augmented report',
+    schema: augmentedReportSchema,
   },
 ]
 
