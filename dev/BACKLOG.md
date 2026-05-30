@@ -72,13 +72,17 @@ Verified against the current `main`/branch code before accepting:
   was replaced with **Commander**, adding per-command `--help`, validated option
   choices, and clearer parse errors. `--policy` is deferred until policy packs
   exist (P2). _(M)_
-- [ ] **Adopt cosmiconfig** for config discovery, restricted to **data-only**
+- [x] **Adopt cosmiconfig** for config discovery, restricted to **data-only**
   formats — JSON, YAML, and `package.json#agentready` — in addition to the
-  current explicit `--config`. Disable cosmiconfig's JS/TS loaders: loading
-  executable config from the scanned tree would run repo code before any
-  detector, breaking the never-execute-scripts / offline guarantee. If
-  executable config is ever wanted, it must be gated behind an explicit,
-  trusted, non-default path. _(S)_
+  explicit `--config`. cosmiconfig's JS/TS loaders are disabled two ways: the
+  executable extensions are omitted from the search places, and the default
+  JS/TS loaders are overridden with a refusing loader (cosmiconfig *merges*
+  custom loaders over defaults, so omission alone is insufficient). Discovery is
+  rooted at the scanned dir (no walking up). A malformed `package.json` degrades
+  discovery gracefully instead of crashing the scan; schema validation still
+  fails on semantically invalid config. The Action build marks `typescript`
+  external so cosmiconfig's unreachable TS loader does not bloat the bundle
+  (back to ~520kB). _(S)_
 - [x] **`explain <finding-id>`** — `agentready explain <finding-id|rule-id>`
   prints the rule's title, rationale, remediation, and references from the new
   `checks/catalog.ts` rule catalog (`--list` enumerates rules, `--json` emits

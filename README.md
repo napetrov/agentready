@@ -131,7 +131,13 @@ Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
 
 ### Configuration
 
-Optional scanner config can live in `.agentready.json` or `agentready.config.json`:
+Optional scanner config is discovered (via [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig),
+restricted to **data-only** formats) from any of: `package.json#agentready`,
+`.agentready.json`, `agentready.config.json`, `.agentreadyrc[.json|.yaml|.yml]`,
+or `agentready.config.yaml`/`.yml`. Discovery is rooted at the scanned directory
+and never walks up into parent directories. Executable config (`.js`/`.ts`/...)
+is deliberately **not** loaded — AgentReady never executes repository code — so
+JS/TS config files are refused rather than run.
 
 ```json
 {
@@ -143,7 +149,7 @@ Optional scanner config can live in `.agentready.json` or `agentready.config.jso
 }
 ```
 
-Use `--config <path>` to load a config file from another location. Validate a
+Use `--config <path>` to load a config file from another location (JSON or YAML). Validate a
 config and print the normalized effective settings with:
 
 ```bash
