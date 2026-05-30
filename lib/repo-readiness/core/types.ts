@@ -57,6 +57,37 @@ export interface CommandEvidence {
   hasTypeCheck: boolean
 }
 
+/**
+ * A kind of agent capability surface: a Model Context Protocol config, a skill,
+ * a hook/settings file, a plugin manifest, or code-intelligence/LSP config.
+ */
+export type CapabilityKind = 'mcp' | 'skill' | 'hook' | 'plugin' | 'lsp'
+
+export interface CapabilitySurfaceEvidence {
+  kind: CapabilityKind
+  path: string
+  /** The tool that owns the surface (e.g. claude-code, cursor, vscode). */
+  tool: string
+  notes: string[]
+}
+
+/**
+ * A safety-relevant signal found in package scripts: an install-time lifecycle
+ * hook, a destructive command, a network-download-piped-to-shell command, or a
+ * deploy/publish path.
+ */
+export type SafetyCategory = 'install-hook' | 'destructive' | 'network-exec' | 'deploy'
+
+export interface SafetySignalEvidence {
+  category: SafetyCategory
+  /** Where the signal was found, e.g. `package.json#scripts.postinstall`. */
+  source: string
+  /** The script name the command is bound to. */
+  script: string
+  command: string
+  notes: string[]
+}
+
 export interface LocalReadinessReport {
   root: string
   generatedAt: string
@@ -83,6 +114,8 @@ export interface LocalReadinessReport {
     workflowFiles: string[]
   }
   instructions: InstructionSurfaceEvidence[]
+  capabilities: CapabilitySurfaceEvidence[]
+  safetySignals: SafetySignalEvidence[]
   findings: ReadinessFinding[]
   files: LocalReadinessFile[]
 }

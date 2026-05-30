@@ -4,6 +4,7 @@ export function formatScanSummary(report: LocalReadinessReport): string {
   const lines = [
     `AgentReady score: ${report.summary.score}/100`,
     `Files: ${report.summary.totalFiles} (${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs)`,
+    `Capabilities: ${report.capabilities.length}, safety signals: ${report.safetySignals.length}`,
     `Findings: ${report.findings.length}`,
   ]
 

@@ -4,6 +4,7 @@ import type {
   LocalReadinessReport,
   ReadinessFinding,
   ReadinessSeverity,
+  SafetyCategory,
 } from '../core/types'
 
 type EvidenceForChecks = Omit<LocalReadinessReport, 'findings' | 'summary'>
@@ -115,6 +116,32 @@ export const buildFindings = (
       severity: warningSeverity,
       path: file.path,
       recommendation: 'Prefer generated build output outside source control, or ignore it in AgentReady policy if intentional.',
+    })
+  }
+
+  // Safety signals describe which package scripts are unsafe for an agent to run
+  // blindly. Genuinely dangerous patterns (destructive shell commands, piping a
+  // network download into a shell) are warnings; install-time hooks and
+  // deploy/publish paths are informational so agents know they exist.
+  const safetyTitles: Record<SafetyCategory, string> = {
+    'install-hook': 'Install lifecycle script runs automatically',
+    destructive: 'Package script runs a destructive command',
+    'network-exec': 'Package script pipes a network download into a shell',
+    deploy: 'Package script deploys or publishes',
+  }
+  const safetySeverity: Record<SafetyCategory, ReadinessSeverity> = {
+    'install-hook': 'info',
+    destructive: warningSeverity,
+    'network-exec': warningSeverity,
+    deploy: 'info',
+  }
+  for (const signal of report.safetySignals) {
+    findings.push({
+      id: `safety.${signal.category}:${signal.source}`,
+      title: safetyTitles[signal.category],
+      severity: safetySeverity[signal.category],
+      path: 'package.json',
+      recommendation: `${signal.notes[0]} Document whether agents may run "${signal.script}", and gate it behind explicit review if it is unsafe.`,
     })
   }
 

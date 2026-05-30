@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Capability-surface detector for agent capability config: Model Context Protocol servers (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`), Claude Code skills, hooks/settings, plugin manifests (`.claude-plugin/*.json`), and code-intelligence/LSP config (`.vscode/settings.json`, `.vscode/extensions.json`, `.editorconfig`). Surfaced as typed `capabilities` evidence in the report.
+- Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
+
 ### Removed
 - The entire Next.js web application: browser UI, `POST /api/analyze` and `POST /api/report` routes, the OpenAI-based assessment engines (`ai-assessment`, `enhanced-ai-assessment`, `aligned-assessment-engine`, `unified-metrics-engine`, `metrics-validator`), website/business-type analysis, the file-size analyzer, and PDF report generation — along with their tests and the OpenAI mock.
 - Next.js, React, Tailwind, and Vercel configuration and dependencies. AgentReady is now a pure local-first CLI/library with no runtime dependencies and no network calls at scan time.

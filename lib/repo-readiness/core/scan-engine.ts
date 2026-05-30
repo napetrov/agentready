@@ -1,8 +1,10 @@
 import path from 'path'
 import { buildFindings } from '../checks/built-in'
+import { detectCapabilitySurfaces } from '../detectors/capability-surfaces'
 import { detectCommandSurfaces } from '../detectors/command-surfaces'
 import { detectCiWorkflows, detectDocs } from '../detectors/docs'
 import { walkFiles } from '../detectors/file-inventory'
+import { detectSafetySignals } from '../detectors/safety-signals'
 import {
   detectInstructionSurfaces,
   type RepositoryFileReference,
@@ -38,6 +40,8 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     commands: detectCommandSurfaces(absoluteRoot, filePaths),
     ci: detectCiWorkflows(filePaths),
     instructions: detectInstructionSurfaces(instructionInput),
+    capabilities: detectCapabilitySurfaces(filePaths),
+    safetySignals: detectSafetySignals(absoluteRoot),
     files,
   }
 

@@ -10,6 +10,8 @@
 // This module re-exports the stable surface so existing imports keep working.
 
 export type {
+  CapabilityKind,
+  CapabilitySurfaceEvidence,
   CommandEcosystem,
   CommandEvidence,
   CompactLocalReadinessReport,
@@ -23,6 +25,8 @@ export type {
   ReadinessDiffReport,
   ReadinessFinding,
   ReadinessSeverity,
+  SafetyCategory,
+  SafetySignalEvidence,
   ScanOptions,
 } from './core/types'
 

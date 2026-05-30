@@ -17,11 +17,10 @@ Delivered:
 - experimental readiness score
 - `agentready diff` between git refs with a regression gate (worktree-based, never mutates the working tree)
 - npm package with a `bin` and a `dist` build for `npx` usage
-
-Still planned in the v0.1 family:
-
 - capability-surface detector for MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
-- safety detector for dangerous scripts and deploy/publish paths
+- safety detector for dangerous package scripts and deploy/publish paths
+
+The v0.1 family is now complete.
 
 ## v0.2: Automation And Policy
 
