@@ -44,19 +44,22 @@ Verified against the current `main`/branch code before accepting:
 ## P0 — Stabilize the consumable surface
 
 - [x] **Declare a real library API.** Added `main`, `types`, and `exports`
-  (with a `./package.json` subpath) to `package.json`, pointing at the built
-  barrel `dist/lib/repo-readiness/index.js`. Schema subpaths land with the Zod
-  work below. Semver expectations for the public API still to be documented.
+  (with `./schemas/*` and `./package.json` subpaths) to `package.json`, pointing
+  at the built barrel `dist/lib/repo-readiness/index.js`. Semver expectations for
+  the public API still to be documented.
 - [x] **`npm pack` install smoke test.** `bin/agentready-pack-smoke.ts` packs
   the tarball, installs it into a temp project, and asserts both the library
   `require` and the `agentready` bin work; wired into CI and backed by a
   `package-entrypoints` unit test.
-- [ ] **Schema-driven contracts.** Introduce Zod schemas as the single source of
-  truth for config, scan report, and diff report; derive types and emit
-  versioned JSON Schema for editors/CI. Replace handwritten validators in
-  `core/contracts.ts`. _(M)_
-- [ ] **`validate-config` command.** Parse config and print the normalized
-  effective config; fail fast with clear messages on invalid input. _(S)_
+- [x] **Schema-driven contracts.** `core/schemas.ts` holds Zod schemas as the
+  single source of truth for config, scan report, and diff report, with
+  compile-time drift guards against the `types.ts` interfaces.
+  `core/contracts.ts` now validates against them, and
+  `bin/agentready-emit-schemas.ts` derives versioned JSON Schema into
+  `schemas/*.json` (published via the `./schemas/*` export, CI drift-checked).
+- [x] **`validate-config` command.** `agentready validate-config [path]`
+  validates discovered/explicit config and prints the normalized effective
+  config (`--json` supported); fails fast with readable messages.
 
 ## P1 — CLI & config ergonomics
 

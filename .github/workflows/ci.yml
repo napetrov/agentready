@@ -48,6 +48,9 @@ jobs:
       - name: AgentReady pack/install smoke
         run: npm run agentready:pack-smoke
 
+      - name: AgentReady schema drift check
+        run: npm run agentready:schemas -- --check
+
       - name: AgentReady PR regression gate
         if: github.event_name == 'pull_request'
         run: npm run agentready -- diff --base "origin/${BASE_REF}" --head HEAD . --json --compact --fail-on-regression

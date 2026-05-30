@@ -22,7 +22,11 @@ npm run build
 npm run agentready -- scan .
 npm run agentready:fixtures
 npm run agentready:pack-smoke
+npm run agentready:schemas -- --check
 ```
+
+When a contract or config shape changes, update `lib/repo-readiness/core/schemas.ts`
+and regenerate the published JSON Schema with `npm run agentready:schemas`.
 
 ## Coding Standards
 
@@ -76,6 +80,19 @@ instruction-file overlap/contradiction checks, capability-surface detector
 detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
+
+### 2026-05-30 (schemas)
+- **MADE ZOD THE CONTRACT SOURCE OF TRUTH**: Added `core/schemas.ts` with Zod
+  schemas for the config, scan report, and diff report, guarded by compile-time
+  checks against the `types.ts` interfaces. Rewrote `core/contracts.ts` and
+  `core/config.ts` to validate against them, replacing the handwritten
+  validators while keeping the public API and readable error messages.
+- **PUBLISHED VERSIONED JSON SCHEMA**: `bin/agentready-emit-schemas.ts`
+  (`npm run agentready:schemas`) derives `schemas/*.json` from the Zod schemas;
+  the files are published via a `./schemas/*` export and CI fails on drift
+  (`--check`).
+- **ADDED `validate-config`**: New CLI command validates discovered/explicit
+  config and prints the normalized effective config (`--json` supported).
 
 ### 2026-05-30 (later)
 - **DECLARED A REAL LIBRARY API**: Added `main`, `types`, and `exports` (with a

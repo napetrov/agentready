@@ -88,7 +88,16 @@ Optional scanner config can live in `.agentready.json` or `agentready.config.jso
 }
 ```
 
-Use `--config <path>` to load a config file from another location.
+Use `--config <path>` to load a config file from another location. Validate a
+config and print the normalized effective settings with:
+
+```bash
+npm run agentready -- validate-config .
+```
+
+The config and report shapes are published as JSON Schema under `schemas/`
+(also available via the package's `./schemas/*` export), generated from the
+same schemas the scanner validates against.
 
 ## Documentation
 

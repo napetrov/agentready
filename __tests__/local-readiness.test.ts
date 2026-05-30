@@ -405,13 +405,16 @@ describe('local readiness', () => {
     })
 
     expect(validation.valid).toBe(false)
-    expect(validation.errors).toEqual(expect.arrayContaining([
-      'root must be a string',
-      'summary.score must be a number',
-      'commands.packageManager must be npm, pnpm, yarn, or bun when present',
-      'findings[0].severity must be info, warning, or error',
-      'files[0] must be an object',
-      'files[1].sizeBytes must be a number',
+    // Errors are rendered as `<path>: <message>`; assert each malformed field is
+    // reported without coupling to the validator's exact wording.
+    const errorPaths = validation.errors.map(error => error.split(':')[0])
+    expect(errorPaths).toEqual(expect.arrayContaining([
+      'root',
+      'summary.score',
+      'commands.packageManager',
+      'findings[0].severity',
+      'files[0]',
+      'files[1].sizeBytes',
     ]))
   })
 })

@@ -7,6 +7,7 @@ import {
   formatDiffSummary,
   formatScanMarkdown,
   formatScanSummary,
+  loadConfig,
   scanLocalReadiness,
   validateLocalReadinessReportContract,
   validateReadinessDiffReportContract,
@@ -30,10 +31,12 @@ Usage:
   npm run agentready -- scan [path] [--json] [--compact]
   npm run agentready -- scan [path] [--markdown] [--config <path>]
   npm run agentready -- diff --base <ref> --head <ref> [path] [--json] [--compact] [--markdown] [--fail-on-regression] [--config <path>]
+  npm run agentready -- validate-config [path] [--config <path>] [--json]
 
 Examples:
   npm run agentready -- scan .
   npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
+  npm run agentready -- validate-config .
 `)
 }
 
@@ -107,6 +110,21 @@ const run = (): number => {
     }
 
     return report.findings.some(finding => finding.severity === 'error') ? 1 : 0
+  }
+
+  if (command === 'validate-config') {
+    // loadConfig validates the discovered/explicit config and merges it over
+    // the defaults; it throws with a readable message on invalid input.
+    const effectiveConfig = loadConfig(options.path, { configPath: options.configPath })
+
+    if (options.json) {
+      console.log(JSON.stringify(effectiveConfig, null, 2))
+    } else {
+      console.log('AgentReady config is valid. Effective configuration:')
+      console.log(JSON.stringify(effectiveConfig, null, 2))
+    }
+
+    return 0
   }
 
   if (command === 'diff') {

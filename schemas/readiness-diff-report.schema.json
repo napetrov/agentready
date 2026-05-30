@@ -1,0 +1,1019 @@
+{
+  "$id": "https://napetrov.github.io/agentready/schemas/v0.1.0/readiness-diff-report.schema.json",
+  "title": "AgentReady diff report",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "base": {
+      "type": "string"
+    },
+    "head": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "baseReport": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "generatedAt": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number"
+            },
+            "totalFiles": {
+              "type": "number"
+            },
+            "totalBytes": {
+              "type": "number"
+            },
+            "sourceFiles": {
+              "type": "number"
+            },
+            "testFiles": {
+              "type": "number"
+            },
+            "documentationFiles": {
+              "type": "number"
+            },
+            "largeFiles": {
+              "type": "number"
+            },
+            "binaryFiles": {
+              "type": "number"
+            },
+            "generatedFiles": {
+              "type": "number"
+            },
+            "minifiedFiles": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "score",
+            "totalFiles",
+            "totalBytes",
+            "sourceFiles",
+            "testFiles",
+            "documentationFiles",
+            "largeFiles",
+            "binaryFiles",
+            "generatedFiles",
+            "minifiedFiles"
+          ],
+          "additionalProperties": false
+        },
+        "docs": {
+          "type": "object",
+          "properties": {
+            "readme": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "contributing": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "architecture": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "environment": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "readme",
+            "contributing",
+            "architecture",
+            "environment"
+          ],
+          "additionalProperties": false
+        },
+        "commands": {
+          "type": "object",
+          "properties": {
+            "packageManager": {
+              "type": "string",
+              "enum": [
+                "npm",
+                "pnpm",
+                "yarn",
+                "bun"
+              ]
+            },
+            "ecosystems": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "node",
+                  "make",
+                  "go",
+                  "rust",
+                  "python"
+                ]
+              }
+            },
+            "scripts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "hasBuild": {
+              "type": "boolean"
+            },
+            "hasTest": {
+              "type": "boolean"
+            },
+            "hasLint": {
+              "type": "boolean"
+            },
+            "hasTypeCheck": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ecosystems",
+            "scripts",
+            "hasBuild",
+            "hasTest",
+            "hasLint",
+            "hasTypeCheck"
+          ],
+          "additionalProperties": false
+        },
+        "ci": {
+          "type": "object",
+          "properties": {
+            "workflowFiles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "workflowFiles"
+          ],
+          "additionalProperties": false
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "ecosystems": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "codex",
+                    "claude-code",
+                    "github-copilot",
+                    "cursor",
+                    "gemini",
+                    "windsurf",
+                    "cline",
+                    "roo-code",
+                    "generic-agent"
+                  ]
+                }
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "root",
+                  "path-specific",
+                  "mode-specific",
+                  "local-private",
+                  "legacy",
+                  "capability",
+                  "unknown"
+                ]
+              },
+              "activation": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "path-scoped",
+                  "mode-scoped",
+                  "manual",
+                  "on-demand",
+                  "unknown"
+                ]
+              },
+              "sizeBytes": {
+                "type": "number"
+              },
+              "directoryScope": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string"
+              },
+              "legacy": {
+                "type": "boolean"
+              },
+              "localPrivate": {
+                "type": "boolean"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "path",
+              "ecosystems",
+              "scope",
+              "activation",
+              "legacy",
+              "localPrivate",
+              "notes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "mcp",
+                  "skill",
+                  "hook",
+                  "plugin",
+                  "lsp"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "tool": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "path",
+              "tool",
+              "notes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "safetySignals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": [
+                  "install-hook",
+                  "destructive",
+                  "network-exec",
+                  "deploy"
+                ]
+              },
+              "source": {
+                "type": "string"
+              },
+              "script": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "category",
+              "source",
+              "script",
+              "command",
+              "notes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "recommendation": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "severity",
+              "recommendation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sizeBytes": {
+                "type": "number"
+              },
+              "extension": {
+                "type": "string"
+              },
+              "binary": {
+                "type": "boolean"
+              },
+              "generated": {
+                "type": "boolean"
+              },
+              "minified": {
+                "type": "boolean"
+              },
+              "documentation": {
+                "type": "boolean"
+              },
+              "test": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "path",
+              "sizeBytes",
+              "extension",
+              "binary",
+              "generated",
+              "minified",
+              "documentation",
+              "test",
+              "source"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "root",
+        "generatedAt",
+        "summary",
+        "docs",
+        "commands",
+        "ci",
+        "instructions",
+        "capabilities",
+        "safetySignals",
+        "findings",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "headReport": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "generatedAt": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number"
+            },
+            "totalFiles": {
+              "type": "number"
+            },
+            "totalBytes": {
+              "type": "number"
+            },
+            "sourceFiles": {
+              "type": "number"
+            },
+            "testFiles": {
+              "type": "number"
+            },
+            "documentationFiles": {
+              "type": "number"
+            },
+            "largeFiles": {
+              "type": "number"
+            },
+            "binaryFiles": {
+              "type": "number"
+            },
+            "generatedFiles": {
+              "type": "number"
+            },
+            "minifiedFiles": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "score",
+            "totalFiles",
+            "totalBytes",
+            "sourceFiles",
+            "testFiles",
+            "documentationFiles",
+            "largeFiles",
+            "binaryFiles",
+            "generatedFiles",
+            "minifiedFiles"
+          ],
+          "additionalProperties": false
+        },
+        "docs": {
+          "type": "object",
+          "properties": {
+            "readme": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "contributing": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "architecture": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "environment": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "readme",
+            "contributing",
+            "architecture",
+            "environment"
+          ],
+          "additionalProperties": false
+        },
+        "commands": {
+          "type": "object",
+          "properties": {
+            "packageManager": {
+              "type": "string",
+              "enum": [
+                "npm",
+                "pnpm",
+                "yarn",
+                "bun"
+              ]
+            },
+            "ecosystems": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "node",
+                  "make",
+                  "go",
+                  "rust",
+                  "python"
+                ]
+              }
+            },
+            "scripts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "hasBuild": {
+              "type": "boolean"
+            },
+            "hasTest": {
+              "type": "boolean"
+            },
+            "hasLint": {
+              "type": "boolean"
+            },
+            "hasTypeCheck": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ecosystems",
+            "scripts",
+            "hasBuild",
+            "hasTest",
+            "hasLint",
+            "hasTypeCheck"
+          ],
+          "additionalProperties": false
+        },
+        "ci": {
+          "type": "object",
+          "properties": {
+            "workflowFiles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "workflowFiles"
+          ],
+          "additionalProperties": false
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "ecosystems": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "codex",
+                    "claude-code",
+                    "github-copilot",
+                    "cursor",
+                    "gemini",
+                    "windsurf",
+                    "cline",
+                    "roo-code",
+                    "generic-agent"
+                  ]
+                }
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "root",
+                  "path-specific",
+                  "mode-specific",
+                  "local-private",
+                  "legacy",
+                  "capability",
+                  "unknown"
+                ]
+              },
+              "activation": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "path-scoped",
+                  "mode-scoped",
+                  "manual",
+                  "on-demand",
+                  "unknown"
+                ]
+              },
+              "sizeBytes": {
+                "type": "number"
+              },
+              "directoryScope": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string"
+              },
+              "legacy": {
+                "type": "boolean"
+              },
+              "localPrivate": {
+                "type": "boolean"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "path",
+              "ecosystems",
+              "scope",
+              "activation",
+              "legacy",
+              "localPrivate",
+              "notes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "mcp",
+                  "skill",
+                  "hook",
+                  "plugin",
+                  "lsp"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "tool": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "path",
+              "tool",
+              "notes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "safetySignals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": [
+                  "install-hook",
+                  "destructive",
+                  "network-exec",
+                  "deploy"
+                ]
+              },
+              "source": {
+                "type": "string"
+              },
+              "script": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "category",
+              "source",
+              "script",
+              "command",
+              "notes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "recommendation": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "severity",
+              "recommendation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sizeBytes": {
+                "type": "number"
+              },
+              "extension": {
+                "type": "string"
+              },
+              "binary": {
+                "type": "boolean"
+              },
+              "generated": {
+                "type": "boolean"
+              },
+              "minified": {
+                "type": "boolean"
+              },
+              "documentation": {
+                "type": "boolean"
+              },
+              "test": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "path",
+              "sizeBytes",
+              "extension",
+              "binary",
+              "generated",
+              "minified",
+              "documentation",
+              "test",
+              "source"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "root",
+        "generatedAt",
+        "summary",
+        "docs",
+        "commands",
+        "ci",
+        "instructions",
+        "capabilities",
+        "safetySignals",
+        "findings",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "scoreDelta": {
+          "type": "number"
+        },
+        "filesDelta": {
+          "type": "number"
+        },
+        "bytesDelta": {
+          "type": "number"
+        },
+        "findingsDelta": {
+          "type": "number"
+        },
+        "newFindings": {
+          "type": "number"
+        },
+        "resolvedFindings": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "scoreDelta",
+        "filesDelta",
+        "bytesDelta",
+        "findingsDelta",
+        "newFindings",
+        "resolvedFindings"
+      ],
+      "additionalProperties": false
+    },
+    "newFindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "severity",
+          "recommendation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "resolvedFindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "severity",
+          "recommendation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "regressions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "severity",
+          "recommendation"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "base",
+    "head",
+    "generatedAt",
+    "baseReport",
+    "headReport",
+    "summary",
+    "newFindings",
+    "resolvedFindings",
+    "regressions"
+  ],
+  "additionalProperties": false
+}

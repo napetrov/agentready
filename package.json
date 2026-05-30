@@ -25,10 +25,12 @@
       "types": "./dist/lib/repo-readiness/index.d.ts",
       "default": "./dist/lib/repo-readiness/index.js"
     },
+    "./schemas/*": "./schemas/*",
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "schemas",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -41,6 +43,7 @@
     "agentready": "tsx bin/agentready.ts",
     "agentready:fixtures": "tsx bin/agentready-fixture-smoke.ts",
     "agentready:pack-smoke": "tsx bin/agentready-pack-smoke.ts",
+    "agentready:schemas": "tsx bin/agentready-emit-schemas.ts",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -49,7 +52,9 @@
     "ci": "npm run lint && npm run type-check && npm test && npm run build",
     "prepublishOnly": "npm run build"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.8",
     "@types/node": "^20.8.0",
