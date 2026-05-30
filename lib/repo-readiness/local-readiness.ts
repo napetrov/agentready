@@ -46,6 +46,14 @@ export {
 export { defaultConfig, loadConfig } from './core/config'
 
 export {
+  evaluateDiffGate,
+  evaluateScanGate,
+  meetsThreshold,
+  FAIL_ON_SEVERITIES,
+} from './core/gate'
+export type { FailOnSeverity, GateOptions, GateResult } from './core/gate'
+
+export {
   localReadinessConfigSchema,
   localReadinessReportSchema,
   readinessDiffReportSchema,

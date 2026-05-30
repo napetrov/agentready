@@ -4,6 +4,9 @@ import {
   compactDiffReport,
   compactReport,
   diffLocalReadiness,
+  evaluateDiffGate,
+  evaluateScanGate,
+  FAIL_ON_SEVERITIES,
   formatDiffMarkdown,
   formatDiffSummary,
   formatScanMarkdown,
@@ -13,6 +16,7 @@ import {
   scanLocalReadiness,
   validateLocalReadinessReportContract,
   validateReadinessDiffReportContract,
+  type FailOnSeverity,
 } from '../lib/repo-readiness/local-readiness'
 
 type OutputFormat = 'summary' | 'json' | 'markdown' | 'sarif'
@@ -27,6 +31,8 @@ interface CliOptions {
   format?: OutputFormat
   output?: string
   failOnRegression: boolean
+  failOnSeverity?: FailOnSeverity
+  minScore?: number
   base?: string
   head?: string
   configPath?: string
@@ -59,8 +65,8 @@ const printUsage = (): void => {
   console.log(`AgentReady local readiness checker
 
 Usage:
-  npm run agentready -- scan [path] [--format summary|json|markdown|sarif] [--compact] [--output <file>] [--config <path>]
-  npm run agentready -- diff --base <ref> --head <ref> [path] [--format ...] [--compact] [--output <file>] [--fail-on-regression] [--config <path>]
+  npm run agentready -- scan [path] [--format summary|json|markdown|sarif] [--compact] [--output <file>] [--config <path>] [--fail-on <severity>] [--min-score <n>]
+  npm run agentready -- diff --base <ref> --head <ref> [path] [--format ...] [--compact] [--output <file>] [--fail-on-regression] [--fail-on <severity>] [--min-score <n>] [--config <path>]
   npm run agentready -- validate-config [path] [--config <path>] [--json]
 
 Output:
@@ -69,9 +75,15 @@ Output:
   --compact        omit per-file detail from json output
   (legacy --json / --markdown / --sarif flags are still accepted)
 
+Gating (exit code 1 when a gate trips):
+  --fail-on <sev>      fail on findings at or above off|info|warning|error (default error)
+  --min-score <n>      fail when the score drops below n (0-100)
+  --fail-on-regression (diff only) fail when a readiness regression is introduced
+
 Examples:
   npm run agentready -- scan .
   npm run agentready -- scan . --format sarif --output agentready.sarif
+  npm run agentready -- scan . --fail-on warning --min-score 80
   npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
   npm run agentready -- validate-config .
 `)
@@ -117,6 +129,19 @@ const parseArgs = (argv: string[]): { command?: string; options: CliOptions } =>
       options.output = readOptionValue('--output')
     } else if (arg === '--fail-on-regression') {
       options.failOnRegression = true
+    } else if (arg === '--fail-on') {
+      const value = readOptionValue('--fail-on')
+      if (!(FAIL_ON_SEVERITIES as string[]).includes(value)) {
+        throw new Error(`--fail-on must be one of: ${FAIL_ON_SEVERITIES.join(', ')}`)
+      }
+      options.failOnSeverity = value as FailOnSeverity
+    } else if (arg === '--min-score') {
+      const value = readOptionValue('--min-score')
+      const parsed = Number(value)
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+        throw new Error('--min-score must be a number between 0 and 100')
+      }
+      options.minScore = parsed
     } else if (arg === '--base') {
       options.base = readOptionValue('--base')
     } else if (arg === '--head') {
@@ -158,7 +183,14 @@ const run = (): number => {
       emit(formatScanSummary(report), options)
     }
 
-    return report.findings.some(finding => finding.severity === 'error') ? 1 : 0
+    const gate = evaluateScanGate(report, {
+      failOnSeverity: options.failOnSeverity,
+      minScore: options.minScore,
+    })
+    if (gate.failed) {
+      console.error(`Readiness gate failed: ${gate.failureReasons.join('; ')}`)
+    }
+    return gate.failed ? 1 : 0
   }
 
   if (command === 'validate-config') {
@@ -202,7 +234,15 @@ const run = (): number => {
       emit(formatDiffSummary(report), options)
     }
 
-    return options.failOnRegression && report.regressions.length > 0 ? 1 : 0
+    const gate = evaluateDiffGate(report, {
+      failOnSeverity: options.failOnSeverity,
+      failOnRegression: options.failOnRegression,
+      minScore: options.minScore,
+    })
+    if (gate.failed) {
+      console.error(`Readiness gate failed: ${gate.failureReasons.join('; ')}`)
+    }
+    return gate.failed ? 1 : 0
   }
 
   throw new Error(`Unknown command: ${command}`)

@@ -65,9 +65,12 @@ Verified against the current `main`/branch code before accepting:
 
 - [~] **Normalized CLI flags.** Added `--format summary|json|markdown|sarif` and
   `--output <file>` to `bin/agentready.ts` (legacy `--json`/`--markdown`/`--sarif`
-  still accepted). Still to do: swap the hand-rolled parser for Commander and add
-  `--policy`/`--fail-on <severity>`/`--min-score` to the CLI (they exist on the
-  Action today). _(M)_
+  still accepted). Added `--fail-on <severity>` and `--min-score <n>` to `scan`
+  and `diff`, sharing the Action's gate semantics via a new `core/gate.ts`
+  (`evaluateScanGate`/`evaluateDiffGate`); `diff` now also gates on new
+  error-severity findings by default, matching the Action. Still to do: swap the
+  hand-rolled parser for Commander and add `--policy` once policy packs exist
+  (P2). _(M)_
 - [ ] **Adopt cosmiconfig** for config discovery, restricted to **data-only**
   formats — JSON, YAML, and `package.json#agentready` — in addition to the
   current explicit `--config`. Disable cosmiconfig's JS/TS loaders: loading

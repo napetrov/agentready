@@ -2,17 +2,19 @@ import { mkdirSync, writeFileSync } from 'fs'
 import path from 'path'
 import {
   diffLocalReadiness,
+  evaluateDiffGate,
+  evaluateScanGate,
   formatDiffMarkdown,
   formatScanMarkdown,
   formatScanSarif,
   scanLocalReadiness,
+  type FailOnSeverity,
   type LocalReadinessReport,
   type ReadinessDiffReport,
-  type ReadinessSeverity,
 } from '../repo-readiness/local-readiness'
 
 export type ActionMode = 'scan' | 'diff'
-export type FailOnSeverity = 'off' | 'info' | 'warning' | 'error'
+export type { FailOnSeverity }
 
 export interface ActionInputs {
   path: string
@@ -43,11 +45,6 @@ export interface ActionResult {
   failed: boolean
   failureReasons: string[]
 }
-
-const severityRank: Record<ReadinessSeverity, number> = { info: 1, warning: 2, error: 3 }
-
-const meetsThreshold = (severity: ReadinessSeverity, threshold: FailOnSeverity): boolean =>
-  threshold !== 'off' && severityRank[severity] >= severityRank[threshold]
 
 /**
  * Runs a scan or diff, writes report artifacts, and evaluates the configured
@@ -85,13 +82,13 @@ export const runAction = (inputs: ActionInputs): ActionResult => {
     regressionsCount = report.regressions.length
     sarifSource = report.headReport
 
-    if (inputs.failOnRegression && regressionsCount > 0) {
-      failureReasons.push(`${regressionsCount} readiness regression(s) introduced`)
-    }
-    const severityHits = report.newFindings.filter(finding => meetsThreshold(finding.severity, inputs.failOnSeverity))
-    if (severityHits.length > 0) {
-      failureReasons.push(`${severityHits.length} new finding(s) at or above "${inputs.failOnSeverity}"`)
-    }
+    failureReasons.push(
+      ...evaluateDiffGate(report, {
+        failOnSeverity: inputs.failOnSeverity,
+        failOnRegression: inputs.failOnRegression,
+        minScore: inputs.minScore,
+      }).failureReasons,
+    )
   } else {
     const report: LocalReadinessReport = scanLocalReadiness(inputs.path, { configPath: inputs.configPath })
     writeFileSync(jsonReportPath, `${JSON.stringify(report, null, 2)}\n`)
@@ -102,14 +99,12 @@ export const runAction = (inputs: ActionInputs): ActionResult => {
     findingsCount = report.findings.length
     sarifSource = report
 
-    const severityHits = report.findings.filter(finding => meetsThreshold(finding.severity, inputs.failOnSeverity))
-    if (severityHits.length > 0) {
-      failureReasons.push(`${severityHits.length} finding(s) at or above "${inputs.failOnSeverity}"`)
-    }
-  }
-
-  if (inputs.minScore !== undefined && score < inputs.minScore) {
-    failureReasons.push(`score ${score} is below the minimum ${inputs.minScore}`)
+    failureReasons.push(
+      ...evaluateScanGate(report, {
+        failOnSeverity: inputs.failOnSeverity,
+        minScore: inputs.minScore,
+      }).failureReasons,
+    )
   }
 
   if (sarifReportPath) {

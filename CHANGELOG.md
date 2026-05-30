@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `--fail-on <off|info|warning|error>` and `--min-score <0-100>` gating flags on the `scan` and `diff` CLI commands, bringing the CLI to parity with the GitHub Action's gates. The gate logic now lives in a single shared `core/gate.ts` module (`evaluateScanGate`/`evaluateDiffGate`) used by both the CLI and the Action, and is exported from the public API. When a gate trips, the CLI prints the reasons to stderr and exits non-zero.
 - Capability-surface detector for agent capability config: Model Context Protocol servers (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`), Claude Code skills, hooks/settings, plugin manifests (`.claude-plugin/*.json`), and code-intelligence/LSP config (`.vscode/settings.json`, `.vscode/extensions.json`, `.editorconfig`). Surfaced as typed `capabilities` evidence in the report.
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
