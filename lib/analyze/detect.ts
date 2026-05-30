@@ -1,5 +1,6 @@
 import type { LlmProvider } from './provider'
 import { createOpenAiCompatProvider } from './providers/openai-compat'
+import { createGitHubModelsProvider } from './providers/github-models'
 
 /**
  * Environment-based provider auto-detection. The analytics layer is opt-in and
@@ -31,8 +32,13 @@ const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
  * an explicit local/compatible endpoint, then a hosted OpenAI key.
  *
  *   AGENTREADY_LLM_BASE_URL  → OpenAI-compatible endpoint (local or hosted)
+ *   GITHUB_TOKEN (+ opt-in)  → GitHub Models (CI-native; needs models: read)
  *   OLLAMA_HOST              → a local Ollama server
  *   OPENAI_API_KEY           → hosted OpenAI
+ *
+ * GitHub Models is gated behind an explicit `AGENTREADY_USE_GITHUB_MODELS=1`
+ * (or the Action's `analyze` input) so the ambient `GITHUB_TOKEN` present in
+ * every workflow never silently enables model calls.
  */
 export const detectProvider = (env: DetectionEnv = process.env): DetectedProvider | undefined => {
   const baseUrl = env.AGENTREADY_LLM_BASE_URL
@@ -43,6 +49,19 @@ export const detectProvider = (env: DetectionEnv = process.env): DetectedProvide
         baseUrl,
         model: env.AGENTREADY_LLM_MODEL ?? DEFAULT_OPENAI_MODEL,
         apiKey: env.AGENTREADY_LLM_API_KEY ?? env.OPENAI_API_KEY,
+      }),
+    }
+  }
+
+  // GitHub Models: only when explicitly opted in, to avoid the ambient
+  // GITHUB_TOKEN silently enabling model calls in every workflow.
+  const useGitHubModels = env.AGENTREADY_USE_GITHUB_MODELS === '1' || env.AGENTREADY_USE_GITHUB_MODELS === 'true'
+  if (useGitHubModels && env.GITHUB_TOKEN) {
+    return {
+      source: 'GITHUB_TOKEN',
+      provider: createGitHubModelsProvider({
+        token: env.GITHUB_TOKEN,
+        ...(env.AGENTREADY_LLM_MODEL ? { model: env.AGENTREADY_LLM_MODEL } : {}),
       }),
     }
   }

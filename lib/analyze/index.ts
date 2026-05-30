@@ -41,6 +41,9 @@ export {
 export { createOpenAiCompatProvider } from './providers/openai-compat'
 export type { FetchLike, OpenAiCompatOptions } from './providers/openai-compat'
 
+export { createGitHubModelsProvider } from './providers/github-models'
+export type { GitHubModelsOptions } from './providers/github-models'
+
 export { detectProvider } from './detect'
 export type { DetectedProvider, DetectionEnv } from './detect'
 

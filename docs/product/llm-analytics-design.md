@@ -335,8 +335,14 @@ reviewable and shippable:
   provider), augmented-report reporters (summary + markdown, both showing both
   scores), and the `agentready analyze` CLI command with env-based provider
   auto-detection. End-to-end verified against a local OpenAI-compatible model.
-- **PR E — GitHub-native CI.** GitHub Models adapter, Action wiring
-  (`models: read`), and keyless-OIDC documentation.
+- **PR E — GitHub-native CI.** ✅ GitHub Models adapter
+  (`createGitHubModelsProvider`, a thin wrapper over the OpenAI-compatible
+  adapter pointed at the GitHub Models endpoint), env auto-detection gated behind
+  `AGENTREADY_USE_GITHUB_MODELS=1` so the ambient `GITHUB_TOKEN` never silently
+  enables calls, and Action wiring: `analyze` / `analyze-min-score` inputs,
+  `augmented-score` / `augmented-report-path` outputs, augmented analysis
+  appended to the job summary, and `models: read` documented in the README.
+  Keyless-OIDC for cloud providers remains a doc follow-up.
 - **PR F — Host integration.** MCP server / host-delegated path and the
   injected-client library API for agents that bring their own tokens.
 - **PR G — More analyzers + routing.** Contradiction/overlap, false-positive

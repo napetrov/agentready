@@ -105,6 +105,16 @@ describe('detectProvider', () => {
     expect(detected?.source).toBe('OLLAMA_HOST')
   })
 
+  it('does NOT enable GitHub Models from an ambient GITHUB_TOKEN alone', () => {
+    expect(detectProvider({ GITHUB_TOKEN: 'ghs-x' })).toBeUndefined()
+  })
+
+  it('enables GitHub Models only with the explicit opt-in', () => {
+    const detected = detectProvider({ GITHUB_TOKEN: 'ghs-x', AGENTREADY_USE_GITHUB_MODELS: '1' })
+    expect(detected?.source).toBe('GITHUB_TOKEN')
+    expect(detected?.provider.id).toBe('github-models')
+  })
+
   it('detects a hosted OpenAI key', () => {
     const detected = detectProvider({ OPENAI_API_KEY: 'sk-test' })
     expect(detected?.source).toBe('OPENAI_API_KEY')

@@ -160,9 +160,38 @@ steps:
 
 Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
 `fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
-`upload-sarif`, `output-dir`, and `tool-version`; outputs include `score`,
-`findings-count`, `regressions-count`, and the report paths. See
-[`action.yml`](action.yml) for the authoritative contract.
+`upload-sarif`, `output-dir`, `tool-version`, `analyze`, and
+`analyze-min-score`; outputs include `score`, `findings-count`,
+`regressions-count`, the report paths, and (when `analyze` is on)
+`augmented-score`/`augmented-report-path`. See [`action.yml`](action.yml) for
+the authoritative contract.
+
+#### Optional LLM augmentation in CI (GitHub Models)
+
+Set `analyze: true` to also run the LLM layer. The CI-native token source is
+**GitHub Models** — the workflow's built-in `GITHUB_TOKEN` with `models: read`,
+no secret to manage. It is opt-in: AgentReady only uses it when
+`AGENTREADY_USE_GITHUB_MODELS=1` is set, so the ambient token never silently
+enables model calls.
+
+```yaml
+permissions:
+  contents: read
+  models: read            # required for GitHub Models
+steps:
+  - uses: actions/checkout@v4
+  - uses: napetrov/agentready@main
+    with:
+      analyze: true
+      analyze-min-score: 70   # optional: gate on the augmented score
+    env:
+      AGENTREADY_USE_GITHUB_MODELS: '1'
+      GITHUB_TOKEN: ${{ github.token }}
+```
+
+The deterministic gates run first and are unaffected; augmented-score gating is
+opt-in via `analyze-min-score`. Without a provider, `analyze` runs
+deterministic-only.
 
 ### Configuration
 
