@@ -10,9 +10,12 @@ import {
   FAIL_ON_SEVERITIES,
   formatDiffMarkdown,
   formatDiffSummary,
+  formatRuleDoc,
   formatScanMarkdown,
   formatScanSarif,
   formatScanSummary,
+  getRuleDoc,
+  listRuleIds,
   loadConfig,
   scanLocalReadiness,
   validateLocalReadinessReportContract,
@@ -191,6 +194,37 @@ program
       console.log('AgentReady config is valid. Effective configuration:')
     }
     console.log(JSON.stringify(effectiveConfig, null, 2))
+  })
+
+program
+  .command('explain')
+  .description('Explain a readiness rule: rationale, remediation, and references')
+  .argument('[finding-id]', 'a finding id or rule id (e.g. files.large or commands.test.missing)')
+  .option('--json', 'print the rule documentation as JSON')
+  .option('--list', 'list all documented rule ids')
+  .action((findingId: string | undefined, options: { json?: boolean; list?: boolean }) => {
+    if (options.list || !findingId) {
+      const ids = listRuleIds()
+      if (options.json) {
+        console.log(JSON.stringify(ids, null, 2))
+      } else {
+        console.log('Documented readiness rules:')
+        for (const id of ids) console.log(`  ${id}`)
+        console.log('\nRun "agentready explain <rule-id>" for details.')
+      }
+      return
+    }
+
+    const doc = getRuleDoc(findingId)
+    if (!doc) {
+      console.error(
+        `Unknown rule or finding id: ${findingId}\nRun "agentready explain --list" to see documented rule ids.`,
+      )
+      process.exitCode = 1
+      return
+    }
+
+    console.log(options.json ? JSON.stringify(doc, null, 2) : formatRuleDoc(doc))
   })
 
 try {

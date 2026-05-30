@@ -54,6 +54,15 @@ export {
 export type { FailOnSeverity, GateOptions, GateResult } from './core/gate'
 
 export {
+  RULE_CATALOG,
+  formatRuleDoc,
+  getRuleDoc,
+  listRuleIds,
+  ruleKeyFor,
+} from './checks/catalog'
+export type { RuleDoc } from './checks/catalog'
+
+export {
   localReadinessConfigSchema,
   localReadinessReportSchema,
   readinessDiffReportSchema,

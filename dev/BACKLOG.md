@@ -79,8 +79,11 @@ Verified against the current `main`/branch code before accepting:
   detector, breaking the never-execute-scripts / offline guarantee. If
   executable config is ever wanted, it must be gated behind an explicit,
   trusted, non-default path. _(S)_
-- [ ] **`explain <finding-id>`** — print rule description, rationale, references,
-  and remediation examples. Non-failing. _(S)_
+- [x] **`explain <finding-id>`** — `agentready explain <finding-id|rule-id>`
+  prints the rule's title, rationale, remediation, and references from the new
+  `checks/catalog.ts` rule catalog (`--list` enumerates rules, `--json` emits
+  structured output). Non-failing. A drift test asserts every finding the
+  detectors emit has a catalog entry. _(S)_
 - [ ] **`init`** — scaffold starter config, a policy-pack template, and an
   optional `AGENTS.md`. Non-failing unless opting into overwrite. _(M)_
 
