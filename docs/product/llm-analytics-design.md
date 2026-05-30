@@ -351,18 +351,38 @@ reviewable and shippable:
   request/insight logic powers both paths. Ships a dependency-free MCP stdio
   server (`agentready-mcp` bin, `./mcp` export) exposing `agentready_scan`,
   `agentready_analyze_prepare`, and `agentready_analyze_finalize`.
-- **PR G — More analyzers + routing.** ✅ (partial) The cross-surface
-  contradiction analyzer (flags genuine conflicts between ≥2 instruction
-  surfaces) and the task→model routing table (`ProviderRouting`: per-task
-  provider with a default, so triage and contradiction can use different models;
-  analyzers declare their `task`). Contradiction is host-delegating, so it works
-  over MCP too. False-positive triage and remediation analyzers remain to do.
-- **PR H — Evaluation harness.** Gold set, metrics, and calibration reporting.
+- **PR G — More analyzers + routing.** ✅ The cross-surface contradiction
+  analyzer (flags genuine conflicts between ≥2 instruction surfaces) and the
+  false-positive triage analyzer (flags path-bearing findings that are likely
+  false positives, with a small positive score impact), plus the task→model
+  routing table (`ProviderRouting`: per-task provider with a default, so triage
+  and contradiction can use different models; analyzers declare their `task`).
+  All new analyzers are host-delegating, so they work over MCP too. Remediation
+  is carried as a field on existing insights rather than a separate analyzer for
+  now.
+- **PR H — Evaluation harness.** ✅ `lib/analyze/evaluation.ts`: gold-set scoring
+  (`scoreCase`), aggregation, precision/recall/F1 (`metricsFor`), and confidence
+  `calibration` (mean stated confidence vs. observed accuracy per bucket). Pure,
+  deterministic scoring math over (predicted insights, expected labels) so it is
+  unit-tested without a model; the gold corpus and any live-model recording feed
+  it via the record/replay harness from PR C.
 
 ## 13. Open questions
 
-- The exact `augmentedScore` formula and per-insight weighting.
-- Gold-set sourcing and labeling process.
+- The exact `augmentedScore` formula and per-insight weighting. (Current
+  implementation: `round(scoreImpact × confidence)` per insight, summed and
+  clamped to 0–100, with per-analyzer impacts of −5 quality / −8 contradiction /
+  +3 false-positive. These weights are provisional and want calibration against
+  the gold set.)
+- Gold-set sourcing and labeling process. (The scoring harness exists; the
+  corpus does not yet.)
 - Default model per tier (subject to availability/cost in each environment).
-- Whether remediation patches are suggestions only, or optionally applied behind
-  an explicit, reviewed flag.
+- Whether remediation patches are suggestions only (today: a `remediation`
+  string on insights), or optionally applied behind an explicit, reviewed flag.
+
+## Epic status
+
+All planned PRs (0, A–H) are implemented on the epic branch. Remaining
+follow-ups, tracked above: assembling and labeling the evaluation gold set,
+calibrating the provisional score weights against it, keyless-OIDC docs for
+cloud providers, and an optional apply-remediation mode.

@@ -67,6 +67,7 @@ export type { Runner, RunnerOptions, RunOutcome } from './runner'
 export type { Analyzer, AnalyzerContext } from './analyzers/types'
 export { instructionQualityAnalyzer } from './analyzers/instruction-quality'
 export { contradictionAnalyzer } from './analyzers/contradiction'
+export { falsePositiveAnalyzer } from './analyzers/false-positive'
 
 export { resolveProvider, singleProviderRouting, routingProviderIds } from './routing'
 export type { ProviderRouting } from './routing'
@@ -77,6 +78,10 @@ export { analyzeReport, defaultAnalyzers } from './analyze'
 export type { AnalyzeOptions } from './analyze'
 
 export { formatAugmentedSummary, formatAugmentedMarkdown } from './reporter'
+
+// Evaluation harness: gold-set scoring, precision/recall/F1, calibration.
+export { scoreCase, aggregate, metricsFor, calibration } from './evaluation'
+export type { GoldLabel, GoldCase, Confusion, EvaluationMetrics, CalibrationBucket } from './evaluation'
 
 // Host integration: injected-client entry + host-delegated request/ingest.
 export { analyzeWithProvider, buildHostRequests, ingestHostResponses } from './host'

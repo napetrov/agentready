@@ -4,6 +4,7 @@ import type { LlmProvider } from './provider'
 import type { Analyzer } from './analyzers/types'
 import { instructionQualityAnalyzer } from './analyzers/instruction-quality'
 import { contradictionAnalyzer } from './analyzers/contradiction'
+import { falsePositiveAnalyzer } from './analyzers/false-positive'
 import { type AnalyzeCache, nullCache } from './cache'
 import { type BudgetOptions, createBudgetTracker } from './budget'
 import { createRunner, type Runner } from './runner'
@@ -18,7 +19,11 @@ import { computeAugmentedScore } from './scoring'
 // report is never mutated.
 
 /** The default analyzer registry. */
-export const defaultAnalyzers: Analyzer[] = [instructionQualityAnalyzer, contradictionAnalyzer]
+export const defaultAnalyzers: Analyzer[] = [
+  instructionQualityAnalyzer,
+  contradictionAnalyzer,
+  falsePositiveAnalyzer,
+]
 
 export interface AnalyzeOptions {
   /** Provider to use; when omitted (and no routing), the run is deterministic-only. */
