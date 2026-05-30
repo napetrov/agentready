@@ -21,6 +21,7 @@ npm test
 npm run build
 npm run agentready -- scan .
 npm run agentready:fixtures
+npm run agentready:pack-smoke
 ```
 
 ## Coding Standards
@@ -75,6 +76,17 @@ instruction-file overlap/contradiction checks, capability-surface detector
 detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
+
+### 2026-05-30 (later)
+- **DECLARED A REAL LIBRARY API**: Added `main`, `types`, and `exports` (with a
+  `./package.json` subpath) to `package.json`, pointing at the built barrel at
+  `dist/lib/repo-readiness/index.js`. The README's "command-line tool and
+  library" claim is now backed by package metadata.
+- **ADDED A PACK/INSTALL SMOKE TEST**: `bin/agentready-pack-smoke.ts`
+  (`npm run agentready:pack-smoke`) packs the tarball, installs it into a
+  throwaway project, and asserts both the library import and the `agentready`
+  bin work. Wired it into CI and added a `package-entrypoints` unit test that
+  keeps the entry-point metadata internally consistent.
 
 ### 2026-05-30
 - **TRIAGED EXTERNAL EVALUATION INTO THE BACKLOG**: Added [dev/BACKLOG.md](BACKLOG.md)

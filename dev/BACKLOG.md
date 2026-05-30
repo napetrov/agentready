@@ -43,12 +43,14 @@ Verified against the current `main`/branch code before accepting:
 
 ## P0 — Stabilize the consumable surface
 
-- [ ] **Declare a real library API.** Add `main`, `types`, and `exports`
-  (including subpath exports for schemas) to `package.json`, pointing at the
-  built barrel. Document semver expectations for the public API. _(M)_
-- [ ] **`npm pack` install smoke test.** CI step that packs the tarball,
-  installs it into a temp project, and asserts both `import` (library) and the
-  `agentready` bin work. _(S)_
+- [x] **Declare a real library API.** Added `main`, `types`, and `exports`
+  (with a `./package.json` subpath) to `package.json`, pointing at the built
+  barrel `dist/lib/repo-readiness/index.js`. Schema subpaths land with the Zod
+  work below. Semver expectations for the public API still to be documented.
+- [x] **`npm pack` install smoke test.** `bin/agentready-pack-smoke.ts` packs
+  the tarball, installs it into a temp project, and asserts both the library
+  `require` and the `agentready` bin work; wired into CI and backed by a
+  `package-entrypoints` unit test.
 - [ ] **Schema-driven contracts.** Introduce Zod schemas as the single source of
   truth for config, scan report, and diff report; derive types and emit
   versioned JSON Schema for editors/CI. Replace handwritten validators in
