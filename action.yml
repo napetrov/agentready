@@ -1,0 +1,74 @@
+name: 'AgentReady'
+description: 'Scan a repository for AI coding-agent readiness and gate pull requests on regressions.'
+author: 'AgentReady'
+branding:
+  icon: 'check-circle'
+  color: 'purple'
+
+inputs:
+  path:
+    description: 'Path to the repository (or subdirectory) to scan.'
+    required: false
+    default: '.'
+  mode:
+    description: 'scan (full repository) or diff (compare two refs).'
+    required: false
+    default: 'scan'
+  base-ref:
+    description: 'Base git ref for diff mode (e.g. origin/main).'
+    required: false
+    default: ''
+  head-ref:
+    description: 'Head git ref for diff mode (e.g. HEAD).'
+    required: false
+    default: ''
+  config:
+    description: 'Path to an AgentReady config file.'
+    required: false
+    default: ''
+  fail-on-severity:
+    description: 'Fail when a finding at or above this severity is present: off, info, warning, or error.'
+    required: false
+    default: 'error'
+  fail-on-regression:
+    description: 'In diff mode, fail when new error/warning regressions are introduced.'
+    required: false
+    default: 'false'
+  min-score:
+    description: 'Fail when the readiness score is below this value (0-100). Empty disables the gate.'
+    required: false
+    default: ''
+  job-summary:
+    description: 'Write the markdown report to the GitHub Actions job summary.'
+    required: false
+    default: 'true'
+  upload-sarif:
+    description: 'Write a SARIF report alongside the JSON/markdown reports.'
+    required: false
+    default: 'false'
+  output-dir:
+    description: 'Directory the report artifacts are written to.'
+    required: false
+    default: '.agentready'
+  tool-version:
+    description: 'Tool version recorded in the SARIF driver.'
+    required: false
+    default: ''
+
+outputs:
+  score:
+    description: 'Readiness score (0-100). In diff mode, the head score.'
+  findings-count:
+    description: 'Number of findings (in diff mode, the number of new findings).'
+  regressions-count:
+    description: 'Number of readiness regressions (diff mode only).'
+  json-report-path:
+    description: 'Path to the written JSON report.'
+  markdown-report-path:
+    description: 'Path to the written markdown report.'
+  sarif-report-path:
+    description: 'Path to the written SARIF report, when upload-sarif is enabled.'
+
+runs:
+  using: 'node20'
+  main: 'action/dist/index.js'

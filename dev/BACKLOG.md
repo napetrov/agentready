@@ -63,9 +63,11 @@ Verified against the current `main`/branch code before accepting:
 
 ## P1 — CLI & config ergonomics
 
-- [ ] **Adopt Commander** for `bin/agentready.ts`; keep `scan`/`diff` behavior,
-  add normalized flags (`--format summary|json|markdown|sarif`, `--output`,
-  `--policy`, `--config`, `--fail-on <severity>`, `--min-score`). _(M)_
+- [~] **Normalized CLI flags.** Added `--format summary|json|markdown|sarif` and
+  `--output <file>` to `bin/agentready.ts` (legacy `--json`/`--markdown`/`--sarif`
+  still accepted). Still to do: swap the hand-rolled parser for Commander and add
+  `--policy`/`--fail-on <severity>`/`--min-score` to the CLI (they exist on the
+  Action today). _(M)_
 - [ ] **Adopt cosmiconfig** for config discovery, restricted to **data-only**
   formats — JSON, YAML, and `package.json#agentready` — in addition to the
   current explicit `--config`. Disable cosmiconfig's JS/TS loaders: loading
@@ -80,22 +82,31 @@ Verified against the current `main`/branch code before accepting:
 
 ## P1 — First-party GitHub Action
 
-- [ ] **JS action wrapper** built on `@actions/toolkit`, bundled with `ncc`.
-  `action.yml` inputs: `path`, `mode`, `base-ref`, `head-ref`, `config`,
-  `policy`, `fail-on-severity`, `fail-on-regression`, `min-score`, `comment-pr`,
-  `job-summary`, `upload-sarif`. Outputs: `score`, `findings-count`,
-  `regressions-count`, `json-report-path`, `markdown-report-path`,
-  `sarif-report-path`. _(M)_
-- [ ] **Job summary + optional PR annotation.** Write the markdown report to
-  `$GITHUB_STEP_SUMMARY`; optional diff-scoped comments via reviewdog or the
-  GitHub API. _(M)_
-- [ ] **Action e2e test** against a small sacrificial fixture repo. _(M)_
+- [x] **JS action wrapper.** `action.yml` + `lib/action/` bundled with `ncc` to
+  `action/dist/index.js`. Inputs: `path`, `mode`, `base-ref`, `head-ref`,
+  `config`, `fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
+  `upload-sarif`, `output-dir`, `tool-version`. Outputs: `score`,
+  `findings-count`, `regressions-count`, `json-report-path`,
+  `markdown-report-path`, `sarif-report-path`. The Actions runtime contract is
+  reimplemented in `lib/action/runtime.ts` to avoid pulling `@actions/http-client`
+  /`undici` into the bundle (keeps it small and audit-clean).
+- [x] **Job summary.** The markdown report is written to `$GITHUB_STEP_SUMMARY`.
+- [ ] **PR annotation / comment.** Optional diff-scoped comments via reviewdog or
+  the GitHub API (needs a token + `@actions/github`); deferred. _(M)_
+- [x] **Action e2e test.** `bin/agentready-action-smoke.ts` drives the bundled
+  action via `INPUT_*` / `GITHUB_OUTPUT` / `GITHUB_STEP_SUMMARY` and asserts
+  outputs, summary, SARIF artifact, and exit codes; `__tests__/action.test.ts`
+  unit-tests the gate logic. Both run in CI, plus a bundle-freshness gate.
+- [ ] **`policy` input.** Wire policy-pack selection once policy packs exist (P2). _(S)_
 
 ## P1 — SARIF & code scanning
 
-- [ ] **SARIF reporter** mapping findings to stable rule IDs and file locations
-  where available; validate against GitHub-supported SARIF 2.1.0. _(M)_
-- [ ] **Code-scanning upload path** wired through the Action. _(S)_
+- [x] **SARIF reporter.** `reporters/sarif.ts` (`formatScanSarif`) emits SARIF
+  2.1.0, collapsing `rule:instance` finding ids into stable rules with per-result
+  levels and file locations. Exposed as `--format sarif` and via the Action.
+- [ ] **Code-scanning upload path.** The Action writes the SARIF file and outputs
+  its path; document/recommend `github/codeql-action/upload-sarif` in the
+  consuming workflow. _(S)_
 
 ## P2 — File-handling reuse
 

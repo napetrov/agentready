@@ -8,6 +8,10 @@
 # build output
 /dist
 
+# AgentReady action output
+/.agentready
+*.tgz
+
 # testing
 /coverage
 

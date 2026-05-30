@@ -53,3 +53,5 @@ export {
 
 export { formatDiffSummary, formatScanSummary } from './reporters/console'
 export { formatDiffMarkdown, formatScanMarkdown } from './reporters/markdown'
+export { formatScanSarif } from './reporters/sarif'
+export type { SarifLog, SarifOptions } from './reporters/sarif'

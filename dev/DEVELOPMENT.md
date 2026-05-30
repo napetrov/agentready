@@ -23,6 +23,7 @@ npm run agentready -- scan .
 npm run agentready:fixtures
 npm run agentready:pack-smoke
 npm run agentready:schemas -- --check
+npm run agentready:action-smoke
 ```
 
 When a contract or config shape changes, update `lib/repo-readiness/core/schemas.ts`
@@ -80,6 +81,21 @@ instruction-file overlap/contradiction checks, capability-surface detector
 detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
+
+### 2026-05-30 (action + sarif)
+- **ADDED SARIF OUTPUT**: `reporters/sarif.ts` emits SARIF 2.1.0, collapsing
+  `rule:instance` finding ids into stable rules with per-result levels and file
+  locations. Exposed via a new `--format summary|json|markdown|sarif` flag and
+  `--output <file>` on the CLI (legacy `--json`/`--markdown`/`--sarif` still
+  accepted).
+- **SHIPPED A FIRST-PARTY GITHUB ACTION**: `action.yml` + `lib/action/` bundled
+  with `ncc` to `action/dist/index.js`. The gate logic (`lib/action/run.ts`) is
+  dependency-free and unit-tested; the Actions runtime contract is reimplemented
+  in `lib/action/runtime.ts` to avoid bundling `@actions/http-client`/`undici`
+  (keeps the bundle ~420 kB and audit-clean). `bin/agentready-action-smoke.ts`
+  drives the bundled action end-to-end in CI, with a bundle-freshness gate.
+- Build the action bundle with `npm run build:action` after changing
+  `lib/action/`; CI fails if the committed bundle is stale.
 
 ### 2026-05-30 (schemas)
 - **MADE ZOD THE CONTRACT SOURCE OF TRUTH**: Added `core/schemas.ts` with Zod
