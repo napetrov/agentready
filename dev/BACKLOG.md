@@ -88,8 +88,10 @@ Verified against the current `main`/branch code before accepting:
   `checks/catalog.ts` rule catalog (`--list` enumerates rules, `--json` emits
   structured output). Non-failing. A drift test asserts every finding the
   detectors emit has a catalog entry. _(S)_
-- [ ] **`init`** — scaffold starter config, a policy-pack template, and an
-  optional `AGENTS.md`. Non-failing unless opting into overwrite. _(M)_
+- [x] **`init`** — `agentready init [path] [--agents] [--force]` scaffolds a
+  starter `.agentready.json` and, with `--agents`, a starter `AGENTS.md`. Skips
+  existing files unless `--force`; non-failing. The policy-pack template is
+  deferred until policy packs exist (P2). _(M)_
 
 ## P1 — First-party GitHub Action
 
@@ -115,9 +117,10 @@ Verified against the current `main`/branch code before accepting:
 - [x] **SARIF reporter.** `reporters/sarif.ts` (`formatScanSarif`) emits SARIF
   2.1.0, collapsing `rule:instance` finding ids into stable rules with per-result
   levels and file locations. Exposed as `--format sarif` and via the Action.
-- [ ] **Code-scanning upload path.** The Action writes the SARIF file and outputs
-  its path; document/recommend `github/codeql-action/upload-sarif` in the
-  consuming workflow. _(S)_
+- [x] **Code-scanning upload path.** The Action writes the SARIF file and outputs
+  its path (`sarif-report-path`); the README workflow example recommends wiring
+  `github/codeql-action/upload-sarif@v3` to that output with the
+  `security-events: write` permission. _(S)_
 
 ## P2 — File-handling reuse
 

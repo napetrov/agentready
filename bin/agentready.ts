@@ -17,6 +17,7 @@ import {
   getRuleDoc,
   listRuleIds,
   loadConfig,
+  scaffoldInit,
   scanLocalReadiness,
   validateLocalReadinessReportContract,
   validateReadinessDiffReportContract,
@@ -194,6 +195,23 @@ program
       console.log('AgentReady config is valid. Effective configuration:')
     }
     console.log(JSON.stringify(effectiveConfig, null, 2))
+  })
+
+program
+  .command('init')
+  .description('Scaffold a starter AgentReady config (and optionally AGENTS.md)')
+  .argument('[path]', 'directory to scaffold into', '.')
+  .option('--agents', 'also create a starter AGENTS.md')
+  .option('--force', 'overwrite files that already exist')
+  .action((path: string, options: { agents?: boolean; force?: boolean }) => {
+    const result = scaffoldInit(path, { agents: options.agents, force: options.force })
+    for (const file of result.created) console.log(`created ${file}`)
+    for (const file of result.skipped) {
+      console.log(`skipped ${file} (already exists; use --force to overwrite)`)
+    }
+    if (result.created.length === 0) {
+      console.log('Nothing created. Use --force to overwrite existing files.')
+    }
   })
 
 program

@@ -91,6 +91,16 @@ npm run agentready -- explain files.large:assets/blob.bin
 npm run agentready -- explain --list            # all documented rule ids
 ```
 
+### Init
+
+`init` scaffolds a starter `.agentready.json` (and, with `--agents`, a starter
+`AGENTS.md`). Existing files are left untouched unless you pass `--force`:
+
+```bash
+npm run agentready -- init .            # write .agentready.json
+npm run agentready -- init . --agents   # also scaffold AGENTS.md
+```
+
 ### GitHub Action
 
 Gate pull requests on readiness with the bundled action. It writes a job
