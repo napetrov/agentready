@@ -53,4 +53,11 @@ describe('package entry points', () => {
     expect(analyzeExport?.types).toMatch(/(^|\/)dist\//)
     expect(analyzeExport?.default).toMatch(/(^|\/)dist\//)
   })
+
+  it('exposes the MCP server via a subpath export and a bin, both in dist', () => {
+    const mcpExport = packageJson.exports?.['./mcp'] as { types?: string; default?: string } | undefined
+    expect(mcpExport?.types).toMatch(/(^|\/)dist\//)
+    expect(mcpExport?.default).toMatch(/(^|\/)dist\//)
+    expect(packageJson.bin?.['agentready-mcp']).toMatch(/(^|\/)dist\//)
+  })
 })

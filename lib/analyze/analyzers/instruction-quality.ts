@@ -2,17 +2,19 @@ import { z } from 'zod'
 import type { LocalReadinessReport } from '../../repo-readiness/core/types'
 import type { LlmInsight } from '../types'
 import { sliceFiles, summarizeEvidence } from '../slicing'
-import type { Analyzer, AnalyzerContext } from './types'
+import type { AnalyzerContext, AnalyzerRequest, HostDelegatingAnalyzer, SliceHelpers } from './types'
 
 // The first Tier-2 analyzer: judges whether the repository's agent instruction
 // surfaces (AGENTS.md and tool-specific equivalents) are actually *actionable*,
 // not merely present. The deterministic `instructions.missing` rule only checks
 // presence; quality is a semantic judgment a model is suited for.
+//
+// It implements HostDelegatingAnalyzer so the same request/insight logic powers
+// both the provider pipeline (`run`) and the host-delegated path
+// (`buildRequest` + `buildInsights`).
 
 const PROMPT_VERSION = 'instruction-quality/v1'
 
-// The shape we ask the model for and validate before trusting. Kept small and
-// strict; one object per analyzed instruction file.
 const itemSchema = z.object({
   path: z.string(),
   actionable: z.boolean(),
@@ -22,7 +24,6 @@ const itemSchema = z.object({
 })
 const responseSchema = z.object({ assessments: z.array(itemSchema) })
 
-// JSON Schema handed to the provider (broadly supported json_object mode).
 const outputSchema = {
   type: 'object',
   properties: {
@@ -57,63 +58,77 @@ const SYSTEM = [
 const targetPaths = (report: LocalReadinessReport): string[] =>
   report.instructions.filter(surface => !surface.localPrivate).map(surface => surface.path)
 
-export const instructionQualityAnalyzer: Analyzer = {
+const buildRequest = (helpers: SliceHelpers): AnalyzerRequest | undefined => {
+  const paths = targetPaths(helpers.report)
+  if (paths.length === 0) return undefined
+
+  const sliced = helpers.sliceFiles(helpers.root, paths)
+  if (sliced.includedPaths.length === 0) return undefined
+
+  const input = `Repository summary:\n${helpers.summarizeEvidence(helpers.report)}\n\nInstruction files:\n${sliced.text}`
+  return { promptVersion: PROMPT_VERSION, system: SYSTEM, input, outputSchema, maxTokens: 800 }
+}
+
+const buildInsights = (output: unknown, model: string, report: LocalReadinessReport): LlmInsight[] => {
+  const parsed = responseSchema.safeParse(output)
+  if (!parsed.success) return []
+
+  // Reject hallucinated paths: only accept assessments for instruction surfaces
+  // that actually exist in the report.
+  const known = new Set(targetPaths(report))
+  const insights: LlmInsight[] = []
+  for (const item of parsed.data.assessments) {
+    if (!known.has(item.path)) continue
+    const missing = item.missing.length > 0 ? ` Missing: ${item.missing.join(', ')}.` : ''
+    insights.push({
+      id: `analysis.instruction-quality:${item.path}`,
+      kind: 'quality',
+      target: item.path,
+      verdict: item.actionable
+        ? 'Instruction file is actionable'
+        : 'Instruction file is present but not actionable',
+      confidence: item.confidence,
+      rationale: `${item.rationale}${missing}`.trim(),
+      ...(item.actionable
+        ? {}
+        : {
+            remediation: 'Add the concrete validation commands and a brief orientation so an unfamiliar agent can set up, change, and verify.',
+            scoreImpact: -5,
+          }),
+      model,
+      promptVersion: PROMPT_VERSION,
+    })
+  }
+  return insights
+}
+
+export const instructionQualityAnalyzer: HostDelegatingAnalyzer = {
   id: 'instruction-quality',
 
   applicable(report: LocalReadinessReport): boolean {
     return targetPaths(report).length > 0
   },
 
+  buildRequest,
+  buildInsights,
+
   async run(context: AnalyzerContext): Promise<LlmInsight[]> {
     const { root, report, runner } = context
-    const paths = targetPaths(report)
-    if (paths.length === 0) return []
+    const request = buildRequest({ root, report, sliceFiles, summarizeEvidence })
+    if (!request) return []
 
-    const sliced = sliceFiles(root, paths)
-    if (sliced.includedPaths.length === 0) return []
-
-    const input = `Repository summary:\n${summarizeEvidence(report)}\n\nInstruction files:\n${sliced.text}`
     const outcome = await runner.run(
       {
         task: 'triage',
-        system: SYSTEM,
-        input,
-        outputSchema,
-        maxTokens: 800,
+        system: request.system,
+        input: request.input,
+        outputSchema: request.outputSchema,
+        maxTokens: request.maxTokens,
       },
-      PROMPT_VERSION,
+      request.promptVersion,
     )
     if (outcome.output === undefined) return []
 
-    const parsed = responseSchema.safeParse(outcome.output)
-    if (!parsed.success) return []
-
-    const model = outcome.model ?? `${runner.providerId}:unknown`
-    const insights: LlmInsight[] = []
-    for (const item of parsed.data.assessments) {
-      // Only emit insights for files we actually sent, to avoid hallucinated paths.
-      if (!sliced.includedPaths.includes(item.path)) continue
-      const missing = item.missing.length > 0 ? ` Missing: ${item.missing.join(', ')}.` : ''
-      insights.push({
-        id: `analysis.instruction-quality:${item.path}`,
-        kind: 'quality',
-        target: item.path,
-        verdict: item.actionable
-          ? 'Instruction file is actionable'
-          : 'Instruction file is present but not actionable',
-        confidence: item.confidence,
-        rationale: `${item.rationale}${missing}`.trim(),
-        ...(item.actionable
-          ? {}
-          : {
-              remediation: 'Add the concrete validation commands and a brief orientation so an unfamiliar agent can set up, change, and verify.',
-              // A non-actionable instruction file is a quality gap; penalize modestly.
-              scoreImpact: -5,
-            }),
-        model,
-        promptVersion: PROMPT_VERSION,
-      })
-    }
-    return insights
+    return buildInsights(outcome.output, outcome.model ?? `${runner.providerId}:unknown`, report)
   },
 }

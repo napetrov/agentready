@@ -343,8 +343,14 @@ reviewable and shippable:
   `augmented-score` / `augmented-report-path` outputs, augmented analysis
   appended to the job summary, and `models: read` documented in the README.
   Keyless-OIDC for cloud providers remains a doc follow-up.
-- **PR F — Host integration.** MCP server / host-delegated path and the
-  injected-client library API for agents that bring their own tokens.
+- **PR F — Host integration.** ✅ Injected-client library API
+  (`analyzeWithProvider`) and the host-delegated path (`buildHostRequests` +
+  `ingestHostResponses`) where AgentReady emits prompts + already-sliced evidence
+  for the host's own model and folds the answers back, holding no credentials.
+  Analyzers gained an optional `HostDelegatingAnalyzer` capability so the same
+  request/insight logic powers both paths. Ships a dependency-free MCP stdio
+  server (`agentready-mcp` bin, `./mcp` export) exposing `agentready_scan`,
+  `agentready_analyze_prepare`, and `agentready_analyze_finalize`.
 - **PR G — More analyzers + routing.** Contradiction/overlap, false-positive
   triage, remediation; the task→model routing table.
 - **PR H — Evaluation harness.** Gold set, metrics, and calibration reporting.

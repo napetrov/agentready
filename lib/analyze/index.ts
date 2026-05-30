@@ -73,3 +73,8 @@ export { analyzeReport, defaultAnalyzers } from './analyze'
 export type { AnalyzeOptions } from './analyze'
 
 export { formatAugmentedSummary, formatAugmentedMarkdown } from './reporter'
+
+// Host integration: injected-client entry + host-delegated request/ingest.
+export { analyzeWithProvider, buildHostRequests, ingestHostResponses } from './host'
+export type { HostAnalysisRequest, HostAnalysisResponse } from './host'
+export type { HostDelegatingAnalyzer, AnalyzerRequest, SliceHelpers } from './analyzers/types'

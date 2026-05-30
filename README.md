@@ -126,6 +126,22 @@ AGENTREADY_LLM_MODEL=gpt-4o-mini OPENAI_API_KEY=sk-... \
 The deterministic `scan`/`diff` commands never call a model and are unaffected.
 See [docs/product/llm-analytics-design.md](docs/product/llm-analytics-design.md).
 
+#### Use your agent's own model (MCP / library)
+
+If AgentReady runs inside an agent (Claude Code, Cursor, …) you can reuse the
+host's model instead of configuring a provider — AgentReady holds no
+credentials. The bundled MCP server exposes the host-delegated flow over stdio:
+
+```bash
+npm run agentready:mcp   # JSON-RPC 2.0 over stdio
+```
+
+It offers three tools: `agentready_scan` (deterministic, no model),
+`agentready_analyze_prepare` (returns prompts + sliced evidence for the host
+model to answer), and `agentready_analyze_finalize` (folds the host's answers
+into an augmented report). Library consumers can instead inject their own client
+via `analyzeWithProvider(...)` from the `agentready/analyze` export.
+
 ### GitHub Action
 
 Gate pull requests on readiness with the bundled action. It writes a job
