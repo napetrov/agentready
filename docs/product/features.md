@@ -42,7 +42,8 @@ Features:
   README's "library" claim is real
 - schema-driven config and report contracts (Zod → published JSON Schema),
   replacing the handwritten validators
-- CLI ergonomics on Commander + cosmiconfig (JSON/YAML/JS config), plus
+- CLI ergonomics on Commander + cosmiconfig (data-only JSON/YAML/`package.json`
+  config; no executable config from the scanned tree), plus
   `validate-config`, `explain`, and `init` commands
 - first-party GitHub Action (thin JS wrapper) with inputs/outputs, job summary,
   and optional PR annotation

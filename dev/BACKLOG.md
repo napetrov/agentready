@@ -28,7 +28,7 @@ Verified against the current `main`/branch code before accepting:
 | First-party GitHub Action (thin JS wrapper) | Accepted (high) | Already named in the v0.2 roadmap; promote and specify inputs/outputs. |
 | SARIF output + code-scanning upload | Accepted (high) | Move ahead of import-graph work. |
 | Commander for CLI parsing | Accepted (M) | Replace hand-rolled parser in `bin/agentready.ts`. |
-| cosmiconfig for config discovery | Accepted (M) | Support JSON/YAML/JS + `package.json#agentready`. |
+| cosmiconfig for config discovery | Accepted (M), data-only | Restrict discovery to non-evaluating formats (`json`/`yaml`/`package.json`). Do **not** load JS/TS config from the scanned tree — `require`-ing it would execute repo code before any detector runs, breaking the never-execute guarantee. |
 | fast-glob / ignore / picomatch / isbinaryfile / yaml | Accepted (M) | Reuse instead of bespoke walkers/matchers; unlocks `.gitignore` parity and real YAML parsing. |
 | Semantic CI-workflow parsing (vs file listing) | Accepted | Confirmed gap: `detectCiWorkflows` only lists `.github/workflows/*`. Parse steps; delegate correctness to actionlint/ShellCheck. |
 | Companion-tool ingestion (actionlint, Gitleaks, OSV-Scanner, Trivy, Scorecard) | Accepted (later, L) | AgentReady orchestrates/aggregates; do not reimplement these scanners. |
@@ -61,8 +61,13 @@ Verified against the current `main`/branch code before accepting:
 - [ ] **Adopt Commander** for `bin/agentready.ts`; keep `scan`/`diff` behavior,
   add normalized flags (`--format summary|json|markdown|sarif`, `--output`,
   `--policy`, `--config`, `--fail-on <severity>`, `--min-score`). _(M)_
-- [ ] **Adopt cosmiconfig** for config discovery: JSON, YAML, JS/TS, and
-  `package.json#agentready`, in addition to the current explicit `--config`. _(S)_
+- [ ] **Adopt cosmiconfig** for config discovery, restricted to **data-only**
+  formats — JSON, YAML, and `package.json#agentready` — in addition to the
+  current explicit `--config`. Disable cosmiconfig's JS/TS loaders: loading
+  executable config from the scanned tree would run repo code before any
+  detector, breaking the never-execute-scripts / offline guarantee. If
+  executable config is ever wanted, it must be gated behind an explicit,
+  trusted, non-default path. _(S)_
 - [ ] **`explain <finding-id>`** — print rule description, rationale, references,
   and remediation examples. Non-failing. _(S)_
 - [ ] **`init`** — scaffold starter config, a policy-pack template, and an

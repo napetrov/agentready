@@ -61,7 +61,8 @@ Near-term (P0/P1) candidates, sequenced for adoption:
   `npm pack` install smoke test.
 - Schema-driven config and report contracts (Zod → published JSON Schema),
   plus a `validate-config` command.
-- CLI on Commander + cosmiconfig (JSON/YAML/JS config); add `explain` and `init`.
+- CLI on Commander + cosmiconfig (data-only JSON/YAML/`package.json` config, no
+  executable config from the scanned tree); add `explain` and `init`.
 - First-party GitHub Action (JS wrapper) with job summary, SARIF upload, and
   optional markdown PR comment.
 - SARIF output mapped to stable rule IDs.
