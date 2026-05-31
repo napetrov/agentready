@@ -28,10 +28,14 @@ describe('classifyRunCommandKinds', () => {
     { run: 'tsc --noEmit', expected: ['typecheck'] },
     { run: 'mypy src', expected: ['typecheck'] },
     { run: 'cargo check', expected: ['typecheck'] },
+    { run: 'go vet ./...', expected: ['lint'] },
     { run: 'pytest -q', expected: ['test'] },
-    { run: 'go test ./...', expected: ['test'] },
+    // The Go/Rust compiler type-checks during test and build, so those commands
+    // satisfy both kinds (matching the command-surface detector).
+    { run: 'go test ./...', expected: ['typecheck', 'test'] },
+    { run: 'cargo test', expected: ['typecheck', 'test'] },
     { run: 'npm test', expected: ['test'] },
-    { run: 'go build ./...', expected: ['build'] },
+    { run: 'go build ./...', expected: ['typecheck', 'build'] },
     { run: 'npm run build', expected: ['build'] },
     { run: 'tsc -b', expected: ['build'] },
     // A single step can chain several commands.
@@ -201,6 +205,24 @@ describe('CI command-coverage checks', () => {
 
     const report = scanLocalReadiness(root, { now: fixedNow })
     expect(report.findings.filter(finding => finding.id.startsWith('ci.') && finding.id.endsWith('.not-run'))).toEqual([])
+  })
+
+  it('does not falsely flag a Go repo whose CI runs the toolchain commands', () => {
+    // detectGo marks lint (go vet) and type-check (compiler) as available; a
+    // standard Go CI of `go test && go vet` must satisfy both rather than emit
+    // ci.lint.not-run / ci.typecheck.not-run.
+    writeFileSync(path.join(root, 'README.md'), '# Go demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run go test.\n')
+    writeFileSync(path.join(root, 'go.mod'), 'module example.com/demo\n\ngo 1.22\n')
+    writeFileSync(path.join(root, 'main.go'), 'package main\n\nfunc main() {}\n')
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  verify:\n    steps:\n      - run: go build ./...\n      - run: go test ./...\n      - run: go vet ./...\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.findings.filter(finding => finding.id.endsWith('.not-run'))).toEqual([])
   })
 
   it('does not flag not-run when the workflow could not be parsed (low confidence)', () => {

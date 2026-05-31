@@ -33,6 +33,10 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bclippy\b/,
     /\bgolangci-lint\b/,
     /\bgofmt\b/,
+    // `go vet` is the toolchain's built-in static analyzer; the command-surface
+    // detector counts it as the lint surface for Go modules, so CI running it
+    // must satisfy lint coverage.
+    /\bgo vet\b/,
     /\b(npm|pnpm|yarn) run lint\b/,
     /\bmake (lint|fmt|format)\b/,
   ],
@@ -40,7 +44,13 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\btsc\b(?!\s+(-b|--build))/,
     /\bmypy\b/,
     /\bpyright\b/,
-    /\bcargo check\b/,
+    // The Go and Rust compilers type-check as part of build/test (and `cargo
+    // check`), which is why the command-surface detector treats those toolchains
+    // as exposing a type-check surface. Recognize the same commands here so a
+    // normal `go test`/`cargo test` CI step is not falsely flagged as missing
+    // type-check coverage.
+    /\bcargo (check|build|test)\b/,
+    /\bgo (build|test)\b/,
     /\b(npm|pnpm|yarn) run (type-check|typecheck|check:types)\b/,
     /\bmake (type-check|typecheck|types)\b/,
   ],
