@@ -1,7 +1,7 @@
 # LLM / Agentic Analytics Layer — Design (Epic)
 
 > **Status:** Design / umbrella. This document is the design for an **epic**;
-> implementation lands across several smaller PRs (see [Delivery plan](#delivery-plan-ep--prs)).
+> implementation lands across several smaller PRs (see [Delivery plan](#12-delivery-plan-epic--prs)).
 > It is the authoritative reference for the optional, LLM-powered analytics layer
 > that augments AgentReady's deterministic scanner.
 
@@ -77,7 +77,7 @@ decide whether a PR merges.
 
 ## 5. Architecture
 
-```
+```text
             deterministic (offline, never-execute)        optional, opt-in
   ┌───────────────────────────────────────────┐   ┌──────────────────────────┐
   │  scan / diff engine → evidence (JSON)      │──▶│  @agentready/analyze     │
@@ -113,7 +113,7 @@ already-emitted JSON evidence.** The boundary is the existing report contract, s
 the layer is physically incapable of changing core behavior, adding a network
 call to the core path, or executing repo code.
 
-```
+```text
  scan / diff   →   evidence (JSON)   →   @agentready/analyze   →   augmented report
  (unchanged)       (existing contract)    (new, optional)           (deterministic report
                                                                      + insights + augmentedScore)

@@ -71,7 +71,7 @@ const TOOLS = [
           items: { type: 'object' },
         },
       },
-      required: ['responses'],
+      required: ['path', 'responses'],
     },
   },
 ]

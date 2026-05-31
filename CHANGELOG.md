@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The analysis result cache now folds the concrete model into its key (via a new optional `model` on the `LlmProvider` port), so switching models between runs is a clean cache miss instead of returning the previous model's insights.
 - Contradiction insight ids now incorporate the conflicting file pair as well as the topic, so two distinct contradictions with similar topics no longer collide; exact duplicates from the model are collapsed.
 - `ingestHostResponses` now reports (via an optional `onWarn`) when a host response references an unknown analyzer or fails to ingest, instead of dropping it silently.
+- **Security:** auto-detection no longer forwards `OPENAI_API_KEY` to a custom `AGENTREADY_LLM_BASE_URL`; a custom endpoint receives only an explicitly-scoped `AGENTREADY_LLM_API_KEY`, so an OpenAI secret can't leak to a local/third-party URL.
+- The MCP stdio server is now fail-open per request (a throwing handler is reported to stderr and the stream continues), the augmented-report markdown reporter escapes pipes/newlines in LLM-produced table cells, the `agentready_analyze_finalize` MCP tool requires `path` (so finalize re-scans the same tree as prepare), and the CLI uses `parseAsync` so async `analyze` failures set a non-zero exit code.
 
 ### Removed
 - The entire Next.js web application: browser UI, `POST /api/analyze` and `POST /api/report` routes, the OpenAI-based assessment engines (`ai-assessment`, `enhanced-ai-assessment`, `aligned-assessment-engine`, `unified-metrics-engine`, `metrics-validator`), website/business-type analysis, the file-size analyzer, and PDF report generation — along with their tests and the OpenAI mock.

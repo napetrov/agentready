@@ -3,9 +3,11 @@
 // This package is opt-in and consumes the deterministic core's emitted evidence;
 // the core never imports it. See docs/product/llm-analytics-design.md.
 //
-// PR A (this) defines the contracts and the provider port only. Provider
-// adapters, the analyzer pipeline, slicing/caching, and scoring land in later
-// PRs of the epic.
+// Exports: the data contracts (insight/augmented-report schemas + validators),
+// the provider port and adapters (OpenAI-compatible, GitHub Models, replay) with
+// env auto-detection, the efficiency spine (slicing, cache, budgets, fail-open
+// runner), the analyzers + task→model routing + augmented scoring + reporters,
+// and the host-integration helpers (injected client + host-delegated flow).
 
 export type {
   AnalysisProvenance,

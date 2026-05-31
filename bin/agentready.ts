@@ -307,9 +307,10 @@ program
     console.log(options.json ? JSON.stringify(doc, null, 2) : formatRuleDoc(doc))
   })
 
-try {
-  program.parse(process.argv)
-} catch (error) {
+// parseAsync (not parse) so rejections from the async `analyze` action handler
+// are caught here and set a non-zero exit code, rather than becoming an
+// unhandled rejection.
+program.parseAsync(process.argv).catch(error => {
   console.error(error instanceof Error ? error.message : String(error))
   process.exitCode = 1
-}
+})

@@ -120,6 +120,32 @@ describe('detectProvider', () => {
     expect(detected?.source).toBe('OPENAI_API_KEY')
   })
 
+  it('does NOT forward OPENAI_API_KEY to a custom base URL', async () => {
+    // A custom endpoint must only receive an explicitly-scoped key. The adapter
+    // captures globalThis.fetch at creation, so patch it BEFORE detectProvider,
+    // then assert no Authorization header carrying the OpenAI secret is sent.
+    const calls: Array<{ headers: Record<string, string> }> = []
+    const globalRef = globalThis as { fetch: unknown }
+    const original = globalRef.fetch
+    globalRef.fetch = async (_url: string, init: { headers: Record<string, string> }) => {
+      calls.push({ headers: init.headers })
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: async () => JSON.stringify({ model: 's', choices: [{ message: { content: '{}' } }] }),
+      }
+    }
+    try {
+      const detected = detectProvider({ AGENTREADY_LLM_BASE_URL: 'http://localhost:9/v1', OPENAI_API_KEY: 'sk-secret' })
+      expect(detected?.source).toBe('AGENTREADY_LLM_BASE_URL')
+      await detected?.provider.complete(request)
+    } finally {
+      globalRef.fetch = original
+    }
+    expect(calls[0].headers.authorization).toBeUndefined()
+  })
+
   it('orders detection: explicit base URL wins over OLLAMA_HOST and OPENAI_API_KEY', () => {
     const detected = detectProvider({
       AGENTREADY_LLM_BASE_URL: 'http://localhost:1/v1',

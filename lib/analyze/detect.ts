@@ -48,7 +48,10 @@ export const detectProvider = (env: DetectionEnv = process.env): DetectedProvide
       provider: createOpenAiCompatProvider({
         baseUrl,
         model: env.AGENTREADY_LLM_MODEL ?? DEFAULT_OPENAI_MODEL,
-        apiKey: env.AGENTREADY_LLM_API_KEY ?? env.OPENAI_API_KEY,
+        // Only an explicitly-scoped key goes to a custom endpoint. We do NOT
+        // fall back to OPENAI_API_KEY here: forwarding an OpenAI secret to an
+        // arbitrary (possibly local/third-party) base URL would leak it.
+        apiKey: env.AGENTREADY_LLM_API_KEY,
       }),
     }
   }

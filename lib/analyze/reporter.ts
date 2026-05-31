@@ -4,6 +4,13 @@ import type { AugmentedReport, LlmInsight } from './types'
 // two-score distinction explicit (design §2, §9): the deterministic score is
 // always shown, and the augmented score is clearly labeled alongside it.
 
+/**
+ * Sanitizes free-form (largely LLM-produced) text for a Markdown table cell:
+ * collapses newlines to spaces and escapes pipes so a verdict/target/id can't
+ * break the table row in a PR comment or job summary.
+ */
+const cell = (value: string): string => value.replace(/\r?\n/g, ' ').replace(/\|/g, '\\|')
+
 const scoreLine = (report: AugmentedReport): string => {
   const { deterministic, augmented } = report.augmentedScore
   const delta = augmented - deterministic
@@ -58,14 +65,14 @@ export const formatAugmentedMarkdown = (report: AugmentedReport): string => {
     for (const insight of report.insights) {
       const target = insight.target ?? '—'
       const confidence = `${Math.round(insight.confidence * 100)}%`
-      lines.push(`| ${insight.kind} | ${target} | ${confidence} | ${insight.verdict} |`)
+      lines.push(`| ${insight.kind} | ${cell(target)} | ${confidence} | ${cell(insight.verdict)} |`)
     }
   }
 
   if (report.augmentedScore.adjustments.length > 0) {
     lines.push('', '## Score adjustments', '', '| Δ | Insight |', '|---|---|')
     for (const adjustment of report.augmentedScore.adjustments) {
-      lines.push(`| ${adjustment.delta > 0 ? '+' : ''}${adjustment.delta} | ${adjustment.insightId} |`)
+      lines.push(`| ${adjustment.delta > 0 ? '+' : ''}${adjustment.delta} | ${cell(adjustment.insightId)} |`)
     }
   }
 

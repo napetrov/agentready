@@ -22,6 +22,8 @@ export const replayKey = (request: LlmRequest): string =>
     .update(request.input)
     .update('\0')
     .update(JSON.stringify(request.outputSchema))
+    .update('\0')
+    .update(String(request.maxTokens))
     .digest('hex')
 
 /**

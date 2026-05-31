@@ -99,7 +99,10 @@ export const ingestHostResponses = (
     }
   })
 
-  const providers = [...new Set(responses.map(r => r.model))]
+  // Derive providers from the insights that were actually applied, so the
+  // metadata stays consistent with `enabled`/`insightsApplied` and never lists a
+  // model whose response was dropped (unknown analyzer, malformed output).
+  const providers = [...new Set(insights.map(i => i.model).filter(Boolean))]
   return {
     baseReport: report,
     generatedAt: (options.now ?? new Date()).toISOString(),

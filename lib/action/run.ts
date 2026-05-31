@@ -137,8 +137,11 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
   let augmentedReportPath: string | undefined
 
   if (inputs.analyze) {
-    // Opt-in LLM augmentation. Fail-open: a missing provider or any analyzer
-    // failure yields a deterministic-only augmented report and never throws.
+    // Opt-in LLM augmentation. analyzeReport (and the runner in
+    // lib/analyze/runner.ts) are fail-open over analyzer/provider failures: a
+    // missing provider or a failed/timed-out call yields a deterministic-only or
+    // partial augmented report instead of throwing. (The surrounding I/O here —
+    // writeFileSync/path.join — can still throw, as elsewhere in runAction.)
     const detected = detectProvider(inputs.env ?? process.env)
     const augmented: AugmentedReport = await analyzeReport(inputs.path, scanReport, {
       provider: detected?.provider,

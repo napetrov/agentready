@@ -27,9 +27,17 @@ export const runStdioServer = (
         process.stderr.write(`agentready mcp: ignoring unparsable line\n`)
         return
       }
-      const response = handleRequest(request)
-      if (response !== undefined) {
-        output.write(`${JSON.stringify(response)}\n`)
+      try {
+        const response = handleRequest(request)
+        if (response !== undefined) {
+          output.write(`${JSON.stringify(response)}\n`)
+        }
+      } catch (error) {
+        // Fail-open: one bad request must not kill the stream. Report to stderr
+        // (never stdout, which carries the protocol) and keep serving.
+        process.stderr.write(
+          `agentready mcp: handler error: ${error instanceof Error ? error.message : String(error)}\n`,
+        )
       }
     })
     rl.on('close', () => resolve())
