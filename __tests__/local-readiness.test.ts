@@ -222,6 +222,26 @@ describe('local readiness', () => {
     expect(paths).toContain('top.log')
   })
 
+  test('lets a nested .gitignore negation re-include a file the root ignores', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // Root ignores every .log; the nested file re-includes one. The src/ dir
+    // itself is not excluded, so git re-includes src/debug.log (deeper rules win).
+    writeRepoFile(root, '.gitignore', '*.log\n')
+    writeRepoFile(root, 'src/.gitignore', '!debug.log\n')
+    writeRepoFile(root, 'src/debug.log', 'kept by the nested negation\n')
+    writeRepoFile(root, 'root.log', 'still ignored by the root rule\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const paths = report.files.map(file => file.path)
+
+    expect(paths).toContain('src/debug.log')
+    expect(paths).not.toContain('root.log')
+  })
+
   test('applies configured large-file thresholds and warning policy', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')

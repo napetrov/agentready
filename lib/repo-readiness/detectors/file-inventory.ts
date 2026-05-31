@@ -140,28 +140,55 @@ const loadGitignoreMatchers = (root: string): Map<string, Ignore> => {
 }
 
 /**
- * Returns true when any ancestor directory's `.gitignore` ignores `repoPath`,
- * each evaluated against the path relative to that directory (git semantics).
+ * Returns the repo-root-relative ancestor directories of `repoPath`, shallowest
+ * first: `'src/a/b.txt'` yields `['', 'src', 'src/a']`. The empty string is the
+ * repository root.
+ */
+const ancestorDirectories = (repoPath: string): string[] => {
+  const segments = repoPath.split('/')
+  segments.pop() // drop the file name itself
+  const directories = ['']
+  let accumulated = ''
+  for (const segment of segments) {
+    accumulated = accumulated === '' ? segment : `${accumulated}/${segment}`
+    directories.push(accumulated)
+  }
+  return directories
+}
+
+/**
+ * Decides whether `repoPath` is ignored by applying each ancestor directory's
+ * `.gitignore` from shallowest to deepest, so a deeper file's rules — including
+ * negations that re-include a path — override shallower ones, matching git's
+ * hierarchy semantics. Each matcher is evaluated against the path relative to
+ * its own directory.
  */
 const isGitIgnored = (repoPath: string, matchers: Map<string, Ignore>): boolean => {
   if (matchers.size === 0) {
     return false
   }
 
-  for (const [dir, matcher] of matchers) {
-    if (dir === '') {
-      if (matcher.ignores(repoPath)) {
-        return true
-      }
-    } else if (repoPath === dir || repoPath.startsWith(`${dir}/`)) {
-      const relative = repoPath.slice(dir.length + 1)
-      if (relative.length > 0 && matcher.ignores(relative)) {
-        return true
-      }
+  let ignored = false
+  for (const dir of ancestorDirectories(repoPath)) {
+    const matcher = matchers.get(dir)
+    if (!matcher) {
+      continue
+    }
+
+    const relative = dir === '' ? repoPath : repoPath.slice(dir.length + 1)
+    if (relative.length === 0) {
+      continue
+    }
+
+    const result = matcher.test(relative)
+    if (result.ignored) {
+      ignored = true
+    } else if (result.unignored) {
+      ignored = false
     }
   }
 
-  return false
+  return ignored
 }
 
 /**
