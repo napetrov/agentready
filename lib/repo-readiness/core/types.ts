@@ -93,6 +93,14 @@ export interface CiEvidence {
   hasTest: boolean
   /** Whether any workflow step runs a build. */
   hasBuild: boolean
+  /**
+   * Command kinds whose CI coverage is uncertain because a workflow dispatches
+   * them through a task runner / orchestrator we cannot decompose. General
+   * runners (tox, nox, make, `uv/poetry run`, just, turbo, …) cover every kind;
+   * `pre-commit` covers only lint/type-check. The "command exists but CI never
+   * runs it" checks stay silent for exactly these kinds to avoid false positives.
+   */
+  orchestratorKinds: CiCommandKind[]
 }
 
 /**

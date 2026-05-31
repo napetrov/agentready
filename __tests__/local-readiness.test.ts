@@ -541,3 +541,100 @@ describe('local readiness', () => {
     ]))
   })
 })
+
+describe('CI orchestrator and architecture-doc recognition', () => {
+  let root: string
+
+  afterEach(() => {
+    if (root) {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('suppresses ci.*.not-run when CI dispatches through an orchestrator', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run make test.\n')
+    writeRepoFile(root, 'Makefile', 'test:\n\tpytest\nlint:\n\truff check .\n')
+    writeRepoFile(root, 'pyproject.toml', '[project]\nname = "demo"\n')
+    writeRepoFile(root, 'src/app.py', 'x = 1\n')
+    // CI runs everything behind custom make targets we cannot decompose.
+    writeRepoFile(root, '.github/workflows/ci.yml', [
+      'name: CI',
+      'jobs:',
+      '  check:',
+      '    steps:',
+      '      - run: make ci',
+    ].join('\n') + '\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.ci.orchestratorKinds).toEqual(['lint', 'typecheck', 'test', 'build'])
+    expect(listFindingIds(report)).not.toEqual(
+      expect.arrayContaining(['ci.test.not-run', 'ci.lint.not-run', 'ci.build.not-run', 'ci.typecheck.not-run']),
+    )
+  })
+
+  test('pre-commit only suppresses lint/type-check not-run, not test/build', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: { test: 'jest', lint: 'eslint .', build: 'tsc' },
+    }))
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    // CI installs deps and runs pre-commit (lint-style), but never the test
+    // suite or build. pre-commit covers lint/type-check only.
+    writeRepoFile(root, '.github/workflows/ci.yml', [
+      'name: CI',
+      'jobs:',
+      '  check:',
+      '    steps:',
+      '      - run: npm ci',
+      '      - run: pre-commit run --all-files',
+    ].join('\n') + '\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = listFindingIds(report)
+
+    expect(report.ci.orchestratorKinds).toEqual(['lint', 'typecheck'])
+    expect(ids).not.toContain('ci.lint.not-run')
+    expect(ids).toContain('ci.test.not-run')
+    expect(ids).toContain('ci.build.not-run')
+  })
+
+  test('recognizes design/architecture docs under docs/ so the finding does not fire', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // 21 source files makes the repo "non-trivial" (>20) so the check is active.
+    for (let i = 0; i < 21; i += 1) {
+      writeRepoFile(root, `src/mod${i}.ts`, `export const v${i} = ${i}\n`)
+    }
+    writeRepoFile(root, 'docs/design.md', '# Design\n\nModule boundaries and data flow.\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.docs.architecture).toContain('docs/design.md')
+    expect(listFindingIds(report)).not.toContain('docs.architecture.missing')
+  })
+
+  test('emits docs.architecture.missing only as info for a non-trivial repo lacking it', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    for (let i = 0; i < 21; i += 1) {
+      writeRepoFile(root, `src/mod${i}.ts`, `export const v${i} = ${i}\n`)
+    }
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const finding = report.findings.find(f => f.id === 'docs.architecture.missing')
+
+    expect(finding).toBeDefined()
+    expect(finding?.severity).toBe('info')
+  })
+})

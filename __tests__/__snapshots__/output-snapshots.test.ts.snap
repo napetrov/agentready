@@ -92,7 +92,8 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "hasLint": false,
       "hasTypeCheck": false,
       "hasTest": false,
-      "hasBuild": false
+      "hasBuild": false,
+      "orchestratorKinds": []
     },
     "instructions": [
       {
@@ -169,7 +170,8 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "hasLint": false,
       "hasTypeCheck": false,
       "hasTest": false,
-      "hasBuild": false
+      "hasBuild": false,
+      "orchestratorKinds": []
     },
     "instructions": [
       {
@@ -295,7 +297,8 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
     "hasLint": false,
     "hasTypeCheck": false,
     "hasTest": false,
-    "hasBuild": false
+    "hasBuild": false,
+    "orchestratorKinds": []
   },
   "instructions": [],
   "capabilities": [],
@@ -564,7 +567,8 @@ exports[`scan output snapshots good-repo compact json 1`] = `
     "hasLint": true,
     "hasTypeCheck": true,
     "hasTest": true,
-    "hasBuild": true
+    "hasBuild": true,
+    "orchestratorKinds": []
   },
   "instructions": [
     {
