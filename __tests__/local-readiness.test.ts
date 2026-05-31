@@ -603,6 +603,34 @@ describe('CI orchestrator and architecture-doc recognition', () => {
     expect(ids).toContain('ci.build.not-run')
   })
 
+  test('reports test/build not-run when pre-commit is the only recognized CI step', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: { test: 'jest', lint: 'eslint .', build: 'tsc' },
+    }))
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    // The ONLY verification step is pre-commit — no install/test/etc is parsed,
+    // so the gate must rely on orchestrator recognition rather than a has* flag.
+    writeRepoFile(root, '.github/workflows/ci.yml', [
+      'name: CI',
+      'jobs:',
+      '  check:',
+      '    steps:',
+      '      - run: pre-commit run --all-files',
+    ].join('\n') + '\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = listFindingIds(report)
+
+    expect(report.ci.orchestratorKinds).toEqual(['lint', 'typecheck'])
+    // pre-commit covers lint/type-check; test and build are still uncovered.
+    expect(ids).not.toContain('ci.lint.not-run')
+    expect(ids).toContain('ci.test.not-run')
+    expect(ids).toContain('ci.build.not-run')
+  })
+
   test('recognizes design/architecture docs under docs/ so the finding does not fire', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')

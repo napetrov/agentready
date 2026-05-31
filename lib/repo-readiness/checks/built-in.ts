@@ -99,13 +99,18 @@ export const buildFindings = (
   // severity only. They surface a likely CI-coverage gap for a human to confirm;
   // they never gate the score like a warning/error and should not be treated as
   // authoritative.
+  const orchestratorCovers = new Set(report.ci.orchestratorKinds)
+  // We "recognized" the workflow when we classified a concrete command OR
+  // identified an orchestrator (e.g. a `pre-commit run` step, which sets
+  // orchestratorKinds but no has* flag). Either is enough confidence to reason
+  // about which kinds CI does not run; without both we stay silent.
   const ciParsedAnyCommand =
     report.ci.hasInstall
     || report.ci.hasLint
     || report.ci.hasTypeCheck
     || report.ci.hasTest
     || report.ci.hasBuild
-  const orchestratorCovers = new Set(report.ci.orchestratorKinds)
+    || orchestratorCovers.size > 0
   if (report.ci.workflowFiles.length > 0 && ciParsedAnyCommand) {
     if (report.commands.hasTest && !report.ci.hasTest && !orchestratorCovers.has('test')) {
       findings.push({
