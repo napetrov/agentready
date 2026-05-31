@@ -168,10 +168,79 @@
               "items": {
                 "type": "string"
               }
+            },
+            "workflows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "jobs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "commandKinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "install",
+                              "lint",
+                              "typecheck",
+                              "test",
+                              "build"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "commandKinds"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "file",
+                  "jobs"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "hasInstall": {
+              "type": "boolean"
+            },
+            "hasLint": {
+              "type": "boolean"
+            },
+            "hasTypeCheck": {
+              "type": "boolean"
+            },
+            "hasTest": {
+              "type": "boolean"
+            },
+            "hasBuild": {
+              "type": "boolean"
             }
           },
           "required": [
-            "workflowFiles"
+            "workflowFiles",
+            "workflows",
+            "hasInstall",
+            "hasLint",
+            "hasTypeCheck",
+            "hasTest",
+            "hasBuild"
           ],
           "additionalProperties": false
         },
@@ -590,10 +659,79 @@
               "items": {
                 "type": "string"
               }
+            },
+            "workflows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "jobs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "commandKinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "install",
+                              "lint",
+                              "typecheck",
+                              "test",
+                              "build"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "commandKinds"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "file",
+                  "jobs"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "hasInstall": {
+              "type": "boolean"
+            },
+            "hasLint": {
+              "type": "boolean"
+            },
+            "hasTypeCheck": {
+              "type": "boolean"
+            },
+            "hasTest": {
+              "type": "boolean"
+            },
+            "hasBuild": {
+              "type": "boolean"
             }
           },
           "required": [
-            "workflowFiles"
+            "workflowFiles",
+            "workflows",
+            "hasInstall",
+            "hasLint",
+            "hasTypeCheck",
+            "hasTest",
+            "hasBuild"
           ],
           "additionalProperties": false
         },

@@ -57,6 +57,44 @@ export interface CommandEvidence {
   hasTypeCheck: boolean
 }
 
+/** A class of verification command an agent can run to validate its work. */
+export type CiCommandKind = 'install' | 'lint' | 'typecheck' | 'test' | 'build'
+
+export interface CiWorkflowJob {
+  /** The job key from the workflow's `jobs:` map. */
+  id: string
+  /** Command kinds detected across the job's steps, sorted and unique. */
+  commandKinds: CiCommandKind[]
+}
+
+export interface CiWorkflow {
+  /** Repo-relative path to the workflow file. */
+  file: string
+  /** The workflow's `name:`, when present. */
+  name?: string
+  jobs: CiWorkflowJob[]
+}
+
+export interface CiEvidence {
+  /**
+   * Workflow files under `.github/workflows/`. Kept for backward compatibility
+   * with consumers that only need the file list.
+   */
+  workflowFiles: string[]
+  /** Parsed workflows with per-job detected command kinds. */
+  workflows: CiWorkflow[]
+  /** Whether any workflow step installs dependencies. */
+  hasInstall: boolean
+  /** Whether any workflow step runs a lint command. */
+  hasLint: boolean
+  /** Whether any workflow step runs a type-check command. */
+  hasTypeCheck: boolean
+  /** Whether any workflow step runs tests. */
+  hasTest: boolean
+  /** Whether any workflow step runs a build. */
+  hasBuild: boolean
+}
+
 /**
  * A kind of agent capability surface: a Model Context Protocol config, a skill,
  * a hook/settings file, a plugin manifest, or code-intelligence/LSP config.
@@ -110,9 +148,7 @@ export interface LocalReadinessReport {
     environment: string[]
   }
   commands: CommandEvidence
-  ci: {
-    workflowFiles: string[]
-  }
+  ci: CiEvidence
   instructions: InstructionSurfaceEvidence[]
   capabilities: CapabilitySurfaceEvidence[]
   safetySignals: SafetySignalEvidence[]

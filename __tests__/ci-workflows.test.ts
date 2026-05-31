@@ -1,0 +1,238 @@
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import path from 'path'
+import {
+  classifyRunCommandKinds,
+  classifyUsesCommandKinds,
+  detectCiWorkflows,
+} from '../lib/repo-readiness/detectors/ci-workflows'
+import { scanLocalReadiness } from '../lib/repo-readiness/local-readiness'
+import type { CiCommandKind } from '../lib/repo-readiness/core/types'
+
+const fixedNow = new Date('2026-05-30T00:00:00.000Z')
+
+// Semantic CI parsing recognizes which verification commands CI actually runs so
+// checks can flag commands that exist in the repo but never run in CI. These
+// tests cover the run/uses classifiers and the YAML-parsing branches (matrix,
+// multiple jobs, malformed YAML, non-workflow files, missing fields).
+
+describe('classifyRunCommandKinds', () => {
+  const cases: Array<{ run: string; expected: CiCommandKind[] }> = [
+    { run: 'npm ci', expected: ['install'] },
+    { run: 'pnpm install --frozen-lockfile', expected: ['install'] },
+    { run: 'pip install -r requirements.txt', expected: ['install'] },
+    { run: 'npm run lint', expected: ['lint'] },
+    { run: 'ruff check .', expected: ['lint'] },
+    { run: 'cargo clippy -- -D warnings', expected: ['lint'] },
+    { run: 'golangci-lint run', expected: ['lint'] },
+    { run: 'tsc --noEmit', expected: ['typecheck'] },
+    { run: 'mypy src', expected: ['typecheck'] },
+    { run: 'cargo check', expected: ['typecheck'] },
+    { run: 'go vet ./...', expected: ['lint'] },
+    { run: 'pytest -q', expected: ['test'] },
+    // The Go/Rust compiler type-checks during test and build, so those commands
+    // satisfy both kinds (matching the command-surface detector).
+    { run: 'go test ./...', expected: ['typecheck', 'test'] },
+    { run: 'cargo test', expected: ['typecheck', 'test'] },
+    { run: 'npm test', expected: ['test'] },
+    { run: 'go build ./...', expected: ['typecheck', 'build'] },
+    { run: 'npm run build', expected: ['build'] },
+    { run: 'tsc -b', expected: ['build'] },
+    // A single step can chain several commands.
+    { run: 'npm ci && npm run lint && npm test', expected: ['install', 'lint', 'test'] },
+    // Multi-line scripts are scanned as a whole.
+    { run: 'set -e\nnpm run type-check\nnpm run build\n', expected: ['typecheck', 'build'] },
+    // Unrelated commands classify as nothing.
+    { run: 'echo "deploying"', expected: [] },
+  ]
+
+  it.each(cases)('classifies "$run"', ({ run, expected }) => {
+    expect(classifyRunCommandKinds(run)).toEqual(expected)
+  })
+
+  it('returns kinds in canonical order regardless of command order', () => {
+    expect(classifyRunCommandKinds('npm run build && npm test && npm ci')).toEqual(['install', 'test', 'build'])
+  })
+
+  it('does not classify a plain "tsc -b" build as a type-check', () => {
+    expect(classifyRunCommandKinds('tsc -b')).toEqual(['build'])
+  })
+})
+
+describe('classifyUsesCommandKinds', () => {
+  it('recognizes known verification actions', () => {
+    expect(classifyUsesCommandKinds('golangci/golangci-lint-action@v6')).toEqual(['lint'])
+    expect(classifyUsesCommandKinds('pre-commit/action@v3.0.1')).toEqual(['lint'])
+  })
+
+  it('ignores setup/checkout actions', () => {
+    expect(classifyUsesCommandKinds('actions/checkout@v4')).toEqual([])
+    expect(classifyUsesCommandKinds('actions/setup-node@v4')).toEqual([])
+  })
+})
+
+describe('detectCiWorkflows', () => {
+  let root: string
+
+  const writeWorkflow = (name: string, content: string): void => {
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(path.join(root, '.github', 'workflows', name), content)
+  }
+
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-ci-'))
+  })
+  afterEach(() => rmSync(root, { recursive: true, force: true }))
+
+  const pathsUnder = (): string[] => ['.github/workflows']
+
+  it('parses run steps across multiple jobs and aggregates command kinds', () => {
+    writeWorkflow(
+      'ci.yml',
+      [
+        'name: CI',
+        'on: [push]',
+        'jobs:',
+        '  test:',
+        '    steps:',
+        '      - uses: actions/checkout@v4',
+        '      - run: npm ci',
+        '      - run: npm test',
+        '  lint:',
+        '    steps:',
+        '      - run: npm run lint',
+        '',
+      ].join('\n'),
+    )
+
+    const ci = detectCiWorkflows(root, ['.github/workflows/ci.yml', ...pathsUnder()])
+
+    expect(ci.workflowFiles).toEqual(['.github/workflows/ci.yml'])
+    expect(ci.workflows).toHaveLength(1)
+    expect(ci.workflows[0].name).toBe('CI')
+    // Jobs are sorted by id for stable output.
+    expect(ci.workflows[0].jobs.map(job => job.id)).toEqual(['lint', 'test'])
+    expect(ci.workflows[0].jobs.find(job => job.id === 'test')?.commandKinds).toEqual(['install', 'test'])
+    expect(ci.hasInstall).toBe(true)
+    expect(ci.hasTest).toBe(true)
+    expect(ci.hasLint).toBe(true)
+    expect(ci.hasBuild).toBe(false)
+    expect(ci.hasTypeCheck).toBe(false)
+  })
+
+  it('classifies a known marketplace action via uses', () => {
+    writeWorkflow(
+      'lint.yaml',
+      ['jobs:', '  lint:', '    steps:', '      - uses: golangci/golangci-lint-action@v6', ''].join('\n'),
+    )
+
+    const ci = detectCiWorkflows(root, ['.github/workflows/lint.yaml'])
+    expect(ci.hasLint).toBe(true)
+    expect(ci.workflows[0].name).toBeUndefined()
+  })
+
+  it('degrades a malformed workflow to a parsed-but-empty entry without throwing', () => {
+    writeWorkflow('broken.yml', 'jobs: [this is : not valid yaml ::')
+
+    const ci = detectCiWorkflows(root, ['.github/workflows/broken.yml'])
+    expect(ci.workflows).toEqual([{ file: '.github/workflows/broken.yml', jobs: [] }])
+    expect(ci.hasTest).toBe(false)
+  })
+
+  it('handles a workflow whose jobs is not a map', () => {
+    writeWorkflow('weird.yml', 'name: Weird\njobs: not-a-map\n')
+
+    const ci = detectCiWorkflows(root, ['.github/workflows/weird.yml'])
+    expect(ci.workflows).toEqual([{ file: '.github/workflows/weird.yml', name: 'Weird', jobs: [] }])
+  })
+
+  it('only treats .yml/.yaml files under .github/workflows as workflows', () => {
+    writeWorkflow('README.md', 'not a workflow')
+    writeWorkflow('ci.yml', 'jobs:\n  t:\n    steps:\n      - run: npm test\n')
+
+    const ci = detectCiWorkflows(root, ['.github/workflows/README.md', '.github/workflows/ci.yml'])
+    expect(ci.workflowFiles).toEqual(['.github/workflows/ci.yml'])
+  })
+
+  it('returns an empty evidence shape when there are no workflows', () => {
+    const ci = detectCiWorkflows(root, ['README.md', 'src/index.ts'])
+    expect(ci).toEqual({
+      workflowFiles: [],
+      workflows: [],
+      hasInstall: false,
+      hasLint: false,
+      hasTypeCheck: false,
+      hasTest: false,
+      hasBuild: false,
+    })
+  })
+})
+
+describe('CI command-coverage checks', () => {
+  let root: string
+
+  const writeRepo = (workflow: string): void => {
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { test: 'jest', lint: 'eslint .', build: 'tsc' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), workflow)
+  }
+
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-ci-checks-'))
+  })
+  afterEach(() => rmSync(root, { recursive: true, force: true }))
+
+  it('flags commands that exist but are not run in CI', () => {
+    // CI installs and tests, but never lints or builds the available commands.
+    writeRepo('jobs:\n  test:\n    steps:\n      - run: npm ci\n      - run: npm test\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    expect(ids).toContain('ci.lint.not-run')
+    expect(ids).toContain('ci.build.not-run')
+    expect(ids).not.toContain('ci.test.not-run')
+  })
+
+  it('stays silent when CI runs every available command', () => {
+    writeRepo(
+      'jobs:\n  verify:\n    steps:\n      - run: npm ci\n      - run: npm test\n      - run: npm run lint\n      - run: npm run build\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.findings.filter(finding => finding.id.startsWith('ci.') && finding.id.endsWith('.not-run'))).toEqual([])
+  })
+
+  it('does not falsely flag a Go repo whose CI runs the toolchain commands', () => {
+    // detectGo marks lint (go vet) and type-check (compiler) as available; a
+    // standard Go CI of `go test && go vet` must satisfy both rather than emit
+    // ci.lint.not-run / ci.typecheck.not-run.
+    writeFileSync(path.join(root, 'README.md'), '# Go demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run go test.\n')
+    writeFileSync(path.join(root, 'go.mod'), 'module example.com/demo\n\ngo 1.22\n')
+    writeFileSync(path.join(root, 'main.go'), 'package main\n\nfunc main() {}\n')
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  verify:\n    steps:\n      - run: go build ./...\n      - run: go test ./...\n      - run: go vet ./...\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.findings.filter(finding => finding.id.endsWith('.not-run'))).toEqual([])
+  })
+
+  it('does not flag not-run when the workflow could not be parsed (low confidence)', () => {
+    // A workflow with no recognizable commands yields no not-run findings rather
+    // than falsely claiming tests/lint/build are missing.
+    writeRepo('name: CI\non: [push]\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.findings.filter(finding => finding.id.endsWith('.not-run'))).toEqual([])
+    // The workflow file still exists, so the "no workflow" finding must not fire.
+    expect(report.findings.map(finding => finding.id)).not.toContain('ci.workflow.missing')
+  })
+})

@@ -12,6 +12,10 @@
 export type {
   CapabilityKind,
   CapabilitySurfaceEvidence,
+  CiCommandKind,
+  CiEvidence,
+  CiWorkflow,
+  CiWorkflowJob,
   CommandEcosystem,
   CommandEvidence,
   CompactLocalReadinessReport,

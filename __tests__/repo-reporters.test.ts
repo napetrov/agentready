@@ -26,6 +26,15 @@ const scanReport = (findings: ReadinessFinding[]): LocalReadinessReport =>
     summary: { score: 60, totalFiles: 3, sourceFiles: 1, testFiles: 1, documentationFiles: 1 },
     capabilities: [],
     safetySignals: [],
+    ci: {
+      workflowFiles: [],
+      workflows: [],
+      hasInstall: false,
+      hasLint: false,
+      hasTypeCheck: false,
+      hasTest: false,
+      hasBuild: false,
+    },
     findings,
   }) as unknown as LocalReadinessReport
 
@@ -52,7 +61,9 @@ describe('formatScanSarif', () => {
 
 describe('formatScanMarkdown', () => {
   it('renders the no-findings state and appends recommendations/locations when present', () => {
-    expect(formatScanMarkdown(scanReport([]))).toContain('No findings.')
+    const empty = formatScanMarkdown(scanReport([]))
+    expect(empty).toContain('No findings.')
+    expect(empty).toContain('CI: no workflows detected')
 
     const md = formatScanMarkdown(scanReport([finding({ severity: 'error', path: 'src/a.ts', recommendation: 'Fix it.' })]))
     expect(md).toContain('**ERROR**: Title (src/a.ts). Fix it.')

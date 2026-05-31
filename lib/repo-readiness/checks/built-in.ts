@@ -80,6 +80,55 @@ export const buildFindings = (
     })
   }
 
+  // "Command exists but CI never runs it" checks. These only fire when a
+  // workflow is present and we successfully recognized at least one verification
+  // command in it — otherwise our parse is low-confidence (e.g. CI runs entirely
+  // through composite/marketplace actions we do not classify) and we stay silent
+  // rather than emit a false positive.
+  const ciParsedAnyCommand =
+    report.ci.hasInstall
+    || report.ci.hasLint
+    || report.ci.hasTypeCheck
+    || report.ci.hasTest
+    || report.ci.hasBuild
+  if (report.ci.workflowFiles.length > 0 && ciParsedAnyCommand) {
+    if (report.commands.hasTest && !report.ci.hasTest) {
+      findings.push({
+        id: 'ci.test.not-run',
+        title: 'Tests are available but CI does not run them',
+        severity: warningSeverity,
+        recommendation: 'Run the test command in CI so regressions are caught before review.',
+      })
+    }
+
+    if (report.commands.hasLint && !report.ci.hasLint) {
+      findings.push({
+        id: 'ci.lint.not-run',
+        title: 'A lint command is available but CI does not run it',
+        severity: warningSeverity,
+        recommendation: 'Run the lint command in CI so style and static-analysis regressions are caught automatically.',
+      })
+    }
+
+    if (report.commands.hasTypeCheck && !report.ci.hasTypeCheck) {
+      findings.push({
+        id: 'ci.typecheck.not-run',
+        title: 'A type-check command is available but CI does not run it',
+        severity: warningSeverity,
+        recommendation: 'Run the type-check command in CI so type regressions are caught before review.',
+      })
+    }
+
+    if (report.commands.hasBuild && !report.ci.hasBuild) {
+      findings.push({
+        id: 'ci.build.not-run',
+        title: 'A build command is available but CI does not run it',
+        severity: 'info',
+        recommendation: 'Consider running the build in CI so broken builds are caught before review.',
+      })
+    }
+  }
+
   if (report.instructions.length === 0) {
     findings.push({
       id: 'instructions.missing',

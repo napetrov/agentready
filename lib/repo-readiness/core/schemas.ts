@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type {
+  CiEvidence,
   CommandEvidence,
   LocalReadinessConfig,
   LocalReadinessFile,
@@ -80,6 +81,29 @@ export const commandEvidenceSchema = z.strictObject({
   hasTypeCheck: z.boolean(),
 })
 
+export const ciCommandKindSchema = z.enum(['install', 'lint', 'typecheck', 'test', 'build'])
+
+export const ciWorkflowJobSchema = z.strictObject({
+  id: z.string(),
+  commandKinds: z.array(ciCommandKindSchema),
+})
+
+export const ciWorkflowSchema = z.strictObject({
+  file: z.string(),
+  name: z.string().optional(),
+  jobs: z.array(ciWorkflowJobSchema),
+})
+
+export const ciEvidenceSchema = z.strictObject({
+  workflowFiles: z.array(z.string()),
+  workflows: z.array(ciWorkflowSchema),
+  hasInstall: z.boolean(),
+  hasLint: z.boolean(),
+  hasTypeCheck: z.boolean(),
+  hasTest: z.boolean(),
+  hasBuild: z.boolean(),
+})
+
 export const capabilitySurfaceSchema = z.strictObject({
   kind: capabilityKindSchema,
   path: z.string(),
@@ -130,9 +154,7 @@ export const localReadinessReportSchema = z.strictObject({
     environment: z.array(z.string()),
   }),
   commands: commandEvidenceSchema,
-  ci: z.strictObject({
-    workflowFiles: z.array(z.string()),
-  }),
+  ci: ciEvidenceSchema,
   instructions: z.array(instructionSurfaceSchema),
   capabilities: z.array(capabilitySurfaceSchema),
   safetySignals: z.array(safetySignalSchema),
@@ -178,6 +200,7 @@ type AssertExtends<Actual extends Expected, Expected> = Actual
 type _Finding = AssertExtends<z.infer<typeof readinessFindingSchema>, ReadinessFinding>
 type _File = AssertExtends<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile>
 type _Commands = AssertExtends<z.infer<typeof commandEvidenceSchema>, CommandEvidence>
+type _Ci = AssertExtends<z.infer<typeof ciEvidenceSchema>, CiEvidence>
 type _Report = AssertExtends<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport>
 type _Diff = AssertExtends<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport>
 type _Config = AssertExtends<z.infer<typeof localReadinessConfigSchema>, Partial<LocalReadinessConfig>>
