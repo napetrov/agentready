@@ -194,6 +194,34 @@ describe('local readiness', () => {
     ]))
   })
 
+  test('honours .gitignore rules, including nested files and negations', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // Root .gitignore: ignore a whole directory, a file, and re-include one path.
+    writeRepoFile(root, '.gitignore', 'secrets.txt\nartifacts/*\n!artifacts/keep.txt\n')
+    writeRepoFile(root, 'secrets.txt', 'token\n')
+    writeRepoFile(root, 'artifacts/output.js', 'var a=1;\n')
+    writeRepoFile(root, 'artifacts/keep.txt', 'keep me\n')
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    // Nested .gitignore only affects its own subtree.
+    writeRepoFile(root, 'src/.gitignore', '*.log\n')
+    writeRepoFile(root, 'src/debug.log', 'noise\n')
+    writeRepoFile(root, 'top.log', 'kept because the nested rule does not apply here\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const paths = report.files.map(file => file.path)
+
+    expect(paths).not.toContain('secrets.txt')
+    expect(paths).not.toContain('artifacts/output.js')
+    expect(paths).not.toContain('src/debug.log')
+    expect(paths).toContain('artifacts/keep.txt')
+    expect(paths).toContain('src/app.ts')
+    expect(paths).toContain('top.log')
+  })
+
   test('applies configured large-file thresholds and warning policy', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')

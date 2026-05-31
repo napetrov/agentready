@@ -128,10 +128,16 @@ Verified against the current `main`/branch code before accepting:
 
 ## P2 — File-handling reuse
 
-- [ ] Replace bespoke traversal/ignore/glob in `detectors/file-inventory.ts`
-  with `fast-glob` + `ignore` + `picomatch` for `.gitignore` parity. _(M)_
-- [ ] Use `isbinaryfile` for binary detection and `yaml` for parsing workflow
-  files and instruction-file frontmatter / `.mdc` rule metadata. _(M)_
+- [x] Replaced bespoke traversal/ignore in `detectors/file-inventory.ts` with
+  `fast-glob` (walk) + `ignore` (`.gitignore` parity, root and nested with git
+  hierarchy semantics and negations). The always-ignored directory set and
+  explicit `ignorePaths` still apply on top; `walkFiles` keeps its signature so
+  the scan engine is unchanged. Remaining: route the `ignorePaths` glob matcher
+  through `picomatch` to retire the hand-rolled `globToRegex` in `core/util.ts`. _(S)_
+- [x] Use `isbinaryfile` for binary detection (replacing the bespoke NUL-byte
+  sampler, still short-circuiting on known binary extensions). `yaml` parsing
+  for workflow files already landed with semantic CI parsing; instruction-file
+  frontmatter / `.mdc` rule metadata parsing remains. _(S)_
 
 ## P2 — Semantic CI & policy
 
