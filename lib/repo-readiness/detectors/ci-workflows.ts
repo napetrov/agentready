@@ -91,7 +91,7 @@ const ALL_COVERABLE_KINDS: CiCommandKind[] = ['lint', 'typecheck', 'test', 'buil
 // Splits a shell `run:` block into individual command invocations so each is
 // judged on its own (e.g. `make lint && make richtest` → two invocations: one
 // recognized, one opaque).
-const COMMAND_SEPARATORS = /&&|\|\||[;\n|]/
+const COMMAND_SEPARATORS = /&&|\|\||[;\n]/
 
 // Always-opaque runners: they execute a configured matrix or several scripts we
 // cannot enumerate (tox/nox run whatever envs are configured; npm-run-all/turbo/
