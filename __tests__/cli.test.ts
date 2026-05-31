@@ -30,22 +30,26 @@ const run = async (args: string[]): Promise<RunResult> => {
   const previousExit = process.exitCode
   process.exitCode = 0
 
-  const program = buildProgram()
-  program.exitOverride()
-  program.commands.forEach(command => command.exitOverride())
-
   let error: unknown
+  let exitCode = 0
   try {
-    await program.parseAsync(args, { from: 'user' })
-  } catch (caught) {
-    error = caught
+    const program = buildProgram()
+    program.exitOverride()
+    program.commands.forEach(command => command.exitOverride())
+    try {
+      await program.parseAsync(args, { from: 'user' })
+    } catch (caught) {
+      error = caught // Commander parse/exit errors surface here
+    }
+    exitCode = Number(process.exitCode ?? 0)
+  } finally {
+    // Always restore global state, even if buildProgram/exitOverride throws, so
+    // a failure in one case cannot leak spies or an exit code into the next.
+    process.exitCode = previousExit
+    logSpy.mockRestore()
+    errSpy.mockRestore()
+    stderrSpy.mockRestore()
   }
-
-  const exitCode = Number(process.exitCode ?? 0)
-  process.exitCode = previousExit
-  logSpy.mockRestore()
-  errSpy.mockRestore()
-  stderrSpy.mockRestore()
   return { stdout: out.join('\n'), stderr: err.join('\n'), exitCode, error }
 }
 

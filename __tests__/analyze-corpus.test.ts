@@ -44,12 +44,18 @@ describe('analytics-layer evaluation corpus', () => {
     expect(calibration.reduce((sum, b) => sum + b.count, 0)).toBeGreaterThan(0)
   })
 
-  it('routes each analyzer prompt to its canned response', async () => {
-    // Guard the routing markers the corpus provider depends on.
-    const provider = corpusProvider({ contradiction: { contradictions: [] } })
-    const base = { input: 'x', outputSchema: {}, maxTokens: 10 } as const
-    const contradiction = await provider.complete({ task: 'contradiction', system: 'You find direct contradictions ...', ...base })
-    expect(contradiction.output).toEqual({ contradictions: [] })
+  it('routes by output schema to the matching canned response', async () => {
+    const provider = corpusProvider({ contradiction: { contradictions: [{ topic: 't' }] } })
+    const base = { system: 's', input: 'x', maxTokens: 10 } as const
+
+    // A contradiction-shaped output schema routes to the contradiction response.
+    const contradiction = await provider.complete({ task: 'contradiction', outputSchema: { properties: { contradictions: {} } }, ...base })
+    expect(contradiction.output).toEqual({ contradictions: [{ topic: 't' }] })
+
+    // An analyzer the case does not specify gets an empty (valid) response.
+    const triage = await provider.complete({ task: 'triage', outputSchema: { properties: { assessments: { items: { properties: { actionable: {} } } } } }, ...base })
+    expect(triage.output).toEqual({ assessments: [] })
+
     expect(CORPUS.length).toBeGreaterThanOrEqual(3)
   })
 })

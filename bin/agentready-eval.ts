@@ -54,19 +54,29 @@ const EMPTY: Required<CaseResponses> = {
 }
 
 /**
- * A provider that returns each case's canned output, routed by a marker in the
- * analyzer's system prompt (each analyzer's prompt is distinct). No inference.
+ * Identifies which analyzer a request belongs to from its declared output schema
+ * — a stable part of the analyzer contract — rather than the prose of its system
+ * prompt: the contradiction schema has a `contradictions` array, false-positive's
+ * items carry a `findingId`, and instruction-quality's carry `actionable`.
+ */
+const analyzerFor = (request: LlmRequest): keyof CaseResponses => {
+  const schema = JSON.stringify(request.outputSchema)
+  if (schema.includes('"contradictions"')) return 'contradiction'
+  if (schema.includes('"findingId"')) return 'falsePositive'
+  return 'instructionQuality'
+}
+
+/**
+ * A provider that returns each case's canned output for the matching analyzer.
+ * No inference; an analyzer the case does not specify gets an empty (valid)
+ * response so unrelated analyzers never pollute the scored insights.
  */
 export const corpusProvider = (responses: CaseResponses): LlmProvider => ({
   id: 'corpus',
   model: 'corpus@1',
   async complete(request: LlmRequest): Promise<LlmResponse> {
-    const output = request.system.includes('contradictions')
-      ? responses.contradiction ?? EMPTY.contradiction
-      : request.system.includes('false positives')
-        ? responses.falsePositive ?? EMPTY.falsePositive
-        : responses.instructionQuality ?? EMPTY.instructionQuality
-    return { output, model: 'corpus@1' }
+    const which = analyzerFor(request)
+    return { output: responses[which] ?? EMPTY[which], model: 'corpus@1' }
   },
 })
 
