@@ -104,8 +104,12 @@ Verified against the current `main`/branch code before accepting:
   reimplemented in `lib/action/runtime.ts` to avoid pulling `@actions/http-client`
   /`undici` into the bundle (keeps it small and audit-clean).
 - [x] **Job summary.** The markdown report is written to `$GITHUB_STEP_SUMMARY`.
-- [ ] **PR annotation / comment.** Optional diff-scoped comments via reviewdog or
-  the GitHub API (needs a token + `@actions/github`); deferred. _(M)_
+- [x] **PR annotation / comment.** `pr-comment` input posts/updates a sticky
+  pull-request comment with the markdown report via the GitHub REST API over the
+  node20 global `fetch` (no `@actions/github`/`undici`, keeping the bundle small).
+  Uses the workflow `github-token` (`pull-requests: write`); fail-open so a
+  missing permission or non-PR run warns instead of failing. Orchestration split
+  into `lib/action/pr-comment.ts` and unit-tested with an injected API client.
 - [x] **Action e2e test.** `bin/agentready-action-smoke.ts` drives the bundled
   action via `INPUT_*` / `GITHUB_OUTPUT` / `GITHUB_STEP_SUMMARY` and asserts
   outputs, summary, SARIF artifact, and exit codes; `__tests__/action.test.ts`
@@ -218,7 +222,8 @@ Proposed steps where the layer can plug in (to be refined in the next PR):
   using npm workspaces — only after P0 exports + schemas land. _(L)_
 - [ ] Changesets for coordinated versioning + npm provenance / trusted
   publishing from Actions. _(M)_
-- [ ] Dependabot config for dependency updates. _(S)_
+- [x] Dependabot config for dependency updates — `.github/dependabot.yml`,
+  weekly grouped npm + github-actions updates.
 - [ ] Detector expansion: Gradle/Maven, .NET, broader Python tooling. _(M)_
 
 ## Explicit non-goals (reaffirmed)

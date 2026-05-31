@@ -1,4 +1,5 @@
 import { runAction, type ActionInputs, type ActionMode, type FailOnSeverity } from './run'
+import { postPrComment } from './pr-comment'
 import * as core from './runtime'
 
 const VALID_MODES: ActionMode[] = ['scan', 'diff']
@@ -70,6 +71,24 @@ const main = async (): Promise<void> => {
 
   if (core.getBooleanInput('job-summary')) {
     core.writeSummary(result.summaryMarkdown)
+  }
+
+  if (core.getBooleanInput('pr-comment')) {
+    const outcome = await postPrComment(result.summaryMarkdown, {
+      token: optionalInput('github-token'),
+      repository: process.env.GITHUB_REPOSITORY,
+      eventPath: process.env.GITHUB_EVENT_PATH,
+      apiUrl: process.env.GITHUB_API_URL,
+    })
+    if (outcome.status === 'failed') {
+      // Fail-open: a commenting problem (e.g. missing pull-requests: write
+      // permission) is a warning, never a gate failure.
+      core.warning(`AgentReady could not post the PR comment: ${outcome.reason}`)
+    } else if (outcome.status === 'skipped') {
+      core.info(`AgentReady PR comment skipped: ${outcome.reason}`)
+    } else {
+      core.info(`AgentReady PR comment ${outcome.status}.`)
+    }
   }
 
   if (result.failed) {

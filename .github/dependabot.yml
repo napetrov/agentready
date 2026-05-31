@@ -1,0 +1,33 @@
+# Dependabot keeps dependencies current across the project's two ecosystems:
+# the npm package (root) and the GitHub Actions used by the workflows.
+# Updates are grouped to keep PR noise low; security updates are never grouped.
+version: 2
+updates:
+  # npm dependencies for the scanner / CLI / action (single root package.json).
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Actions referenced by the workflows in .github/workflows/.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions-all:
+        update-types:
+          - minor
+          - patch

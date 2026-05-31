@@ -42,6 +42,14 @@ inputs:
     description: 'Write the markdown report to the GitHub Actions job summary.'
     required: false
     default: 'true'
+  pr-comment:
+    description: 'Post (and update in place) a sticky pull-request comment with the markdown report. Requires github-token with pull-requests: write and a pull_request-triggered run. Fail-open: commenting problems warn but never fail the action.'
+    required: false
+    default: 'false'
+  github-token:
+    description: 'Token used to post the PR comment (needs pull-requests: write). Defaults to the workflow GITHUB_TOKEN. Only used when pr-comment is enabled.'
+    required: false
+    default: ${{ github.token }}
   upload-sarif:
     description: 'Write a SARIF report alongside the JSON/markdown reports.'
     required: false
