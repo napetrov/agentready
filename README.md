@@ -145,7 +145,8 @@ via `analyzeWithProvider(...)` from the `agentready/analyze` export.
 ### GitHub Action
 
 Gate pull requests on readiness with the bundled action. It writes a job
-summary, sets outputs, and can emit SARIF for code scanning:
+summary, can post a sticky pull-request comment, sets outputs, and can emit
+SARIF for code scanning:
 
 ```yaml
 permissions:
@@ -176,11 +177,39 @@ steps:
 
 Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
 `fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
-`upload-sarif`, `output-dir`, `tool-version`, `analyze`, and
-`analyze-min-score`; outputs include `score`, `findings-count`,
+`pr-comment`, `github-token`, `upload-sarif`, `output-dir`, `tool-version`,
+`analyze`, and `analyze-min-score`; outputs include `score`, `findings-count`,
 `regressions-count`, the report paths, and (when `analyze` is on)
 `augmented-score`/`augmented-report-path`. See [`action.yml`](action.yml) for
 the authoritative contract.
+
+#### Pull-request comment
+
+Set `pr-comment: true` to post the markdown report as a pull-request comment.
+The action keeps a single sticky comment and updates it in place on each run
+rather than stacking new ones. It needs `pull-requests: write` and uses the
+workflow `github-token` by default:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+
+steps:
+  - uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
+  - uses: napetrov/agentready@main
+    with:
+      mode: diff
+      base-ref: origin/${{ github.base_ref || 'main' }}
+      head-ref: HEAD
+      pr-comment: true
+```
+
+It is fail-open: on a missing permission or a non-`pull_request` run it logs a
+notice and continues without failing the job. Omit `pr-comment` (and the
+`pull-requests: write` permission) if the job summary is enough.
 
 #### Optional LLM augmentation in CI (GitHub Models)
 
