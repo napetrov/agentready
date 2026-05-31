@@ -17,13 +17,14 @@ Run before concluding any change:
 ```bash
 npm run type-check
 npm run lint
-npm test
+npm run test:coverage          # enforces the 80% coverage gate
 npm run build
 npm run agentready -- scan .
 npm run agentready:fixtures
 npm run agentready:pack-smoke
 npm run agentready:schemas -- --check
 npm run agentready:action-smoke
+npm run agentready:eval        # offline gold-corpus eval of the LLM layer
 ```
 
 When a contract or config shape changes, update `lib/repo-readiness/core/schemas.ts`
