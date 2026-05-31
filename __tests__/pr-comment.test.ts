@@ -3,10 +3,12 @@ import { tmpdir } from 'os'
 import path from 'path'
 import {
   COMMENT_MARKER,
+  createFetchApi,
   hasMarker,
   postPrComment,
   resolvePrNumber,
   withMarker,
+  type FetchFn,
   type IssueComment,
   type IssueCommentApi,
 } from '../lib/action/pr-comment'
@@ -151,5 +153,97 @@ describe('postPrComment', () => {
     const result = await postPrComment('body', ctx(), api)
     expect(result.status).toBe('failed')
     expect(result.reason).toMatch(/boom/)
+  })
+})
+
+describe('createFetchApi', () => {
+  const slug = { owner: 'octo', repo: 'repo' }
+
+  interface Call {
+    url: string
+    init?: RequestInit
+  }
+
+  /** A fake fetch that records calls and replays queued responses in order. */
+  const fakeFetch = (responses: Array<{ ok?: boolean; status?: number; json?: unknown; text?: string }>) => {
+    const calls: Call[] = []
+    const fn: FetchFn = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init })
+      const next = responses.shift() ?? { ok: true, json: [] }
+      return {
+        ok: next.ok ?? true,
+        status: next.status ?? 200,
+        statusText: '',
+        json: async () => next.json ?? [],
+        text: async () => next.text ?? '',
+      } as Response
+    }) as FetchFn
+    return { fn, calls }
+  }
+
+  it('lists comments, building an authenticated, paginated URL', async () => {
+    const { fn, calls } = fakeFetch([{ json: [{ id: 1, body: 'a' }] }])
+    const api = createFetchApi(slug, 'tok', undefined, fn)
+    const comments = await api.list(99)
+
+    expect(comments).toEqual([{ id: 1, body: 'a' }])
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toBe('https://api.github.com/repos/octo/repo/issues/99/comments?per_page=100&page=1')
+    const headers = calls[0].init?.headers as Record<string, string>
+    expect(headers.Authorization).toBe('Bearer tok')
+    expect(headers.Accept).toBe('application/vnd.github+json')
+    // A GET carries no body, so no Content-Type header.
+    expect(headers['Content-Type']).toBeUndefined()
+  })
+
+  it('follows pagination until a short page and stops at the cap', async () => {
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({ id: i, body: `c${i}` }))
+    const { fn, calls } = fakeFetch([{ json: fullPage }, { json: [{ id: 100, body: 'last' }] }])
+    const api = createFetchApi(slug, 'tok', undefined, fn)
+    const comments = await api.list(7)
+
+    expect(comments).toHaveLength(101)
+    expect(calls.map((c) => c.url)).toEqual([
+      'https://api.github.com/repos/octo/repo/issues/7/comments?per_page=100&page=1',
+      'https://api.github.com/repos/octo/repo/issues/7/comments?per_page=100&page=2',
+    ])
+  })
+
+  it('honors a custom apiUrl and strips trailing slashes', async () => {
+    const { fn, calls } = fakeFetch([{ json: [] }])
+    const api = createFetchApi(slug, 'tok', 'https://ghe.example.com/api/v3/', fn)
+    await api.list(1)
+    expect(calls[0].url).toBe('https://ghe.example.com/api/v3/repos/octo/repo/issues/1/comments?per_page=100&page=1')
+  })
+
+  it('POSTs a new comment with a JSON body and Content-Type', async () => {
+    const { fn, calls } = fakeFetch([{ json: {} }])
+    const api = createFetchApi(slug, 'tok', undefined, fn)
+    await api.create(42, 'hello')
+
+    expect(calls[0].url).toBe('https://api.github.com/repos/octo/repo/issues/42/comments')
+    expect(calls[0].init?.method).toBe('POST')
+    expect(calls[0].init?.body).toBe(JSON.stringify({ body: 'hello' }))
+    expect((calls[0].init?.headers as Record<string, string>)['Content-Type']).toBe('application/json')
+  })
+
+  it('PATCHes an existing comment by id', async () => {
+    const { fn, calls } = fakeFetch([{ json: {} }])
+    const api = createFetchApi(slug, 'tok', undefined, fn)
+    await api.update(55, 'updated')
+
+    expect(calls[0].url).toBe('https://api.github.com/repos/octo/repo/issues/comments/55')
+    expect(calls[0].init?.method).toBe('PATCH')
+    expect(calls[0].init?.body).toBe(JSON.stringify({ body: 'updated' }))
+  })
+
+  it('throws a descriptive error on a non-2xx response without leaking the token', async () => {
+    const { fn } = fakeFetch([{ ok: false, status: 403, text: 'Resource not accessible by integration' }])
+    const api = createFetchApi(slug, 'super-secret-token', undefined, fn)
+
+    await expect(api.list(1)).rejects.toThrow(/listing PR comments failed: 403/)
+    await expect(
+      createFetchApi(slug, 'super-secret-token', undefined, fakeFetch([{ ok: false, status: 403, text: 'denied' }]).fn).list(1),
+    ).rejects.not.toThrow(/super-secret-token/)
   })
 })

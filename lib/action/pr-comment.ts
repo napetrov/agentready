@@ -40,6 +40,9 @@ export interface IssueComment {
   body?: string
 }
 
+/** Injectable fetch, so the REST client can be unit-tested without network. */
+export type FetchFn = typeof fetch
+
 /**
  * The slice of the GitHub REST API this feature needs. Injecting it keeps
  * postPrComment unit-testable without real network access.
@@ -92,21 +95,29 @@ export const resolvePrNumber = (eventPath: string | undefined): number | undefin
 }
 
 /**
- * Builds a REST client over the node20 global fetch. Throws (rejects) on
- * non-2xx responses so the caller can fail-open.
+ * Builds a REST client over the node20 global fetch (or an injected `fetchImpl`
+ * for tests). Throws (rejects) on non-2xx responses so the caller can fail-open.
  */
-export const createFetchApi = (slug: RepoSlug, token: string, apiUrl?: string): IssueCommentApi => {
+export const createFetchApi = (
+  slug: RepoSlug,
+  token: string,
+  apiUrl?: string,
+  fetchImpl: FetchFn = fetch,
+): IssueCommentApi => {
   const base = (apiUrl ?? 'https://api.github.com').replace(/\/+$/, '')
+  // Read headers; write requests add Content-Type below (a GET carries no body).
   const headers = {
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'User-Agent': 'agentready-action',
-    'Content-Type': 'application/json',
   }
+  const writeHeaders = { ...headers, 'Content-Type': 'application/json' }
 
   const ensureOk = async (response: Response, action: string): Promise<void> => {
     if (!response.ok) {
+      // Note: only the response body is included — never the request headers —
+      // so the bearer token can't leak into a logged error message.
       const detail = await response.text().catch(() => '')
       throw new Error(`${action} failed: ${response.status} ${response.statusText} ${detail}`.trim())
     }
@@ -119,7 +130,7 @@ export const createFetchApi = (slug: RepoSlug, token: string, apiUrl?: string): 
       // page count defensively rather than following Link headers.
       for (let page = 1; page <= 10; page += 1) {
         const url = `${base}/repos/${slug.owner}/${slug.repo}/issues/${prNumber}/comments?per_page=100&page=${page}`
-        const response = await fetch(url, { headers })
+        const response = await fetchImpl(url, { headers })
         await ensureOk(response, 'listing PR comments')
         const batch = (await response.json()) as IssueComment[]
         comments.push(...batch)
@@ -129,12 +140,12 @@ export const createFetchApi = (slug: RepoSlug, token: string, apiUrl?: string): 
     },
     async create(prNumber: number, body: string): Promise<void> {
       const url = `${base}/repos/${slug.owner}/${slug.repo}/issues/${prNumber}/comments`
-      const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ body }) })
+      const response = await fetchImpl(url, { method: 'POST', headers: writeHeaders, body: JSON.stringify({ body }) })
       await ensureOk(response, 'creating PR comment')
     },
     async update(commentId: number, body: string): Promise<void> {
       const url = `${base}/repos/${slug.owner}/${slug.repo}/issues/comments/${commentId}`
-      const response = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify({ body }) })
+      const response = await fetchImpl(url, { method: 'PATCH', headers: writeHeaders, body: JSON.stringify({ body }) })
       await ensureOk(response, 'updating PR comment')
     },
   }

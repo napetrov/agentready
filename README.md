@@ -211,6 +211,12 @@ It is fail-open: on a missing permission or a non-`pull_request` run it logs a
 notice and continues without failing the job. Omit `pr-comment` (and the
 `pull-requests: write` permission) if the job summary is enough.
 
+> **Fork pull requests:** for PRs from forks, GitHub gives the default
+> `github.token` read-only access, so the comment can't be posted — the step
+> logs a warning and the job still passes. The job summary still works in that
+> case; use it (or a `pull_request_target` workflow, with the usual care around
+> untrusted code) if you need comments on fork PRs.
+
 #### Optional LLM augmentation in CI (GitHub Models)
 
 Set `analyze: true` to also run the LLM layer. The CI-native token source is
