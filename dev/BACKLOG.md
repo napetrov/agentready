@@ -135,10 +135,19 @@ Verified against the current `main`/branch code before accepting:
 
 ## P2 — Semantic CI & policy
 
-- [ ] **Parse workflow steps** for AgentReady-specific command/verification
-  mapping (replacing the current file-listing in `detectCiWorkflows`); delegate
-  workflow correctness to actionlint and shell steps to ShellCheck rather than
-  reimplementing. _(M)_
+- [x] **Parse workflow steps** for AgentReady-specific command/verification
+  mapping (replacing the file-listing in the old `detectCiWorkflows`).
+  `detectors/ci-workflows.ts` parses each workflow's `jobs[].steps[].run` (and a
+  small map of known verification actions for `uses:`) with the `yaml` package,
+  classifying steps into install/lint/type-check/test/build. The `ci` evidence
+  now carries `workflows` (per-job detected command kinds) and aggregate
+  `hasInstall/hasLint/hasTypeCheck/hasTest/hasBuild` flags. New checks
+  (`ci.test.not-run`, `ci.lint.not-run`, `ci.typecheck.not-run`,
+  `ci.build.not-run`) flag commands the repo exposes but CI never runs; they
+  stay silent when the parse is low-confidence (a workflow exists but no command
+  was recognized) to avoid false positives. Parsing is read-only; workflow
+  correctness is still delegated to actionlint/ShellCheck rather than
+  reimplemented. _(M)_
 - [ ] **Policy packs.** Keep built-in rules in TypeScript; add optional
   policy-pack ingestion over the AgentReady JSON evidence (OPA/Conftest-style).
   Add `@agentready/policy-default` once the package split happens. _(L)_

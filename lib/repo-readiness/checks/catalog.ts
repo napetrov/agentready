@@ -109,6 +109,58 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     ],
     references: [DOCS, 'https://docs.github.com/actions'],
   },
+  'ci.test.not-run': {
+    id: 'ci.test.not-run',
+    title: 'Tests are available but CI does not run them',
+    category: 'ci',
+    defaultSeverity: 'warning',
+    rationale:
+      'A test command an agent can run locally is only half the loop; if CI never runs it, regressions still reach the default branch and "verified locally" is the only signal. AgentReady parses the workflow steps and found no test invocation.',
+    remediation: [
+      'Add a step that runs the test command to a CI workflow under .github/workflows/.',
+      'If CI runs tests through a composite or marketplace action AgentReady does not recognize, this may be a false positive — file the action so it can be classified.',
+    ],
+    references: [DOCS, 'https://docs.github.com/actions'],
+  },
+  'ci.lint.not-run': {
+    id: 'ci.lint.not-run',
+    title: 'A lint command is available but CI does not run it',
+    category: 'ci',
+    defaultSeverity: 'warning',
+    rationale:
+      'Lint enforced only locally drifts: an agent cannot rely on it as an objective gate, and style/static-analysis regressions land unchecked. AgentReady parsed the workflow steps and found no lint invocation.',
+    remediation: [
+      'Add a step that runs the lint command to a CI workflow.',
+      'If CI lints through an action AgentReady does not recognize, this may be a false positive.',
+    ],
+    references: [DOCS, 'https://docs.github.com/actions'],
+  },
+  'ci.typecheck.not-run': {
+    id: 'ci.typecheck.not-run',
+    title: 'A type-check command is available but CI does not run it',
+    category: 'ci',
+    defaultSeverity: 'warning',
+    rationale:
+      'Type errors that surface only on a developer machine are invisible to reviewers and to the next agent. Running the type-check in CI makes it an enforced gate. AgentReady parsed the workflow steps and found no type-check invocation.',
+    remediation: [
+      'Add a step that runs the type-check command (e.g. tsc --noEmit, mypy) to a CI workflow.',
+      'If CI type-checks through an action AgentReady does not recognize, this may be a false positive.',
+    ],
+    references: [DOCS, 'https://docs.github.com/actions'],
+  },
+  'ci.build.not-run': {
+    id: 'ci.build.not-run',
+    title: 'A build command is available but CI does not run it',
+    category: 'ci',
+    defaultSeverity: 'info',
+    rationale:
+      'A build that runs only locally lets broken builds reach the default branch. Running it in CI catches that earlier. This is informational because some projects build only at publish time.',
+    remediation: [
+      'Consider adding a build step to a CI workflow.',
+      'If CI builds through an action AgentReady does not recognize, this may be a false positive.',
+    ],
+    references: [DOCS, 'https://docs.github.com/actions'],
+  },
   'instructions.missing': {
     id: 'instructions.missing',
     title: 'No agent instruction surface detected',

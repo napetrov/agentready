@@ -10,8 +10,3 @@ export const detectDocs = (filePaths: string[]): LocalReadinessReport['docs'] =>
   architecture: filePaths.filter(filePath => /(^|\/)(ARCHITECTURE|DEVELOPMENT)(\.[^.]+)?$/i.test(filePath)).sort(),
   environment: filePaths.filter(filePath => /(^|\/)(\.env\.example|\.env\.sample|env\.example)$/i.test(filePath)).sort(),
 })
-
-/** Detects GitHub Actions workflow files. */
-export const detectCiWorkflows = (filePaths: string[]): LocalReadinessReport['ci'] => ({
-  workflowFiles: filePaths.filter(filePath => filePath.startsWith('.github/workflows/')).sort(),
-})

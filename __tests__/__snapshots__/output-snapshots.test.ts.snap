@@ -80,7 +80,19 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "ci": {
       "workflowFiles": [
         ".github/workflows/ci.yml"
-      ]
+      ],
+      "workflows": [
+        {
+          "file": ".github/workflows/ci.yml",
+          "name": "CI",
+          "jobs": []
+        }
+      ],
+      "hasInstall": false,
+      "hasLint": false,
+      "hasTypeCheck": false,
+      "hasTest": false,
+      "hasBuild": false
     },
     "instructions": [
       {
@@ -145,7 +157,19 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "ci": {
       "workflowFiles": [
         ".github/workflows/ci.yml"
-      ]
+      ],
+      "workflows": [
+        {
+          "file": ".github/workflows/ci.yml",
+          "name": "CI",
+          "jobs": []
+        }
+      ],
+      "hasInstall": false,
+      "hasLint": false,
+      "hasTypeCheck": false,
+      "hasTest": false,
+      "hasBuild": false
     },
     "instructions": [
       {
@@ -265,7 +289,13 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
     "hasTypeCheck": false
   },
   "ci": {
-    "workflowFiles": []
+    "workflowFiles": [],
+    "workflows": [],
+    "hasInstall": false,
+    "hasLint": false,
+    "hasTypeCheck": false,
+    "hasTest": false,
+    "hasBuild": false
   },
   "instructions": [],
   "capabilities": [],
@@ -327,6 +357,7 @@ exports[`scan output snapshots bad-repo console summary 1`] = `
 "AgentReady score: 36/100
 Files: 2 (1 source, 0 tests, 0 docs)
 Capabilities: 0, safety signals: 0
+CI: no workflows detected
 Findings: 6
 - [warning] No CI workflow detected
 - [warning] No lint command detected
@@ -342,6 +373,7 @@ exports[`scan output snapshots bad-repo markdown 1`] = `
 Score: **36/100**
 Files: 2 total, 1 source, 0 tests, 0 docs
 Capabilities: 0; safety signals: 0
+CI: no workflows detected
 Findings: 6
 
 ### Findings
@@ -509,7 +541,30 @@ exports[`scan output snapshots good-repo compact json 1`] = `
   "ci": {
     "workflowFiles": [
       ".github/workflows/ci.yml"
-    ]
+    ],
+    "workflows": [
+      {
+        "file": ".github/workflows/ci.yml",
+        "name": "CI",
+        "jobs": [
+          {
+            "id": "verify",
+            "commandKinds": [
+              "install",
+              "lint",
+              "typecheck",
+              "test",
+              "build"
+            ]
+          }
+        ]
+      }
+    ],
+    "hasInstall": true,
+    "hasLint": true,
+    "hasTypeCheck": true,
+    "hasTest": true,
+    "hasBuild": true
   },
   "instructions": [
     {
@@ -537,7 +592,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
   "summary": {
     "score": 100,
     "totalFiles": 7,
-    "totalBytes": 886,
+    "totalBytes": 913,
     "sourceFiles": 1,
     "testFiles": 1,
     "documentationFiles": 3,
@@ -554,6 +609,7 @@ exports[`scan output snapshots good-repo console summary 1`] = `
 "AgentReady score: 100/100
 Files: 7 (1 source, 1 tests, 3 docs)
 Capabilities: 0, safety signals: 0
+CI: 1 workflow (runs install, lint, type-check, test, build)
 Findings: 0"
 `;
 
@@ -563,6 +619,7 @@ exports[`scan output snapshots good-repo markdown 1`] = `
 Score: **100/100**
 Files: 7 total, 1 source, 1 tests, 3 docs
 Capabilities: 0; safety signals: 0
+CI: 1 workflow — runs install, lint, type-check, test, build
 Findings: 0
 
 ### Findings

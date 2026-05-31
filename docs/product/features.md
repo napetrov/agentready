@@ -58,7 +58,10 @@ Goal: connect findings to real agent friction and team standards.
 Features:
 
 - semantic CI-workflow parsing (vs file listing); delegate workflow correctness
-  to actionlint / ShellCheck rather than reimplementing
+  to actionlint / ShellCheck rather than reimplementing — **delivered**: the CI
+  detector parses workflow steps and classifies install/lint/type-check/test/
+  build commands, with `ci.*.not-run` checks that flag commands the repo exposes
+  but CI never runs
 - built-in policy packs and repository-specific thresholds
 - instruction-file overlap and contradiction checks
 - stale path and command validation
