@@ -374,6 +374,33 @@ describe('local readiness', () => {
     expect(formatDiffMarkdown(report)).toContain('New regressions')
   })
 
+  test('diff still flags committed files that match .gitignore', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { lint: 'eslint .', test: 'jest' } }))
+    // The repo gitignores generated assets, but a large one is committed anyway.
+    // Git tracks it regardless of .gitignore, so the diff must still flag it.
+    writeRepoFile(root, '.gitignore', 'assets/\n')
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'base'])
+    runGit(root, ['switch', '-c', 'feature'])
+    writeRepoFile(root, 'assets/blob.dat', Buffer.alloc(1_200_000, 1))
+    runGit(root, ['add', '--force', 'assets/blob.dat'])
+    runGit(root, ['commit', '-m', 'commit a gitignored large file'])
+
+    const report = diffLocalReadiness(root, { base: 'main', head: 'feature', now: fixedNow })
+
+    expect(report.headReport.files.map(file => file.path)).toContain('assets/blob.dat')
+    expect(report.regressions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'files.large:assets/blob.dat' }),
+    ]))
+  })
+
   test('diff scans refs via worktrees without touching a dirty working tree', () => {
     root = createTempRepo()
     runGit(root, ['init', '--initial-branch=main'])

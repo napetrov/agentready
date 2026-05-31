@@ -219,9 +219,19 @@ const isGitIgnored = (repoPath: string, matchers: Map<string, Ignore>): boolean 
  * directories and any path matched by the repository's `.gitignore` files or the
  * configured ignore paths, and classifies every file
  * (source/test/doc/generated/binary/minified).
+ *
+ * `respectGitignore` (default `true`) can be disabled by callers that scan a
+ * tree of committed files only — e.g. the `diff` worktrees — where git would not
+ * ignore tracked paths, so `.gitignore` filtering must not drop them.
  */
-export const walkFiles = (root: string, config: LocalReadinessConfig): LocalReadinessFile[] => {
-  const gitignoreMatchers = loadGitignoreMatchers(root)
+export const walkFiles = (
+  root: string,
+  config: LocalReadinessConfig,
+  options: { respectGitignore?: boolean } = {},
+): LocalReadinessFile[] => {
+  const gitignoreMatchers = options.respectGitignore === false
+    ? new Map<string, Ignore>()
+    : loadGitignoreMatchers(root)
 
   // `.git` lives as a regular file (not a directory) inside the linked
   // worktrees `diff` creates, so ignore it by name as well as by directory.
