@@ -1,0 +1,589 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`augmented report snapshots deterministic-only summary and markdown (no provider): markdown 1`] = `
+"# AgentReady Augmented Analysis
+
+- **Deterministic score:** 100
+- **Augmented score:** 100 (no change)
+- **Insights applied:** 0
+- **Provider:** none (deterministic-only)"
+`;
+
+exports[`augmented report snapshots deterministic-only summary and markdown (no provider): summary 1`] = `
+"AgentReady augmented analysis
+Deterministic score: 100   Augmented score: 100 (no change)
+Insights: none (deterministic-only — no provider configured or nothing to analyze)"
+`;
+
+exports[`augmented report snapshots summary and markdown with a folded insight: markdown 1`] = `
+"# AgentReady Augmented Analysis
+
+- **Deterministic score:** 100
+- **Augmented score:** 96 (-4)
+- **Insights applied:** 1
+- **Provider:** snap
+
+## Insights
+
+| Kind | Target | Confidence | Verdict |
+|---|---|---|---|
+| quality | AGENTS.md | 80% | Instruction file is present but not actionable |
+
+## Score adjustments
+
+| Δ | Insight |
+|---|---|
+| -4 | analysis.instruction-quality:AGENTS.md |"
+`;
+
+exports[`augmented report snapshots summary and markdown with a folded insight: summary 1`] = `
+"AgentReady augmented analysis
+Deterministic score: 100   Augmented score: 96 (-4)
+Insights: 1 applied (provider: snap)
+
+- (quality, 80%) [AGENTS.md] Instruction file is present but not actionable: too terse Missing: where code lives.
+
+Score adjustments:
+  -4  analysis.instruction-quality:AGENTS.md"
+`;
+
+exports[`diff output snapshots summary and markdown for a regression between two refs: diff compact json 1`] = `
+"{
+  "base": "HEAD~1",
+  "head": "HEAD",
+  "generatedAt": "<TIME>",
+  "baseReport": {
+    "root": "<WORKTREE>",
+    "generatedAt": "<TIME>",
+    "docs": {
+      "readme": [
+        "README.md"
+      ],
+      "contributing": [],
+      "architecture": [],
+      "environment": []
+    },
+    "commands": {
+      "packageManager": "npm",
+      "ecosystems": [
+        "node"
+      ],
+      "scripts": [
+        "lint",
+        "test"
+      ],
+      "hasBuild": false,
+      "hasTest": true,
+      "hasLint": true,
+      "hasTypeCheck": false
+    },
+    "ci": {
+      "workflowFiles": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    "instructions": [
+      {
+        "path": "AGENTS.md",
+        "ecosystems": [
+          "codex",
+          "github-copilot",
+          "cursor",
+          "windsurf",
+          "cline",
+          "generic-agent"
+        ],
+        "scope": "root",
+        "activation": "always",
+        "sizeBytes": 14,
+        "legacy": false,
+        "localPrivate": false,
+        "notes": [
+          "Portable repository-level agent instruction entrypoint."
+        ]
+      }
+    ],
+    "capabilities": [],
+    "safetySignals": [],
+    "summary": {
+      "score": 100,
+      "totalFiles": 4,
+      "totalBytes": 75,
+      "sourceFiles": 0,
+      "testFiles": 0,
+      "documentationFiles": 2,
+      "largeFiles": 0,
+      "binaryFiles": 0,
+      "generatedFiles": 0,
+      "minifiedFiles": 0
+    },
+    "findings": []
+  },
+  "headReport": {
+    "root": "<WORKTREE>",
+    "generatedAt": "<TIME>",
+    "docs": {
+      "readme": [],
+      "contributing": [],
+      "architecture": [],
+      "environment": []
+    },
+    "commands": {
+      "packageManager": "npm",
+      "ecosystems": [
+        "node"
+      ],
+      "scripts": [
+        "lint",
+        "test"
+      ],
+      "hasBuild": false,
+      "hasTest": true,
+      "hasLint": true,
+      "hasTypeCheck": false
+    },
+    "ci": {
+      "workflowFiles": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    "instructions": [
+      {
+        "path": "AGENTS.md",
+        "ecosystems": [
+          "codex",
+          "github-copilot",
+          "cursor",
+          "windsurf",
+          "cline",
+          "generic-agent"
+        ],
+        "scope": "root",
+        "activation": "always",
+        "sizeBytes": 14,
+        "legacy": false,
+        "localPrivate": false,
+        "notes": [
+          "Portable repository-level agent instruction entrypoint."
+        ]
+      }
+    ],
+    "capabilities": [],
+    "safetySignals": [],
+    "summary": {
+      "score": 82,
+      "totalFiles": 3,
+      "totalBytes": 68,
+      "sourceFiles": 0,
+      "testFiles": 0,
+      "documentationFiles": 1,
+      "largeFiles": 0,
+      "binaryFiles": 0,
+      "generatedFiles": 0,
+      "minifiedFiles": 0
+    },
+    "findings": [
+      {
+        "id": "docs.readme.missing",
+        "title": "Repository has no README",
+        "severity": "error",
+        "recommendation": "Add a root README with purpose, setup, validation commands, and common agent entrypoints."
+      }
+    ]
+  },
+  "summary": {
+    "scoreDelta": -18,
+    "filesDelta": -1,
+    "bytesDelta": -7,
+    "findingsDelta": 1,
+    "newFindings": 1,
+    "resolvedFindings": 0
+  },
+  "newFindings": [
+    {
+      "id": "docs.readme.missing",
+      "title": "Repository has no README",
+      "severity": "error",
+      "recommendation": "Add a root README with purpose, setup, validation commands, and common agent entrypoints."
+    }
+  ],
+  "resolvedFindings": [],
+  "regressions": [
+    {
+      "id": "docs.readme.missing",
+      "title": "Repository has no README",
+      "severity": "error",
+      "recommendation": "Add a root README with purpose, setup, validation commands, and common agent entrypoints."
+    }
+  ]
+}"
+`;
+
+exports[`diff output snapshots summary and markdown for a regression between two refs: diff markdown 1`] = `
+"## AgentReady PR readiness
+
+Base/head: \`HEAD~1\` .. \`HEAD\`
+Score delta: **-18**
+New findings: 1; resolved findings: 0
+Regression findings: 1
+
+### New regressions
+- **ERROR**: Repository has no README. Add a root README with purpose, setup, validation commands, and common agent entrypoints.
+
+### Recommendations
+- **ERROR**: Repository has no README. Add a root README with purpose, setup, validation commands, and common agent entrypoints."
+`;
+
+exports[`diff output snapshots summary and markdown for a regression between two refs: diff summary 1`] = `
+"AgentReady diff: HEAD~1..HEAD
+Score delta: -18
+New findings: 1, resolved: 0
+- [error] Repository has no README"
+`;
+
+exports[`scan output snapshots bad-repo compact json 1`] = `
+"{
+  "root": "<ROOT>",
+  "generatedAt": "<TIME>",
+  "docs": {
+    "readme": [],
+    "contributing": [],
+    "architecture": [],
+    "environment": []
+  },
+  "commands": {
+    "packageManager": "npm",
+    "ecosystems": [
+      "node"
+    ],
+    "scripts": [
+      "build"
+    ],
+    "hasBuild": true,
+    "hasTest": false,
+    "hasLint": false,
+    "hasTypeCheck": false
+  },
+  "ci": {
+    "workflowFiles": []
+  },
+  "instructions": [],
+  "capabilities": [],
+  "safetySignals": [],
+  "summary": {
+    "score": 36,
+    "totalFiles": 2,
+    "totalBytes": 77,
+    "sourceFiles": 1,
+    "testFiles": 0,
+    "documentationFiles": 0,
+    "largeFiles": 0,
+    "binaryFiles": 0,
+    "generatedFiles": 0,
+    "minifiedFiles": 0
+  },
+  "findings": [
+    {
+      "id": "ci.workflow.missing",
+      "title": "No CI workflow detected",
+      "severity": "warning",
+      "recommendation": "Add CI that runs install, lint, type-check, tests, and build where applicable."
+    },
+    {
+      "id": "commands.lint.missing",
+      "title": "No lint command detected",
+      "severity": "warning",
+      "recommendation": "Expose a lint command so agents can catch style and static analysis regressions before review."
+    },
+    {
+      "id": "commands.test.missing",
+      "title": "No test command detected",
+      "severity": "error",
+      "recommendation": "Expose a stable test command in package scripts or documented project tooling."
+    },
+    {
+      "id": "commands.typecheck.missing",
+      "title": "TypeScript repository has no type-check command",
+      "severity": "warning",
+      "recommendation": "Expose a type-check command and run it in CI."
+    },
+    {
+      "id": "docs.readme.missing",
+      "title": "Repository has no README",
+      "severity": "error",
+      "recommendation": "Add a root README with purpose, setup, validation commands, and common agent entrypoints."
+    },
+    {
+      "id": "instructions.missing",
+      "title": "No agent instruction surface detected",
+      "severity": "warning",
+      "recommendation": "Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands."
+    }
+  ]
+}"
+`;
+
+exports[`scan output snapshots bad-repo console summary 1`] = `
+"AgentReady score: 36/100
+Files: 2 (1 source, 0 tests, 0 docs)
+Capabilities: 0, safety signals: 0
+Findings: 6
+- [warning] No CI workflow detected
+- [warning] No lint command detected
+- [error] No test command detected
+- [warning] TypeScript repository has no type-check command
+- [error] Repository has no README
+- [warning] No agent instruction surface detected"
+`;
+
+exports[`scan output snapshots bad-repo markdown 1`] = `
+"## AgentReady scan
+
+Score: **36/100**
+Files: 2 total, 1 source, 0 tests, 0 docs
+Capabilities: 0; safety signals: 0
+Findings: 6
+
+### Findings
+- **WARNING**: No CI workflow detected. Add CI that runs install, lint, type-check, tests, and build where applicable.
+- **WARNING**: No lint command detected. Expose a lint command so agents can catch style and static analysis regressions before review.
+- **ERROR**: No test command detected. Expose a stable test command in package scripts or documented project tooling.
+- **WARNING**: TypeScript repository has no type-check command. Expose a type-check command and run it in CI.
+- **ERROR**: Repository has no README. Add a root README with purpose, setup, validation commands, and common agent entrypoints.
+- **WARNING**: No agent instruction surface detected. Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands."
+`;
+
+exports[`scan output snapshots bad-repo sarif 1`] = `
+"{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "AgentReady",
+          "informationUri": "https://github.com/napetrov/agentready",
+          "rules": [
+            {
+              "id": "ci.workflow.missing",
+              "name": "ci.workflow.missing",
+              "shortDescription": {
+                "text": "No CI workflow detected"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "commands.lint.missing",
+              "name": "commands.lint.missing",
+              "shortDescription": {
+                "text": "No lint command detected"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "commands.test.missing",
+              "name": "commands.test.missing",
+              "shortDescription": {
+                "text": "No test command detected"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "commands.typecheck.missing",
+              "name": "commands.typecheck.missing",
+              "shortDescription": {
+                "text": "TypeScript repository has no type-check command"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "docs.readme.missing",
+              "name": "docs.readme.missing",
+              "shortDescription": {
+                "text": "Repository has no README"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "instructions.missing",
+              "name": "instructions.missing",
+              "shortDescription": {
+                "text": "No agent instruction surface detected"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ci.workflow.missing",
+          "level": "warning",
+          "message": {
+            "text": "No CI workflow detected. Add CI that runs install, lint, type-check, tests, and build where applicable."
+          }
+        },
+        {
+          "ruleId": "commands.lint.missing",
+          "level": "warning",
+          "message": {
+            "text": "No lint command detected. Expose a lint command so agents can catch style and static analysis regressions before review."
+          }
+        },
+        {
+          "ruleId": "commands.test.missing",
+          "level": "error",
+          "message": {
+            "text": "No test command detected. Expose a stable test command in package scripts or documented project tooling."
+          }
+        },
+        {
+          "ruleId": "commands.typecheck.missing",
+          "level": "warning",
+          "message": {
+            "text": "TypeScript repository has no type-check command. Expose a type-check command and run it in CI."
+          }
+        },
+        {
+          "ruleId": "docs.readme.missing",
+          "level": "error",
+          "message": {
+            "text": "Repository has no README. Add a root README with purpose, setup, validation commands, and common agent entrypoints."
+          }
+        },
+        {
+          "ruleId": "instructions.missing",
+          "level": "warning",
+          "message": {
+            "text": "No agent instruction surface detected. Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands."
+          }
+        }
+      ]
+    }
+  ]
+}"
+`;
+
+exports[`scan output snapshots good-repo compact json 1`] = `
+"{
+  "root": "<ROOT>",
+  "generatedAt": "<TIME>",
+  "docs": {
+    "readme": [
+      "README.md"
+    ],
+    "contributing": [],
+    "architecture": [
+      "docs/ARCHITECTURE.md"
+    ],
+    "environment": []
+  },
+  "commands": {
+    "packageManager": "npm",
+    "ecosystems": [
+      "node"
+    ],
+    "scripts": [
+      "build",
+      "lint",
+      "test",
+      "type-check"
+    ],
+    "hasBuild": true,
+    "hasTest": true,
+    "hasLint": true,
+    "hasTypeCheck": true
+  },
+  "ci": {
+    "workflowFiles": [
+      ".github/workflows/ci.yml"
+    ]
+  },
+  "instructions": [
+    {
+      "path": "AGENTS.md",
+      "ecosystems": [
+        "codex",
+        "github-copilot",
+        "cursor",
+        "windsurf",
+        "cline",
+        "generic-agent"
+      ],
+      "scope": "root",
+      "activation": "always",
+      "sizeBytes": 105,
+      "legacy": false,
+      "localPrivate": false,
+      "notes": [
+        "Portable repository-level agent instruction entrypoint."
+      ]
+    }
+  ],
+  "capabilities": [],
+  "safetySignals": [],
+  "summary": {
+    "score": 100,
+    "totalFiles": 7,
+    "totalBytes": 886,
+    "sourceFiles": 1,
+    "testFiles": 1,
+    "documentationFiles": 3,
+    "largeFiles": 0,
+    "binaryFiles": 0,
+    "generatedFiles": 0,
+    "minifiedFiles": 0
+  },
+  "findings": []
+}"
+`;
+
+exports[`scan output snapshots good-repo console summary 1`] = `
+"AgentReady score: 100/100
+Files: 7 (1 source, 1 tests, 3 docs)
+Capabilities: 0, safety signals: 0
+Findings: 0"
+`;
+
+exports[`scan output snapshots good-repo markdown 1`] = `
+"## AgentReady scan
+
+Score: **100/100**
+Files: 7 total, 1 source, 1 tests, 3 docs
+Capabilities: 0; safety signals: 0
+Findings: 0
+
+### Findings
+No findings."
+`;
+
+exports[`scan output snapshots good-repo sarif 1`] = `
+"{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "AgentReady",
+          "informationUri": "https://github.com/napetrov/agentready",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ]
+}"
+`;

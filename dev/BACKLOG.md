@@ -174,10 +174,14 @@ Proposed steps where the layer can plug in (to be refined in the next PR):
 - [ ] **Finding explanation / remediation.** Power a richer `explain`/`fix` mode
   with repo-specific rationale and patch suggestions, gated behind the opt-in
   layer. _(M)_
-- [ ] **Evaluation harness for the layer itself.** Define how we measure the
-  layer's usefulness (agreement with human review, false-positive reduction,
-  task-friction correlation from the benchmark harness) before trusting it.
-  **Design + metrics to be agreed in the follow-up PR.** _(L)_
+- [x] **Evaluation harness for the layer itself.** `bin/agentready-eval.ts`
+  (`npm run agentready:eval`) runs the real analyzer pipeline over a labeled
+  offline gold corpus (canned model responses) and reports precision/recall/F1,
+  the confusion matrix, and confidence calibration. `analyze-corpus.test.ts`
+  enforces a floor in CI, catching plumbing regressions (broken hallucination
+  guards, dropped score folding, id drift) without calling a model; the same
+  harness can score a live model in a one-off recording run. Human-agreement and
+  task-friction correlation (via the benchmark harness) remain future work. _(L)_
 
 ## P2 — Companion-tool orchestration (do not reimplement)
 
@@ -188,10 +192,22 @@ Proposed steps where the layer can plug in (to be refined in the next PR):
 
 ## P3 — Validation & quality
 
-- [ ] Raise Jest coverage thresholds above 40% incrementally as modules harden.
-- [ ] Snapshot tests for JSON, Markdown, and SARIF output.
-- [ ] Cross-platform path tests; dirty-worktree `diff` tests.
-- [ ] Fixture matrix: Node/Python/Go/Rust now; Java/.NET later.
+- [x] **Raised the Jest coverage gate to 80%** (statements/branches/functions/
+  lines) and brought `bin/agentready.ts` into measurement; CI now runs
+  `test:coverage` so the threshold gates the build. Raise further as modules
+  harden.
+- [x] **Snapshot tests for JSON, Markdown, SARIF, and console output**
+  (`output-snapshots.test.ts`), with machine-specific paths/timestamps
+  normalized so snapshots are stable.
+- [x] **Dirty-worktree `diff` test** (`local-readiness.test.ts`). Cross-platform
+  (Windows) path tests are intentionally out of scope: CI targets Linux + a
+  single Node version (no native deps, deterministic fs/git usage).
+- [x] **Fixture matrix: Node/Python/Go/Rust/Make** under `fixtures/readiness/`,
+  scanned end-to-end by `command-surfaces.test.ts`. Java/.NET later.
+- [ ] **Property/fuzz tests** for the parsers (file classification, command
+  detection on malformed manifests). Currently example-based + the corpus. _(M)_
+- [ ] **Mutation testing** (Stryker) to validate assertion strength now that an
+  80% gate is in place. Too slow for per-PR CI; run locally / nightly. _(M)_
 - [ ] **Benchmark harness** (from `use-cases.md`): correlate score dimensions
   with real bounded-task agent friction (time, tokens, tool calls, changed-file
   spread, verification success, reviewer intervention). _(L)_

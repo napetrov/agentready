@@ -56,6 +56,7 @@
     "agentready:pack-smoke": "tsx bin/agentready-pack-smoke.ts",
     "agentready:schemas": "tsx bin/agentready-emit-schemas.ts",
     "agentready:action-smoke": "tsx bin/agentready-action-smoke.ts",
+    "agentready:eval": "tsx bin/agentready-eval.ts",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "test:watch": "jest --watch",

@@ -7,6 +7,9 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/', '/dist/', '/fixtures/'],
   collectCoverageFrom: [
     'lib/**/*.ts',
+    // The CLI is the largest user-facing surface; measure it alongside the
+    // library. Other bin/ scripts are CI smoke/codegen runners, not unit-covered.
+    'bin/agentready.ts',
     '!**/*.d.ts',
     '!**/node_modules/**',
   ],
@@ -14,10 +17,10 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
-      branches: 40,
-      functions: 40,
-      lines: 40,
-      statements: 40,
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
     },
   },
   testTimeout: 30000,

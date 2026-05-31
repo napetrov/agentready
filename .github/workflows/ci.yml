@@ -37,7 +37,8 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: npm test -- --runInBand
+        # Run with coverage so the 80% thresholds in jest.config.js gate CI.
+        run: npm run test:coverage -- --runInBand
 
       - name: AgentReady self scan
         run: npm run agentready -- scan . --json --compact
@@ -56,6 +57,11 @@ jobs:
 
       - name: Action bundle is up to date
         run: git diff --exit-code action/dist
+
+      - name: AgentReady analytics-layer evaluation
+        # Offline gold-corpus eval of the optional LLM layer (canned responses,
+        # no model calls); fails if precision/recall/F1 drop below the floor.
+        run: npm run agentready:eval
 
       - name: AgentReady PR regression gate
         if: github.event_name == 'pull_request'
