@@ -26,6 +26,12 @@ const parseInputs = (): ActionInputs => {
     throw new Error('min-score must be a finite number between 0 and 100')
   }
 
+  const analyzeMinScoreRaw = optionalInput('analyze-min-score')
+  const analyzeMinScore = analyzeMinScoreRaw === undefined ? undefined : Number(analyzeMinScoreRaw)
+  if (analyzeMinScore !== undefined && (!Number.isFinite(analyzeMinScore) || analyzeMinScore < 0 || analyzeMinScore > 100)) {
+    throw new Error('analyze-min-score must be a finite number between 0 and 100')
+  }
+
   return {
     path: core.getInput('path') || '.',
     mode,
@@ -38,12 +44,14 @@ const parseInputs = (): ActionInputs => {
     sarif: core.getBooleanInput('upload-sarif'),
     outputDir: core.getInput('output-dir') || '.agentready',
     toolVersion: optionalInput('tool-version'),
+    analyze: core.getBooleanInput('analyze'),
+    analyzeMinScore,
   }
 }
 
-const main = (): void => {
+const main = async (): Promise<void> => {
   const inputs = parseInputs()
-  const result = runAction(inputs)
+  const result = await runAction(inputs)
 
   core.setOutput('score', String(result.score))
   core.setOutput('findings-count', String(result.findingsCount))
@@ -52,6 +60,12 @@ const main = (): void => {
   core.setOutput('markdown-report-path', result.markdownReportPath)
   if (result.sarifReportPath) {
     core.setOutput('sarif-report-path', result.sarifReportPath)
+  }
+  if (result.augmentedScore !== undefined) {
+    core.setOutput('augmented-score', String(result.augmentedScore))
+  }
+  if (result.augmentedReportPath) {
+    core.setOutput('augmented-report-path', result.augmentedReportPath)
   }
 
   if (core.getBooleanInput('job-summary')) {
@@ -65,8 +79,6 @@ const main = (): void => {
   }
 }
 
-try {
-  main()
-} catch (error) {
+main().catch((error: unknown) => {
   core.setFailed(error instanceof Error ? error.message : String(error))
-}
+})

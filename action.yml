@@ -54,6 +54,14 @@ inputs:
     description: 'Tool version recorded in the SARIF driver.'
     required: false
     default: ''
+  analyze:
+    description: 'Run the optional LLM analytics layer after the deterministic gates. Requires a provider (e.g. GitHub Models via AGENTREADY_USE_GITHUB_MODELS=1 + GITHUB_TOKEN with models: read). Off by default; absent a provider it runs deterministic-only.'
+    required: false
+    default: 'false'
+  analyze-min-score:
+    description: 'Fail when the augmented score is below this value (0-100). Empty disables the augmented-score gate. Only meaningful with analyze enabled.'
+    required: false
+    default: ''
 
 outputs:
   score:
@@ -68,6 +76,10 @@ outputs:
     description: 'Path to the written markdown report.'
   sarif-report-path:
     description: 'Path to the written SARIF report, when upload-sarif is enabled.'
+  augmented-score:
+    description: 'The LLM-augmented score (0-100), when analyze is enabled.'
+  augmented-report-path:
+    description: 'Path to the written augmented report, when analyze is enabled.'
 
 runs:
   using: 'node20'

@@ -12,6 +12,12 @@ import {
   type LocalReadinessReport,
   type ReadinessDiffReport,
 } from '../repo-readiness/local-readiness'
+import {
+  analyzeReport,
+  detectProvider,
+  formatAugmentedMarkdown,
+  type AugmentedReport,
+} from '../analyze'
 
 export type ActionMode = 'scan' | 'diff'
 export type { FailOnSeverity }
@@ -30,6 +36,12 @@ export interface ActionInputs {
   outputDir: string
   /** Tool version recorded in the SARIF driver, when known. */
   toolVersion?: string
+  /** Run the optional LLM analytics layer after the deterministic gates. */
+  analyze?: boolean
+  /** Fail when the augmented score drops below this value (0-100). */
+  analyzeMinScore?: number
+  /** Environment used for provider auto-detection (defaults to process.env). */
+  env?: Record<string, string | undefined>
 }
 
 export interface ActionResult {
@@ -44,6 +56,10 @@ export interface ActionResult {
   /** Whether the configured gates failed the run, with human-readable reasons. */
   failed: boolean
   failureReasons: string[]
+  /** The augmented score, when the analytics layer ran. */
+  augmentedScore?: number
+  /** Path to the written augmented report, when the analytics layer ran. */
+  augmentedReportPath?: string
 }
 
 /**
@@ -51,7 +67,7 @@ export interface ActionResult {
  * gates. This is intentionally free of any GitHub Actions dependency so it can
  * be unit-tested directly; `index.ts` adapts it to the Actions runtime.
  */
-export const runAction = (inputs: ActionInputs): ActionResult => {
+export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => {
   mkdirSync(inputs.outputDir, { recursive: true })
   const jsonReportPath = path.join(inputs.outputDir, 'report.json')
   const markdownReportPath = path.join(inputs.outputDir, 'report.md')
@@ -63,6 +79,9 @@ export const runAction = (inputs: ActionInputs): ActionResult => {
   let regressionsCount = 0
   let summaryMarkdown: string
   let sarifSource: LocalReadinessReport
+  // The deterministic scan report, captured for the optional analyze step. In
+  // diff mode this is the head report.
+  let scanReport: LocalReadinessReport
 
   if (inputs.mode === 'diff') {
     if (!inputs.baseRef || !inputs.headRef) {
@@ -81,6 +100,7 @@ export const runAction = (inputs: ActionInputs): ActionResult => {
     findingsCount = report.newFindings.length
     regressionsCount = report.regressions.length
     sarifSource = report.headReport
+    scanReport = report.headReport
 
     failureReasons.push(
       ...evaluateDiffGate(report, {
@@ -98,6 +118,7 @@ export const runAction = (inputs: ActionInputs): ActionResult => {
     score = report.summary.score
     findingsCount = report.findings.length
     sarifSource = report
+    scanReport = report
 
     failureReasons.push(
       ...evaluateScanGate(report, {
@@ -112,6 +133,32 @@ export const runAction = (inputs: ActionInputs): ActionResult => {
     writeFileSync(sarifReportPath, `${JSON.stringify(sarif, null, 2)}\n`)
   }
 
+  let augmentedScore: number | undefined
+  let augmentedReportPath: string | undefined
+
+  if (inputs.analyze) {
+    // Opt-in LLM augmentation. analyzeReport (and the runner in
+    // lib/analyze/runner.ts) are fail-open over analyzer/provider failures: a
+    // missing provider or a failed/timed-out call yields a deterministic-only or
+    // partial augmented report instead of throwing. (The surrounding I/O here —
+    // writeFileSync/path.join — can still throw, as elsewhere in runAction.)
+    const detected = detectProvider(inputs.env ?? process.env)
+    const augmented: AugmentedReport = await analyzeReport(inputs.path, scanReport, {
+      provider: detected?.provider,
+    })
+    augmentedReportPath = path.join(inputs.outputDir, 'augmented-report.json')
+    writeFileSync(augmentedReportPath, `${JSON.stringify(augmented, null, 2)}\n`)
+    augmentedScore = augmented.augmentedScore.augmented
+
+    // Append the augmented analysis to the job summary so it surfaces in CI.
+    summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${formatAugmentedMarkdown(augmented)}`
+
+    // Gate on the augmented score only when explicitly configured.
+    if (inputs.analyzeMinScore !== undefined && augmentedScore < inputs.analyzeMinScore) {
+      failureReasons.push(`augmented score ${augmentedScore} is below the minimum ${inputs.analyzeMinScore}`)
+    }
+  }
+
   return {
     score,
     findingsCount,
@@ -122,5 +169,7 @@ export const runAction = (inputs: ActionInputs): ActionResult => {
     summaryMarkdown,
     failed: failureReasons.length > 0,
     failureReasons,
+    ...(augmentedScore !== undefined ? { augmentedScore } : {}),
+    ...(augmentedReportPath !== undefined ? { augmentedReportPath } : {}),
   }
 }

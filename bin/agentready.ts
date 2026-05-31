@@ -23,6 +23,13 @@ import {
   validateReadinessDiffReportContract,
   type FailOnSeverity,
 } from '../lib/repo-readiness/local-readiness'
+import {
+  analyzeReport,
+  detectProvider,
+  formatAugmentedMarkdown,
+  formatAugmentedSummary,
+  createFileCache,
+} from '../lib/analyze'
 
 type OutputFormat = 'summary' | 'json' | 'markdown' | 'sarif'
 
@@ -197,6 +204,61 @@ program
     console.log(JSON.stringify(effectiveConfig, null, 2))
   })
 
+const ANALYZE_FORMATS = ['summary', 'json', 'markdown'] as const
+type AnalyzeFormat = (typeof ANALYZE_FORMATS)[number]
+
+program
+  .command('analyze')
+  .description('Scan, then run the optional LLM analytics layer to produce an augmented report')
+  .argument('[path]', 'path to scan', '.')
+  .addOption(new Option('--format <fmt>', 'output format').choices(ANALYZE_FORMATS).default('summary'))
+  .option('--output <file>', 'write the report to a file instead of stdout')
+  .option('--config <path>', 'path to an explicit config file')
+  .option('--no-cache', 'disable the on-disk analysis cache')
+  .option('--cache-dir <dir>', 'directory for the analysis cache', '.agentready/analyze-cache')
+  .option('--min-score <n>', 'fail when the augmented score drops below n (0-100)', parseMinScore)
+  .action(
+    async (
+      path: string,
+      options: { format: AnalyzeFormat; output?: string; config?: string; cache?: boolean; cacheDir: string; minScore?: number },
+    ) => {
+      const report = scanLocalReadiness(path, { configPath: options.config })
+      const validation = validateLocalReadinessReportContract(report)
+      if (!validation.valid) {
+        throw new Error(`scan report contract validation failed: ${validation.errors.join('; ')}`)
+      }
+
+      // Auto-detect a provider from the environment; absent one, analyze runs
+      // deterministic-only (still a valid augmented report, just no insights).
+      const detected = detectProvider()
+      if (!detected) {
+        console.error(
+          'AgentReady analyze: no LLM provider configured (set AGENTREADY_LLM_BASE_URL, OLLAMA_HOST, or OPENAI_API_KEY). Running deterministic-only.',
+        )
+      }
+
+      const augmented = await analyzeReport(path, report, {
+        provider: detected?.provider,
+        cache: options.cache === false ? undefined : createFileCache(options.cacheDir),
+      })
+
+      if (options.format === 'json') {
+        emit(JSON.stringify(augmented, null, 2), options.output)
+      } else if (options.format === 'markdown') {
+        emit(formatAugmentedMarkdown(augmented), options.output)
+      } else {
+        emit(formatAugmentedSummary(augmented), options.output)
+      }
+
+      if (options.minScore !== undefined && augmented.augmentedScore.augmented < options.minScore) {
+        console.error(
+          `Augmented score ${augmented.augmentedScore.augmented} is below the minimum ${options.minScore}`,
+        )
+        process.exitCode = 1
+      }
+    },
+  )
+
 program
   .command('init')
   .description('Scaffold a starter AgentReady config (and optionally AGENTS.md)')
@@ -245,9 +307,10 @@ program
     console.log(options.json ? JSON.stringify(doc, null, 2) : formatRuleDoc(doc))
   })
 
-try {
-  program.parse(process.argv)
-} catch (error) {
+// parseAsync (not parse) so rejections from the async `analyze` action handler
+// are caught here and set a non-zero exit code, rather than becoming an
+// unhandled rejection.
+program.parseAsync(process.argv).catch(error => {
   console.error(error instanceof Error ? error.message : String(error))
   process.exitCode = 1
-}
+})

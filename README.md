@@ -101,6 +101,47 @@ npm run agentready -- init .            # write .agentready.json
 npm run agentready -- init . --agents   # also scaffold AGENTS.md
 ```
 
+### Analyze (optional LLM augmentation)
+
+`analyze` runs a deterministic scan and then an **optional, opt-in** LLM layer
+that judges things deterministic checks cannot — e.g. whether an `AGENTS.md` is
+actually actionable, not merely present. It produces an *augmented* report: the
+deterministic score is never changed; a separate, clearly-labeled augmented
+score and an itemized list of adjustments are reported alongside it.
+
+The layer is off unless a provider is configured via the environment (otherwise
+`analyze` runs deterministic-only). One adapter covers hosted OpenAI and local
+servers (Ollama, vLLM, LM Studio):
+
+```bash
+# Local model (no data leaves your machine):
+OLLAMA_HOST=http://localhost:11434 npm run agentready -- analyze .
+
+# Any OpenAI-compatible endpoint:
+AGENTREADY_LLM_BASE_URL=https://api.openai.com/v1 \
+AGENTREADY_LLM_MODEL=gpt-4o-mini OPENAI_API_KEY=sk-... \
+  npm run agentready -- analyze . --format markdown
+```
+
+The deterministic `scan`/`diff` commands never call a model and are unaffected.
+See [docs/product/llm-analytics-design.md](docs/product/llm-analytics-design.md).
+
+#### Use your agent's own model (MCP / library)
+
+If AgentReady runs inside an agent (Claude Code, Cursor, …) you can reuse the
+host's model instead of configuring a provider — AgentReady holds no
+credentials. The bundled MCP server exposes the host-delegated flow over stdio:
+
+```bash
+npm run agentready:mcp   # JSON-RPC 2.0 over stdio
+```
+
+It offers three tools: `agentready_scan` (deterministic, no model),
+`agentready_analyze_prepare` (returns prompts + sliced evidence for the host
+model to answer), and `agentready_analyze_finalize` (folds the host's answers
+into an augmented report). Library consumers can instead inject their own client
+via `analyzeWithProvider(...)` from the `agentready/analyze` export.
+
 ### GitHub Action
 
 Gate pull requests on readiness with the bundled action. It writes a job
@@ -135,9 +176,38 @@ steps:
 
 Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
 `fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
-`upload-sarif`, `output-dir`, and `tool-version`; outputs include `score`,
-`findings-count`, `regressions-count`, and the report paths. See
-[`action.yml`](action.yml) for the authoritative contract.
+`upload-sarif`, `output-dir`, `tool-version`, `analyze`, and
+`analyze-min-score`; outputs include `score`, `findings-count`,
+`regressions-count`, the report paths, and (when `analyze` is on)
+`augmented-score`/`augmented-report-path`. See [`action.yml`](action.yml) for
+the authoritative contract.
+
+#### Optional LLM augmentation in CI (GitHub Models)
+
+Set `analyze: true` to also run the LLM layer. The CI-native token source is
+**GitHub Models** — the workflow's built-in `GITHUB_TOKEN` with `models: read`,
+no secret to manage. It is opt-in: AgentReady only uses it when
+`AGENTREADY_USE_GITHUB_MODELS=1` is set, so the ambient token never silently
+enables model calls.
+
+```yaml
+permissions:
+  contents: read
+  models: read            # required for GitHub Models
+steps:
+  - uses: actions/checkout@v4
+  - uses: napetrov/agentready@main
+    with:
+      analyze: true
+      analyze-min-score: 70   # optional: gate on the augmented score
+    env:
+      AGENTREADY_USE_GITHUB_MODELS: '1'
+      GITHUB_TOKEN: ${{ github.token }}
+```
+
+The deterministic gates run first and are unaffected; augmented-score gating is
+opt-in via `analyze-min-score`. Without a provider, `analyze` runs
+deterministic-only.
 
 ### Configuration
 
