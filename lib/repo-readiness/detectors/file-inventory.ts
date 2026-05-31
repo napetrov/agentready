@@ -140,13 +140,13 @@ const loadGitignoreMatchers = (root: string): Map<string, Ignore> => {
 }
 
 /**
- * Returns the repo-root-relative ancestor directories of `repoPath`, shallowest
- * first: `'src/a/b.txt'` yields `['', 'src', 'src/a']`. The empty string is the
- * repository root.
+ * Returns the repo-root-relative ancestor directories whose `.gitignore` applies
+ * to `logicalPath`, shallowest first: `'src/a/b.txt'` yields `['', 'src',
+ * 'src/a']`. The empty string is the repository root.
  */
-const ancestorDirectories = (repoPath: string): string[] => {
-  const segments = repoPath.split('/')
-  segments.pop() // drop the file name itself
+const applicableMatcherDirs = (logicalPath: string): string[] => {
+  const segments = logicalPath.split('/')
+  segments.pop() // drop the entry's own name
   const directories = ['']
   let accumulated = ''
   for (const segment of segments) {
@@ -157,27 +157,26 @@ const ancestorDirectories = (repoPath: string): string[] => {
 }
 
 /**
- * Decides whether `repoPath` is ignored by applying each ancestor directory's
- * `.gitignore` from shallowest to deepest, so a deeper file's rules — including
- * negations that re-include a path — override shallower ones, matching git's
- * hierarchy semantics. Each matcher is evaluated against the path relative to
- * its own directory.
+ * Applies each applicable `.gitignore` to `logicalPath` from shallowest to
+ * deepest, so a deeper file's rules — including negations that re-include a
+ * path — override shallower ones. Each matcher is evaluated against the path
+ * relative to its own directory; `isDirectory` adds the trailing slash that lets
+ * directory-only rules (`tmp/`) match.
  */
-const isGitIgnored = (repoPath: string, matchers: Map<string, Ignore>): boolean => {
-  if (matchers.size === 0) {
-    return false
-  }
-
+const evaluateGitignore = (logicalPath: string, isDirectory: boolean, matchers: Map<string, Ignore>): boolean => {
   let ignored = false
-  for (const dir of ancestorDirectories(repoPath)) {
+  for (const dir of applicableMatcherDirs(logicalPath)) {
     const matcher = matchers.get(dir)
     if (!matcher) {
       continue
     }
 
-    const relative = dir === '' ? repoPath : repoPath.slice(dir.length + 1)
+    let relative = dir === '' ? logicalPath : logicalPath.slice(dir.length + 1)
     if (relative.length === 0) {
       continue
+    }
+    if (isDirectory) {
+      relative += '/'
     }
 
     const result = matcher.test(relative)
@@ -189,6 +188,30 @@ const isGitIgnored = (repoPath: string, matchers: Map<string, Ignore>): boolean 
   }
 
   return ignored
+}
+
+/**
+ * Decides whether `repoPath` is ignored under git's hierarchy semantics. Each
+ * ancestor directory is checked first: once a directory is ignored as a whole
+ * (e.g. root `tmp/`), git does not descend into it, so a negation in a
+ * `.gitignore` *inside* that directory cannot re-include the file. Only when no
+ * ancestor directory is excluded is the file itself evaluated, where deeper
+ * negations may still re-include it.
+ */
+const isGitIgnored = (repoPath: string, matchers: Map<string, Ignore>): boolean => {
+  if (matchers.size === 0) {
+    return false
+  }
+
+  const segments = repoPath.split('/')
+  for (let depth = 1; depth < segments.length; depth += 1) {
+    const directoryPath = segments.slice(0, depth).join('/')
+    if (evaluateGitignore(directoryPath, true, matchers)) {
+      return true
+    }
+  }
+
+  return evaluateGitignore(repoPath, false, matchers)
 }
 
 /**

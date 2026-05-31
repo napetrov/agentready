@@ -242,6 +242,28 @@ describe('local readiness', () => {
     expect(paths).not.toContain('root.log')
   })
 
+  test('keeps a fully-ignored directory ignored despite a nested negation', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // Root ignores the whole tmp/ directory. Git does not descend into it, so
+    // the nested negation is dead — tmp/keep.txt stays ignored (unlike tmp/*).
+    writeRepoFile(root, '.gitignore', 'tmp/\n')
+    writeRepoFile(root, 'tmp/.gitignore', '!keep.txt\n')
+    writeRepoFile(root, 'tmp/keep.txt', 'still ignored\n')
+    writeRepoFile(root, 'tmp/other.txt', 'also ignored\n')
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const paths = report.files.map(file => file.path)
+
+    expect(paths).not.toContain('tmp/keep.txt')
+    expect(paths).not.toContain('tmp/other.txt')
+    expect(paths).toContain('src/app.ts')
+  })
+
   test('applies configured large-file thresholds and warning policy', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
