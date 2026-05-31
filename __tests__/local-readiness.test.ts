@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import { execFileSync } from 'child_process'
@@ -262,6 +262,32 @@ describe('local readiness', () => {
     expect(paths).not.toContain('tmp/keep.txt')
     expect(paths).not.toContain('tmp/other.txt')
     expect(paths).toContain('src/app.ts')
+  })
+
+  test('does not inventory symlinks, including those pointing outside the repo', () => {
+    root = createTempRepo()
+    const outside = createTempRepo()
+    writeRepoFile(outside, 'secret.bin', Buffer.alloc(2_000_000, 1))
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    symlinkSync(path.join(outside, 'secret.bin'), path.join(root, 'external.bin'))
+    symlinkSync(path.join(root, 'src'), path.join(root, 'src-link'))
+
+    try {
+      const report = scanLocalReadiness(root, { now: fixedNow })
+      const paths = report.files.map(file => file.path)
+
+      expect(paths).toContain('src/app.ts')
+      expect(paths).not.toContain('external.bin')
+      expect(paths.some(p => p.startsWith('src-link'))).toBe(false)
+      // The external 2 MB target must not leak in as a large-file finding.
+      expect(listFindingIds(report)).not.toContain('files.large:external.bin')
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
   })
 
   test('applies configured large-file thresholds and warning policy', () => {

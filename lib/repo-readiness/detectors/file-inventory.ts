@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'fs'
+import { lstatSync, readFileSync } from 'fs'
 import path from 'path'
 import fastGlob from 'fast-glob'
 import ignore, { type Ignore } from 'ignore'
@@ -260,11 +260,20 @@ export const walkFiles = (
 
     let stat
     try {
-      stat = statSync(absolutePath)
+      // lstat (not stat) so symlinks are not followed: fast-glob is configured
+      // with followSymbolicLinks:false and already omits them, but guarding here
+      // keeps us from ever reading a target outside the repository.
+      stat = lstatSync(absolutePath)
     } catch (error) {
       // Tolerate files that disappear mid-walk or cannot be stat'd (permissions),
       // matching how binary sampling already handles read errors.
       console.warn(`AgentReady: unable to stat file, skipping (${absolutePath}): ${error instanceof Error ? error.message : String(error)}`)
+      continue
+    }
+
+    // Only inventory regular files — never symlinks (whose target may be
+    // external) or other special entries (FIFOs, sockets, devices).
+    if (!stat.isFile()) {
       continue
     }
 
