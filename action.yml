@@ -1,4 +1,4 @@
-name: 'AgentReady'
+name: 'AgentReady Repository Scanner'
 description: 'Scan a repository for AI coding-agent readiness and gate pull requests on regressions.'
 author: 'AgentReady'
 branding:
