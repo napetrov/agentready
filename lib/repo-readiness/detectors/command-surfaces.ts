@@ -70,7 +70,10 @@ const detectNode = (root: string, filePaths: Set<string>): { signals: EcosystemS
 const makefileNames = ['Makefile', 'makefile', 'GNUmakefile']
 const makeTargetPattern = /^([a-zA-Z0-9_.\-/]+)\s*:/gm
 
-const detectMake = (root: string, filePaths: Set<string>): EcosystemSignals | undefined => {
+const hasCiScript = (filePaths: string[], names: string[]): boolean =>
+  filePaths.some(filePath => names.some(name => new RegExp(`(^|/)${name}\\.(sh|bat|ps1)$`, 'i').test(filePath)))
+
+const detectMake = (root: string, filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
   const makefile = makefileNames.find(name => has(filePaths, name))
   if (!makefile) {
     return undefined
@@ -86,8 +89,8 @@ const detectMake = (root: string, filePaths: Set<string>): EcosystemSignals | un
 
   return {
     ecosystem: 'make',
-    hasBuild: hasTarget('build', 'all', 'compile'),
-    hasTest: hasTarget('test', 'tests', 'check'),
+    hasBuild: hasTarget('build', 'all', 'compile') || hasCiScript(allPaths, ['build', 'build-doc']),
+    hasTest: hasTarget('test', 'tests', 'check') || hasCiScript(allPaths, ['test', 'run_test']),
     hasLint: hasTarget('lint', 'fmt', 'format'),
     hasTypeCheck: hasTarget('typecheck', 'type-check', 'types'),
   }
@@ -134,21 +137,24 @@ const detectPython = (root: string, filePaths: Set<string>, allPaths: string[]):
   }
 
   const pyproject = readText(root, 'pyproject.toml') ?? ''
+  const setupCfg = readText(root, 'setup.cfg') ?? ''
+  const pythonConfig = `${pyproject}\n${setupCfg}`
   const hasTestsDir = allPaths.some(filePath => /(^|\/)tests?\//i.test(filePath))
-  const mentions = (...needles: string[]): boolean => needles.some(needle => pyproject.includes(needle))
+  const mentionsTool = (...needles: string[]): boolean =>
+    needles.some(needle => new RegExp(`(^|[^a-z0-9_-])${needle}([^a-z0-9_-]|$)`, 'i').test(pythonConfig))
 
   return {
     ecosystem: 'python',
-    hasBuild: pyproject.includes('[build-system]'),
-    hasTest: has(filePaths, 'tox.ini') || mentions('pytest') || hasTestsDir,
+    hasBuild: pyproject.includes('[build-system]') || has(filePaths, 'setup.py'),
+    hasTest: has(filePaths, 'tox.ini') || mentionsTool('pytest') || hasTestsDir || hasCiScript(allPaths, ['run_test']),
     hasLint:
       has(filePaths, '.flake8')
       || has(filePaths, 'ruff.toml')
       || has(filePaths, '.ruff.toml')
-      || mentions('ruff', 'flake8', 'pylint'),
+      || mentionsTool('ruff', 'flake8', 'pylint', 'black', 'isort', 'numpydoc_validation'),
     hasTypeCheck:
       has(filePaths, 'mypy.ini')
-      || mentions('mypy', 'pyright'),
+      || mentionsTool('mypy', 'pyright'),
   }
 }
 
@@ -163,7 +169,7 @@ export const detectCommandSurfaces = (root: string, filePaths: string[]): Comman
   const node = detectNode(root, filePathSet)
   const signals: EcosystemSignals[] = [
     node?.signals,
-    detectMake(root, filePathSet),
+    detectMake(root, filePathSet, filePaths),
     detectGo(filePathSet),
     detectRust(filePathSet),
     detectPython(root, filePathSet, filePaths),

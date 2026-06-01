@@ -30,12 +30,16 @@ describe('classifyRunCommandKinds', () => {
     { run: 'cargo check', expected: ['typecheck'] },
     { run: 'go vet ./...', expected: ['lint'] },
     { run: 'pytest -q', expected: ['test'] },
+    { run: '.ci/scripts/test.sh --test-kind examples', expected: ['test'] },
+    { run: '../conda-recipe/run_test.sh', expected: ['test'] },
+    { run: 'call scikit-learn-intelex\\conda-recipe\\run_test.bat scikit-learn-intelex\\', expected: ['test'] },
     // The Go/Rust compiler type-checks during test and build, so those commands
     // satisfy both kinds (matching the command-surface detector).
     { run: 'go test ./...', expected: ['typecheck', 'test'] },
     { run: 'cargo test', expected: ['typecheck', 'test'] },
     { run: 'npm test', expected: ['test'] },
     { run: 'go build ./...', expected: ['typecheck', 'build'] },
+    { run: '.ci/scripts/build.sh --compiler icx --target daal', expected: ['build'] },
     { run: 'npm run build', expected: ['build'] },
     { run: 'tsc -b', expected: ['build'] },
     // A single step can chain several commands.

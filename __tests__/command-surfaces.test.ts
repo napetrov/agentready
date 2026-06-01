@@ -84,13 +84,30 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasLint: true, hasTypeCheck: true })
   })
 
+  it('recognizes CI script conventions beside a Makefile', () => {
+    write('makefile', 'help:\n\t@echo help\n')
+    write('.ci/scripts/build.sh', '#!/usr/bin/env bash\n')
+    write('.ci/scripts/test.sh', '#!/usr/bin/env bash\n')
+    const evidence = detectCommandSurfaces(root, ['makefile', '.ci/scripts/build.sh', '.ci/scripts/test.sh'])
+    expect(evidence.ecosystems).toEqual(['make'])
+    expect(evidence.hasBuild).toBe(true)
+    expect(evidence.hasTest).toBe(true)
+  })
+
   it('recognizes Python via setup.py with tox/flake8/mypy config (no pyproject)', () => {
     write('setup.py', 'from setuptools import setup\nsetup()\n')
     const evidence = detectCommandSurfaces(root, ['setup.py', 'tox.ini', '.flake8', 'mypy.ini'])
     expect(evidence.ecosystems).toEqual(['python'])
-    expect(evidence).toMatchObject({ hasTest: true, hasLint: true, hasTypeCheck: true })
-    // No [build-system] in a (absent) pyproject, so build stays false.
-    expect(evidence.hasBuild).toBe(false)
+    expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasLint: true, hasTypeCheck: true })
+  })
+
+  it('recognizes Python lint config without treating Copyright as pyright', () => {
+    write('pyproject.toml', '# Copyright contributors\n[tool.black]\nline-length = 100\n')
+    write('setup.cfg', '[flake8]\nmax-line-length = 100\n')
+    const evidence = detectCommandSurfaces(root, ['pyproject.toml', 'setup.cfg'])
+    expect(evidence.ecosystems).toEqual(['python'])
+    expect(evidence.hasLint).toBe(true)
+    expect(evidence.hasTypeCheck).toBe(false)
   })
 
   it('detects a Python tests/ directory as test capability', () => {
