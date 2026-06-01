@@ -295,6 +295,17 @@ describe('CI orchestrator coverage', () => {
     expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual(['lint', 'typecheck'])
   })
 
+  it('treats the pre-commit Action (uses:) as lint/type-check coverage too', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  check:', '    steps:', '      - uses: pre-commit/action@v3.0.1', ''].join('\n'),
+    )
+
+    const evidence = detectCiWorkflows(root, ['.github/workflows/ci.yml'])
+    // Consistent with `run: pre-commit run` — covers lint/type-check, not test/build.
+    expect(evidence.orchestratorKinds).toEqual(['lint', 'typecheck'])
+    expect(evidence.hasLint).toBe(true)
+  })
+
   it('records no orchestrator coverage for plain commands', () => {
     writeWorkflow(
       ['name: CI', 'jobs:', '  test:', '    steps:', '      - run: npm ci', '      - run: npm test', ''].join('\n'),

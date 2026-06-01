@@ -129,6 +129,18 @@ const PRECOMMIT_PATTERN = /\bpre-commit\b/
 const PRECOMMIT_KINDS: CiCommandKind[] = ['lint', 'typecheck']
 
 /**
+ * Orchestrator coverage contributed by a `uses:` step, mirroring the `run:`
+ * path. A `pre-commit/action` step runs the repo's pre-commit hooks just like
+ * `run: pre-commit run`, so it makes lint/type-check coverage uncertain too —
+ * without this, a workflow using the Action form would wrongly emit
+ * `ci.typecheck.not-run` where the `run:` form would not.
+ */
+const usesOrchestratorCoverageFor = (uses: string): CiCommandKind[] => {
+  const normalized = uses.trim().toLowerCase()
+  return /^pre-commit\/action/.test(normalized) ? PRECOMMIT_KINDS : []
+}
+
+/**
  * The command kinds whose not-run check a `run:` step's orchestrator (if any)
  * makes uncertain, so the caller can scope suppression to exactly those kinds
  * rather than silencing every check. Each command invocation in the step is
@@ -297,6 +309,9 @@ const parseJob = (id: string, rawJob: unknown): { job: CiWorkflowJob; orchestrat
     if (uses) {
       for (const kind of classifyUsesCommandKinds(uses)) {
         kinds.add(kind)
+      }
+      for (const kind of usesOrchestratorCoverageFor(uses)) {
+        orchestratorKinds.add(kind)
       }
     }
   }
