@@ -93,6 +93,12 @@ const ALL_COVERABLE_KINDS: CiCommandKind[] = ['lint', 'typecheck', 'test', 'buil
 // recognized, one opaque).
 const COMMAND_SEPARATORS = /&&|\|\||[;\n]/
 
+// A trailing backslash continues a shell command onto the next line, so it is a
+// single invocation (`pip install \⏎  pytest`), not two. Collapse such
+// continuations before splitting so a wrapped install argument is not parsed as
+// its own command.
+const splitCommands = (run: string): string[] => run.replace(/\\\r?\n/g, ' ').split(COMMAND_SEPARATORS)
+
 // Always-opaque runners: they execute a configured matrix or several scripts we
 // cannot enumerate (tox/nox run whatever envs are configured; npm-run-all/turbo/
 // nx fan out to multiple targets), so any of lint/type-check/test/build may run.
@@ -132,7 +138,7 @@ const PRECOMMIT_KINDS: CiCommandKind[] = ['lint', 'typecheck']
 const orchestratorCoverageFor = (run: string): CiCommandKind[] => {
   const coverage = new Set<CiCommandKind>()
 
-  for (const segment of run.split(COMMAND_SEPARATORS)) {
+  for (const segment of splitCommands(run)) {
     const text = segment.toLowerCase().trim()
     if (text.length === 0) {
       continue
@@ -202,7 +208,7 @@ export const ciRunLabels = (ci: CiEvidence): string[] => {
 export const classifyRunCommandKinds = (run: string): CiCommandKind[] => {
   const kinds = new Set<CiCommandKind>()
 
-  for (const segment of run.split(COMMAND_SEPARATORS)) {
+  for (const segment of splitCommands(run)) {
     const text = segment.toLowerCase().trim()
     if (text.length === 0) {
       continue

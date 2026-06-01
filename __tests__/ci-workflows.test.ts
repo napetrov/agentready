@@ -52,6 +52,10 @@ describe('classifyRunCommandKinds', () => {
     // But installing then running the tool in the same step counts as both.
     { run: 'npm install eslint && eslint .', expected: ['install', 'lint'] },
     { run: 'pip install pytest && pytest -q', expected: ['install', 'test'] },
+    // A backslash line-continuation is one shell command; the wrapped package
+    // argument must not be read as a separate test/lint invocation.
+    { run: 'pip install \\\n  pytest', expected: ['install'] },
+    { run: 'npm install -g \\\n  eslint', expected: ['install'] },
   ]
 
   it.each(cases)('classifies "$run"', ({ run, expected }) => {
