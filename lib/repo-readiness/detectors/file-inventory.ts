@@ -61,10 +61,22 @@ const binaryExtensions = new Set([
 ])
 
 const generatedPathPatterns = [
+  // Lockfiles across ecosystems: machine-generated, frequently large, and
+  // expected to be committed — so they should not be flagged as large files.
   /(^|\/)package-lock\.json$/,
   /(^|\/)pnpm-lock\.yaml$/,
   /(^|\/)yarn\.lock$/,
-  /(^|\/)bun\.lockb$/,
+  /(^|\/)bun\.lockb?$/,
+  /(^|\/)npm-shrinkwrap\.json$/,
+  /(^|\/)uv\.lock$/,
+  /(^|\/)poetry\.lock$/,
+  /(^|\/)Pipfile\.lock$/,
+  /(^|\/)pdm\.lock$/,
+  /(^|\/)Cargo\.lock$/,
+  /(^|\/)go\.sum$/,
+  /(^|\/)composer\.lock$/,
+  /(^|\/)Gemfile\.lock$/,
+  /(^|\/)gradle\.lockfile$/,
   /(^|\/)generated\//,
   /(^|\/)__generated__\//,
   /(^|\/)vendor\//,

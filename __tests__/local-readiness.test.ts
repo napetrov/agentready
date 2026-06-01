@@ -165,6 +165,27 @@ describe('local readiness', () => {
     ]))
   })
 
+  test('does not flag large lockfiles across ecosystems as large files', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // Lockfiles are machine-generated and expected to be committed even when
+    // large; none of these should produce a files.large finding.
+    const lockfiles = ['uv.lock', 'poetry.lock', 'Cargo.lock', 'go.sum', 'Gemfile.lock', 'composer.lock']
+    for (const lock of lockfiles) {
+      writeRepoFile(root, lock, 'x'.repeat(1_200_000))
+    }
+    // A genuinely large non-lock asset still trips, proving the threshold is active.
+    writeRepoFile(root, 'assets/blob.bin', Buffer.alloc(1_200_000, 1))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const largeIds = listFindingIds(report).filter(id => id.startsWith('files.large'))
+
+    expect(largeIds).toEqual(['files.large:assets/blob.bin'])
+  })
+
   test('loads config to ignore intentional paths and allow minified assets', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')

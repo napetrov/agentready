@@ -223,6 +223,18 @@ Proposed steps where the layer can plug in (to be refined in the next PR):
   single Node version (no native deps, deterministic fs/git usage).
 - [x] **Fixture matrix: Node/Python/Go/Rust/Make** under `fixtures/readiness/`,
   scanned end-to-end by `command-surfaces.test.ts`. Java/.NET later.
+- [x] **Real-repository evaluation** (`dev/REAL-REPO-EVAL.md`): scanned 16 popular
+  OSS projects across 6 ecosystems. No crashes; `instructions.missing` (15/16)
+  and `files.large` validated as high-precision. Drove the lockfile exemption,
+  the `docs.architecture`/`ci.not-run` info-severity de-risk, and the
+  orchestrator-awareness work. Rerun periodically as a precision regression check.
+- [ ] **Rework or retire `docs.architecture.missing`** — lowest-precision rule in
+  the real-repo eval (fires on ~11/16 well-documented projects). Either fold into
+  a broader docs-quality signal or drop it. _(S)_
+- [ ] **Cross-job / matrix CI command attribution** — `ci.*.not-run` still has
+  residual false positives on repos that split commands across jobs / a matrix
+  (ripgrep, gin). Either attribute across jobs or gate `not-run` on single-job
+  confidence. _(M)_
 - [ ] **Property/fuzz tests** for the parsers (file classification, command
   detection on malformed manifests). Currently example-based + the corpus. _(M)_
 - [ ] **Mutation testing** (Stryker) to validate assertion strength now that an
