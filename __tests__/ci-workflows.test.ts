@@ -295,6 +295,18 @@ describe('CI orchestrator coverage', () => {
     expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual(['lint', 'typecheck'])
   })
 
+  it('does not treat non-hook pre-commit subcommands as coverage', () => {
+    // `pre-commit install` / `autoupdate` do not run hooks, so they grant no
+    // lint/type-check coverage — only `pre-commit run` does.
+    for (const cmd of ['pre-commit install', 'pre-commit autoupdate']) {
+      writeWorkflow(
+        ['name: CI', 'jobs:', '  check:', '    steps:', `      - run: ${cmd}`, ''].join('\n'),
+      )
+      expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual([])
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('treats the pre-commit Action (uses:) as lint/type-check coverage too', () => {
     writeWorkflow(
       ['name: CI', 'jobs:', '  check:', '    steps:', '      - uses: pre-commit/action@v3.0.1', ''].join('\n'),

@@ -121,11 +121,13 @@ const RECIPE_OR_WRAPPER_PATTERNS: RegExp[] = [
   /\b(uv|poetry|pipenv|pdm|hatch|rye) run\b/,
 ]
 
-// `pre-commit` runs the hooks declared in `.pre-commit-config.yaml`, which are
-// conventionally linters, formatters, and sometimes type-checkers — but not the
-// test suite or a build. So its presence only makes lint/type-check coverage
-// uncertain; it must NOT suppress test/build not-run findings.
-const PRECOMMIT_PATTERN = /\bpre-commit\b/
+// `pre-commit run` executes the hooks declared in `.pre-commit-config.yaml`,
+// which are conventionally linters, formatters, and sometimes type-checkers —
+// but not the test suite or a build. So a hook-running invocation only makes
+// lint/type-check coverage uncertain; it must NOT suppress test/build not-run
+// findings. Only `pre-commit run` runs hooks — `pre-commit install` /
+// `autoupdate` / `clean` do not — so the match is scoped to `run`.
+const PRECOMMIT_PATTERN = /\bpre-commit\s+run\b/
 const PRECOMMIT_KINDS: CiCommandKind[] = ['lint', 'typecheck']
 
 /**
