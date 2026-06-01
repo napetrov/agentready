@@ -46,7 +46,7 @@ agentready
     [x] repo-shape / file-inventory
     [x] package-managers
     [x] ci-workflows
-    [x] command-surfaces   (Node, Make, Go, Rust, Python)
+    [x] command-surfaces   (Node, Make, CMake, Bazel, Go, Rust, Python)
     [x] docs
     [x] capability-surfaces (MCP, skills, hooks, plugins, LSP)
     [x] safety-signals     (dangerous package scripts, deploy/publish)

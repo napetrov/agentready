@@ -9,6 +9,33 @@ import type {
 
 type EvidenceForChecks = Omit<LocalReadinessReport, 'findings' | 'summary'>
 
+const SCIENTIFIC_DATA_EXTENSIONS = new Set([
+  '.csv',
+  '.tsv',
+  '.json',
+  '.jsonl',
+  '.parquet',
+  '.npy',
+  '.npz',
+  '.h5',
+  '.hdf5',
+  '.mtx',
+])
+
+const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
+  const path = file.path.toLowerCase()
+  if (!SCIENTIFIC_DATA_EXTENSIONS.has(file.extension.toLowerCase())) {
+    return false
+  }
+  return (
+    /^data\/[^/]+$/.test(path)
+    || /^data\/(examples?|samples?|fixtures?)\//.test(path)
+    || /(^|\/)(examples?|samples?|notebooks?)\/.*\/data\//.test(path)
+    || /(^|\/)(tests?|testdata|fixtures?)\//.test(path)
+    || /(^|\/)(benchmarks?|perf)\/.*\/(data|fixtures?)\//.test(path)
+  )
+}
+
 /**
  * Evaluates collected evidence against the built-in readiness rules and emits
  * findings. Each rule keeps a stable `id` so reporters and diffs can track it
@@ -21,7 +48,7 @@ export const buildFindings = (
 ): ReadinessFinding[] => {
   const findings: ReadinessFinding[] = []
   // A repository "expects" verification commands when it exposes at least one
-  // recognized command ecosystem (Node, Make, Go, Rust, Python).
+  // recognized command ecosystem (Node, Make, CMake, Bazel, Go, Rust, Python).
   const expectsCommands = report.commands.ecosystems.length > 0
   const isNode = report.commands.ecosystems.includes('node')
   const warningSeverity: ReadinessSeverity = config.errorOnWarnings ? 'error' : 'warning'
@@ -169,12 +196,17 @@ export const buildFindings = (
   }
 
   for (const file of files.filter(file => file.sizeBytes > config.largeFileWarningBytes && !file.generated)) {
+    const intentionalDataFixture = isLikelyIntentionalDataFixture(file)
     findings.push({
       id: `files.large:${file.path}`,
-      title: 'Large checked-in file can create agent context friction',
-      severity: file.sizeBytes > config.largeFileErrorBytes ? 'error' : warningSeverity,
+      title: intentionalDataFixture
+        ? 'Large checked-in example or fixture data can create agent context friction'
+        : 'Large checked-in file can create agent context friction',
+      severity: intentionalDataFixture ? 'info' : file.sizeBytes > config.largeFileErrorBytes ? 'error' : warningSeverity,
       path: file.path,
-      recommendation: 'Move large assets/data out of the main source tree or document why agents should ignore them.',
+      recommendation: intentionalDataFixture
+        ? 'Keep intentional sample data documented and consider AgentReady ignore paths if agents do not need to inspect it.'
+        : 'Move large assets/data out of the main source tree or document why agents should ignore them.',
     })
   }
 

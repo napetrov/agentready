@@ -165,6 +165,37 @@ describe('local readiness', () => {
     ]))
   })
 
+  test('downgrades obvious scientific example data to informational context friction', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run tests before committing.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'pyproject.toml', '[project]\nname = "demo"\n')
+    writeRepoFile(root, 'tests/test_demo.py', 'def test_demo():\n    assert True\n')
+    writeRepoFile(root, 'examples/daal4py/data/batch/svd.csv', Buffer.alloc(1_100_000, 1))
+    writeRepoFile(root, 'data/qr.csv', Buffer.alloc(1_100_000, 1))
+    writeRepoFile(root, 'assets/blob.csv', Buffer.alloc(1_100_000, 1))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'files.large:examples/daal4py/data/batch/svd.csv',
+        severity: 'info',
+        title: 'Large checked-in example or fixture data can create agent context friction',
+      }),
+      expect.objectContaining({
+        id: 'files.large:data/qr.csv',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.large:assets/blob.csv',
+        severity: 'warning',
+        title: 'Large checked-in file can create agent context friction',
+      }),
+    ]))
+  })
+
   test('does not flag large lockfiles across ecosystems as large files', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')

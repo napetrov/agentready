@@ -79,6 +79,11 @@ CLI smoke runner:
 
 Other CI smoke runners: `agentready:pack-smoke` (tarball install), `agentready:schemas --check` (JSON Schema drift), and `agentready:action-smoke` (bundled GitHub Action end-to-end).
 
+`npm run agentready:dogfood -- --out <scratch-dir>` clones a small configured
+real-repository set into the scratch directory and writes JSON/markdown reports
+there. Use it for release dogfood review; do not commit the cloned repositories
+or generated reports.
+
 ## Evaluation harness (LLM layer)
 
 `bin/agentready-eval.ts` (`npm run agentready:eval`) defines a labeled gold

@@ -125,6 +125,8 @@
                 "enum": [
                   "node",
                   "make",
+                  "cmake",
+                  "bazel",
                   "go",
                   "rust",
                   "python"
@@ -630,6 +632,8 @@
                 "enum": [
                   "node",
                   "make",
+                  "cmake",
+                  "bazel",
                   "go",
                   "rust",
                   "python"

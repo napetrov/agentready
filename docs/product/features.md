@@ -18,7 +18,7 @@ Delivered:
 - local CLI entrypoint `agentready scan` (default scan of the current directory)
 - instruction-file detector for common agent tools
 - repo-shape / file-inventory detector for source, tests, docs, generated, binary, and minified paths
-- package-manager detector and a multi-ecosystem command-surface detector (Node, Make, Go, Rust, Python)
+- package-manager detector and a multi-ecosystem command-surface detector (Node, Make, CMake, Bazel, Go, Rust, Python)
 - CI workflow detector for GitHub Actions
 - context-friction detection for large files and oversized always-on instruction files
 - detection of local/private instruction files
