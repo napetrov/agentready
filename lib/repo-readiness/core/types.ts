@@ -179,6 +179,14 @@ export interface ScanOptions {
   now?: Date
   configPath?: string
   config?: Partial<LocalReadinessConfig>
+  /**
+   * Whether to honour the repository's `.gitignore` files when building the file
+   * inventory (default `true`). The `diff` flow sets this to `false` because it
+   * scans git worktrees that contain only committed (tracked) files — git does
+   * not ignore tracked files, so applying `.gitignore` there would wrongly drop
+   * checked-in paths and their large/minified findings.
+   */
+  respectGitignore?: boolean
 }
 
 export interface DiffOptions extends ScanOptions {

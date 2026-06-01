@@ -264,6 +264,11 @@ JS/TS config files are refused rather than run.
 }
 ```
 
+`ignorePaths` adds AgentReady-specific exclusions on top of the repository's own
+`.gitignore` files, which the scanner already honours (root and nested, with git's
+hierarchy semantics). Common output directories (`node_modules`, `dist`, `build`,
+`out`, `coverage`, `.git`, `.next`, `.turbo`, `.vercel`) are always skipped.
+
 Use `--config <path>` to load a config file from another location (JSON or YAML). Validate a
 config and print the normalized effective settings with:
 

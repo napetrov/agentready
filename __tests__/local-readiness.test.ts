@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import { execFileSync } from 'child_process'
@@ -194,6 +194,102 @@ describe('local readiness', () => {
     ]))
   })
 
+  test('honours .gitignore rules, including nested files and negations', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // Root .gitignore: ignore a whole directory, a file, and re-include one path.
+    writeRepoFile(root, '.gitignore', 'secrets.txt\nartifacts/*\n!artifacts/keep.txt\n')
+    writeRepoFile(root, 'secrets.txt', 'token\n')
+    writeRepoFile(root, 'artifacts/output.js', 'var a=1;\n')
+    writeRepoFile(root, 'artifacts/keep.txt', 'keep me\n')
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    // Nested .gitignore only affects its own subtree.
+    writeRepoFile(root, 'src/.gitignore', '*.log\n')
+    writeRepoFile(root, 'src/debug.log', 'noise\n')
+    writeRepoFile(root, 'top.log', 'kept because the nested rule does not apply here\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const paths = report.files.map(file => file.path)
+
+    expect(paths).not.toContain('secrets.txt')
+    expect(paths).not.toContain('artifacts/output.js')
+    expect(paths).not.toContain('src/debug.log')
+    expect(paths).toContain('artifacts/keep.txt')
+    expect(paths).toContain('src/app.ts')
+    expect(paths).toContain('top.log')
+  })
+
+  test('lets a nested .gitignore negation re-include a file the root ignores', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // Root ignores every .log; the nested file re-includes one. The src/ dir
+    // itself is not excluded, so git re-includes src/debug.log (deeper rules win).
+    writeRepoFile(root, '.gitignore', '*.log\n')
+    writeRepoFile(root, 'src/.gitignore', '!debug.log\n')
+    writeRepoFile(root, 'src/debug.log', 'kept by the nested negation\n')
+    writeRepoFile(root, 'root.log', 'still ignored by the root rule\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const paths = report.files.map(file => file.path)
+
+    expect(paths).toContain('src/debug.log')
+    expect(paths).not.toContain('root.log')
+  })
+
+  test('keeps a fully-ignored directory ignored despite a nested negation', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // Root ignores the whole tmp/ directory. Git does not descend into it, so
+    // the nested negation is dead — tmp/keep.txt stays ignored (unlike tmp/*).
+    writeRepoFile(root, '.gitignore', 'tmp/\n')
+    writeRepoFile(root, 'tmp/.gitignore', '!keep.txt\n')
+    writeRepoFile(root, 'tmp/keep.txt', 'still ignored\n')
+    writeRepoFile(root, 'tmp/other.txt', 'also ignored\n')
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const paths = report.files.map(file => file.path)
+
+    expect(paths).not.toContain('tmp/keep.txt')
+    expect(paths).not.toContain('tmp/other.txt')
+    expect(paths).toContain('src/app.ts')
+  })
+
+  test('does not inventory symlinks, including those pointing outside the repo', () => {
+    root = createTempRepo()
+    const outside = createTempRepo()
+    writeRepoFile(outside, 'secret.bin', Buffer.alloc(2_000_000, 1))
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    symlinkSync(path.join(outside, 'secret.bin'), path.join(root, 'external.bin'))
+    symlinkSync(path.join(root, 'src'), path.join(root, 'src-link'))
+
+    try {
+      const report = scanLocalReadiness(root, { now: fixedNow })
+      const paths = report.files.map(file => file.path)
+
+      expect(paths).toContain('src/app.ts')
+      expect(paths).not.toContain('external.bin')
+      expect(paths.some(p => p.startsWith('src-link'))).toBe(false)
+      // The external 2 MB target must not leak in as a large-file finding.
+      expect(listFindingIds(report)).not.toContain('files.large:external.bin')
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   test('applies configured large-file thresholds and warning policy', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
@@ -302,6 +398,33 @@ describe('local readiness', () => {
     expect(validateReadinessDiffReportContract(report)).toEqual({ valid: true, errors: [] })
     expect(formatDiffMarkdown(report)).toContain('## AgentReady PR readiness')
     expect(formatDiffMarkdown(report)).toContain('New regressions')
+  })
+
+  test('diff still flags committed files that match .gitignore', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { lint: 'eslint .', test: 'jest' } }))
+    // The repo gitignores generated assets, but a large one is committed anyway.
+    // Git tracks it regardless of .gitignore, so the diff must still flag it.
+    writeRepoFile(root, '.gitignore', 'assets/\n')
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'base'])
+    runGit(root, ['switch', '-c', 'feature'])
+    writeRepoFile(root, 'assets/blob.dat', Buffer.alloc(1_200_000, 1))
+    runGit(root, ['add', '--force', 'assets/blob.dat'])
+    runGit(root, ['commit', '-m', 'commit a gitignored large file'])
+
+    const report = diffLocalReadiness(root, { base: 'main', head: 'feature', now: fixedNow })
+
+    expect(report.headReport.files.map(file => file.path)).toContain('assets/blob.dat')
+    expect(report.regressions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'files.large:assets/blob.dat' }),
+    ]))
   })
 
   test('diff scans refs via worktrees without touching a dirty working tree', () => {

@@ -27,7 +27,7 @@ import { uniqueSorted } from './util'
 export function scanLocalReadiness(root: string, options: ScanOptions = {}): LocalReadinessReport {
   const absoluteRoot = path.resolve(root)
   const config = loadConfig(absoluteRoot, options)
-  const files = walkFiles(absoluteRoot, config)
+  const files = walkFiles(absoluteRoot, config, { respectGitignore: options.respectGitignore })
   const filePaths = files.map(file => file.path)
   const instructionInput: RepositoryFileReference[] = files.map(file => ({
     path: file.path,
@@ -70,7 +70,15 @@ const findingKey = (finding: ReadinessFinding): string => `${finding.id}|${findi
 
 export function diffLocalReadiness(root: string, options: DiffOptions): ReadinessDiffReport {
   const generatedAt = (options.now ?? new Date()).toISOString()
-  const scanOptions: ScanOptions = { now: options.now, configPath: options.configPath, config: options.config }
+  // Worktrees contain only committed (tracked) files; git never ignores tracked
+  // paths, so .gitignore filtering would wrongly drop checked-in files (and their
+  // large/minified findings) from the diff.
+  const scanOptions: ScanOptions = {
+    now: options.now,
+    configPath: options.configPath,
+    config: options.config,
+    respectGitignore: false,
+  }
 
   const baseReport = withWorktree(root, options.base, worktree => scanLocalReadiness(worktree, scanOptions))
   const headReport = withWorktree(root, options.head, worktree => scanLocalReadiness(worktree, scanOptions))
