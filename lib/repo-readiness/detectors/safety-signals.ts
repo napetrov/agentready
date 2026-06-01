@@ -2,18 +2,16 @@ import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 import type { SafetyCategory, SafetySignalEvidence } from '../core/types'
 
-// npm/yarn/pnpm lifecycle scripts that run automatically (notably on install),
-// so any command they hold executes without an explicit, reviewed invocation.
+// npm/yarn/pnpm lifecycle scripts that can run automatically during dependency
+// installation or git-dependency preparation, so their commands execute without
+// an explicit, reviewed invocation. Publish/pack-only hooks such as
+// `prepublishOnly` are intentionally excluded from this install-hook class.
 const installLifecycleScripts = new Set([
   'preinstall',
   'install',
   'postinstall',
   'prepare',
   'prepublish',
-  'prepublishOnly',
-  'prepack',
-  'postpack',
-  'postpublish',
 ])
 
 interface CommandPattern {

@@ -90,6 +90,23 @@ describe('safety-signal detector', () => {
     }
   })
 
+  test('does not classify publish-only lifecycle scripts as install hooks', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, 'package.json', JSON.stringify({
+        scripts: {
+          prepublishOnly: 'npm run build',
+          prepack: 'npm run build',
+          postpack: 'node ./scripts/after-pack.js',
+          postpublish: 'node ./scripts/after-publish.js',
+        },
+      }))
+      expect(detectSafetySignals(root, ['package.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test('returns nothing when there is no package.json', () => {
     const root = createTempRepo()
     try {
