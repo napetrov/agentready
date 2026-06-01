@@ -39,7 +39,11 @@ export const buildFindings = (
     findings.push({
       id: 'docs.architecture.missing',
       title: 'Non-trivial repository has no architecture documentation',
-      severity: warningSeverity,
+      // Informational: an explicit architecture/design doc is valuable for
+      // agents but uncommon even in mature repos, so it should not drag the
+      // score like a warning. Recognition is broad (ARCHITECTURE/DESIGN/
+      // DEVELOPMENT/INTERNALS and design/architecture docs under docs/).
+      severity: 'info',
       recommendation: 'Add architecture notes that explain module boundaries, data flow, and where agents should make changes.',
     })
   }
@@ -84,42 +88,58 @@ export const buildFindings = (
   // workflow is present and we successfully recognized at least one verification
   // command in it — otherwise our parse is low-confidence (e.g. CI runs entirely
   // through composite/marketplace actions we do not classify) and we stay silent
-  // rather than emit a false positive.
+  // rather than emit a false positive. A per-kind orchestrator set scopes the
+  // remaining uncertainty: a kind dispatched through a task runner we cannot
+  // decompose (tox, make, `uv run`, … cover every kind; `pre-commit` covers only
+  // lint/type-check) is skipped, so one orchestrator step no longer silences
+  // unrelated checks.
+  //
+  // These checks are inherently heuristic — recognizing every way a command can
+  // be invoked in a workflow is open-ended — so they are emitted at `info`
+  // severity only. They surface a likely CI-coverage gap for a human to confirm;
+  // they never gate the score like a warning/error and should not be treated as
+  // authoritative.
+  const orchestratorCovers = new Set(report.ci.orchestratorKinds)
+  // We "recognized" the workflow when we classified a concrete command OR
+  // identified an orchestrator (e.g. a `pre-commit run` step, which sets
+  // orchestratorKinds but no has* flag). Either is enough confidence to reason
+  // about which kinds CI does not run; without both we stay silent.
   const ciParsedAnyCommand =
     report.ci.hasInstall
     || report.ci.hasLint
     || report.ci.hasTypeCheck
     || report.ci.hasTest
     || report.ci.hasBuild
+    || orchestratorCovers.size > 0
   if (report.ci.workflowFiles.length > 0 && ciParsedAnyCommand) {
-    if (report.commands.hasTest && !report.ci.hasTest) {
+    if (report.commands.hasTest && !report.ci.hasTest && !orchestratorCovers.has('test')) {
       findings.push({
         id: 'ci.test.not-run',
         title: 'Tests are available but CI does not run them',
-        severity: warningSeverity,
+        severity: 'info',
         recommendation: 'Run the test command in CI so regressions are caught before review.',
       })
     }
 
-    if (report.commands.hasLint && !report.ci.hasLint) {
+    if (report.commands.hasLint && !report.ci.hasLint && !orchestratorCovers.has('lint')) {
       findings.push({
         id: 'ci.lint.not-run',
         title: 'A lint command is available but CI does not run it',
-        severity: warningSeverity,
+        severity: 'info',
         recommendation: 'Run the lint command in CI so style and static-analysis regressions are caught automatically.',
       })
     }
 
-    if (report.commands.hasTypeCheck && !report.ci.hasTypeCheck) {
+    if (report.commands.hasTypeCheck && !report.ci.hasTypeCheck && !orchestratorCovers.has('typecheck')) {
       findings.push({
         id: 'ci.typecheck.not-run',
         title: 'A type-check command is available but CI does not run it',
-        severity: warningSeverity,
+        severity: 'info',
         recommendation: 'Run the type-check command in CI so type regressions are caught before review.',
       })
     }
 
-    if (report.commands.hasBuild && !report.ci.hasBuild) {
+    if (report.commands.hasBuild && !report.ci.hasBuild && !orchestratorCovers.has('build')) {
       findings.push({
         id: 'ci.build.not-run',
         title: 'A build command is available but CI does not run it',

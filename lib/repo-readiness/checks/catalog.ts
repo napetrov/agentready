@@ -48,7 +48,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     id: 'docs.architecture.missing',
     title: 'Non-trivial repository has no architecture documentation',
     category: 'docs',
-    defaultSeverity: 'warning',
+    defaultSeverity: 'info',
     rationale:
       'In a non-trivial codebase (>20 source files) an agent needs a map of module boundaries and data flow to make changes in the right place. Without it, changes tend to be locally plausible but globally wrong.',
     remediation: [
@@ -113,7 +113,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     id: 'ci.test.not-run',
     title: 'Tests are available but CI does not run them',
     category: 'ci',
-    defaultSeverity: 'warning',
+    defaultSeverity: 'info',
     rationale:
       'A test command an agent can run locally is only half the loop; if CI never runs it, regressions still reach the default branch and "verified locally" is the only signal. AgentReady parses the workflow steps and found no test invocation.',
     remediation: [
@@ -126,7 +126,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     id: 'ci.lint.not-run',
     title: 'A lint command is available but CI does not run it',
     category: 'ci',
-    defaultSeverity: 'warning',
+    defaultSeverity: 'info',
     rationale:
       'Lint enforced only locally drifts: an agent cannot rely on it as an objective gate, and style/static-analysis regressions land unchecked. AgentReady parsed the workflow steps and found no lint invocation.',
     remediation: [
@@ -139,7 +139,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     id: 'ci.typecheck.not-run',
     title: 'A type-check command is available but CI does not run it',
     category: 'ci',
-    defaultSeverity: 'warning',
+    defaultSeverity: 'info',
     rationale:
       'Type errors that surface only on a developer machine are invisible to reviewers and to the next agent. Running the type-check in CI makes it an enforced gate. AgentReady parsed the workflow steps and found no type-check invocation.',
     remediation: [

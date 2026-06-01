@@ -222,6 +222,19 @@
             },
             "hasBuild": {
               "type": "boolean"
+            },
+            "orchestratorKinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "install",
+                  "lint",
+                  "typecheck",
+                  "test",
+                  "build"
+                ]
+              }
             }
           },
           "required": [
@@ -231,7 +244,8 @@
             "hasLint",
             "hasTypeCheck",
             "hasTest",
-            "hasBuild"
+            "hasBuild",
+            "orchestratorKinds"
           ],
           "additionalProperties": false
         },

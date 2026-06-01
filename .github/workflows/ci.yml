@@ -10,6 +10,68 @@ permissions:
   contents: read
 
 jobs:
+  readiness:
+    name: AgentReady (self)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required to upload the SARIF report to the code-scanning dashboard.
+      security-events: write
+      # Required for the sticky PR comment on pull_request runs.
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          # Full history so diff mode can compare against the PR base.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Dogfood the bundled first-party Action against this repository. On pull
+      # requests it runs in diff mode and posts a sticky comment; on push it runs
+      # a full scan. Either way it writes SARIF for the code-scanning dashboard.
+      - name: AgentReady scan (push)
+        id: scan
+        if: github.event_name != 'pull_request'
+        uses: ./
+        with:
+          mode: scan
+          fail-on-severity: error
+          upload-sarif: 'true'
+          job-summary: 'true'
+
+      - name: AgentReady diff (pull request)
+        id: diff
+        if: github.event_name == 'pull_request'
+        uses: ./
+        with:
+          mode: diff
+          base-ref: origin/${{ github.base_ref }}
+          head-ref: HEAD
+          fail-on-regression: 'true'
+          upload-sarif: 'true'
+          job-summary: 'true'
+          pr-comment: 'true'
+
+      - name: Upload SARIF to code scanning
+        # Pinned to a commit SHA (current v3) for supply-chain consistency with
+        # the other actions in this workflow; bump alongside Dependabot updates.
+        uses: github/codeql-action/upload-sarif@fee9466b8957867761f2d78f922ab084e3e2dd17
+        # Skip for pull requests from forks: GitHub downgrades the token to
+        # read-only there, so `security-events: write` is unavailable and the
+        # upload would fail. `continue-on-error` keeps the job green for any
+        # other read-only context (e.g. Dependabot) so the scan/comment path
+        # still reports.
+        if: >-
+          always()
+          && (steps.scan.outputs.sarif-report-path || steps.diff.outputs.sarif-report-path)
+          && (github.event_name != 'pull_request'
+              || github.event.pull_request.head.repo.full_name == github.repository)
+        continue-on-error: true
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarif-report-path || steps.diff.outputs.sarif-report-path }}
+
   verify:
     name: Verify
     runs-on: ubuntu-latest

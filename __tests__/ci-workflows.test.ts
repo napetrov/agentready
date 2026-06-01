@@ -44,6 +44,18 @@ describe('classifyRunCommandKinds', () => {
     { run: 'set -e\nnpm run type-check\nnpm run build\n', expected: ['typecheck', 'build'] },
     // Unrelated commands classify as nothing.
     { run: 'echo "deploying"', expected: [] },
+    // Install arguments must not be read as having run the tool: the package
+    // name (pytest/eslint/tox) only appears because it is being installed.
+    { run: 'pip install pytest', expected: ['install'] },
+    { run: 'npm install -g eslint', expected: ['install'] },
+    { run: 'pip install tox', expected: ['install'] },
+    // But installing then running the tool in the same step counts as both.
+    { run: 'npm install eslint && eslint .', expected: ['install', 'lint'] },
+    { run: 'pip install pytest && pytest -q', expected: ['install', 'test'] },
+    // A backslash line-continuation is one shell command; the wrapped package
+    // argument must not be read as a separate test/lint invocation.
+    { run: 'pip install \\\n  pytest', expected: ['install'] },
+    { run: 'npm install -g \\\n  eslint', expected: ['install'] },
   ]
 
   it.each(cases)('classifies "$run"', ({ run, expected }) => {
@@ -164,6 +176,7 @@ describe('detectCiWorkflows', () => {
       hasTypeCheck: false,
       hasTest: false,
       hasBuild: false,
+      orchestratorKinds: [],
     })
   })
 })
@@ -234,5 +247,147 @@ describe('CI command-coverage checks', () => {
     expect(report.findings.filter(finding => finding.id.endsWith('.not-run'))).toEqual([])
     // The workflow file still exists, so the "no workflow" finding must not fire.
     expect(report.findings.map(finding => finding.id)).not.toContain('ci.workflow.missing')
+  })
+})
+
+describe('CI orchestrator coverage', () => {
+  let root: string
+
+  afterEach(() => {
+    if (root) {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  const writeWorkflow = (yaml: string): void => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-ci-orch-'))
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), yaml)
+  }
+
+  it('treats general task runners (tox/uv run) as covering every kind', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  test:', '    steps:', '      - run: uv run --group dev tox run', ''].join('\n'),
+    )
+
+    const evidence = detectCiWorkflows(root, ['.github/workflows/ci.yml'])
+    expect(evidence.orchestratorKinds).toEqual(['lint', 'typecheck', 'test', 'build'])
+    // tox is still recognized as a test surface; orchestrator coverage is additive.
+    expect(evidence.hasTest).toBe(true)
+  })
+
+  it('treats make targets as covering every kind', () => {
+    writeWorkflow(['name: CI', 'jobs:', '  build:', '    steps:', '      - run: make richtest', ''].join('\n'))
+
+    expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual([
+      'lint',
+      'typecheck',
+      'test',
+      'build',
+    ])
+  })
+
+  it('scopes pre-commit coverage to lint and type-check only', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  check:', '    steps:', '      - run: pre-commit run --all-files', ''].join('\n'),
+    )
+
+    expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual(['lint', 'typecheck'])
+  })
+
+  it('does not treat non-hook pre-commit subcommands as coverage', () => {
+    // `pre-commit install` / `autoupdate` do not run hooks, so they grant no
+    // lint/type-check coverage — only `pre-commit run` does.
+    for (const cmd of ['pre-commit install', 'pre-commit autoupdate']) {
+      writeWorkflow(
+        ['name: CI', 'jobs:', '  check:', '    steps:', `      - run: ${cmd}`, ''].join('\n'),
+      )
+      expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual([])
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('treats the pre-commit Action (uses:) as lint/type-check coverage too', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  check:', '    steps:', '      - uses: pre-commit/action@v3.0.1', ''].join('\n'),
+    )
+
+    const evidence = detectCiWorkflows(root, ['.github/workflows/ci.yml'])
+    // Consistent with `run: pre-commit run` — covers lint/type-check, not test/build.
+    expect(evidence.orchestratorKinds).toEqual(['lint', 'typecheck'])
+    expect(evidence.hasLint).toBe(true)
+  })
+
+  it('records no orchestrator coverage for plain commands', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  test:', '    steps:', '      - run: npm ci', '      - run: npm test', ''].join('\n'),
+    )
+
+    expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual([])
+  })
+
+  it('does not treat a recognized make target (make lint) as opaque', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  lint:', '    steps:', '      - run: make lint', ''].join('\n'),
+    )
+
+    const evidence = detectCiWorkflows(root, ['.github/workflows/ci.yml'])
+    // `make lint` is decomposed to lint, so it contributes no opaque coverage —
+    // unrelated test/build not-run findings must still be able to fire.
+    expect(evidence.hasLint).toBe(true)
+    expect(evidence.orchestratorKinds).toEqual([])
+  })
+
+  it('judges each invocation in a compound step independently', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  ci:', '    steps:', '      - run: make lint && make richtest', ''].join('\n'),
+    )
+
+    // `make lint` is recognized (not opaque); `make richtest` is an unknown
+    // target, so only the opaque invocation contributes every-kind coverage.
+    const evidence = detectCiWorkflows(root, ['.github/workflows/ci.yml'])
+    expect(evidence.hasLint).toBe(true)
+    expect(evidence.orchestratorKinds).toEqual(['lint', 'typecheck', 'test', 'build'])
+  })
+
+  it('does not treat a recognized wrapped command (uv run pytest) as opaque', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  test:', '    steps:', '      - run: uv run pytest', ''].join('\n'),
+    )
+
+    const evidence = detectCiWorkflows(root, ['.github/workflows/ci.yml'])
+    expect(evidence.hasTest).toBe(true)
+    expect(evidence.orchestratorKinds).toEqual([])
+  })
+
+  it('does not treat installing a runner (pip install tox) as executing it', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  t:', '    steps:', '      - run: pip install tox', '      - run: npm test', ''].join('\n'),
+    )
+
+    // Installing tox does not run it, so no opaque coverage is contributed; the
+    // missing lint/build/type-check coverage must still be reportable.
+    expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual([])
+  })
+
+  it('does not treat a global runner install (npm install -g nx) as executing it', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  t:', '    steps:', '      - run: npm install -g nx', '      - run: npm test', ''].join('\n'),
+    )
+
+    expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual([])
+  })
+
+  it('still treats an installed-then-executed runner as opaque', () => {
+    writeWorkflow(
+      ['name: CI', 'jobs:', '  t:', '    steps:', '      - run: pip install tox && tox run', ''].join('\n'),
+    )
+
+    expect(detectCiWorkflows(root, ['.github/workflows/ci.yml']).orchestratorKinds).toEqual([
+      'lint',
+      'typecheck',
+      'test',
+      'build',
+    ])
   })
 })

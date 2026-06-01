@@ -84,6 +84,117 @@ const USES_KINDS: Array<{ pattern: RegExp; kind: CiCommandKind }> = [
   { pattern: /^pre-commit\/action/, kind: 'lint' },
 ]
 
+// The command kinds whose CI coverage a general task runner can plausibly
+// satisfy (install has no not-run check, so it is omitted).
+const ALL_COVERABLE_KINDS: CiCommandKind[] = ['lint', 'typecheck', 'test', 'build']
+
+// Splits a shell `run:` block into individual command invocations so each is
+// judged on its own (e.g. `make lint && make richtest` → two invocations: one
+// recognized, one opaque).
+const COMMAND_SEPARATORS = /&&|\|\||[;\n]/
+
+// A trailing backslash continues a shell command onto the next line, so it is a
+// single invocation (`pip install \⏎  pytest`), not two. Collapse such
+// continuations before splitting so a wrapped install argument is not parsed as
+// its own command.
+const splitCommands = (run: string): string[] => run.replace(/\\\r?\n/g, ' ').split(COMMAND_SEPARATORS)
+
+// Always-opaque runners: they execute a configured matrix or several scripts we
+// cannot enumerate (tox/nox run whatever envs are configured; npm-run-all/turbo/
+// nx fan out to multiple targets), so any of lint/type-check/test/build may run.
+const ALWAYS_OPAQUE_PATTERNS: RegExp[] = [
+  /\btox\b/,
+  /\bnox\b/,
+  /\b(npm-run-all|run-s|run-p)\b/,
+  /\bturbo\s+run\b/,
+  /\bnx\b/,
+]
+
+// Recipe runners (`make`/`just`/…) and command wrappers (`uv run`/`poetry run`/
+// …) dispatch a single target/command. They only make coverage uncertain when
+// we could NOT already decompose that command: `make lint` and `uv run pytest`
+// are recognized by RUN_PATTERNS and must not suppress unrelated kinds, while
+// `make richtest` or `just ci` are opaque.
+const RECIPE_OR_WRAPPER_PATTERNS: RegExp[] = [
+  /\bmake\b/,
+  /\b(just|task|mage|rake|invoke|mise)\b/,
+  /\b(uv|poetry|pipenv|pdm|hatch|rye) run\b/,
+]
+
+// `pre-commit run` executes the hooks declared in `.pre-commit-config.yaml`,
+// which are conventionally linters, formatters, and sometimes type-checkers —
+// but not the test suite or a build. So a hook-running invocation only makes
+// lint/type-check coverage uncertain; it must NOT suppress test/build not-run
+// findings. Only `pre-commit run` runs hooks — `pre-commit install` /
+// `autoupdate` / `clean` do not — so the match is scoped to `run`.
+const PRECOMMIT_PATTERN = /\bpre-commit\s+run\b/
+const PRECOMMIT_KINDS: CiCommandKind[] = ['lint', 'typecheck']
+
+/**
+ * Orchestrator coverage contributed by a `uses:` step, mirroring the `run:`
+ * path. A `pre-commit/action` step runs the repo's pre-commit hooks just like
+ * `run: pre-commit run`, so it makes lint/type-check coverage uncertain too —
+ * without this, a workflow using the Action form would wrongly emit
+ * `ci.typecheck.not-run` where the `run:` form would not.
+ */
+const usesOrchestratorCoverageFor = (uses: string): CiCommandKind[] => {
+  const normalized = uses.trim().toLowerCase()
+  return /^pre-commit\/action/.test(normalized) ? PRECOMMIT_KINDS : []
+}
+
+/**
+ * The command kinds whose not-run check a `run:` step's orchestrator (if any)
+ * makes uncertain, so the caller can scope suppression to exactly those kinds
+ * rather than silencing every check. Each command invocation in the step is
+ * judged independently: a runner only contributes uncertainty for the kinds it
+ * could be hiding, never for a command we already recognized.
+ */
+const orchestratorCoverageFor = (run: string): CiCommandKind[] => {
+  const coverage = new Set<CiCommandKind>()
+
+  for (const segment of splitCommands(run)) {
+    const text = segment.toLowerCase().trim()
+    if (text.length === 0) {
+      continue
+    }
+
+    // An install command merely installs tooling (e.g. `pip install tox`,
+    // `npm install -g nx`); it does not execute the runner, so it must not be
+    // treated as opaque orchestration that could be running other commands.
+    if (RUN_PATTERNS.install.some(pattern => pattern.test(text))) {
+      continue
+    }
+
+    if (PRECOMMIT_PATTERN.test(text)) {
+      for (const kind of PRECOMMIT_KINDS) {
+        coverage.add(kind)
+      }
+      continue
+    }
+
+    if (ALWAYS_OPAQUE_PATTERNS.some(pattern => pattern.test(text))) {
+      for (const kind of ALL_COVERABLE_KINDS) {
+        coverage.add(kind)
+      }
+      continue
+    }
+
+    // A recipe runner or command wrapper is only opaque when its wrapped command
+    // was not already classified into a specific kind (e.g. `make lint` /
+    // `uv run pytest` are decomposed and excluded; `make ci` is opaque).
+    if (
+      RECIPE_OR_WRAPPER_PATTERNS.some(pattern => pattern.test(text))
+      && classifyRunCommandKinds(text).length === 0
+    ) {
+      for (const kind of ALL_COVERABLE_KINDS) {
+        coverage.add(kind)
+      }
+    }
+  }
+
+  return sortKinds(coverage)
+}
+
 /**
  * The verification commands CI runs, as human-readable labels in canonical
  * order. Shared by the console and markdown reporters so the "CI coverage"
@@ -100,15 +211,37 @@ export const ciRunLabels = (ci: CiEvidence): string[] => {
   return labels.filter(([present]) => present).map(([, label]) => label)
 }
 
-/** Classifies the command kinds exercised by a shell `run:` step. */
+/**
+ * Classifies the command kinds exercised by a shell `run:` step. Each command
+ * invocation in the step is judged independently so a tool name that only
+ * appears as an *install argument* (e.g. `pip install pytest`,
+ * `npm install -g eslint`) is recorded as `install`, not as having run the tool
+ * — otherwise CI would falsely look like it runs tests/lint and suppress the
+ * corresponding `ci.*.not-run` findings.
+ */
 export const classifyRunCommandKinds = (run: string): CiCommandKind[] => {
-  const text = run.toLowerCase()
   const kinds = new Set<CiCommandKind>()
-  for (const kind of COMMAND_KIND_ORDER) {
-    if (RUN_PATTERNS[kind].some(pattern => pattern.test(text))) {
-      kinds.add(kind)
+
+  for (const segment of splitCommands(run)) {
+    const text = segment.toLowerCase().trim()
+    if (text.length === 0) {
+      continue
+    }
+
+    // An install invocation only installs tooling; its package-name arguments
+    // must not be read as having run lint/type-check/test/build.
+    if (RUN_PATTERNS.install.some(pattern => pattern.test(text))) {
+      kinds.add('install')
+      continue
+    }
+
+    for (const kind of COMMAND_KIND_ORDER) {
+      if (RUN_PATTERNS[kind].some(pattern => pattern.test(text))) {
+        kinds.add(kind)
+      }
     }
   }
+
   return sortKinds(kinds)
 }
 
@@ -158,10 +291,11 @@ interface RawWorkflow {
 
 const asString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined)
 
-const parseJob = (id: string, rawJob: unknown): CiWorkflowJob => {
+const parseJob = (id: string, rawJob: unknown): { job: CiWorkflowJob; orchestratorKinds: Set<CiCommandKind> } => {
   const job = (rawJob ?? {}) as RawJob
   const steps = Array.isArray(job.steps) ? (job.steps as RawStep[]) : []
   const kinds = new Set<CiCommandKind>()
+  const orchestratorKinds = new Set<CiCommandKind>()
 
   for (const step of steps) {
     const run = asString(step?.run)
@@ -169,19 +303,28 @@ const parseJob = (id: string, rawJob: unknown): CiWorkflowJob => {
       for (const kind of classifyRunCommandKinds(run)) {
         kinds.add(kind)
       }
+      for (const kind of orchestratorCoverageFor(run)) {
+        orchestratorKinds.add(kind)
+      }
     }
     const uses = asString(step?.uses)
     if (uses) {
       for (const kind of classifyUsesCommandKinds(uses)) {
         kinds.add(kind)
       }
+      for (const kind of usesOrchestratorCoverageFor(uses)) {
+        orchestratorKinds.add(kind)
+      }
     }
   }
 
-  return { id, commandKinds: sortKinds(kinds) }
+  return { job: { id, commandKinds: sortKinds(kinds) }, orchestratorKinds }
 }
 
-const parseWorkflow = (root: string, file: string): CiWorkflow | undefined => {
+const parseWorkflow = (
+  root: string,
+  file: string,
+): { workflow: CiWorkflow; orchestratorKinds: Set<CiCommandKind> } | undefined => {
   const text = readText(root, file)
   if (text === undefined) {
     return undefined
@@ -193,20 +336,29 @@ const parseWorkflow = (root: string, file: string): CiWorkflow | undefined => {
   } catch {
     // A malformed workflow degrades to "file present, no parsed jobs" rather
     // than crashing the scan; correctness is actionlint's job, not ours.
-    return { file, jobs: [] }
+    return { workflow: { file, jobs: [] }, orchestratorKinds: new Set() }
   }
 
   const workflow = (parsed ?? {}) as RawWorkflow
   const rawJobs = workflow.jobs
-  const jobs: CiWorkflowJob[] =
+  const parsedJobs =
     rawJobs && typeof rawJobs === 'object' && !Array.isArray(rawJobs)
       ? Object.entries(rawJobs as Record<string, unknown>)
           .map(([id, rawJob]) => parseJob(id, rawJob))
-          .sort((a, b) => a.id.localeCompare(b.id))
+          .sort((a, b) => a.job.id.localeCompare(b.job.id))
       : []
 
+  const jobs = parsedJobs.map(parsed => parsed.job)
+  const orchestratorKinds = new Set<CiCommandKind>()
+  for (const parsed of parsedJobs) {
+    for (const kind of parsed.orchestratorKinds) {
+      orchestratorKinds.add(kind)
+    }
+  }
+
   const name = asString(workflow.name)
-  return name === undefined ? { file, jobs } : { file, name, jobs }
+  const built: CiWorkflow = name === undefined ? { file, jobs } : { file, name, jobs }
+  return { workflow: built, orchestratorKinds }
 }
 
 /**
@@ -220,13 +372,19 @@ export const detectCiWorkflows = (root: string, filePaths: string[]): CiEvidence
     .filter(filePath => /^\.github\/workflows\/.+\.ya?ml$/i.test(filePath))
     .sort()
 
-  const workflows = workflowFiles
+  const parsed = workflowFiles
     .map(file => parseWorkflow(root, file))
-    .filter((workflow): workflow is CiWorkflow => workflow !== undefined)
+    .filter((entry): entry is { workflow: CiWorkflow; orchestratorKinds: Set<CiCommandKind> } => entry !== undefined)
+
+  const workflows = parsed.map(entry => entry.workflow)
 
   const allKinds = new Set<CiCommandKind>()
-  for (const workflow of workflows) {
-    for (const job of workflow.jobs) {
+  const orchestratorKinds = new Set<CiCommandKind>()
+  for (const entry of parsed) {
+    for (const kind of entry.orchestratorKinds) {
+      orchestratorKinds.add(kind)
+    }
+    for (const job of entry.workflow.jobs) {
       for (const kind of job.commandKinds) {
         allKinds.add(kind)
       }
@@ -241,5 +399,6 @@ export const detectCiWorkflows = (root: string, filePaths: string[]): CiEvidence
     hasTypeCheck: allKinds.has('typecheck'),
     hasTest: allKinds.has('test'),
     hasBuild: allKinds.has('build'),
+    orchestratorKinds: sortKinds(orchestratorKinds),
   }
 }

@@ -102,6 +102,7 @@ export const ciEvidenceSchema = z.strictObject({
   hasTypeCheck: z.boolean(),
   hasTest: z.boolean(),
   hasBuild: z.boolean(),
+  orchestratorKinds: z.array(ciCommandKindSchema),
 })
 
 export const capabilitySurfaceSchema = z.strictObject({
