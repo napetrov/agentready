@@ -9,7 +9,7 @@ export type PackageManager = 'npm' | 'pnpm' | 'yarn' | 'bun'
  * Cargo manifest). The command-surface detector aggregates verification
  * capabilities across every ecosystem it recognizes.
  */
-export type CommandEcosystem = 'node' | 'make' | 'go' | 'rust' | 'python'
+export type CommandEcosystem = 'node' | 'make' | 'cmake' | 'bazel' | 'go' | 'rust' | 'python'
 
 export interface LocalReadinessFile {
   path: string

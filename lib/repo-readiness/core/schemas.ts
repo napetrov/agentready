@@ -18,7 +18,7 @@ import type {
 
 export const severitySchema = z.enum(['info', 'warning', 'error'])
 export const packageManagerSchema = z.enum(['npm', 'pnpm', 'yarn', 'bun'])
-export const commandEcosystemSchema = z.enum(['node', 'make', 'go', 'rust', 'python'])
+export const commandEcosystemSchema = z.enum(['node', 'make', 'cmake', 'bazel', 'go', 'rust', 'python'])
 export const capabilityKindSchema = z.enum(['mcp', 'skill', 'hook', 'plugin', 'lsp'])
 export const safetyCategorySchema = z.enum(['install-hook', 'destructive', 'network-exec', 'deploy'])
 

@@ -17,6 +17,103 @@ dashboards stay deferred. We accept that resequencing. The core differentiators
 (instruction-surface detection, evidence model, finding IDs, worktree `diff`,
 deterministic offline scanning) remain custom and must not regress.
 
+## Post-dogfood hardening plan
+
+The oneDAL and scikit-learn-intelex dogfood pass changed the next release focus:
+the scanner is useful on real Intel repositories, but large scientific/C++ and
+hybrid Python/C++ projects expose precision gaps that should be addressed before
+calling the release polished.
+
+Review gates for this hardening stream:
+
+1. **Plan review** — review this section for priority, scope, missing risks, and
+   whether each release gate has an observable pass/fail criterion.
+2. **Detector review** — after each detector PR, run focused code review on
+   parsing correctness, false-positive risk, schema compatibility, and tests.
+   Passing means targeted unit tests include positive and negative fixtures,
+   `npm run type-check`, `npm run lint`, and affected Jest suites pass, and any
+   schema/report shape change is covered by `npm run agentready:schemas -- --check`.
+3. **Dogfood review** — rescan AgentReady, oneDAL, and scikit-learn-intelex; keep
+   raw reports outside the repo and summarize only actionable conclusions.
+   Passing means the known false positives below are gone or deliberately
+   downgraded, the scanner does not crash, and no new error-severity finding is
+   introduced on those repos.
+4. **Release review** — before publishing, verify package naming, CI warnings,
+   and npm provenance/trusted publishing choices. Passing means there are no
+   open release-blocking PRs, CI is green on the exact release SHA, package dry
+   run includes the intended files, and install/action examples match the chosen
+   package identity.
+
+Known dogfood regression matrix:
+
+| Repo | Observed issue | Expected post-fix behavior | Blocks release? |
+|---|---|---|---|
+| `oneDAL` | C++ build/test wrappers were only partly understood as generic Make evidence | Build/test surfaces and CI coverage are detected without `commands.test.missing` | Yes |
+| `oneDAL` | Large scientific sample data raised generic warning findings | Intentional sample/example data is labeled or downgraded without hiding arbitrary large blobs | No, unless warnings become errors |
+| `scikit-learn-intelex` | Python `Copyright` text accidentally implied `pyright` type-check coverage | Tool detection comes only from structured config/known files, not comments/prose | Yes |
+| `scikit-learn-intelex` | CI test/build wrapper scripts were under-recognized | Common wrapper scripts are recognized with negative tests for unrelated names/install arguments | Yes |
+| both | `docs.architecture.missing` is noisy on mature OSS docs | Standalone architecture finding is removed or folded into broader low-severity docs signal | No |
+
+### P0 — Release blockers / product decisions
+
+- [ ] **Pick the npm package identity.** The unscoped `agentready` name is already
+  occupied on npm, so the first public release needs a scoped package name and
+  repository metadata updated accordingly: `package.json`, README install/npx
+  examples, GitHub Action snippets, pack smoke expectations, changelog/release
+  notes, and any `npx agentready` references. Candidate: an org scope rather
+  than a personal scope if the project will live beyond this repo. _(S,
+  decision)_
+- [x] **Keep dogfood outputs out of the repo.** Store real-repo scan outputs as
+  CI artifacts, job summaries, scratch files, or release-note drafts. Do not add
+  per-run evaluation markdown to the tracked tree; sanitized summaries may keep
+  finding IDs, counts, and short conclusions. _(S)_
+- [x] **Minimal dogfood harness / recipe.** Add a repeatable local command or
+  script that clones a small configured repo set into a temp directory and emits
+  reports outside the tracked tree. This can be lightweight for the first
+  release, but the dogfood gate must not depend on hand-run commands only. _(M)_
+
+### P1 — Precision fixes from Intel dogfood
+
+- [x] **Broaden C/C++ build-system detection.** Treat CMake, Bazel, and
+  Makefile-backed projects as first-class command ecosystems instead of folding
+  all C/C++ projects into generic `make`. Detect `CMakeLists.txt`,
+  `CMakePresets.json`, `WORKSPACE`/`MODULE.bazel`, `BUILD.bazel`, and common
+  `.ci/scripts/{build,test}` wrappers without executing them. _(M)_
+- [x] **Use structured Python config parsing.** Replace broad substring matching
+  in Python command detection with data-oriented parsing of `pyproject.toml` and
+  `setup.cfg` sections/options. Tool names in comments, copyright headers, or
+  prose must never imply command availability. Include negative fixtures for
+  comments/prose and positive fixtures for common tool sections. _(M)_
+- [x] **Classify intentional large data.** Split `files.large` context-friction
+  findings into high-risk arbitrary blobs versus common ML/scientific fixtures
+  under `examples/**/data`, `tests/**/fixtures`, `benchmarks/**`, and similar
+  paths. The downgrade must be evidence-backed by path/type heuristics and
+  configurable later; do not blanket-exempt all examples or benchmarks. _(M)_
+- [ ] **Rework `docs.architecture.missing`.** This rule is low precision on
+  mature OSS projects. Either fold it into a broader docs-quality signal
+  (README + CONTRIBUTING + developer docs + architecture/design notes) or remove
+  the standalone finding. _(S)_
+- [ ] **Tighten CI script classification.** Keep recognizing common wrapper
+  scripts, but add negative tests for install-only references and unrelated file
+  names so a script path does not create false coverage. _(S)_
+- [ ] **Track Action runtime migration.** The Action currently runs on Node 20;
+  GitHub warns Node 20 actions move toward Node 24 defaults in 2026. Track the
+  runtime bump and CodeQL Action v4 update as release-maintenance tasks, even if
+  they do not block the immediate release. _(S)_
+
+### P2 — Depth and differentiation
+
+- [ ] **Instruction quality as a first-class release story.** The Intel repos
+  already have many instruction files, so the next differentiator is usefulness:
+  actionable commands, scoped ownership, contradictions, stale paths, and
+  duplicate/overlapping guidance. The optional analyze layer already has a
+  starting instruction-quality analyzer; connect its output to docs and dogfood
+  examples without making core scanning depend on a model. _(M/L)_
+- [ ] **Scientific/ML policy pack.** Capture expectations for repositories that
+  intentionally keep sample datasets, notebooks, generated bindings, or heavy CI
+  orchestration. Keep the core scanner descriptive; use policy/config to tune
+  severity. _(L)_
+
 ## Feedback triage
 
 Verified against the current `main`/branch code before accepting:

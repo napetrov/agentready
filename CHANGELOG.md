@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Dogfood release harness: `npm run agentready:dogfood -- --out <scratch-dir>`
+  clones the configured real-repository set into a scratch directory and writes
+  JSON/markdown reports there, keeping scan artifacts out of the tracked repo.
+- CMake and Bazel are now first-class command ecosystems in scan reports,
+  alongside Node, Make, Go, Rust, and Python.
 - AgentReady now dogfoods its own GitHub Action in CI (`.github/workflows/ci.yml`): a `readiness` job runs the bundled Action (`uses: ./`) — diff mode with a sticky PR comment on pull requests, full scan on push — and uploads the SARIF report to the code-scanning dashboard (skipped for fork PRs where the token is read-only). The CodeQL upload action is pinned to a commit SHA.
 - CI command-coverage is now orchestrator-aware: the `ci` evidence carries an `orchestratorKinds` set so the `ci.*.not-run` checks stay silent, per command kind, when a workflow dispatches that command through a task runner the parser cannot decompose. General runners (`tox`, `nox`, `make`, `uv/poetry run`, `just`, `turbo`, `nx`, …) cover every kind; `pre-commit` covers only lint/type-check. Installing a runner (`pip install tox`) is distinguished from executing it, and install arguments are no longer misread as having run the tool — including arguments wrapped onto a continuation line (`pip install \` ⏎ `  pytest`), which are joined before the step is split into commands.
 - The `ci.test.not-run`, `ci.lint.not-run`, and `ci.typecheck.not-run` checks are now emitted at **info** severity (previously warnings), matching `ci.build.not-run`. Command-coverage inference is heuristic, so these surface a likely gap for a human to confirm and never gate the score.
@@ -34,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- Python command detection now uses structured `pyproject.toml`/`setup.cfg`
+  sections instead of broad substring matching, so comments/prose such as
+  copyright text no longer imply pytest, lint, or type-check coverage.
+- Large scientific sample/fixture data under common `data`, `examples`,
+  `tests`, and benchmark fixture paths is downgraded to informational context
+  friction without hiding arbitrary large blobs elsewhere.
 - The analysis result cache now folds the concrete model into its key (via a new optional `model` on the `LlmProvider` port), so switching models between runs is a clean cache miss instead of returning the previous model's insights.
 - Contradiction insight ids now incorporate the conflicting file pair as well as the topic, so two distinct contradictions with similar topics no longer collide; exact duplicates from the model are collapsed.
 - `ingestHostResponses` now reports (via an optional `onWarn`) when a host response references an unknown analyzer or fails to ingest, instead of dropping it silently.

@@ -57,6 +57,7 @@
     "agentready:schemas": "tsx bin/agentready-emit-schemas.ts",
     "agentready:action-smoke": "tsx bin/agentready-action-smoke.ts",
     "agentready:eval": "tsx bin/agentready-eval.ts",
+    "agentready:dogfood": "tsx bin/agentready-dogfood.ts",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "test:watch": "jest --watch",

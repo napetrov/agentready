@@ -49,7 +49,7 @@ Implemented (v0.1):
 - `scan` and `diff` CLI commands with console, JSON (`--json`/`--compact`), and markdown (`--markdown`) output.
 - Layered architecture: detectors → checks → scoring → reporters.
 - Detectors: file inventory/classification, multi-ecosystem command surfaces
-  (Node, Make, Go, Rust, Python), docs and CI workflows, and instruction surfaces
+  (Node, Make, CMake, Bazel, Go, Rust, Python), docs and CI workflows, and instruction surfaces
   across Codex/Claude/Copilot/Cursor/Gemini/Windsurf/Cline/Roo.
 - Worktree-based `diff` that never mutates the working tree.
 - Config support via `.agentready.json` / `agentready.config.json` / `--config`.

@@ -94,6 +94,16 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence.hasTest).toBe(true)
   })
 
+  it('recognizes CMake and Bazel as first-class build ecosystems', () => {
+    write('src/CMakeLists.txt', 'add_library(x x.cpp)\n')
+    write('MODULE.bazel', 'module(name = "x")\n')
+    write('lib/BUILD.bazel', 'cc_library(name = "x")\n')
+    const evidence = detectCommandSurfaces(root, ['src/CMakeLists.txt', 'MODULE.bazel', 'lib/BUILD.bazel'])
+    expect(evidence.ecosystems).toEqual(['cmake', 'bazel'])
+    expect(evidence.hasBuild).toBe(true)
+    expect(evidence.hasTest).toBe(true)
+  })
+
   it('recognizes Python via setup.py with tox/flake8/mypy config (no pyproject)', () => {
     write('setup.py', 'from setuptools import setup\nsetup()\n')
     const evidence = detectCommandSurfaces(root, ['setup.py', 'tox.ini', '.flake8', 'mypy.ini'])
@@ -110,6 +120,22 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence.hasTypeCheck).toBe(false)
   })
 
+  it('does not infer Python tools from comments or prose', () => {
+    write('pyproject.toml', '# pytest, ruff, mypy, pyright are mentioned in a comment only\n[project]\nname = "x"\n')
+    write('setup.cfg', '# [flake8] in a comment only\n')
+    const evidence = detectCommandSurfaces(root, ['pyproject.toml', 'setup.cfg'])
+    expect(evidence.ecosystems).toEqual(['python'])
+    expect(evidence).toMatchObject({ hasTest: false, hasLint: false, hasTypeCheck: false })
+  })
+
+  it('does not treat setup.cfg pytest config as lint coverage', () => {
+    write('pyproject.toml', '[project]\nname = "x"\n')
+    write('setup.cfg', '[tool:pytest]\naddopts = -ra\n')
+    const evidence = detectCommandSurfaces(root, ['pyproject.toml', 'setup.cfg'])
+    expect(evidence.ecosystems).toEqual(['python'])
+    expect(evidence).toMatchObject({ hasTest: true, hasLint: false })
+  })
+
   it('detects a Python tests/ directory as test capability', () => {
     write('pyproject.toml', '[project]\nname = "x"\n')
     const evidence = detectCommandSurfaces(root, ['pyproject.toml', 'tests/test_x.py'])
@@ -120,9 +146,10 @@ describe('detectCommandSurfaces (units)', () => {
   it('aggregates multiple ecosystems in a stable order', () => {
     write('package.json', JSON.stringify({ scripts: { test: 'jest' } }))
     write('Makefile', 'build:\n\tgo build\n')
+    write('CMakePresets.json', '{}\n')
     write('go.mod', 'module x\n')
-    const evidence = detectCommandSurfaces(root, ['package.json', 'Makefile', 'go.mod'])
-    // ecosystemOrder is node, make, go, rust, python.
-    expect(evidence.ecosystems).toEqual(['node', 'make', 'go'])
+    const evidence = detectCommandSurfaces(root, ['package.json', 'Makefile', 'CMakePresets.json', 'go.mod'])
+    // ecosystemOrder is node, make, cmake, bazel, go, rust, python.
+    expect(evidence.ecosystems).toEqual(['node', 'make', 'cmake', 'go'])
   })
 })

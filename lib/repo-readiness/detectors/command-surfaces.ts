@@ -96,6 +96,45 @@ const detectMake = (root: string, filePaths: Set<string>, allPaths: string[]): E
   }
 }
 
+const detectCmake = (filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
+  const hasCmake =
+    has(filePaths, 'CMakeLists.txt')
+    || has(filePaths, 'CMakePresets.json')
+    || allPaths.some(filePath => /(^|\/)CMakeLists\.txt$/i.test(filePath))
+  if (!hasCmake) {
+    return undefined
+  }
+
+  return {
+    ecosystem: 'cmake',
+    hasBuild: true,
+    hasTest:
+      hasCiScript(allPaths, ['test', 'run_test'])
+      || allPaths.some(filePath => /(^|\/)(CTestTestfile\.cmake|tests?|test)\//i.test(filePath)),
+    hasLint: false,
+    hasTypeCheck: false,
+  }
+}
+
+const detectBazel = (filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
+  const hasBazel =
+    has(filePaths, 'WORKSPACE')
+    || has(filePaths, 'WORKSPACE.bazel')
+    || has(filePaths, 'MODULE.bazel')
+    || allPaths.some(filePath => /(^|\/)BUILD(\.bazel)?$/i.test(filePath))
+  if (!hasBazel) {
+    return undefined
+  }
+
+  return {
+    ecosystem: 'bazel',
+    hasBuild: true,
+    hasTest: true,
+    hasLint: false,
+    hasTypeCheck: false,
+  }
+}
+
 // The Go toolchain ships `go build`, `go test`, and `go vet`, and the compiler
 // type-checks, so a module manifest implies these verification commands exist.
 const detectGo = (filePaths: Set<string>): EcosystemSignals | undefined => {
@@ -130,6 +169,23 @@ const detectRust = (filePaths: Set<string>): EcosystemSignals | undefined => {
 
 const pythonManifests = ['pyproject.toml', 'setup.py', 'setup.cfg']
 
+const parseConfigSections = (content: string): Set<string> => {
+  const sections = new Set<string>()
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.trim().match(/^\[+([^\]#;]+)\]+/)
+    if (match) {
+      sections.add(match[1].trim().toLowerCase())
+    }
+  }
+  return sections
+}
+
+const hasSection = (sections: Set<string>, ...names: string[]): boolean =>
+  names.some(name => sections.has(name.toLowerCase()))
+
+const hasSectionPrefix = (sections: Set<string>, ...prefixes: string[]): boolean =>
+  [...sections].some(section => prefixes.some(prefix => section.startsWith(prefix.toLowerCase())))
+
 const detectPython = (root: string, filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
   const manifest = pythonManifests.find(name => has(filePaths, name))
   if (!manifest) {
@@ -138,29 +194,36 @@ const detectPython = (root: string, filePaths: Set<string>, allPaths: string[]):
 
   const pyproject = readText(root, 'pyproject.toml') ?? ''
   const setupCfg = readText(root, 'setup.cfg') ?? ''
-  const pythonConfig = `${pyproject}\n${setupCfg}`
+  const pyprojectSections = parseConfigSections(pyproject)
+  const setupCfgSections = parseConfigSections(setupCfg)
   const hasTestsDir = allPaths.some(filePath => /(^|\/)tests?\//i.test(filePath))
-  const mentionsTool = (...needles: string[]): boolean =>
-    needles.some(needle => new RegExp(`(^|[^a-z0-9_-])${needle}([^a-z0-9_-]|$)`, 'i').test(pythonConfig))
 
   return {
     ecosystem: 'python',
-    hasBuild: pyproject.includes('[build-system]') || has(filePaths, 'setup.py'),
-    hasTest: has(filePaths, 'tox.ini') || mentionsTool('pytest') || hasTestsDir || hasCiScript(allPaths, ['run_test']),
+    hasBuild: hasSection(pyprojectSections, 'build-system') || has(filePaths, 'setup.py'),
+    hasTest:
+      has(filePaths, 'tox.ini')
+      || hasSection(pyprojectSections, 'tool.pytest.ini_options')
+      || hasSection(setupCfgSections, 'tool:pytest')
+      || hasTestsDir
+      || hasCiScript(allPaths, ['run_test']),
     hasLint:
       has(filePaths, '.flake8')
       || has(filePaths, 'ruff.toml')
       || has(filePaths, '.ruff.toml')
-      || mentionsTool('ruff', 'flake8', 'pylint', 'black', 'isort', 'numpydoc_validation'),
+      || hasSection(pyprojectSections, 'tool.black', 'tool.isort', 'tool.ruff', 'tool.pylint', 'tool.numpydoc_validation')
+      || hasSection(setupCfgSections, 'flake8', 'isort', 'tool:isort'),
     hasTypeCheck:
       has(filePaths, 'mypy.ini')
-      || mentionsTool('mypy', 'pyright'),
+      || has(filePaths, 'pyrightconfig.json')
+      || hasSection(pyprojectSections, 'tool.mypy', 'tool.pyright')
+      || hasSectionPrefix(setupCfgSections, 'mypy'),
   }
 }
 
 /**
  * Detects verification command surfaces across every recognized ecosystem
- * (Node, Make, Go, Rust, Python) and aggregates their capabilities so the
+ * (Node, Make, CMake, Bazel, Go, Rust, Python) and aggregates their capabilities so the
  * checks layer is no longer Node-only.
  */
 export const detectCommandSurfaces = (root: string, filePaths: string[]): CommandEvidence => {
@@ -170,12 +233,14 @@ export const detectCommandSurfaces = (root: string, filePaths: string[]): Comman
   const signals: EcosystemSignals[] = [
     node?.signals,
     detectMake(root, filePathSet, filePaths),
+    detectCmake(filePathSet, filePaths),
+    detectBazel(filePathSet, filePaths),
     detectGo(filePathSet),
     detectRust(filePathSet),
     detectPython(root, filePathSet, filePaths),
   ].filter((signal): signal is EcosystemSignals => signal !== undefined)
 
-  const ecosystemOrder: CommandEcosystem[] = ['node', 'make', 'go', 'rust', 'python']
+  const ecosystemOrder: CommandEcosystem[] = ['node', 'make', 'cmake', 'bazel', 'go', 'rust', 'python']
   const ecosystems = ecosystemOrder.filter(name => signals.some(signal => signal.ecosystem === name))
 
   return {
