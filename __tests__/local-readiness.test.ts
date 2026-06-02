@@ -216,6 +216,8 @@ describe('local readiness', () => {
       },
     }))
     writeRepoFile(root, 'public/app.min.js', 'var a=1;')
+    // A large binary asset: not loaded into an agent's text context, so it is
+    // surfaced at info rather than dragging the score like a large text file.
     writeRepoFile(root, 'data/model.bin', Buffer.alloc(1_100_000, 1))
 
     const report = scanLocalReadiness(root, { now: fixedNow })
@@ -225,7 +227,8 @@ describe('local readiness', () => {
     expect(report.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'files.large:data/model.bin',
-        severity: 'warning',
+        severity: 'info',
+        title: 'Large binary asset is checked into the repository',
       }),
       expect.objectContaining({
         id: 'files.minified:public/app.min.js',
@@ -243,7 +246,8 @@ describe('local readiness', () => {
     writeRepoFile(root, 'tests/test_demo.py', 'def test_demo():\n    assert True\n')
     writeRepoFile(root, 'examples/daal4py/data/batch/svd.csv', Buffer.alloc(1_100_000, 1))
     writeRepoFile(root, 'data/qr.csv', Buffer.alloc(1_100_000, 1))
-    writeRepoFile(root, 'assets/blob.csv', Buffer.alloc(1_100_000, 1))
+    // A generic large *text* file outside any data-fixture path stays a warning.
+    writeRepoFile(root, 'assets/blob.csv', `${'1,2,3,4,5\n'.repeat(110_000)}`)
 
     const report = scanLocalReadiness(root, { now: fixedNow })
 
@@ -263,6 +267,29 @@ describe('local readiness', () => {
         title: 'Large checked-in file can create agent context friction',
       }),
     ]))
+  })
+
+  test('surfaces a large binary asset at info but a large text file at warning', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    // A binary asset (e.g. a checked-in PDF/model) — never read into an agent's
+    // text context, so informational rather than score-dragging.
+    writeRepoFile(root, 'docs/slides.pdf', Buffer.alloc(1_200_000, 1))
+    // A large *text* file is genuine context friction and stays a warning.
+    writeRepoFile(root, 'src/generated-data.sql', `${'select 1;\n'.repeat(130_000)}`)
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const byId = new Map(report.findings.map(finding => [finding.id, finding]))
+    expect(byId.get('files.large:docs/slides.pdf')).toMatchObject({
+      severity: 'info',
+      title: 'Large binary asset is checked into the repository',
+    })
+    expect(byId.get('files.large:src/generated-data.sql')).toMatchObject({
+      severity: 'warning',
+      title: 'Large checked-in file can create agent context friction',
+    })
   })
 
   test('does not flag large lockfiles across ecosystems as large files', () => {
@@ -501,7 +528,7 @@ describe('local readiness', () => {
     runGit(root, ['commit', '-m', 'base'])
     runGit(root, ['switch', '-c', 'feature'])
     writeRepoFile(root, 'assets/generated.min.js', 'var generated=true;')
-    writeRepoFile(root, 'blob.dat', Buffer.alloc(1_200_000, 1))
+    writeRepoFile(root, 'blob.dat', 'A'.repeat(1_200_000))
     runGit(root, ['add', '.'])
     runGit(root, ['commit', '-m', 'add risky files'])
 
@@ -521,6 +548,33 @@ describe('local readiness', () => {
     expect(formatDiffMarkdown(report)).toContain('New regressions')
   })
 
+  test('diff treats a same-path severity escalation (binary→text large file) as a regression', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { lint: 'eslint .', test: 'jest' } }))
+    // Base: a large binary asset → info (not a gate-failing finding).
+    writeRepoFile(root, 'assets/blob.dat', Buffer.alloc(1_200_000, 1))
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'base'])
+    runGit(root, ['switch', '-c', 'feature'])
+    // Head: the same path is now a large *text* file → warning. The finding id is
+    // unchanged (`files.large:assets/blob.dat`), so only a severity-aware diff
+    // catches the escalation.
+    writeRepoFile(root, 'assets/blob.dat', 'A'.repeat(1_200_000))
+    runGit(root, ['commit', '-am', 'replace binary blob with a large text dump'])
+
+    const report = diffLocalReadiness(root, { base: 'main', head: 'feature', now: fixedNow })
+
+    expect(report.regressions.map(finding => finding.id)).toContain('files.large:assets/blob.dat')
+    const regression = report.regressions.find(finding => finding.id === 'files.large:assets/blob.dat')
+    expect(regression?.severity).toBe('warning')
+  })
+
   test('diff still flags committed files that match .gitignore', () => {
     root = createTempRepo()
     runGit(root, ['init', '--initial-branch=main'])
@@ -536,7 +590,7 @@ describe('local readiness', () => {
     runGit(root, ['add', '.'])
     runGit(root, ['commit', '-m', 'base'])
     runGit(root, ['switch', '-c', 'feature'])
-    writeRepoFile(root, 'assets/blob.dat', Buffer.alloc(1_200_000, 1))
+    writeRepoFile(root, 'assets/blob.dat', 'A'.repeat(1_200_000))
     runGit(root, ['add', '--force', 'assets/blob.dat'])
     runGit(root, ['commit', '-m', 'commit a gitignored large file'])
 
@@ -592,9 +646,9 @@ describe('local readiness', () => {
     runGit(root, ['commit', '-m', 'base'])
     runGit(root, ['switch', '-c', 'feature'])
     // A large file outside the scoped subdirectory must not count as a regression.
-    writeRepoFile(root, 'root-blob.dat', Buffer.alloc(1_200_000, 1))
+    writeRepoFile(root, 'root-blob.dat', 'A'.repeat(1_200_000))
     // A large file inside the scoped subdirectory must count as a regression.
-    writeRepoFile(root, 'packages/foo/foo-blob.dat', Buffer.alloc(1_200_000, 1))
+    writeRepoFile(root, 'packages/foo/foo-blob.dat', 'A'.repeat(1_200_000))
     runGit(root, ['add', '.'])
     runGit(root, ['commit', '-m', 'add risky files'])
 

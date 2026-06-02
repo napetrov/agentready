@@ -115,6 +115,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   alias (`alias(libs.plugins.spotless)`) inside a `plugins { … }` block now surface
   the lint surface, while a static-analysis tool that appears only as a dependency
   coordinate in `dependencies { … }` (e.g. `spotbugs-annotations`) still does not.
+- Large **binary** assets (images, video, PDF, archives, model weights,
+  installers) are now surfaced at `info` instead of `warning`/`error`. An agent
+  never loads a binary into its text context, so a binary blob is not the
+  "context friction" the `files.large` check targets — only large *text/source*
+  files still escalate. Found scanning 100+ real repositories, where binary
+  assets dragged otherwise-healthy projects to near-zero scores (e.g.
+  `intel/acat` 68→0, a presentations repo, ML repos full of checked-in
+  weights). Large text/source files are unchanged.
+- `diff` now treats a persistent finding whose severity **worsens** at the same
+  `id`+`path` as a regression. Previously regressions were only newly-appearing
+  findings, so replacing a large binary asset (info) with a same-path large
+  text/source file (warning) — which shares the `files.large:<path>` id — would
+  slip past `--fail-on-regression`.
 - Test files in non-JS/TS ecosystems are now classified as tests instead of
   source. Go (`*_test.go`), Python (`test_*.py`/`*_test.py`), JVM/C#
   (`*Test`/`*Tests`/`*Spec`/`*IT`), Ruby/Elixir (`*_test`/`*_spec`), C/C++

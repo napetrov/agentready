@@ -21,9 +21,13 @@ import type {
   LocalReadinessReport,
   ReadinessDiffReport,
   ReadinessFinding,
+  ReadinessSeverity,
   ScanOptions,
 } from './types'
 import { uniqueSorted } from './util'
+
+// Orders severities so a diff can tell when a persistent finding has worsened.
+const SEVERITY_RANK: Record<ReadinessSeverity, number> = { info: 1, warning: 2, error: 3 }
 
 export function scanLocalReadiness(root: string, options: ScanOptions = {}): LocalReadinessReport {
   const absoluteRoot = path.resolve(root)
@@ -100,7 +104,18 @@ export function diffLocalReadiness(root: string, options: DiffOptions): Readines
   const headFindingsByKey = new Map(headReport.findings.map(finding => [findingKey(finding), finding]))
   const newFindings = headReport.findings.filter(finding => !baseFindingsByKey.has(findingKey(finding)))
   const resolvedFindings = baseReport.findings.filter(finding => !headFindingsByKey.has(findingKey(finding)))
-  const regressions = newFindings.filter(finding => finding.severity === 'error' || finding.severity === 'warning')
+  const isGateable = (finding: ReadinessFinding): boolean =>
+    finding.severity === 'error' || finding.severity === 'warning'
+  // A finding that persists at the same id+path but whose severity worsens is a
+  // regression even though it is neither new nor resolved — e.g. a large binary
+  // asset (info) replaced by a same-path large text/source file (warning), which
+  // shares the `files.large:<path>` id. Without this, `--fail-on-regression`
+  // would miss the escalation.
+  const escalatedFindings = headReport.findings.filter(finding => {
+    const base = baseFindingsByKey.get(findingKey(finding))
+    return base !== undefined && isGateable(finding) && SEVERITY_RANK[finding.severity] > SEVERITY_RANK[base.severity]
+  })
+  const regressions = [...newFindings.filter(isGateable), ...escalatedFindings]
 
   return {
     base: options.base,

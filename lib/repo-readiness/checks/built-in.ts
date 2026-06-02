@@ -239,16 +239,33 @@ export const buildFindings = (
 
   for (const file of files.filter(file => file.sizeBytes > config.largeFileWarningBytes && !file.generated)) {
     const intentionalDataFixture = isLikelyIntentionalDataFixture(file)
+    // A large *binary* asset (image, video, PDF, archive, model weights,
+    // installer) is repo bloat, but an agent never loads it into its text
+    // context, so it is not the "context friction" this check targets. Surface it
+    // at info rather than dragging the score/gate like a large text/source file —
+    // otherwise a presentations or C#/desktop repo full of legitimate binaries
+    // scores near zero purely from assets an agent would never read.
+    const binaryAsset = file.binary && !intentionalDataFixture
+    const title = intentionalDataFixture
+      ? 'Large checked-in example or fixture data can create agent context friction'
+      : binaryAsset
+        ? 'Large binary asset is checked into the repository'
+        : 'Large checked-in file can create agent context friction'
+    const severity: ReadinessSeverity = intentionalDataFixture || binaryAsset
+      ? 'info'
+      : file.sizeBytes > config.largeFileErrorBytes
+        ? 'error'
+        : warningSeverity
     findings.push({
       id: `files.large:${file.path}`,
-      title: intentionalDataFixture
-        ? 'Large checked-in example or fixture data can create agent context friction'
-        : 'Large checked-in file can create agent context friction',
-      severity: intentionalDataFixture ? 'info' : file.sizeBytes > config.largeFileErrorBytes ? 'error' : warningSeverity,
+      title,
+      severity,
       path: file.path,
       recommendation: intentionalDataFixture
         ? 'Keep intentional sample data documented and consider AgentReady ignore paths if agents do not need to inspect it.'
-        : 'Move large assets/data out of the main source tree or document why agents should ignore them.',
+        : binaryAsset
+          ? 'Keep large binaries out of the source tree (use releases, Git LFS, or external storage), or add an AgentReady ignore path if intentional.'
+          : 'Move large assets/data out of the main source tree or document why agents should ignore them.',
     })
   }
 
