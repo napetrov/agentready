@@ -21,7 +21,8 @@ const scoreLine = (report: AugmentedReport): string => {
 const insightLine = (insight: LlmInsight): string => {
   const target = insight.target ? ` [${insight.target}]` : ''
   const confidence = `${Math.round(insight.confidence * 100)}%`
-  return `- (${insight.kind}, ${confidence})${target} ${insight.verdict}: ${insight.rationale}`
+  const remediation = insight.remediation ? `\n    → ${insight.remediation.replace(/\r?\n/g, '\n      ')}` : ''
+  return `- (${insight.kind}, ${confidence})${target} ${insight.verdict}: ${insight.rationale}${remediation}`
 }
 
 /** Compact console summary. */
@@ -66,6 +67,17 @@ export const formatAugmentedMarkdown = (report: AugmentedReport): string => {
       const target = insight.target ?? '—'
       const confidence = `${Math.round(insight.confidence * 100)}%`
       lines.push(`| ${insight.kind} | ${cell(target)} | ${confidence} | ${cell(insight.verdict)} |`)
+    }
+  }
+
+  // Surface suggested remediation (its own text, not just the verdict) so the
+  // richer explain/fix output is visible in a PR comment or job summary.
+  const withRemediation = report.insights.filter(insight => insight.remediation)
+  if (withRemediation.length > 0) {
+    lines.push('', '## Suggested remediation')
+    for (const insight of withRemediation) {
+      const target = insight.target ? ` (\`${insight.target}\`)` : ''
+      lines.push('', `- **${cell(insight.findingId ?? insight.id)}**${target}: ${cell(insight.remediation as string)}`)
     }
   }
 

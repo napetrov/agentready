@@ -22,6 +22,7 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bgo mod download\b/,
     /\bcargo fetch\b/,
     /\bbundle install\b/,
+    /\bdotnet restore\b/,
   ],
   lint: [
     /\beslint\b/,
@@ -43,6 +44,19 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bgo vet\b/,
     /\b(npm|pnpm|yarn) run lint\b/,
     /\bmake (lint|fmt|format)\b/,
+    // JVM static-analysis tasks (Gradle/Maven plugins). Only an *explicit* lint
+    // task counts: a bare `gradle build`/`check` is NOT credited as lint, because
+    // whether the lifecycle runs a static-analysis task depends on plugin config
+    // the context-free classifier can't see — and in a mixed repo (e.g. a Node
+    // `lint` script alongside a plugin-less Gradle build) crediting it would
+    // wrongly suppress an unrelated `ci.lint.not-run`.
+    /\bgradlew?\b.*\b(spotlesscheck|ktlintcheck|detekt|checkstyle\w*|pmd\w*|spotbugs\w*)\b/,
+    /\bmvnw?\b.*\b(checkstyle|spotless|pmd|spotbugs)\b/,
+    // Roslyn analyzers run on every .NET build; `dotnet format` is the formatter.
+    // Anchor the subcommand on whitespace/end so `dotnet build-server shutdown`
+    // (a cleanup command, not a compile) does not match `build`.
+    /\bdotnet format(\s|$)/,
+    /\bdotnet (build|test|publish)(\s|$)/,
   ],
   typecheck: [
     // Only a check-only `tsc --noEmit` (or a purpose-built checker) counts as a
@@ -61,6 +75,10 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     // type-check coverage.
     /\bcargo (check|build|test)\b/,
     /\bgo (build|test)\b/,
+    // The C#/F# compiler type-checks during a .NET build/test, and the
+    // command-surface detector exposes a type-check surface for .NET, so these
+    // satisfy type-check coverage (a `--no-build` invocation is excluded below).
+    /\bdotnet (build|test|publish)(\s|$)/,
     /\b(npm|pnpm|yarn) run (type-check|typecheck|check:types)\b/,
     /\bmake (type-check|typecheck|types)\b/,
   ],
@@ -75,6 +93,15 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bcargo test\b/,
     /\b(npm|pnpm|yarn) (run )?test\b/,
     /\bmake test\b/,
+    // Gradle `build`/`check` and Maven `package`/`install`/`verify` run the test
+    // task as part of the default lifecycle, so they satisfy test coverage too.
+    // The Gradle task must be a real task token, not a substring inside a CLI
+    // option — `(?<![-\w])` rejects `--build-cache`/`--no-build-cache assemble`.
+    /\bgradlew?\b[^\n]*(?<![-\w])(test|check|build)\b/,
+    // The Maven phase must be a whole phase token: `(?![-\w])` rejects pre-test
+    // phases such as `test-compile` (which only compiles tests, not runs them).
+    /\bmvnw?\b.*\b(test|verify|package|install)(?![-\w])/,
+    /\bdotnet test(\s|$)/,
   ],
   build: [
     /\bgo build\b/,
@@ -86,6 +113,12 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\btsc\b(?![^\n]*--noemit)/,
     /\b(npm|pnpm|yarn) run build\b/,
     /\bmake build\b/,
+    /\bgradlew?\b[^\n]*(?<![-\w])(assemble|build)\b/,
+    /\bmvnw?\b.*\b(package|install|compile|verify)\b/,
+    // `dotnet test` compiles the solution before running tests (unless
+    // `--no-build` is passed, handled below), so it is build coverage too.
+    // Whitespace/end-anchored so `dotnet build-server` is not read as `build`.
+    /\bdotnet (build|publish|test)(\s|$)/,
   ],
 }
 
@@ -112,6 +145,27 @@ const COMMAND_SEPARATORS = /&&|\|\||[;\n]/
 // continuations before splitting so a wrapped install argument is not parsed as
 // its own command.
 const splitCommands = (run: string): string[] => run.replace(/\\\r?\n/g, ' ').split(COMMAND_SEPARATORS)
+
+// File/inspection utilities that manipulate or read a file without executing it.
+// A verification script's *path* often appears as their argument (e.g.
+// `chmod +x test.sh`, `cat build.sh`, `cp test.sh dist/`), which would otherwise
+// match the script-path patterns and create false test/build coverage. Such a
+// segment is skipped entirely — these leaders never run a verification command,
+// so the actual execution (`./test.sh`, `bash run_test.sh`) is what counts. The
+// match is anchored to the leading token and `call` (which *does* execute, used
+// on Windows: `call run_test.bat`) is deliberately excluded.
+const NON_EXECUTING_LEADERS =
+  /^(chmod|chown|cat|rm|rmdir|cp|mv|ln|ls|echo|printf|touch|mkdir|head|tail|less|more|file|stat|wc|pwd|cd)\b/
+
+// Flags that disable test execution for a JVM lifecycle command. Gradle excludes
+// the `test`/`check` task with `-x`/`--exclude-task`; Maven skips tests with
+// `-DskipTests` or `-Dmaven.test.skip`. Matched against already-lowercased text.
+const GRADLE_TEST_SKIP = /(^|\s)(-x|--exclude-task)[=\s]+\S*\b(test|check)\b/
+// Maven test-skip is active only as a bare flag (`-DskipTests`) or a truthy
+// value (`-DskipTests=true`); an explicit `=false` re-enables tests, so it must
+// not be treated as skipping.
+const MAVEN_TEST_SKIP = /(^|\s)-d(skiptests|maven\.test\.skip)(=true|(?=\s|$))/
+const skipsTests = (text: string): boolean => GRADLE_TEST_SKIP.test(text) || MAVEN_TEST_SKIP.test(text)
 
 // Always-opaque runners: they execute a configured matrix or several scripts we
 // cannot enumerate (tox/nox run whatever envs are configured; npm-run-all/turbo/
@@ -242,6 +296,12 @@ export const classifyRunCommandKinds = (run: string): CiCommandKind[] => {
       continue
     }
 
+    // A file utility that only reads/manipulates a script (e.g. `chmod +x
+    // test.sh`) never runs it, so its script-path argument must not be counted.
+    if (NON_EXECUTING_LEADERS.test(text)) {
+      continue
+    }
+
     // An install invocation only installs tooling; its package-name arguments
     // must not be read as having run lint/type-check/test/build.
     if (RUN_PATTERNS.install.some(pattern => pattern.test(text))) {
@@ -249,10 +309,39 @@ export const classifyRunCommandKinds = (run: string): CiCommandKind[] => {
       continue
     }
 
+    const segmentKinds = new Set<CiCommandKind>()
     for (const kind of COMMAND_KIND_ORDER) {
       if (RUN_PATTERNS[kind].some(pattern => pattern.test(text))) {
-        kinds.add(kind)
+        segmentKinds.add(kind)
       }
+    }
+
+    // A JVM lifecycle command that explicitly skips tests (Gradle
+    // `-x test`/`--exclude-task test`, Maven `-DskipTests`/`-Dmaven.test.skip`)
+    // does not exercise the test suite, even though `gradle build`/`mvn package`
+    // would normally run it. Drop the (lifecycle-derived) test coverage for that
+    // invocation so a deliberately test-skipping build still allows
+    // `ci.test.not-run` to surface.
+    if (segmentKinds.has('test') && skipsTests(text)) {
+      segmentKinds.delete('test')
+    }
+
+    // A .NET `--no-build` invocation (e.g. `dotnet test --no-build`, run after a
+    // separate build step) skips compilation, so neither the build, the
+    // build-time type-check, nor the build-time Roslyn analyzers (our lint
+    // inference for dotnet build/test/publish) run. An explicit `dotnet format`
+    // still lints. The `(?![-\w])` keeps this from matching Gradle's unrelated
+    // `--no-build-cache` option.
+    if (/--no-build(?![-\w])/.test(text)) {
+      segmentKinds.delete('build')
+      segmentKinds.delete('typecheck')
+      if (!/\bdotnet format\b/.test(text)) {
+        segmentKinds.delete('lint')
+      }
+    }
+
+    for (const kind of segmentKinds) {
+      kinds.add(kind)
     }
   }
 
@@ -450,7 +539,10 @@ const parseJob = (
     }
   }
 
-  return { job: { id, commandKinds: sortKinds(kinds) }, orchestratorKinds }
+  return {
+    job: { id, commandKinds: sortKinds(kinds), orchestratorKinds: sortKinds(orchestratorKinds) },
+    orchestratorKinds,
+  }
 }
 
 const parseWorkflow = (

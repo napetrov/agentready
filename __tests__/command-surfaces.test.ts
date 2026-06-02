@@ -247,7 +247,46 @@ describe('detectCommandSurfaces (units)', () => {
     write('CMakePresets.json', '{}\n')
     write('go.mod', 'module x\n')
     const evidence = detectCommandSurfaces(root, ['package.json', 'Makefile', 'CMakePresets.json', 'go.mod'])
-    // ecosystemOrder is node, make, cmake, bazel, go, rust, python.
+    // ecosystemOrder is node, make, cmake, bazel, go, rust, python, gradle, maven, dotnet, autotools.
     expect(evidence.ecosystems).toEqual(['node', 'make', 'cmake', 'go'])
+  })
+
+  it('recognizes Gradle (build/test always; type-check folded into build)', () => {
+    write('build.gradle.kts', 'plugins { kotlin("jvm") }\n')
+    write('gradlew', '#!/bin/sh\n')
+    const evidence = detectCommandSurfaces(root, ['build.gradle.kts', 'gradlew', 'settings.gradle.kts'])
+    expect(evidence.ecosystems).toEqual(['gradle'])
+    expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasTypeCheck: false })
+  })
+
+  it('surfaces Gradle lint only when a static-analysis plugin is configured', () => {
+    write('build.gradle', 'plugins { id "com.diffplug.spotless" }\n')
+    const withPlugin = detectCommandSurfaces(root, ['build.gradle'])
+    expect(withPlugin.hasLint).toBe(true)
+
+    rmSync(path.join(root, 'build.gradle'))
+    write('build.gradle', 'plugins { id "java" }\n')
+    const withoutPlugin = detectCommandSurfaces(root, ['build.gradle'])
+    expect(withoutPlugin.hasLint).toBe(false)
+  })
+
+  it('does not treat a Gradle dependency coordinate as a configured lint plugin', () => {
+    // A `spotbugs-annotations` dependency mentions "spotbugs" but configures no
+    // lint task, so it must not surface a Gradle lint command.
+    write('build.gradle.kts', 'dependencies {\n  compileOnly("com.github.spotbugs:spotbugs-annotations:4.8.3")\n}\n')
+    expect(detectCommandSurfaces(root, ['build.gradle.kts']).hasLint).toBe(false)
+  })
+
+  it('recognizes Maven via pom.xml and detects checkstyle as lint', () => {
+    write('pom.xml', '<project><build><plugins><plugin><artifactId>maven-checkstyle-plugin</artifactId></plugin></plugins></build></project>\n')
+    const evidence = detectCommandSurfaces(root, ['pom.xml'])
+    expect(evidence.ecosystems).toEqual(['maven'])
+    expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasLint: true, hasTypeCheck: false })
+  })
+
+  it('does not treat a Maven dependency as a configured lint plugin', () => {
+    // `spotbugs-annotations` is a dependency, not the `spotbugs-maven-plugin`.
+    write('pom.xml', '<project><dependencies><dependency><artifactId>spotbugs-annotations</artifactId></dependency></dependencies></project>\n')
+    expect(detectCommandSurfaces(root, ['pom.xml']).hasLint).toBe(false)
   })
 })

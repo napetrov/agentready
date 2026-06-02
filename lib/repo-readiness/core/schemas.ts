@@ -18,7 +18,19 @@ import type {
 
 export const severitySchema = z.enum(['info', 'warning', 'error'])
 export const packageManagerSchema = z.enum(['npm', 'pnpm', 'yarn', 'bun'])
-export const commandEcosystemSchema = z.enum(['node', 'make', 'cmake', 'bazel', 'go', 'rust', 'python', 'dotnet', 'autotools'])
+export const commandEcosystemSchema = z.enum([
+  'node',
+  'make',
+  'cmake',
+  'bazel',
+  'go',
+  'rust',
+  'python',
+  'gradle',
+  'maven',
+  'dotnet',
+  'autotools',
+])
 export const capabilityKindSchema = z.enum(['mcp', 'skill', 'hook', 'plugin', 'lsp'])
 export const safetyCategorySchema = z.enum(['install-hook', 'destructive', 'network-exec', 'deploy'])
 
@@ -86,6 +98,7 @@ export const ciCommandKindSchema = z.enum(['install', 'lint', 'typecheck', 'test
 export const ciWorkflowJobSchema = z.strictObject({
   id: z.string(),
   commandKinds: z.array(ciCommandKindSchema),
+  orchestratorKinds: z.array(ciCommandKindSchema),
 })
 
 export const ciWorkflowSchema = z.strictObject({

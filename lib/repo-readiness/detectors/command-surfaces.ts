@@ -371,10 +371,75 @@ const detectPython = (root: string, filePaths: Set<string>, allPaths: string[]):
   }
 }
 
+// JVM build tools. Gradle and Maven both compile (the compiler type-checks) and
+// run tests, so build/test are always surfaced; lint is surfaced only when a
+// known static-analysis plugin is configured in the build files. Type-check is
+// not a distinct command (it is part of compilation), so it is left to `build` —
+// matching how the CI parser classifies these commands.
+const gradleBuildFilePattern = /(^|\/)(build|settings)\.gradle(\.kts)?$/i
+const JVM_LINT_TOOLS = 'checkstyle|pmd|spotbugs|spotless|ktlint|detekt'
+// A Gradle lint surface requires the static-analysis plugin to be *applied* —
+// `id("…spotless…")`, `id 'checkstyle'`, or `apply plugin: 'pmd'`. Matching a
+// bare mention would misfire on dependency coordinates (e.g.
+// `spotbugs-annotations`) or version aliases that don't configure a lint task.
+const GRADLE_LINT_PLUGIN = new RegExp(
+  `(?:\\bid\\s*\\(?|\\bapply\\s+plugin:)\\s*["'][^"']*\\b(?:${JVM_LINT_TOOLS})\\b[^"']*["']`,
+  'i',
+)
+// A Maven lint surface requires the tool's plugin in an `<artifactId>` (e.g.
+// `maven-checkstyle-plugin`, `spotbugs-maven-plugin`), not a plain dependency
+// such as `<artifactId>spotbugs-annotations</artifactId>`.
+const MAVEN_LINT_PLUGIN = new RegExp(
+  `<artifactId>\\s*[^<]*\\b(?:${JVM_LINT_TOOLS})\\b[^<]*plugin[^<]*</artifactId>`,
+  'i',
+)
+
+const detectGradle = (
+  root: string,
+  filePaths: Set<string>,
+  allPaths: string[],
+): EcosystemSignals | undefined => {
+  const buildFiles = allPaths.filter(filePath => gradleBuildFilePattern.test(filePath))
+  const hasGradle =
+    buildFiles.length > 0 || has(filePaths, 'gradlew') || allPaths.some(filePath => /(^|\/)gradlew$/.test(filePath))
+  if (!hasGradle) {
+    return undefined
+  }
+
+  const content = buildFiles.map(filePath => readText(root, filePath) ?? '').join('\n')
+  return {
+    ecosystem: 'gradle',
+    hasBuild: true,
+    hasTest: true,
+    hasLint: GRADLE_LINT_PLUGIN.test(content),
+    hasTypeCheck: false,
+  }
+}
+
+const detectMaven = (
+  root: string,
+  filePaths: Set<string>,
+  allPaths: string[],
+): EcosystemSignals | undefined => {
+  const pomFiles = allPaths.filter(filePath => /(^|\/)pom\.xml$/i.test(filePath))
+  if (pomFiles.length === 0 && !has(filePaths, 'pom.xml')) {
+    return undefined
+  }
+
+  const content = pomFiles.map(filePath => readText(root, filePath) ?? '').join('\n')
+  return {
+    ecosystem: 'maven',
+    hasBuild: true,
+    hasTest: true,
+    hasLint: MAVEN_LINT_PLUGIN.test(content),
+    hasTypeCheck: false,
+  }
+}
+
 /**
  * Detects verification command surfaces across every recognized ecosystem
- * (Node, Make, CMake, Bazel, Go, Rust, Python, .NET, Autotools) and aggregates
- * their capabilities so the checks layer is no longer Node-only.
+ * (Node, Make, CMake, Bazel, Go, Rust, Python, Gradle, Maven, .NET, Autotools)
+ * and aggregates their capabilities so the checks layer is no longer Node-only.
  */
 export const detectCommandSurfaces = (root: string, filePaths: string[]): CommandEvidence => {
   const filePathSet = new Set(filePaths)
@@ -388,11 +453,25 @@ export const detectCommandSurfaces = (root: string, filePaths: string[]): Comman
     detectGo(filePathSet),
     detectRust(filePathSet),
     detectPython(root, filePathSet, filePaths),
+    detectGradle(root, filePathSet, filePaths),
+    detectMaven(root, filePathSet, filePaths),
     detectDotnet(filePathSet, filePaths),
     detectAutotools(root, filePathSet, filePaths),
   ].filter((signal): signal is EcosystemSignals => signal !== undefined)
 
-  const ecosystemOrder: CommandEcosystem[] = ['node', 'make', 'cmake', 'bazel', 'go', 'rust', 'python', 'dotnet', 'autotools']
+  const ecosystemOrder: CommandEcosystem[] = [
+    'node',
+    'make',
+    'cmake',
+    'bazel',
+    'go',
+    'rust',
+    'python',
+    'gradle',
+    'maven',
+    'dotnet',
+    'autotools',
+  ]
   const ecosystems = ecosystemOrder.filter(name => signals.some(signal => signal.ecosystem === name))
 
   return {

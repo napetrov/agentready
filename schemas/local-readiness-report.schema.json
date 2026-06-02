@@ -118,6 +118,8 @@
               "go",
               "rust",
               "python",
+              "gradle",
+              "maven",
               "dotnet",
               "autotools"
             ]
@@ -192,11 +194,25 @@
                           "build"
                         ]
                       }
+                    },
+                    "orchestratorKinds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "install",
+                          "lint",
+                          "typecheck",
+                          "test",
+                          "build"
+                        ]
+                      }
                     }
                   },
                   "required": [
                     "id",
-                    "commandKinds"
+                    "commandKinds",
+                    "orchestratorKinds"
                   ],
                   "additionalProperties": false
                 }

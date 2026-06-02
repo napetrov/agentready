@@ -9,6 +9,11 @@ import type {
 
 type EvidenceForChecks = Omit<LocalReadinessReport, 'findings' | 'summary'>
 
+// A `docs/` or `doc/` directory anywhere in the tree (matched together with the
+// file's `documentation` flag so a stray non-doc file under docs/ does not count
+// as developer documentation).
+const DOC_TREE = /(^|\/)docs?\//i
+
 const SCIENTIFIC_DATA_EXTENSIONS = new Set([
   '.csv',
   '.tsv',
@@ -66,16 +71,30 @@ export const buildFindings = (
     })
   }
 
-  if (report.docs.architecture.length === 0 && files.filter(file => file.source).length > 20) {
+  // Broad developer-documentation signal (replaces the old, low-precision
+  // `docs.architecture.missing`, which fired whenever a repo lacked a specific
+  // ARCHITECTURE.md and tripped on ~11/16 well-documented OSS projects). We now
+  // only flag a non-trivial repo when its *entire* developer-facing doc surface
+  // is thin: no CONTRIBUTING, no architecture/design/development notes, and no
+  // populated docs/ tree. A project with any of those is considered documented
+  // and stays silent. Informational severity only — useful for agents but never
+  // a score-gating gap.
+  const sourceFileCount = files.filter(file => file.source).length
+  const hasContributing = report.docs.contributing.length > 0
+  const hasArchitectureDocs = report.docs.architecture.length > 0
+  const hasDocsTree = files.some(file => DOC_TREE.test(file.path) && file.documentation)
+  if (
+    sourceFileCount > 20
+    && !hasContributing
+    && !hasArchitectureDocs
+    && !hasDocsTree
+  ) {
     findings.push({
-      id: 'docs.architecture.missing',
-      title: 'Non-trivial repository has no architecture documentation',
-      // Informational: an explicit architecture/design doc is valuable for
-      // agents but uncommon even in mature repos, so it should not drag the
-      // score like a warning. Recognition is broad (ARCHITECTURE/DESIGN/
-      // DEVELOPMENT/INTERNALS and design/architecture docs under docs/).
+      id: 'docs.developer.thin',
+      title: 'Non-trivial repository has thin developer documentation',
       severity: 'info',
-      recommendation: 'Add architecture notes that explain module boundaries, data flow, and where agents should make changes.',
+      recommendation:
+        'Add developer-facing docs — a CONTRIBUTING guide, architecture/design notes, or a docs/ tree — that explain module boundaries, data flow, and where agents should make changes.',
     })
   }
 
@@ -142,7 +161,28 @@ export const buildFindings = (
     || report.ci.hasTest
     || report.ci.hasBuild
     || orchestratorCovers.size > 0
-  if (report.ci.workflowFiles.length > 0 && ciParsedAnyCommand) {
+  // Single-job confidence gate. When recognized verification commands are spread
+  // across more than one job (a multi-job pipeline or an OS/toolchain matrix that
+  // splits lint/test/build into separate jobs), a kind we did NOT recognize is
+  // plausibly run in another job — through a marketplace action, a matrix leg, or
+  // a wrapper script the parser cannot classify. In that case `ci.X.not-run`
+  // would be a false positive (seen on repos like ripgrep/gin), so we only emit
+  // the not-run findings when concrete verification commands are concentrated in
+  // at most one job. A job counts only if it has a *concrete* verification kind:
+  //   - not `install` — a dedicated `npm ci` job introduces no uncertainty;
+  //   - not a kind that *this same job* covers only through an orchestrator
+  //     (e.g. a `uses: pre-commit/action` job classified as `lint`). The check is
+  //     per-job, so a concrete `npm run lint` job still counts even when a
+  //     separate pre-commit job globally covers lint.
+  // This stops install-only and orchestrator-only jobs from spuriously inflating
+  // the spread and suppressing unrelated checks.
+  const concreteVerificationJobs = report.ci.workflows
+    .flatMap(workflow => workflow.jobs)
+    .filter(job =>
+      job.commandKinds.some(kind => kind !== 'install' && !job.orchestratorKinds.includes(kind)),
+    ).length
+  const commandsConcentratedInOneJob = concreteVerificationJobs <= 1
+  if (report.ci.workflowFiles.length > 0 && ciParsedAnyCommand && commandsConcentratedInOneJob) {
     if (report.commands.hasTest && !report.ci.hasTest && !orchestratorCovers.has('test')) {
       findings.push({
         id: 'ci.test.not-run',

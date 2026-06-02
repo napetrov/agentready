@@ -44,16 +44,16 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     ],
     references: [DOCS],
   },
-  'docs.architecture.missing': {
-    id: 'docs.architecture.missing',
-    title: 'Non-trivial repository has no architecture documentation',
+  'docs.developer.thin': {
+    id: 'docs.developer.thin',
+    title: 'Non-trivial repository has thin developer documentation',
     category: 'docs',
     defaultSeverity: 'info',
     rationale:
-      'In a non-trivial codebase (>20 source files) an agent needs a map of module boundaries and data flow to make changes in the right place. Without it, changes tend to be locally plausible but globally wrong.',
+      'In a non-trivial codebase (>20 source files) an agent needs more than a README to make changes in the right place: a map of module boundaries and data flow, plus contribution conventions. This fires only when the whole developer-facing doc surface is thin — no CONTRIBUTING, no architecture/design/development notes, and no populated docs/ tree — so a project documented through any of those channels stays silent.',
     remediation: [
-      'Add an ARCHITECTURE.md (or a docs/ section) describing module boundaries, data flow, and where changes usually belong.',
-      'Link it from the README.',
+      'Add at least one developer-facing doc: a CONTRIBUTING guide, an ARCHITECTURE.md/DESIGN.md, or a docs/ section.',
+      'Describe module boundaries, data flow, and where changes usually belong, and link it from the README.',
     ],
     references: [DOCS],
   },

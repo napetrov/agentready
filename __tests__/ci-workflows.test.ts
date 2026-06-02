@@ -42,6 +42,56 @@ describe('classifyRunCommandKinds', () => {
     { run: '.ci/scripts/build.sh --compiler icx --target daal', expected: ['build'] },
     { run: 'npm run build', expected: ['build'] },
     { run: 'tsc -b', expected: ['build'] },
+    // JVM build tools: `gradle build` depends on `check`, which runs the test
+    // task, so it is test+build. Lint is NOT inferred from the bare lifecycle
+    // (whether a static-analysis task runs depends on plugin config we can't see
+    // here); only an explicit lint task credits lint.
+    { run: './gradlew build', expected: ['test', 'build'] },
+    // `check` runs the tests but does not assemble.
+    { run: './gradlew check', expected: ['test'] },
+    // `assemble` only builds artifacts; it does not depend on `check`.
+    { run: 'gradle assemble', expected: ['build'] },
+    // A `build` token inside a CLI option (`--build-cache`/`--no-build-cache`) is
+    // not the `build` task: only `assemble` runs here, so no test coverage.
+    { run: './gradlew --build-cache assemble', expected: ['build'] },
+    { run: './gradlew --no-build-cache assemble', expected: ['build'] },
+    { run: './gradlew spotlessCheck', expected: ['lint'] },
+    { run: './gradlew checkstyleMain', expected: ['lint'] },
+    { run: 'mvn -B package', expected: ['test', 'build'] },
+    // `mvn test-compile` only compiles test sources; it is build, not test.
+    { run: 'mvn test-compile', expected: ['build'] },
+    // `mvn verify` runs the full default lifecycle (including package), so it is
+    // both test and build coverage.
+    { run: 'mvn verify', expected: ['test', 'build'] },
+    // The Maven wrapper (`./mvnw`) is as common as the Gradle wrapper.
+    { run: './mvnw verify', expected: ['test', 'build'] },
+    { run: './mvnw -B test', expected: ['test'] },
+    // Lifecycle commands that explicitly skip tests must not claim test coverage.
+    { run: './gradlew build -x test', expected: ['build'] },
+    { run: './gradlew build --exclude-task test', expected: ['build'] },
+    // Excluding `check` also drops the test coverage the lifecycle would provide.
+    { run: './gradlew build -x check', expected: ['build'] },
+    { run: 'mvn -DskipTests package', expected: ['build'] },
+    { run: 'mvn package -Dmaven.test.skip=true', expected: ['build'] },
+    // An explicit `=false` re-enables tests, so it must not drop test coverage.
+    { run: 'mvn verify -DskipTests=false', expected: ['test', 'build'] },
+    { run: 'mvn package -Dmaven.test.skip=false', expected: ['test', 'build'] },
+    // Excluding an unrelated task (integrationTest) does not skip the unit tests.
+    { run: './gradlew build -x integrationTest', expected: ['test', 'build'] },
+    { run: 'mvn checkstyle:check', expected: ['lint'] },
+    // .NET: the compiler type-checks and Roslyn analyzers run on every build, so
+    // build/test also satisfy type-check and lint.
+    { run: 'dotnet restore', expected: ['install'] },
+    { run: 'dotnet build -c Release', expected: ['lint', 'typecheck', 'build'] },
+    // `dotnet test` compiles before running tests, so it is also build coverage…
+    { run: 'dotnet test', expected: ['lint', 'typecheck', 'test', 'build'] },
+    // …unless `--no-build` is passed, which skips compilation (and analyzers).
+    { run: 'dotnet test --no-build', expected: ['test'] },
+    { run: 'dotnet test --no-restore', expected: ['lint', 'typecheck', 'test', 'build'] },
+    { run: 'dotnet format --verify-no-changes', expected: ['lint'] },
+    // `dotnet build-server shutdown` is a cleanup command, not a compile, so the
+    // `build` prefix must not be read as build/lint coverage.
+    { run: 'dotnet build-server shutdown', expected: [] },
     // A single step can chain several commands.
     { run: 'npm ci && npm run lint && npm test', expected: ['install', 'lint', 'test'] },
     // Multi-line scripts are scanned as a whole.
@@ -60,6 +110,20 @@ describe('classifyRunCommandKinds', () => {
     // argument must not be read as a separate test/lint invocation.
     { run: 'pip install \\\n  pytest', expected: ['install'] },
     { run: 'npm install -g \\\n  eslint', expected: ['install'] },
+    // A script *path* referenced by a non-executing file utility is not run, so
+    // it must not create false test/build coverage.
+    { run: 'chmod +x test.sh', expected: [] },
+    { run: 'cat build.sh', expected: [] },
+    { run: 'cp test.sh /tmp/', expected: [] },
+    { run: 'rm -f build.sh', expected: [] },
+    // …but the actual execution after a chmod still counts.
+    { run: 'chmod +x test.sh && ./test.sh', expected: ['test'] },
+    // Unrelated file names that merely contain "test"/"build" as a substring are
+    // not script invocations and must classify as nothing.
+    { run: './latest.sh', expected: [] },
+    { run: 'bash manifest.sh', expected: [] },
+    { run: './prebuild.sh', expected: [] },
+    { run: 'sh contest.sh', expected: [] },
   ]
 
   it.each(cases)('classifies "$run"', ({ run, expected }) => {
@@ -363,6 +427,119 @@ describe('CI command-coverage checks', () => {
 
     const report = scanLocalReadiness(root, { now: fixedNow })
     expect(report.findings.filter(finding => finding.id.endsWith('.not-run'))).toEqual([])
+  })
+
+  it('suppresses not-run findings when recognized commands span multiple jobs', () => {
+    // Commands are split across jobs (a lint job and a test job). A kind we do
+    // not recognize (here: build) may run in yet another job / matrix leg, so
+    // the single-job confidence gate suppresses ci.*.not-run rather than risk a
+    // false positive on a multi-job pipeline.
+    writeRepo(
+      [
+        'jobs:',
+        '  lint:',
+        '    steps:',
+        '      - run: npm run lint',
+        '  test:',
+        '    steps:',
+        '      - run: npm test',
+        '',
+      ].join('\n'),
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    expect(ids.filter(id => id.endsWith('.not-run'))).toEqual([])
+  })
+
+  it('does not let a dedicated install job suppress not-run findings', () => {
+    // A standalone `npm ci` job plus a `npm test` job is not a "commands spread
+    // across jobs" situation: installing dependencies is not a verification step,
+    // so lint/build that are available but never run must still be reported.
+    writeRepo(
+      [
+        'jobs:',
+        '  install:',
+        '    steps:',
+        '      - run: npm ci',
+        '  test:',
+        '    steps:',
+        '      - run: npm test',
+        '',
+      ].join('\n'),
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    expect(ids).toContain('ci.lint.not-run')
+    expect(ids).toContain('ci.build.not-run')
+    expect(ids).not.toContain('ci.test.not-run')
+  })
+
+  it('does not let a pre-commit orchestrator job suppress unrelated not-run findings', () => {
+    // A `uses: pre-commit/action` lint job plus a `npm test` job is not a
+    // concrete multi-job spread: pre-commit only covers lint/type-check (handled
+    // per-kind via orchestratorKinds), so a build command that is available but
+    // never run must still be reported.
+    writeRepo(
+      [
+        'jobs:',
+        '  lint:',
+        '    steps:',
+        '      - uses: pre-commit/action@v3.0.1',
+        '  test:',
+        '    steps:',
+        '      - run: npm test',
+        '',
+      ].join('\n'),
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    expect(ids).toContain('ci.build.not-run')
+    // pre-commit covers lint, so that one stays silent.
+    expect(ids).not.toContain('ci.lint.not-run')
+  })
+
+  it('keeps suppressing not-run when a concrete job coexists with a pre-commit job', () => {
+    // pre-commit/action (orchestrator lint) + a concrete `npm run lint` job + a
+    // `npm test` job: commands are genuinely spread across two concrete jobs, so
+    // the gate must still suppress unrelated not-run findings. The per-job
+    // orchestrator check ensures the concrete lint job is not discarded just
+    // because pre-commit globally covers lint.
+    writeRepo(
+      [
+        'jobs:',
+        '  hooks:',
+        '    steps:',
+        '      - uses: pre-commit/action@v3.0.1',
+        '  lint:',
+        '    steps:',
+        '      - run: npm run lint',
+        '  test:',
+        '    steps:',
+        '      - run: npm test',
+        '',
+      ].join('\n'),
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    expect(ids.filter(id => id.endsWith('.not-run'))).toEqual([])
+  })
+
+  it('still flags not-run when all recognized commands live in one job', () => {
+    // Single job recognized → confident. lint runs, build does not, so the gap
+    // is reportable.
+    writeRepo(
+      ['jobs:', '  ci:', '    steps:', '      - run: npm run lint', '      - run: npm test', ''].join('\n'),
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    expect(ids).toContain('ci.build.not-run')
+    expect(ids).not.toContain('ci.lint.not-run')
+    expect(ids).not.toContain('ci.test.not-run')
   })
 
   it('does not flag not-run when the workflow could not be parsed (low confidence)', () => {

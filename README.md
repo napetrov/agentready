@@ -16,7 +16,7 @@ AgentReady helps teams understand whether a repository exposes the information a
 
 - agent instruction surfaces such as `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/*.mdc`, and tool-specific rule files
 - repository shape: source, tests, docs, generated files, and binary/minified assets
-- verification command surfaces across ecosystems (Node scripts, Makefiles, Go, Rust, Python)
+- verification command surfaces across ecosystems (Node scripts, Makefiles, CMake, Bazel, Go, Rust, Python, Gradle, Maven, .NET)
 - agent capability surfaces such as MCP server configs, Claude Code skills, hooks/settings, plugin manifests, and code-intelligence/LSP config
 - safety signals in package scripts such as install-time lifecycle hooks, destructive commands, network-piped shells, and deploy/publish paths
 - CI workflows and how they map to local checks
@@ -50,10 +50,11 @@ npm ci
 npm run agentready -- scan .
 ```
 
-Once published you can run it without cloning:
+Once published you can run it without cloning (the package is published as the
+scoped `@napetrov/agentready`; the `agentready` command name is unchanged):
 
 ```bash
-npx agentready scan .
+npx @napetrov/agentready scan .
 ```
 
 ### Scan
@@ -159,7 +160,7 @@ steps:
       fetch-depth: 0
   - uses: actions/setup-node@v4
     with:
-      node-version: 20
+      node-version: 24
   - id: agentready
     uses: napetrov/agentready@main
     with:

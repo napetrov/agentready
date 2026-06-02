@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import { formatScanMarkdown, scanLocalReadiness } from '../lib/repo-readiness/local-readiness'
+import { analyzeReport, detectProvider, formatAugmentedMarkdown } from '../lib/analyze'
 
 interface DogfoodRepo {
   name: string
@@ -24,9 +25,10 @@ const repoFromArg = (arg: string): DogfoodRepo => {
   return { name: maybeName || inferred, url }
 }
 
-const parseArgs = (argv: string[]): { outDir: string; repos: DogfoodRepo[] } => {
+const parseArgs = (argv: string[]): { outDir: string; repos: DogfoodRepo[]; analyze: boolean } => {
   const repos: DogfoodRepo[] = []
   let outDir = mkdtempSync(path.join(tmpdir(), 'agentready-dogfood-'))
+  let analyze = false
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
@@ -37,12 +39,17 @@ const parseArgs = (argv: string[]): { outDir: string; repos: DogfoodRepo[] } => 
       }
       outDir = value
       i += 1
+    } else if (arg === '--analyze') {
+      analyze = true
     } else if (arg === '--help' || arg === '-h') {
       process.stdout.write([
-        'Usage: npm run agentready:dogfood -- [--out <dir>] [name=https://github.com/org/repo.git ...]',
+        'Usage: npm run agentready:dogfood -- [--out <dir>] [--analyze] [name=https://github.com/org/repo.git ...]',
         '',
         'Clones configured repositories into the output directory and writes AgentReady reports there.',
-        'No external repository is vendored into this repo, and no scanned repository scripts are executed.',
+        'With --analyze, also runs the optional LLM analytics layer when a provider is configured in the',
+        'environment (AGENTREADY_LLM_BASE_URL / OLLAMA_HOST / OPENAI_API_KEY); the deterministic scan never',
+        'depends on a model. No external repository is vendored into this repo, and no scanned repository',
+        'scripts are executed.',
         '',
       ].join('\n'))
       process.exit(0)
@@ -51,7 +58,7 @@ const parseArgs = (argv: string[]): { outDir: string; repos: DogfoodRepo[] } => 
     }
   }
 
-  return { outDir, repos: repos.length > 0 ? repos : defaultRepos }
+  return { outDir, repos: repos.length > 0 ? repos : defaultRepos, analyze }
 }
 
 const assertScratchOutputDir = (outDir: string): void => {
@@ -62,15 +69,26 @@ const assertScratchOutputDir = (outDir: string): void => {
   }
 }
 
-const run = (): void => {
-  const { outDir, repos } = parseArgs(process.argv.slice(2))
+const run = async (): Promise<void> => {
+  const { outDir, repos, analyze } = parseArgs(process.argv.slice(2))
   assertScratchOutputDir(outDir)
   mkdirSync(outDir, { recursive: true })
+
+  // The LLM layer is opt-in and provider-gated: the deterministic scan below is
+  // never affected. `detectProvider` returns undefined when no provider is
+  // configured, in which case --analyze degrades to deterministic-only.
+  const detected = analyze ? detectProvider() : undefined
+  if (analyze && !detected) {
+    process.stdout.write(
+      'note: --analyze requested but no LLM provider is configured (set AGENTREADY_LLM_BASE_URL / OLLAMA_HOST / OPENAI_API_KEY); writing deterministic reports only.\n',
+    )
+  }
 
   const summary: string[] = [
     '# AgentReady dogfood summary',
     '',
     `Output directory: ${outDir}`,
+    ...(detected ? [`LLM analysis: enabled (${detected.source})`] : []),
     '',
     '| Repo | Score | Files | Findings | Report |',
     '|---|---:|---:|---|---|',
@@ -95,6 +113,20 @@ const run = (): void => {
     }, {})
     const findingSummary = `e:${counts.error ?? 0} w:${counts.warning ?? 0} i:${counts.info ?? 0}`
     summary.push(`| ${repo.name} | ${report.summary.score} | ${report.summary.totalFiles} | ${findingSummary} | ${path.basename(jsonPath)} |`)
+
+    // Optional LLM augmentation (instruction-quality, false-positive triage,
+    // remediation, …). Fail-open: analyzeReport never throws and never mutates
+    // the deterministic report.
+    if (detected) {
+      const augmented = await analyzeReport(cloneDir, report, { provider: detected.provider })
+      const augmentedJson = path.join(outDir, `${safeName}.augmented.json`)
+      const augmentedMd = path.join(outDir, `${safeName}.augmented.md`)
+      writeFileSync(augmentedJson, `${JSON.stringify(augmented, null, 2)}\n`)
+      writeFileSync(augmentedMd, `${formatAugmentedMarkdown(augmented)}\n`)
+      summary.push(
+        `| ${repo.name} (augmented) | ${augmented.augmentedScore.augmented} | — | insights:${augmented.analysis.insightsApplied} | ${path.basename(augmentedMd)} |`,
+      )
+    }
   }
 
   const summaryPath = path.join(outDir, 'summary.md')
@@ -102,9 +134,7 @@ const run = (): void => {
   process.stdout.write(`AgentReady dogfood reports written to ${outDir}\n`)
 }
 
-try {
-  run()
-} catch (error) {
+run().catch(error => {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
   process.exit(1)
-}
+})

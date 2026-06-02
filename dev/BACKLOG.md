@@ -56,13 +56,11 @@ Known dogfood regression matrix:
 
 ### P0 — Release blockers / product decisions
 
-- [ ] **Pick the npm package identity.** The unscoped `agentready` name is already
-  occupied on npm, so the first public release needs a scoped package name and
-  repository metadata updated accordingly: `package.json`, README install/npx
-  examples, GitHub Action snippets, pack smoke expectations, changelog/release
-  notes, and any `npx agentready` references. Candidate: an org scope rather
-  than a personal scope if the project will live beyond this repo. _(S,
-  decision)_
+- [x] **Pick the npm package identity.** Published as the scoped
+  **`@napetrov/agentready`** (the unscoped `agentready` name is taken). Updated
+  `package.json` (name + `publishConfig.access: public`), README `npx` examples,
+  the product docs, and the pack-smoke `require` expectation. The `agentready`
+  bin name is unchanged. _(S, decision)_
 - [x] **Keep dogfood outputs out of the repo.** Store real-repo scan outputs as
   CI artifacts, job summaries, scratch files, or release-note drafts. Do not add
   per-run evaluation markdown to the tracked tree; sanitized summaries may keep
@@ -89,17 +87,21 @@ Known dogfood regression matrix:
   under `examples/**/data`, `tests/**/fixtures`, `benchmarks/**`, and similar
   paths. The downgrade must be evidence-backed by path/type heuristics and
   configurable later; do not blanket-exempt all examples or benchmarks. _(M)_
-- [ ] **Rework `docs.architecture.missing`.** This rule is low precision on
-  mature OSS projects. Either fold it into a broader docs-quality signal
-  (README + CONTRIBUTING + developer docs + architecture/design notes) or remove
-  the standalone finding. _(S)_
-- [ ] **Tighten CI script classification.** Keep recognizing common wrapper
-  scripts, but add negative tests for install-only references and unrelated file
-  names so a script path does not create false coverage. _(S)_
-- [ ] **Track Action runtime migration.** The Action currently runs on Node 20;
-  GitHub warns Node 20 actions move toward Node 24 defaults in 2026. Track the
-  runtime bump and CodeQL Action v4 update as release-maintenance tasks, even if
-  they do not block the immediate release. _(S)_
+- [x] **Rework `docs.architecture.missing`.** Folded into a broader
+  docs-quality signal: the standalone finding is replaced by `docs.developer.thin`,
+  which fires only when a non-trivial repo has no `CONTRIBUTING`, no
+  architecture/design/development notes, and no populated `docs/` tree. This
+  removes the false positives on mature OSS projects that document through any of
+  those channels. _(S)_
+- [x] **Tighten CI script classification.** Common wrapper scripts are still
+  recognized when executed, but a script *path* led by a non-executing file
+  utility (`chmod`/`cat`/`cp`/`mv`/`rm`/…) no longer creates false `test`/`build`
+  coverage. Added negative tests for install-only references, non-executing
+  script references, and unrelated file names (`latest.sh`, `prebuild.sh`, …). _(S)_
+- [x] **Track Action runtime migration.** Done: the Action declares
+  `using: 'node24'`, CI runs on Node 24, and the code-scanning upload step is on
+  `github/codeql-action/upload-sarif` v4 (pinned to the v4.36.1 SHA). Dependabot
+  continues to bump the pinned SHA on its weekly github-actions schedule. _(S)_
 
 ### P2 — Depth and differentiation
 
@@ -325,15 +327,19 @@ Proposed steps where the layer can plug in (to be refined in the next PR):
   and `files.large` validated as high-precision. Drove the lockfile exemption,
   the `docs.architecture`/`ci.not-run` info-severity de-risk, and the
   orchestrator-awareness work. Rerun periodically as a precision regression check.
-- [ ] **Rework or retire `docs.architecture.missing`** — lowest-precision rule in
-  the real-repo eval (fires on ~11/16 well-documented projects). Either fold into
-  a broader docs-quality signal or drop it. _(S)_
-- [ ] **Cross-job / matrix CI command attribution** — `ci.*.not-run` still has
-  residual false positives on repos that split commands across jobs / a matrix
-  (ripgrep, gin). Either attribute across jobs or gate `not-run` on single-job
-  confidence. _(M)_
-- [ ] **Property/fuzz tests** for the parsers (file classification, command
-  detection on malformed manifests). Currently example-based + the corpus. _(M)_
+- [x] **Reworked `docs.architecture.missing`** — the lowest-precision rule in the
+  real-repo eval (fired on ~11/16 well-documented projects) was folded into the
+  broader `docs.developer.thin` docs-quality signal (see the post-dogfood plan
+  above). _(S)_
+- [x] **Cross-job / matrix CI command attribution** — `ci.*.not-run` is now
+  gated on single-job confidence: when recognized commands span more than one job
+  (multi-job pipeline or matrix), the not-run findings are suppressed because a
+  missing kind may run in an unrecognized job/leg. They still fire when commands
+  are concentrated in one job. _(M)_
+- [x] **Property/fuzz tests** for the parsers — `__tests__/parser-fuzz.test.ts`
+  drives the command/uses classifiers, the YAML workflow parser, and full
+  `scanLocalReadiness` over malformed manifests with a seeded, dependency-free
+  generator, asserting totality (never throws) and output-shape invariants. _(M)_
 - [ ] **Mutation testing** (Stryker) to validate assertion strength now that an
   80% gate is in place. Too slow for per-PR CI; run locally / nightly. _(M)_
 - [ ] **Benchmark harness** (from `use-cases.md`): correlate score dimensions
@@ -348,7 +354,9 @@ Proposed steps where the layer can plug in (to be refined in the next PR):
   publishing from Actions. _(M)_
 - [x] Dependabot config for dependency updates — `.github/dependabot.yml`,
   weekly grouped npm + github-actions updates.
-- [ ] Detector expansion: Gradle/Maven, .NET, broader Python tooling. _(M)_
+- [x] Detector expansion: Gradle, Maven, and .NET command ecosystems, with
+  matching CI command patterns so the new build/test/lint surfaces don't create
+  false `ci.*.not-run` findings. Broader Python tooling remains incremental. _(M)_
 
 ## Explicit non-goals (reaffirmed)
 

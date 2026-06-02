@@ -9,7 +9,18 @@ export type PackageManager = 'npm' | 'pnpm' | 'yarn' | 'bun'
  * Cargo manifest). The command-surface detector aggregates verification
  * capabilities across every ecosystem it recognizes.
  */
-export type CommandEcosystem = 'node' | 'make' | 'cmake' | 'bazel' | 'go' | 'rust' | 'python' | 'dotnet' | 'autotools'
+export type CommandEcosystem =
+  | 'node'
+  | 'make'
+  | 'cmake'
+  | 'bazel'
+  | 'go'
+  | 'rust'
+  | 'python'
+  | 'gradle'
+  | 'maven'
+  | 'dotnet'
+  | 'autotools'
 
 export interface LocalReadinessFile {
   path: string
@@ -65,6 +76,13 @@ export interface CiWorkflowJob {
   id: string
   /** Command kinds detected across the job's steps, sorted and unique. */
   commandKinds: CiCommandKind[]
+  /**
+   * Command kinds this job covers only through an opaque orchestrator/task
+   * runner (e.g. a `pre-commit/action` step or `tox`), as opposed to a command
+   * we decomposed concretely. Sorted and unique. Used to tell a concrete
+   * verification job apart from an orchestrator-only one.
+   */
+  orchestratorKinds: CiCommandKind[]
 }
 
 export interface CiWorkflow {

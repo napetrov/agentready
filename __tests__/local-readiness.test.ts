@@ -752,36 +752,64 @@ describe('CI orchestrator and architecture-doc recognition', () => {
     expect(ids).toContain('ci.build.not-run')
   })
 
+  const writeNonTrivialSource = (repoRoot: string): void => {
+    // 21 source files makes the repo "non-trivial" (>20) so the check is active.
+    for (let i = 0; i < 21; i += 1) {
+      writeRepoFile(repoRoot, `src/mod${i}.ts`, `export const v${i} = ${i}\n`)
+    }
+  }
+
   test('recognizes design/architecture docs under docs/ so the finding does not fire', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
     writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
     writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
     writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
-    // 21 source files makes the repo "non-trivial" (>20) so the check is active.
-    for (let i = 0; i < 21; i += 1) {
-      writeRepoFile(root, `src/mod${i}.ts`, `export const v${i} = ${i}\n`)
-    }
+    writeNonTrivialSource(root)
     writeRepoFile(root, 'docs/design.md', '# Design\n\nModule boundaries and data flow.\n')
 
     const report = scanLocalReadiness(root, { now: fixedNow })
 
     expect(report.docs.architecture).toContain('docs/design.md')
-    expect(listFindingIds(report)).not.toContain('docs.architecture.missing')
+    expect(listFindingIds(report)).not.toContain('docs.developer.thin')
   })
 
-  test('emits docs.architecture.missing only as info for a non-trivial repo lacking it', () => {
+  test('stays silent when a CONTRIBUTING guide documents the project', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'CONTRIBUTING.md', '# Contributing\n\nHow to set up and submit changes.\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeNonTrivialSource(root)
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(listFindingIds(report)).not.toContain('docs.developer.thin')
+  })
+
+  test('stays silent when a populated docs/ tree exists even without an architecture doc', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeNonTrivialSource(root)
+    // A docs/ tree whose files do not match the architecture/design keywords.
+    writeRepoFile(root, 'docs/usage.md', '# Usage\n\nHow to use the tool.\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.docs.architecture).toHaveLength(0)
+    expect(listFindingIds(report)).not.toContain('docs.developer.thin')
+  })
+
+  test('emits docs.developer.thin only as info for a non-trivial repo with only a README', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
     writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
     writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
     writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
-    for (let i = 0; i < 21; i += 1) {
-      writeRepoFile(root, `src/mod${i}.ts`, `export const v${i} = ${i}\n`)
-    }
+    writeNonTrivialSource(root)
 
     const report = scanLocalReadiness(root, { now: fixedNow })
-    const finding = report.findings.find(f => f.id === 'docs.architecture.missing')
+    const finding = report.findings.find(f => f.id === 'docs.developer.thin')
 
     expect(finding).toBeDefined()
     expect(finding?.severity).toBe('info')

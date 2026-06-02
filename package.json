@@ -1,5 +1,5 @@
 {
-  "name": "agentready",
+  "name": "@napetrov/agentready",
   "version": "0.1.0",
   "description": "Local-first repository readiness scanner for AI coding agents.",
   "license": "MIT",
@@ -44,6 +44,9 @@
     "LICENSE",
     "CHANGELOG.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18"
   },

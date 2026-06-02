@@ -4,7 +4,7 @@ CI is defined in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and
 runs on pull requests and pushes to `main`. No secrets or external services are
 required — the scanner runs fully offline.
 
-## `verify` job (Node 20)
+## `verify` job (Node 24)
 
 1. `npm ci --include=dev`
 2. `npm run type-check`

@@ -4,6 +4,7 @@ import path from 'path'
 import {
   buildHostRequests,
   ingestHostResponses,
+  instructionQualityAnalyzer,
   validateAugmentedReportContract,
 } from '../lib/analyze'
 import { handleRequest, type JsonRpcRequest } from '../lib/mcp'
@@ -38,9 +39,13 @@ describe('host-delegated flow', () => {
   })
 
   it('builds requests for an applicable repo and none otherwise', () => {
+    // Scoped to the instruction-quality analyzer so the test asserts that
+    // analyzer's applicability (instruction files present) rather than coupling
+    // to the size of the default analyzer set.
+    const only = [instructionQualityAnalyzer]
     root = makeRepo('# AGENTS\n')
     const report = scanLocalReadiness(root)
-    const requests = buildHostRequests(root, report)
+    const requests = buildHostRequests(root, report, only)
     expect(requests).toHaveLength(1)
     expect(requests[0].analyzerId).toBe('instruction-quality')
     expect(requests[0].input).toContain('AGENTS.md')
@@ -48,7 +53,7 @@ describe('host-delegated flow', () => {
 
     const empty = mkdtempSync(path.join(tmpdir(), 'agentready-noinstr-'))
     writeFileSync(path.join(empty, 'README.md'), '# Demo\n')
-    expect(buildHostRequests(empty, scanLocalReadiness(empty))).toEqual([])
+    expect(buildHostRequests(empty, scanLocalReadiness(empty), only)).toEqual([])
     rmSync(empty, { recursive: true, force: true })
   })
 

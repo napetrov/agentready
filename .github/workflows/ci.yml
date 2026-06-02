@@ -58,9 +58,11 @@ jobs:
           pr-comment-condition: 'on-findings'
 
       - name: Upload SARIF to code scanning
-        # Pinned to a commit SHA (current v3) for supply-chain consistency with
-        # the other actions in this workflow; bump alongside Dependabot updates.
-        uses: github/codeql-action/upload-sarif@fee9466b8957867761f2d78f922ab084e3e2dd17
+        # Pinned to a commit SHA (v4.36.1) for supply-chain consistency with the
+        # other actions in this workflow; bump alongside Dependabot updates. v4 is
+        # the current major (it runs on the Node 24 runtime, matching this
+        # Action's own node24 runtime).
+        uses: github/codeql-action/upload-sarif@87557b9c84dde89fdd9b10e88954ac2f4248e463
         # Skip for pull requests from forks: GitHub downgrades the token to
         # read-only there, so `security-events: write` is unavailable and the
         # upload would fail. `continue-on-error` keeps the job green for any
@@ -89,7 +91,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -156,7 +158,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies

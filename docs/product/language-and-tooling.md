@@ -28,7 +28,7 @@ In practice today:
 Current distribution:
 
 - local CLI: `npm run agentready -- scan .`
-- published npm package with a `bin` (`npx agentready scan`) once released
+- published npm package `@napetrov/agentready` with a `bin` (`npx @napetrov/agentready scan`) once released
 
 Planned/possible distribution:
 
