@@ -139,6 +139,42 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence.hasTypeCheck).toBe(false)
   })
 
+  it('detects a .NET ecosystem from a solution or project file', () => {
+    const evidence = detectCommandSurfaces(root, ['src/App.sln', 'src/App/App.csproj', 'src/App/Program.cs'])
+    expect(evidence.ecosystems).toContain('dotnet')
+    expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasLint: true, hasTypeCheck: true })
+  })
+
+  it('detects an autotools ecosystem and reads `make check` from Makefile.am', () => {
+    write('configure.ac', 'AC_INIT([demo], [1.0])\n')
+    write('Makefile.am', 'bin_PROGRAMS = demo\nTESTS = run_tests\ncheck_PROGRAMS = run_tests\n')
+    const evidence = detectCommandSurfaces(root, ['configure.ac', 'Makefile.am'])
+    expect(evidence.ecosystems).toContain('autotools')
+    expect(evidence.hasBuild).toBe(true)
+    expect(evidence.hasTest).toBe(true)
+  })
+
+  it('treats autotools without a declared test suite or tests dir as build-only', () => {
+    write('configure.ac', 'AC_INIT([demo], [1.0])\n')
+    write('Makefile.am', 'bin_PROGRAMS = demo\n')
+    const evidence = detectCommandSurfaces(root, ['configure.ac', 'Makefile.am'])
+    expect(evidence.ecosystems).toContain('autotools')
+    expect(evidence.hasBuild).toBe(true)
+    expect(evidence.hasTest).toBe(false)
+  })
+
+  it('recognizes a Python project that ships only requirements.txt', () => {
+    const evidence = detectCommandSurfaces(root, ['requirements.txt', 'src/app.py', 'tests/test_app.py'])
+    expect(evidence.ecosystems).toContain('python')
+    // The tests/ directory still provides the test surface.
+    expect(evidence.hasTest).toBe(true)
+  })
+
+  it('recognizes nested/suffixed requirements files as a Python signal', () => {
+    const evidence = detectCommandSurfaces(root, ['requirements-dev.txt', 'app/main.py'])
+    expect(evidence.ecosystems).toContain('python')
+  })
+
   it('parses Makefile target aliases (all/compile, check, fmt/format, types)', () => {
     write('Makefile', ['all:\n\tcc -o app main.c', 'check:\n\t./t.sh', 'fmt:\n\tclang-format', 'types:\n\tcc -fsyntax-only'].join('\n'))
     const evidence = detectCommandSurfaces(root, ['Makefile'])

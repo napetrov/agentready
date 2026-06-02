@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- .NET/C# and Autotools are now recognized command ecosystems, and a bare
+  `requirements.txt` (or a `requirements/` directory / `requirements-*.txt`)
+  counts as a Python project. Found scanning 100+ real repositories
+  (uxlfoundation, IntelPython, oneapi-src, IntelLabs, intel): a C# solution
+  (`*.sln`/`*.csproj`, e.g. `intel/acat` with 927 source files), an Autotools
+  project (`configure.ac`/`Makefile.am`, e.g. `intel/QAT_Engine`), and
+  research repos with only a `requirements.txt` were previously detected as
+  having no ecosystem and were silently exempt from the test/lint/build
+  expectations. .NET maps to `dotnet build`/`test`/`format` (full
+  capabilities); Autotools maps to `./configure && make` with `make check`
+  inferred from `TESTS`/`check_PROGRAMS` in `Makefile.am`.
 - Dogfood release harness: `npm run agentready:dogfood -- --out <scratch-dir>`
   clones the configured real-repository set into a scratch directory and writes
   JSON/markdown reports there, keeping scan artifacts out of the tracked repo.
