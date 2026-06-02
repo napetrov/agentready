@@ -34,13 +34,16 @@ const hasAnyScript = (scripts: string[], names: string[]): boolean => names.some
 // `"test": "xo && ava"`) or `check:lint` rather than `lint`.
 const LINT_COMMAND_PATTERNS: RegExp[] = [
   /\beslint\b/,
-  /\bxo\b/,
-  /\bbiome\b/,
   /\bprettier\b/,
-  /\bstandard\b/,
-  /\btslint\b/,
-  /\boxlint\b/,
-  /\brome\b/,
+  // Bare-word tool names exclude a trailing hyphen so a hyphenated release/util
+  // command (e.g. `standard-version`, which is not the StandardJS linter, or
+  // `xo-`/`rome-` prefixed tools) is not misread as running the linter.
+  /\bxo\b(?!-)/,
+  /\bbiome\b(?!-)/,
+  /\bstandard\b(?!-)/,
+  /\btslint\b(?!-)/,
+  /\boxlint\b(?!-)/,
+  /\brome\b(?!-)/,
 ]
 
 // Dedicated type-checkers invoked from a script body. A bare `tsc` is treated

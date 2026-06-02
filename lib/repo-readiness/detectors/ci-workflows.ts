@@ -27,8 +27,9 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\beslint\b/,
     /\b(prettier|biome)\b/,
     // JS linters/style tools whose package-script surface the command detector
-    // also recognizes, so CI running them satisfies lint coverage.
-    /\b(xo|standard|tslint|oxlint|rome)\b/,
+    // also recognizes, so CI running them satisfies lint coverage. The trailing
+    // `(?!-)` excludes hyphenated false-friends such as `standard-version`.
+    /\b(xo|standard|tslint|oxlint|rome)\b(?!-)/,
     /\bruff\b/,
     /\bflake8\b/,
     /\bpylint\b/,

@@ -122,6 +122,16 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence.hasLint).toBe(true)
   })
 
+  it('does not treat a hyphenated release tool (standard-version) as the StandardJS linter', () => {
+    write('package.json', JSON.stringify({ scripts: { release: 'standard-version', test: 'jest' } }))
+    expect(detectCommandSurfaces(root, ['package.json']).hasLint).toBe(false)
+  })
+
+  it('still recognizes the bare StandardJS linter', () => {
+    write('package.json', JSON.stringify({ scripts: { verify: 'standard', test: 'jest' } }))
+    expect(detectCommandSurfaces(root, ['package.json']).hasLint).toBe(true)
+  })
+
   it('does not invent lint/type-check surfaces for a plain test-only package', () => {
     write('package.json', JSON.stringify({ scripts: { test: 'jest' } }))
     const evidence = detectCommandSurfaces(root, ['package.json'])
