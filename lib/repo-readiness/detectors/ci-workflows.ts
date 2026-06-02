@@ -44,7 +44,13 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bmake (lint|fmt|format)\b/,
   ],
   typecheck: [
-    /\btsc\b(?!\s+(-b|--build))/,
+    // Only a check-only `tsc --noEmit` (or a purpose-built checker) counts as a
+    // type-check surface; a bare/emitting `tsc` is a build (see the build
+    // patterns). This mirrors the command-surface detector exactly, so resolving
+    // a `npm run build` alias whose body is `tsc` can no longer suppress
+    // `ci.typecheck.not-run` when CI never runs the dedicated type-check command.
+    /\btsc\b[^\n]*--noemit\b/,
+    /\b(tsd|vue-tsc|svelte-check|attw)\b/,
     /\bmypy\b/,
     /\bpyright\b/,
     // The Go and Rust compilers type-check as part of build/test (and `cargo
@@ -74,7 +80,9 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bcargo build\b/,
     /\bdocker build\b/,
     /(^|\s|[./\\])(build|build-doc)\.(sh|bat|ps1)\b/,
-    /\btsc\s+(-b|--build)\b/,
+    // A bare/emitting `tsc` (including `tsc -b`/`--build`) is a build; only
+    // `tsc --noEmit` is a dedicated type-check (handled above).
+    /\btsc\b(?![^\n]*--noemit)/,
     /\b(npm|pnpm|yarn) run build\b/,
     /\bmake build\b/,
   ],

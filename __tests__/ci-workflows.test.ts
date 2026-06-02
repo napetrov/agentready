@@ -249,6 +249,31 @@ describe('CI command-coverage checks', () => {
     expect(ids).not.toContain('ci.typecheck.not-run')
   })
 
+  it('still flags ci.typecheck.not-run when CI only builds (bare tsc) but a dedicated type-check exists', () => {
+    // Regression: alias expansion must not let a build script's bare `tsc`
+    // (which emits, i.e. builds) be read as CI type-check coverage and suppress
+    // ci.typecheck.not-run when the dedicated `tsc --noEmit` command never runs.
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(path.join(root, 'index.ts'), 'export const x: number = 1\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { build: 'tsc', 'type-check': 'tsc --noEmit', test: 'jest', lint: 'eslint .' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  build:\n    steps:\n      - run: npm ci\n      - run: npm run build\n      - run: npm test\n      - run: npm run lint\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.commands.hasTypeCheck).toBe(true)
+    expect(report.ci.hasTypeCheck).toBe(false)
+    // The bare `tsc` build is still recognized as build coverage.
+    expect(report.ci.hasBuild).toBe(true)
+    expect(report.findings.map(finding => finding.id)).toContain('ci.typecheck.not-run')
+  })
+
   it('resolves nested `npm run <script>` aliases without looping on cycles', () => {
     writeFileSync(path.join(root, 'README.md'), '# Demo\n')
     writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm run ci.\n')

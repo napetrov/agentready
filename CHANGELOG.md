@@ -58,7 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   workflow step, so a CI step of `npm test` that runs lint + type-check + test
   no longer produces false `ci.lint.not-run` / `ci.typecheck.not-run` findings.
   The CI lint matcher also recognizes `xo`/`standard`/`tslint`/`oxlint`,
-  matching the command-surface detector.
+  matching the command-surface detector. CI `tsc` classification is now
+  consistent with the command surface: a bare/emitting `tsc` (incl. `tsc -b`)
+  is a **build** and only `tsc --noEmit` (or `tsd`/`vue-tsc`/`svelte-check`) is
+  a type-check, so expanding a `npm run build` alias whose body is `tsc` can no
+  longer suppress `ci.typecheck.not-run` when CI never runs the dedicated
+  type-check command.
 - `scan`/`analyze` now fail loudly when the target path does not exist or is a
   regular file, instead of silently producing a phantom "empty repository"
   report (previously a missing path scored ~68/100 with exit 0 under
