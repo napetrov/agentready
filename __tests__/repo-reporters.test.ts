@@ -84,11 +84,13 @@ describe('formatDiffMarkdown', () => {
     const md = formatDiffMarkdown(diffReport({ scoreDelta: 5 }, [finding({ severity: 'error', path: 'p.ts' })]))
     expect(md).toContain('Score delta: **+5**')
     expect(md).toContain('**ERROR**: Title (p.ts).')
+    expect(md).toContain('⚠️ 1 regression(s), 1 new finding(s).')
   })
 
   it('shows a negative delta and the empty-findings state', () => {
     const md = formatDiffMarkdown(diffReport({ scoreDelta: -7 }, []))
     expect(md).toContain('Score delta: **-7**')
     expect(md).toContain('No findings.')
+    expect(md).toContain('✅ No readiness regressions.')
   })
 })

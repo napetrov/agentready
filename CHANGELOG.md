@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expectations. .NET maps to `dotnet build`/`test`/`format` (full
   capabilities); Autotools maps to `./configure && make` with `make check`
   inferred from `TESTS`/`check_PROGRAMS` in `Makefile.am`.
+- The GitHub Action's PR comment is now quiet on clean runs by default. A new
+  `pr-comment-condition` input (`on-findings` default, or `always`) gates the
+  sticky comment: `on-findings` posts only when a run has new findings or
+  regressions, so a clean PR keeps its thread free of empty "all clear" noise —
+  the verdict still appears in the job summary. A comment left by an earlier run
+  with findings is updated to its resolved state once those findings clear,
+  rather than lingering with stale content. The diff job summary/markdown now
+  leads with a one-line ✅/⚠️ verdict so the status reads at a glance.
 - Dogfood release harness: `npm run agentready:dogfood -- --out <scratch-dir>`
   clones the configured real-repository set into a scratch directory and writes
   JSON/markdown reports there, keeping scan artifacts out of the tracked repo.

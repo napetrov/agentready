@@ -46,6 +46,10 @@ inputs:
     description: 'Post (and update in place) a sticky pull-request comment with the markdown report. Requires github-token with pull-requests: write and a pull_request-triggered run. Fail-open: commenting problems warn but never fail the action.'
     required: false
     default: 'false'
+  pr-comment-condition:
+    description: 'When to post the PR comment: on-findings (default — comment only when there are new findings/regressions, staying silent on clean runs but still updating a prior comment to its resolved state) or always (post on every run, including clean ones).'
+    required: false
+    default: 'on-findings'
   github-token:
     description: 'Token used to post the PR comment (needs pull-requests: write). Defaults to the workflow GITHUB_TOKEN. Only used when pr-comment is enabled.'
     required: false

@@ -42,8 +42,16 @@ export function formatScanMarkdown(report: LocalReadinessReport): string {
 }
 
 export function formatDiffMarkdown(report: ReadinessDiffReport): string {
+  // A one-line verdict so the job summary reads like a status at a glance,
+  // without scanning the counts below.
+  const clean = report.regressions.length === 0 && report.newFindings.length === 0
+  const headline = clean
+    ? '✅ No readiness regressions.'
+    : `⚠️ ${report.regressions.length} regression(s), ${report.newFindings.length} new finding(s).`
   return [
     '## AgentReady PR readiness',
+    '',
+    headline,
     '',
     `Base/head: \`${report.base}\` .. \`${report.head}\``,
     `Score delta: **${report.summary.scoreDelta >= 0 ? '+' : ''}${report.summary.scoreDelta}**`,

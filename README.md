@@ -177,7 +177,7 @@ steps:
 
 Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
 `fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
-`pr-comment`, `github-token`, `upload-sarif`, `output-dir`, `tool-version`,
+`pr-comment`, `pr-comment-condition`, `github-token`, `upload-sarif`, `output-dir`, `tool-version`,
 `analyze`, and `analyze-min-score`; outputs include `score`, `findings-count`,
 `regressions-count`, the report paths, and (when `analyze` is on)
 `augmented-score`/`augmented-report-path`. See [`action.yml`](action.yml) for
@@ -206,6 +206,13 @@ steps:
       head-ref: HEAD
       pr-comment: true
 ```
+
+By default (`pr-comment-condition: on-findings`) the comment is posted only when
+a run has new findings or regressions, so clean runs leave the PR thread quiet —
+the verdict still lands in the job summary. Once findings are resolved, an
+existing comment is updated to its cleared state rather than left showing stale
+findings. Set `pr-comment-condition: always` to comment on every run, including
+clean ones.
 
 It is fail-open: on a missing permission or a non-`pull_request` run it logs a
 notice and continues without failing the job. Omit `pr-comment` (and the

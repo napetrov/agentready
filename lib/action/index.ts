@@ -5,6 +5,9 @@ import * as core from './runtime'
 const VALID_MODES: ActionMode[] = ['scan', 'diff']
 const VALID_SEVERITIES: FailOnSeverity[] = ['off', 'info', 'warning', 'error']
 
+type PrCommentCondition = 'always' | 'on-findings'
+const VALID_PR_COMMENT_CONDITIONS: PrCommentCondition[] = ['always', 'on-findings']
+
 const optionalInput = (name: string): string | undefined => {
   const value = core.getInput(name)
   return value ? value : undefined
@@ -74,11 +77,19 @@ const main = async (): Promise<void> => {
   }
 
   if (core.getBooleanInput('pr-comment')) {
+    const condition = (core.getInput('pr-comment-condition') || 'on-findings') as PrCommentCondition
+    if (!VALID_PR_COMMENT_CONDITIONS.includes(condition)) {
+      throw new Error(`pr-comment-condition must be one of: ${VALID_PR_COMMENT_CONDITIONS.join(', ')}`)
+    }
+    const hasFindings = result.findingsCount > 0 || result.regressionsCount > 0
     const outcome = await postPrComment(result.summaryMarkdown, {
       token: optionalInput('github-token'),
       repository: process.env.GITHUB_REPOSITORY,
       eventPath: process.env.GITHUB_EVENT_PATH,
       apiUrl: process.env.GITHUB_API_URL,
+    }, {
+      onlyOnFindings: condition === 'on-findings',
+      hasFindings,
     })
     if (outcome.status === 'failed') {
       // Fail-open: a commenting problem (e.g. missing pull-requests: write
