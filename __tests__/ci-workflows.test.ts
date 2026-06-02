@@ -42,6 +42,21 @@ describe('classifyRunCommandKinds', () => {
     { run: '.ci/scripts/build.sh --compiler icx --target daal', expected: ['build'] },
     { run: 'npm run build', expected: ['build'] },
     { run: 'tsc -b', expected: ['build'] },
+    // `vue-tsc` is a type-checker, not a build: the bare-`tsc` build matcher must
+    // not match the `tsc` suffix after the hyphen.
+    { run: 'vue-tsc', expected: ['typecheck'] },
+    { run: 'vue-tsc --noEmit', expected: ['typecheck'] },
+    // The CI lint/type-check `npm run` matchers mirror the command-surface
+    // script-name separators (`:`/`-`/`_`), so opaque shell-wrapper scripts are
+    // recognized by name.
+    { run: 'npm run check:lint', expected: ['lint'] },
+    { run: 'npm run check-lint', expected: ['lint'] },
+    { run: 'npm run check_lint', expected: ['lint'] },
+    { run: 'npm run lint:js', expected: ['lint'] },
+    { run: 'npm run check:type', expected: ['typecheck'] },
+    { run: 'npm run check-type', expected: ['typecheck'] },
+    { run: 'npm run check_type', expected: ['typecheck'] },
+    { run: 'npm run typings', expected: ['typecheck'] },
     // JVM build tools: `gradle build` depends on `check`, which runs the test
     // task, so it is test+build. Lint is NOT inferred from the bare lifecycle
     // (whether a static-analysis task runs depends on plugin config we can't see

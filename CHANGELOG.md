@@ -94,6 +94,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- The CI bare-`tsc` build matcher no longer matches `vue-tsc` (a type-checker):
+  a left `(?<![\w-])` boundary excludes the hyphenated suffix, so a CI step that
+  runs only `vue-tsc` is no longer credited with build coverage.
+- The CI `npm run` lint/type-check matchers now mirror the command-surface
+  script-name conventions and their `:`/`-`/`_` separators (`check:lint`,
+  `check-lint`, `check_lint`, `lint:js`, `check:type`, `check-type`,
+  `check_type`, `typings`, …). A CI step of `npm run check-lint`/`check:type`
+  whose script body is an opaque shell wrapper is now recognized by name, so
+  `ci.lint.not-run` / `ci.typecheck.not-run` are not falsely emitted.
 - CI command-coverage spread gate now tracks each job's **concrete** verification
   kinds separately, so a job that runs a command directly (e.g. `npm run lint`)
   still counts toward the multi-job spread even when another step in the same job
