@@ -105,6 +105,23 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence.hasTypeCheck).toBe(false)
   })
 
+  it('does not count a linter/type-checker named only as an install argument', () => {
+    // `npm install eslint` / `pnpm add -D tsd` install tooling; they do not run
+    // it, so the package names must not be read as verification surfaces.
+    write('package.json', JSON.stringify({
+      scripts: { setup: 'npm install eslint', tools: 'pnpm add -D tsd', test: 'jest' },
+    }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(false)
+    expect(evidence.hasTypeCheck).toBe(false)
+  })
+
+  it('still detects a linter that runs after an install in the same script', () => {
+    write('package.json', JSON.stringify({ scripts: { ci: 'npm install eslint && eslint .' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(true)
+  })
+
   it('does not invent lint/type-check surfaces for a plain test-only package', () => {
     write('package.json', JSON.stringify({ scripts: { test: 'jest' } }))
     const evidence = detectCommandSurfaces(root, ['package.json'])

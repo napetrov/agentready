@@ -60,7 +60,37 @@ const TYPECHECK_COMMAND_PATTERNS: RegExp[] = [
 const LINT_NAME_PATTERN = /(^|[:/_-])lint(s)?([:/_-]|$)/i
 const TYPECHECK_NAME_PATTERN = /(^|[:/_-])(type-?check|check[:_-]?types?|typings?)([:/_-]|$)/i
 
+// Package-manager install invocations. A tool named only as an install argument
+// (`npm install eslint`, `pnpm add -D tsd`) is being installed, not run, so its
+// arguments must not be read as exposing a lint/type-check surface.
+const INSTALL_COMMAND_PATTERNS: RegExp[] = [
+  /\bnpm (ci|install|i)\b/,
+  /\byarn (install|add)\b/,
+  /\bpnpm (install|i|add)\b/,
+  /\bbun (install|i|add)\b/,
+]
+
+// Mirrors the CI classifier's separators so each invocation in an aggregate
+// script (`eslint . && tsc --noEmit`) is judged on its own.
+const COMMAND_SEPARATORS = /&&|\|\||[;\n]/
+
 const matchesAny = (text: string, patterns: RegExp[]): boolean => patterns.some(pattern => pattern.test(text))
+
+// Returns the runnable command invocations across all script bodies, dropping
+// install invocations so their package-name arguments are never misread as
+// having run a linter/type-checker.
+const runnableInvocations = (scriptBodies: string[]): string[] => {
+  const invocations: string[] = []
+  for (const body of scriptBodies) {
+    for (const segment of body.split(COMMAND_SEPARATORS)) {
+      const text = segment.trim()
+      if (text.length > 0 && !matchesAny(text, INSTALL_COMMAND_PATTERNS)) {
+        invocations.push(text)
+      }
+    }
+  }
+  return invocations
+}
 
 const has = (filePaths: Set<string>, candidate: string): boolean => filePaths.has(candidate)
 
@@ -87,10 +117,14 @@ const detectNode = (root: string, filePaths: Set<string>): { signals: EcosystemS
 
   const scriptMap = packageJsonScripts(readJson(root, 'package.json'))
   const scripts = Object.keys(scriptMap).sort()
-  // Script bodies are inspected (not just names) so a linter/type-checker run
-  // inside an aggregate script — `"test": "xo && tsc --noEmit && ava"` — or under
-  // a non-canonical name like `check:lint` is still recognized.
-  const scriptBodies = Object.values(scriptMap).join('\n')
+  // Script bodies are inspected per-invocation (not just names) so a
+  // linter/type-checker run inside an aggregate script —
+  // `"test": "xo && tsc --noEmit && ava"` — or under a non-canonical name like
+  // `check:lint` is recognized, while a tool named only as an *install argument*
+  // (`"setup": "npm install eslint"`) is not misread as a runnable surface.
+  const invocations = runnableInvocations(Object.values(scriptMap))
+  const bodyHasLint = invocations.some(invocation => matchesAny(invocation, LINT_COMMAND_PATTERNS))
+  const bodyHasTypeCheck = invocations.some(invocation => matchesAny(invocation, TYPECHECK_COMMAND_PATTERNS))
 
   return {
     scripts,
@@ -98,9 +132,8 @@ const detectNode = (root: string, filePaths: Set<string>): { signals: EcosystemS
       ecosystem: 'node',
       hasBuild: hasAnyScript(scripts, ['build']),
       hasTest: hasAnyScript(scripts, ['test', 'test:unit', 'test:ci']),
-      hasLint: scripts.some(name => LINT_NAME_PATTERN.test(name)) || matchesAny(scriptBodies, LINT_COMMAND_PATTERNS),
-      hasTypeCheck:
-        scripts.some(name => TYPECHECK_NAME_PATTERN.test(name)) || matchesAny(scriptBodies, TYPECHECK_COMMAND_PATTERNS),
+      hasLint: scripts.some(name => LINT_NAME_PATTERN.test(name)) || bodyHasLint,
+      hasTypeCheck: scripts.some(name => TYPECHECK_NAME_PATTERN.test(name)) || bodyHasTypeCheck,
     },
   }
 }

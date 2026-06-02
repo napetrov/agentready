@@ -52,7 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `check:lint`/`check:type` is recognized, eliminating false
   `commands.lint.missing` / `commands.typecheck.missing` findings (found on
   `sindresorhus/got` and `tj/commander.js`). A bare `"build": "tsc"` is still
-  treated as a build, not a dedicated type-check surface.
+  treated as a build, not a dedicated type-check surface. Script bodies are
+  inspected per-invocation and install commands are skipped, so a tool named
+  only as an install argument (`"setup": "npm install eslint"`) is not misread
+  as a runnable lint/type-check surface.
 - CI command-coverage now resolves `npm run <script>` / `npm test` aliases
   against `package.json` (recursively, with a cycle guard) before classifying a
   workflow step, so a CI step of `npm test` that runs lint + type-check + test
