@@ -42,7 +42,11 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     // detector counts it as the lint surface for Go modules, so CI running it
     // must satisfy lint coverage.
     /\bgo vet\b/,
-    /\b(npm|pnpm|yarn) run lint\b/,
+    // Mirror the command-surface lint script-name convention, including its
+    // `:`/`-`/`_`/`/`/`.` separators, so `npm run check:lint`, `check-lint`,
+    // `check_lint`, and `lint:js` are recognized by name (the script body may be
+    // an opaque shell wrapper we cannot classify).
+    /\b(npm|pnpm|yarn) run ([\w.:/-]*[:._/-])?lint(s)?\b/,
     /\bmake (lint|fmt|format)\b/,
     // JVM static-analysis tasks (Gradle/Maven plugins). Only an *explicit* lint
     // task counts: a bare `gradle build`/`check` is NOT credited as lint, because
@@ -79,7 +83,11 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     // command-surface detector exposes a type-check surface for .NET, so these
     // satisfy type-check coverage (a `--no-build` invocation is excluded below).
     /\bdotnet (build|test|publish)(\s|$)/,
-    /\b(npm|pnpm|yarn) run (type-check|typecheck|check:types)\b/,
+    // Mirror the command-surface type-check script-name convention and its
+    // `:`/`-`/`_` separators (`type-check`, `typecheck`, `check:type[s]`,
+    // `check-type`, `check_type`, `typings`, with an optional `:suffix`), so an
+    // opaque `npm run check:type` shell wrapper is recognized by name.
+    /\b(npm|pnpm|yarn) run ([\w.:/-]*[:._/-])?(type-?check|check[:._-]?types?|typings?)\b/,
     /\bmake (type-check|typecheck|types)\b/,
   ],
   test: [
@@ -109,8 +117,10 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bdocker build\b/,
     /(^|\s|[./\\])(build|build-doc)\.(sh|bat|ps1)\b/,
     // A bare/emitting `tsc` (including `tsc -b`/`--build`) is a build; only
-    // `tsc --noEmit` is a dedicated type-check (handled above).
-    /\btsc\b(?![^\n]*--noemit)/,
+    // `tsc --noEmit` is a dedicated type-check (handled above). The left
+    // `(?<![\w-])` boundary excludes hyphenated tools like `vue-tsc` (a
+    // type-checker), which would otherwise match the bare `tsc` suffix.
+    /(?<![\w-])tsc\b(?![^\n]*--noemit)/,
     /\b(npm|pnpm|yarn) run build\b/,
     /\bmake build\b/,
     /\bgradlew?\b[^\n]*(?<![-\w])(assemble|build)\b/,
