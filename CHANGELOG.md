@@ -63,7 +63,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is a **build** and only `tsc --noEmit` (or `tsd`/`vue-tsc`/`svelte-check`) is
   a type-check, so expanding a `npm run build` alias whose body is `tsc` can no
   longer suppress `ci.typecheck.not-run` when CI never runs the dedicated
-  type-check command.
+  type-check command. Alias expansion is `working-directory`-aware: a step (or
+  job/workflow `defaults.run.working-directory`) that runs in a subdirectory is
+  not expanded against the root `package.json`, so a monorepo `npm test` in
+  `packages/api` no longer attributes the root test script's lint/type-check to
+  that step.
 - `scan`/`analyze` now fail loudly when the target path does not exist or is a
   regular file, instead of silently producing a phantom "empty repository"
   report (previously a missing path scored ~68/100 with exit 0 under

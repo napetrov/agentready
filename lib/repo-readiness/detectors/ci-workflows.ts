@@ -366,26 +366,58 @@ interface RawStep {
   name?: unknown
   uses?: unknown
   run?: unknown
+  'working-directory'?: unknown
 }
 
 interface RawJob {
   steps?: unknown
+  defaults?: unknown
 }
 
 interface RawWorkflow {
   name?: unknown
   jobs?: unknown
+  defaults?: unknown
 }
 
 const asString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined)
+
+// Reads `defaults.run.working-directory` from a job or workflow node, tolerating
+// any shape (only a string value is used).
+const readDefaultWorkingDir = (node: { defaults?: unknown }): string | undefined => {
+  const defaults = node.defaults
+  if (typeof defaults !== 'object' || defaults === null) {
+    return undefined
+  }
+  const run = (defaults as { run?: unknown }).run
+  if (typeof run !== 'object' || run === null) {
+    return undefined
+  }
+  return asString((run as Record<string, unknown>)['working-directory'])
+}
+
+// A step runs at the repository root only when no working directory is set (or it
+// is `.`/`./`). `npm test`/`npm run <script>` aliases are resolved against the
+// root `package.json`, so they may only be expanded for root-level steps —
+// expanding root scripts for a step that runs in `packages/api` would attribute
+// the wrong commands (and could wrongly suppress `ci.*.not-run`).
+const isRootWorkingDir = (workingDir: string | undefined): boolean => {
+  if (workingDir === undefined) {
+    return true
+  }
+  const trimmed = workingDir.trim()
+  return trimmed === '' || trimmed === '.' || trimmed === './'
+}
 
 const parseJob = (
   id: string,
   rawJob: unknown,
   scripts: Record<string, string>,
+  workflowDefaultWorkingDir: string | undefined,
 ): { job: CiWorkflowJob; orchestratorKinds: Set<CiCommandKind> } => {
   const job = (rawJob ?? {}) as RawJob
   const steps = Array.isArray(job.steps) ? (job.steps as RawStep[]) : []
+  const jobDefaultWorkingDir = readDefaultWorkingDir(job) ?? workflowDefaultWorkingDir
   const kinds = new Set<CiCommandKind>()
   const orchestratorKinds = new Set<CiCommandKind>()
 
@@ -393,8 +425,12 @@ const parseJob = (
     const rawRun = asString(step?.run)
     if (rawRun) {
       // Resolve `npm run <script>` / `npm test` aliases to their bodies so the
-      // verification commands they wrap are visible to the classifier.
-      const run = expandScriptAliases(rawRun, scripts)
+      // verification commands they wrap are visible to the classifier — but only
+      // for steps that run at the repository root, since the aliases are read
+      // from the root `package.json`. Name-based classification still applies to
+      // a step that runs elsewhere; only the root-script body expansion is gated.
+      const workingDir = asString(step?.['working-directory']) ?? jobDefaultWorkingDir
+      const run = isRootWorkingDir(workingDir) ? expandScriptAliases(rawRun, scripts) : rawRun
       for (const kind of classifyRunCommandKinds(run)) {
         kinds.add(kind)
       }
@@ -436,11 +472,12 @@ const parseWorkflow = (
   }
 
   const workflow = (parsed ?? {}) as RawWorkflow
+  const workflowDefaultWorkingDir = readDefaultWorkingDir(workflow)
   const rawJobs = workflow.jobs
   const parsedJobs =
     rawJobs && typeof rawJobs === 'object' && !Array.isArray(rawJobs)
       ? Object.entries(rawJobs as Record<string, unknown>)
-          .map(([id, rawJob]) => parseJob(id, rawJob, scripts))
+          .map(([id, rawJob]) => parseJob(id, rawJob, scripts, workflowDefaultWorkingDir))
           .sort((a, b) => a.job.id.localeCompare(b.job.id))
       : []
 

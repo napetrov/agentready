@@ -274,6 +274,51 @@ describe('CI command-coverage checks', () => {
     expect(report.findings.map(finding => finding.id)).toContain('ci.typecheck.not-run')
   })
 
+  it('does not expand root scripts for a step that runs in a subdirectory', () => {
+    // Monorepo: the root `test` bundles lint+type-check+test, but a job runs
+    // `npm test` in packages/api (resolving to that package's script, which we
+    // do not read). The root script body must not be attributed to that step, so
+    // ci.lint.not-run / ci.typecheck.not-run still fire.
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(path.join(root, 'index.ts'), 'export const x: number = 1\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { test: 'eslint . && tsc --noEmit && jest', lint: 'eslint .', 'type-check': 'tsc --noEmit' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  api:\n    defaults:\n      run:\n        working-directory: packages/api\n    steps:\n      - run: npm ci\n      - run: npm test\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    // The step still counts as test coverage by name, but not lint/type-check.
+    expect(report.ci.hasTest).toBe(true)
+    expect(report.ci.hasLint).toBe(false)
+    expect(report.ci.hasTypeCheck).toBe(false)
+    const ids = report.findings.map(finding => finding.id)
+    expect(ids).toContain('ci.lint.not-run')
+    expect(ids).toContain('ci.typecheck.not-run')
+  })
+
+  it('still expands aliases for a step-level working-directory of "."', () => {
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { test: 'xo && ava' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  verify:\n    steps:\n      - run: npm ci\n      - run: npm test\n        working-directory: .\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.ci.hasLint).toBe(true)
+  })
+
   it('resolves nested `npm run <script>` aliases without looping on cycles', () => {
     writeFileSync(path.join(root, 'README.md'), '# Demo\n')
     writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm run ci.\n')
