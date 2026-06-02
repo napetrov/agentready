@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- .NET/C# and Autotools are now recognized command ecosystems, and a bare
+  `requirements.txt` (or a `requirements/` directory / `requirements-*.txt`)
+  counts as a Python project. Found scanning 100+ real repositories
+  (uxlfoundation, IntelPython, oneapi-src, IntelLabs, intel): a C# solution
+  (`*.sln`/`*.csproj`, e.g. `intel/acat` with 927 source files), an Autotools
+  project (`configure.ac`/`Makefile.am`, e.g. `intel/QAT_Engine`), and
+  research repos with only a `requirements.txt` were previously detected as
+  having no ecosystem and were silently exempt from the test/lint/build
+  expectations. .NET maps to `dotnet build`/`test`/`format` (full
+  capabilities); Autotools maps to `./configure && make` with `make check`
+  inferred from `TESTS`/`check_PROGRAMS` in `Makefile.am`.
 - Dogfood release harness: `npm run agentready:dogfood -- --out <scratch-dir>`
   clones the configured real-repository set into a scratch directory and writes
   JSON/markdown reports there, keeping scan artifacts out of the tracked repo.
@@ -39,6 +50,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- Test files in non-JS/TS ecosystems are now classified as tests instead of
+  source. Go (`*_test.go`), Python (`test_*.py`/`*_test.py`), JVM/C#
+  (`*Test`/`*Tests`/`*Spec`/`*IT`), Ruby/Elixir (`*_test`/`*_spec`), C/C++
+  gtest (`*_test.cc`), and Swift (`*Tests.swift`) conventions are recognized
+  even when the file lives outside a `tests/` directory. Found dogfooding
+  cobra, which reported 17 test files as `0 tests` and inflated its source count.
+- Node lint/type-check detection now inspects script **bodies** and
+  non-canonical script **names**, not just a script literally named
+  `lint`/`type-check`. A linter or type-checker run inside an aggregate script
+  (e.g. `"test": "xo && tsc --noEmit && ava"`) or under a name like
+  `check:lint`/`check:type` is recognized, eliminating false
+  `commands.lint.missing` / `commands.typecheck.missing` findings (found on
+  `sindresorhus/got` and `tj/commander.js`). A bare `"build": "tsc"` is still
+  treated as a build, not a dedicated type-check surface. Script bodies are
+  inspected per-invocation and install commands are skipped, so a tool named
+  only as an install argument (`"setup": "npm install eslint"`) is not misread
+  as a runnable lint/type-check surface. Bare-word linter matchers
+  (`xo`/`standard`/`tslint`/`oxlint`/`rome`/`biome`) exclude a trailing hyphen,
+  so a hyphenated release tool such as `standard-version` is not mistaken for
+  the StandardJS linter (same guard in the CI lint matcher).
+- CI command-coverage now resolves `npm run <script>` / `npm test` aliases
+  against `package.json` (recursively, with a cycle guard) before classifying a
+  workflow step, so a CI step of `npm test` that runs lint + type-check + test
+  no longer produces false `ci.lint.not-run` / `ci.typecheck.not-run` findings.
+  The CI lint matcher also recognizes `xo`/`standard`/`tslint`/`oxlint`,
+  matching the command-surface detector. CI `tsc` classification is now
+  consistent with the command surface: a bare/emitting `tsc` (incl. `tsc -b`)
+  is a **build** and only `tsc --noEmit` (or `tsd`/`vue-tsc`/`svelte-check`) is
+  a type-check, so expanding a `npm run build` alias whose body is `tsc` can no
+  longer suppress `ci.typecheck.not-run` when CI never runs the dedicated
+  type-check command. Alias expansion is `working-directory`-aware: a step (or
+  job/workflow `defaults.run.working-directory`) that runs in a subdirectory is
+  not expanded against the root `package.json`, so a monorepo `npm test` in
+  `packages/api` no longer attributes the root test script's lint/type-check to
+  that step.
+- `scan`/`analyze` now fail loudly when the target path does not exist or is a
+  regular file, instead of silently producing a phantom "empty repository"
+  report (previously a missing path scored ~68/100 with exit 0 under
+  `--fail-on off`).
+- The `docs.readme.missing` check now requires a **root** README. A README
+  nested under `docs/` or a subpackage no longer suppresses the missing-README
+  error, since the root README is the agent's primary entrypoint (the nested
+  file is still inventoried for reporters).
 - `prepublishOnly` and other publish/pack-only npm lifecycle scripts are no
   longer reported as install-time safety hooks; `prepublishOnly` runs before
   publishing, not during ordinary dependency installation.

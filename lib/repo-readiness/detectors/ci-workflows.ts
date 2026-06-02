@@ -26,6 +26,10 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
   lint: [
     /\beslint\b/,
     /\b(prettier|biome)\b/,
+    // JS linters/style tools whose package-script surface the command detector
+    // also recognizes, so CI running them satisfies lint coverage. The trailing
+    // `(?!-)` excludes hyphenated false-friends such as `standard-version`.
+    /\b(xo|standard|tslint|oxlint|rome)\b(?!-)/,
     /\bruff\b/,
     /\bflake8\b/,
     /\bpylint\b/,
@@ -41,7 +45,13 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bmake (lint|fmt|format)\b/,
   ],
   typecheck: [
-    /\btsc\b(?!\s+(-b|--build))/,
+    // Only a check-only `tsc --noEmit` (or a purpose-built checker) counts as a
+    // type-check surface; a bare/emitting `tsc` is a build (see the build
+    // patterns). This mirrors the command-surface detector exactly, so resolving
+    // a `npm run build` alias whose body is `tsc` can no longer suppress
+    // `ci.typecheck.not-run` when CI never runs the dedicated type-check command.
+    /\btsc\b[^\n]*--noemit\b/,
+    /\b(tsd|vue-tsc|svelte-check|attw)\b/,
     /\bmypy\b/,
     /\bpyright\b/,
     // The Go and Rust compilers type-check as part of build/test (and `cargo
@@ -71,7 +81,9 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
     /\bcargo build\b/,
     /\bdocker build\b/,
     /(^|\s|[./\\])(build|build-doc)\.(sh|bat|ps1)\b/,
-    /\btsc\s+(-b|--build)\b/,
+    // A bare/emitting `tsc` (including `tsc -b`/`--build`) is a build; only
+    // `tsc --noEmit` is a dedicated type-check (handled above).
+    /\btsc\b(?![^\n]*--noemit)/,
     /\b(npm|pnpm|yarn) run build\b/,
     /\bmake build\b/,
   ],
@@ -276,32 +288,150 @@ const readText = (root: string, repoPath: string): string | undefined => {
   }
 }
 
+/**
+ * Reads the `scripts` map from the repository's root `package.json`, tolerating a
+ * missing or malformed manifest. CI steps frequently invoke verification work
+ * indirectly (`npm test` → `xo && tsc --noEmit && ava`), so resolving these
+ * aliases is what lets CI coverage detection see the underlying commands.
+ */
+const readPackageScripts = (root: string): Record<string, string> => {
+  const text = readText(root, 'package.json')
+  if (text === undefined) {
+    return {}
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return {}
+  }
+  if (typeof parsed !== 'object' || parsed === null) {
+    return {}
+  }
+  const scripts = (parsed as { scripts?: unknown }).scripts
+  if (typeof scripts !== 'object' || scripts === null) {
+    return {}
+  }
+  const result: Record<string, string> = {}
+  for (const [name, body] of Object.entries(scripts as Record<string, unknown>)) {
+    if (typeof body === 'string') {
+      result[name] = body
+    }
+  }
+  return result
+}
+
+// Captures the script a package-manager step invokes: `npm run <name>` (and the
+// `pnpm`/`yarn`/`bun` equivalents) plus the `test`/`start` lifecycle shorthands.
+// `npm install`/`npm ci` are intentionally not matched — they are not scripts.
+const SCRIPT_RUN_REF = /\b(?:npm|pnpm|yarn|bun)\s+run\s+(?:-s\s+|--silent\s+)?([a-zA-Z0-9:._-]+)/g
+const SCRIPT_LIFECYCLE_REF = /\b(?:npm|pnpm|yarn|bun)\s+(test|start)\b/g
+
+/**
+ * Appends the bodies of any package scripts a `run:` step invokes, recursively,
+ * so the classifier sees the real commands behind `npm run <script>`/`npm test`.
+ * A `seen` set bounds the recursion against cyclic or self-referential scripts.
+ * Bodies are appended (not substituted) because the classifier splits on command
+ * separators and unions the recognized kinds — it only needs the commands to be
+ * present somewhere in the text.
+ */
+const expandScriptAliases = (run: string, scripts: Record<string, string>, seen: Set<string> = new Set()): string => {
+  if (Object.keys(scripts).length === 0) {
+    return run
+  }
+
+  const refs = new Set<string>()
+  for (const match of run.matchAll(SCRIPT_RUN_REF)) {
+    refs.add(match[1])
+  }
+  for (const match of run.matchAll(SCRIPT_LIFECYCLE_REF)) {
+    refs.add(match[1])
+  }
+
+  let expanded = run
+  for (const ref of refs) {
+    if (seen.has(ref)) {
+      continue
+    }
+    const body = scripts[ref]
+    if (body === undefined) {
+      continue
+    }
+    seen.add(ref)
+    expanded += `\n${expandScriptAliases(body, scripts, seen)}`
+  }
+  return expanded
+}
+
 interface RawStep {
   name?: unknown
   uses?: unknown
   run?: unknown
+  'working-directory'?: unknown
 }
 
 interface RawJob {
   steps?: unknown
+  defaults?: unknown
 }
 
 interface RawWorkflow {
   name?: unknown
   jobs?: unknown
+  defaults?: unknown
 }
 
 const asString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined)
 
-const parseJob = (id: string, rawJob: unknown): { job: CiWorkflowJob; orchestratorKinds: Set<CiCommandKind> } => {
+// Reads `defaults.run.working-directory` from a job or workflow node, tolerating
+// any shape (only a string value is used).
+const readDefaultWorkingDir = (node: { defaults?: unknown }): string | undefined => {
+  const defaults = node.defaults
+  if (typeof defaults !== 'object' || defaults === null) {
+    return undefined
+  }
+  const run = (defaults as { run?: unknown }).run
+  if (typeof run !== 'object' || run === null) {
+    return undefined
+  }
+  return asString((run as Record<string, unknown>)['working-directory'])
+}
+
+// A step runs at the repository root only when no working directory is set (or it
+// is `.`/`./`). `npm test`/`npm run <script>` aliases are resolved against the
+// root `package.json`, so they may only be expanded for root-level steps —
+// expanding root scripts for a step that runs in `packages/api` would attribute
+// the wrong commands (and could wrongly suppress `ci.*.not-run`).
+const isRootWorkingDir = (workingDir: string | undefined): boolean => {
+  if (workingDir === undefined) {
+    return true
+  }
+  const trimmed = workingDir.trim()
+  return trimmed === '' || trimmed === '.' || trimmed === './'
+}
+
+const parseJob = (
+  id: string,
+  rawJob: unknown,
+  scripts: Record<string, string>,
+  workflowDefaultWorkingDir: string | undefined,
+): { job: CiWorkflowJob; orchestratorKinds: Set<CiCommandKind> } => {
   const job = (rawJob ?? {}) as RawJob
   const steps = Array.isArray(job.steps) ? (job.steps as RawStep[]) : []
+  const jobDefaultWorkingDir = readDefaultWorkingDir(job) ?? workflowDefaultWorkingDir
   const kinds = new Set<CiCommandKind>()
   const orchestratorKinds = new Set<CiCommandKind>()
 
   for (const step of steps) {
-    const run = asString(step?.run)
-    if (run) {
+    const rawRun = asString(step?.run)
+    if (rawRun) {
+      // Resolve `npm run <script>` / `npm test` aliases to their bodies so the
+      // verification commands they wrap are visible to the classifier — but only
+      // for steps that run at the repository root, since the aliases are read
+      // from the root `package.json`. Name-based classification still applies to
+      // a step that runs elsewhere; only the root-script body expansion is gated.
+      const workingDir = asString(step?.['working-directory']) ?? jobDefaultWorkingDir
+      const run = isRootWorkingDir(workingDir) ? expandScriptAliases(rawRun, scripts) : rawRun
       for (const kind of classifyRunCommandKinds(run)) {
         kinds.add(kind)
       }
@@ -326,6 +456,7 @@ const parseJob = (id: string, rawJob: unknown): { job: CiWorkflowJob; orchestrat
 const parseWorkflow = (
   root: string,
   file: string,
+  scripts: Record<string, string>,
 ): { workflow: CiWorkflow; orchestratorKinds: Set<CiCommandKind> } | undefined => {
   const text = readText(root, file)
   if (text === undefined) {
@@ -342,11 +473,12 @@ const parseWorkflow = (
   }
 
   const workflow = (parsed ?? {}) as RawWorkflow
+  const workflowDefaultWorkingDir = readDefaultWorkingDir(workflow)
   const rawJobs = workflow.jobs
   const parsedJobs =
     rawJobs && typeof rawJobs === 'object' && !Array.isArray(rawJobs)
       ? Object.entries(rawJobs as Record<string, unknown>)
-          .map(([id, rawJob]) => parseJob(id, rawJob))
+          .map(([id, rawJob]) => parseJob(id, rawJob, scripts, workflowDefaultWorkingDir))
           .sort((a, b) => a.job.id.localeCompare(b.job.id))
       : []
 
@@ -374,8 +506,9 @@ export const detectCiWorkflows = (root: string, filePaths: string[]): CiEvidence
     .filter(filePath => /^\.github\/workflows\/.+\.ya?ml$/i.test(filePath))
     .sort()
 
+  const scripts = readPackageScripts(root)
   const parsed = workflowFiles
-    .map(file => parseWorkflow(root, file))
+    .map(file => parseWorkflow(root, file, scripts))
     .filter((entry): entry is { workflow: CiWorkflow; orchestratorKinds: Set<CiCommandKind> } => entry !== undefined)
 
   const workflows = parsed.map(entry => entry.workflow)

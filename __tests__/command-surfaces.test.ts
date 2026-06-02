@@ -77,6 +77,104 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence.packageManager).toBe(manager)
   })
 
+  it('detects a linter invoked inside an aggregate test script', () => {
+    // got-style: the lint and type-check run inside `test`, not as `lint`/
+    // `type-check` scripts. Name-only detection misses them.
+    write('package.json', JSON.stringify({ scripts: { test: "xo && tsc --noEmit && ava", build: 'tsc' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(true)
+    expect(evidence.hasTypeCheck).toBe(true)
+  })
+
+  it('detects lint/type-check under non-canonical script names', () => {
+    // commander-style: `check:lint`/`check:type` rather than `lint`/`type-check`.
+    write('package.json', JSON.stringify({
+      scripts: { 'check:lint': 'eslint .', 'check:type': 'tsc -p tsconfig.json' },
+    }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(true)
+    expect(evidence.hasTypeCheck).toBe(true)
+  })
+
+  it('treats a bare `tsc` build as a build, not a dedicated type-check surface', () => {
+    // A bare `tsc` emits (a build); only `tsc --noEmit` / dedicated checkers are
+    // a check-only surface. This preserves the `ci.typecheck.not-run` semantics.
+    write('package.json', JSON.stringify({ scripts: { build: 'tsc', test: 'jest' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasBuild).toBe(true)
+    expect(evidence.hasTypeCheck).toBe(false)
+  })
+
+  it('does not count a linter/type-checker named only as an install argument', () => {
+    // `npm install eslint` / `pnpm add -D tsd` install tooling; they do not run
+    // it, so the package names must not be read as verification surfaces.
+    write('package.json', JSON.stringify({
+      scripts: { setup: 'npm install eslint', tools: 'pnpm add -D tsd', test: 'jest' },
+    }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(false)
+    expect(evidence.hasTypeCheck).toBe(false)
+  })
+
+  it('still detects a linter that runs after an install in the same script', () => {
+    write('package.json', JSON.stringify({ scripts: { ci: 'npm install eslint && eslint .' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(true)
+  })
+
+  it('does not treat a hyphenated release tool (standard-version) as the StandardJS linter', () => {
+    write('package.json', JSON.stringify({ scripts: { release: 'standard-version', test: 'jest' } }))
+    expect(detectCommandSurfaces(root, ['package.json']).hasLint).toBe(false)
+  })
+
+  it('still recognizes the bare StandardJS linter', () => {
+    write('package.json', JSON.stringify({ scripts: { verify: 'standard', test: 'jest' } }))
+    expect(detectCommandSurfaces(root, ['package.json']).hasLint).toBe(true)
+  })
+
+  it('does not invent lint/type-check surfaces for a plain test-only package', () => {
+    write('package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(false)
+    expect(evidence.hasTypeCheck).toBe(false)
+  })
+
+  it('detects a .NET ecosystem from a solution or project file', () => {
+    const evidence = detectCommandSurfaces(root, ['src/App.sln', 'src/App/App.csproj', 'src/App/Program.cs'])
+    expect(evidence.ecosystems).toContain('dotnet')
+    expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasLint: true, hasTypeCheck: true })
+  })
+
+  it('detects an autotools ecosystem and reads `make check` from Makefile.am', () => {
+    write('configure.ac', 'AC_INIT([demo], [1.0])\n')
+    write('Makefile.am', 'bin_PROGRAMS = demo\nTESTS = run_tests\ncheck_PROGRAMS = run_tests\n')
+    const evidence = detectCommandSurfaces(root, ['configure.ac', 'Makefile.am'])
+    expect(evidence.ecosystems).toContain('autotools')
+    expect(evidence.hasBuild).toBe(true)
+    expect(evidence.hasTest).toBe(true)
+  })
+
+  it('treats autotools without a declared test suite or tests dir as build-only', () => {
+    write('configure.ac', 'AC_INIT([demo], [1.0])\n')
+    write('Makefile.am', 'bin_PROGRAMS = demo\n')
+    const evidence = detectCommandSurfaces(root, ['configure.ac', 'Makefile.am'])
+    expect(evidence.ecosystems).toContain('autotools')
+    expect(evidence.hasBuild).toBe(true)
+    expect(evidence.hasTest).toBe(false)
+  })
+
+  it('recognizes a Python project that ships only requirements.txt', () => {
+    const evidence = detectCommandSurfaces(root, ['requirements.txt', 'src/app.py', 'tests/test_app.py'])
+    expect(evidence.ecosystems).toContain('python')
+    // The tests/ directory still provides the test surface.
+    expect(evidence.hasTest).toBe(true)
+  })
+
+  it('recognizes nested/suffixed requirements files as a Python signal', () => {
+    const evidence = detectCommandSurfaces(root, ['requirements-dev.txt', 'app/main.py'])
+    expect(evidence.ecosystems).toContain('python')
+  })
+
   it('parses Makefile target aliases (all/compile, check, fmt/format, types)', () => {
     write('Makefile', ['all:\n\tcc -o app main.c', 'check:\n\t./t.sh', 'fmt:\n\tclang-format', 'types:\n\tcc -fsyntax-only'].join('\n'))
     const evidence = detectCommandSurfaces(root, ['Makefile'])

@@ -75,6 +75,75 @@ describe('local readiness', () => {
     expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
   })
 
+  test('classifies test files across ecosystems by naming convention', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    // Test files that live outside a tests/ directory and must be recognized by
+    // their language-specific naming convention, not miscounted as source.
+    writeRepoFile(root, 'command.go', 'package cmd\n')
+    writeRepoFile(root, 'command_test.go', 'package cmd\n')
+    writeRepoFile(root, 'app.py', 'x = 1\n')
+    writeRepoFile(root, 'test_app.py', 'def test_x():\n    assert True\n')
+    writeRepoFile(root, 'service_test.py', 'def test_y():\n    assert True\n')
+    writeRepoFile(root, 'Widget.java', 'class Widget {}\n')
+    writeRepoFile(root, 'WidgetTest.java', 'class WidgetTest {}\n')
+    writeRepoFile(root, 'parser_spec.rb', "describe 'parser'\n")
+    writeRepoFile(root, 'AppTests.swift', 'import XCTest\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    const byPath = new Map(report.files.map(file => [file.path, file]))
+    for (const testPath of [
+      'command_test.go',
+      'test_app.py',
+      'service_test.py',
+      'WidgetTest.java',
+      'parser_spec.rb',
+      'AppTests.swift',
+    ]) {
+      expect(byPath.get(testPath)?.test).toBe(true)
+      expect(byPath.get(testPath)?.source).toBe(false)
+    }
+    // Production files alongside the tests stay classified as source.
+    expect(byPath.get('command.go')?.source).toBe(true)
+    expect(byPath.get('app.py')?.source).toBe(true)
+    expect(byPath.get('Widget.java')?.source).toBe(true)
+    expect(report.summary.testFiles).toBe(6)
+  })
+
+  test('flags a missing root README even when a nested README exists', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'docs/README.md', '# Subpackage docs\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.findings.map(finding => finding.id)).toContain('docs.readme.missing')
+    // The nested README is still inventoried for reporters.
+    expect(report.docs.readme).toContain('docs/README.md')
+  })
+
+  test('accepts a root README and does not flag it as missing', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Root\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.findings.map(finding => finding.id)).not.toContain('docs.readme.missing')
+  })
+
+  test('rejects a scan target that does not exist', () => {
+    expect(() => scanLocalReadiness(path.join(tmpdir(), 'agentready-missing-xyz-404'))).toThrow(/does not exist/)
+  })
+
+  test('rejects a scan target that is a file rather than a directory', () => {
+    root = createTempRepo()
+    const filePath = path.join(root, 'README.md')
+    writeFileSync(filePath, '# Demo\n')
+    expect(() => scanLocalReadiness(filePath)).toThrow(/not a directory/)
+  })
+
   test('reports missing validation, docs, and instruction surfaces', () => {
     root = createTempRepo()
     writeRepoFile(root, 'src/index.ts', 'export const value = 1\n')

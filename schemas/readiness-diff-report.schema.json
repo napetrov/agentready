@@ -129,7 +129,9 @@
                   "bazel",
                   "go",
                   "rust",
-                  "python"
+                  "python",
+                  "dotnet",
+                  "autotools"
                 ]
               }
             },
@@ -636,7 +638,9 @@
                   "bazel",
                   "go",
                   "rust",
-                  "python"
+                  "python",
+                  "dotnet",
+                  "autotools"
                 ]
               }
             },

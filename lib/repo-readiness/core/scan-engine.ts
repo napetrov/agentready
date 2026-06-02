@@ -1,3 +1,4 @@
+import { statSync } from 'fs'
 import path from 'path'
 import { buildFindings } from '../checks/built-in'
 import { detectCapabilitySurfaces } from '../detectors/capability-surfaces'
@@ -26,6 +27,18 @@ import { uniqueSorted } from './util'
 
 export function scanLocalReadiness(root: string, options: ScanOptions = {}): LocalReadinessReport {
   const absoluteRoot = path.resolve(root)
+  // Fail loudly on an invalid target. Without this guard, fast-glob silently
+  // yields no files for a missing path or a regular file, producing a phantom
+  // "empty repository" report instead of an error.
+  let stat
+  try {
+    stat = statSync(absoluteRoot)
+  } catch {
+    throw new Error(`AgentReady: cannot scan "${root}": path does not exist`)
+  }
+  if (!stat.isDirectory()) {
+    throw new Error(`AgentReady: cannot scan "${root}": not a directory`)
+  }
   const config = loadConfig(absoluteRoot, options)
   const files = walkFiles(absoluteRoot, config, { respectGitignore: options.respectGitignore })
   const filePaths = files.map(file => file.path)

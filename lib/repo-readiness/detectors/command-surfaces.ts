@@ -29,6 +29,72 @@ const readJson = (root: string, repoPath: string): unknown | undefined => {
 
 const hasAnyScript = (scripts: string[], names: string[]): boolean => names.some(name => scripts.includes(name))
 
+// Linters/formatters that, when invoked anywhere in a package script body,
+// expose a lint surface — even when the script is named `test` (e.g.
+// `"test": "xo && ava"`) or `check:lint` rather than `lint`.
+const LINT_COMMAND_PATTERNS: RegExp[] = [
+  /\beslint\b/,
+  /\bprettier\b/,
+  // Bare-word tool names exclude a trailing hyphen so a hyphenated release/util
+  // command (e.g. `standard-version`, which is not the StandardJS linter, or
+  // `xo-`/`rome-` prefixed tools) is not misread as running the linter.
+  /\bxo\b(?!-)/,
+  /\bbiome\b(?!-)/,
+  /\bstandard\b(?!-)/,
+  /\btslint\b(?!-)/,
+  /\boxlint\b(?!-)/,
+  /\brome\b(?!-)/,
+]
+
+// Dedicated type-checkers invoked from a script body. A bare `tsc` is treated
+// as a *build* (it emits), not a type-check surface — only `tsc --noEmit` (and
+// purpose-built checkers) signal a check-only command, matching the original
+// semantics where `"build": "tsc"` did not count as a type-check.
+const TYPECHECK_COMMAND_PATTERNS: RegExp[] = [
+  /\btsc\b[^\n]*?--noemit\b/i,
+  /\btsd\b/,
+  /\bvue-tsc\b/,
+  /\bsvelte-check\b/,
+  /\battw\b/,
+]
+
+// Script names that signal a lint/type-check surface even when the body
+// delegates to a shell script we cannot inspect (e.g. `"lint": "./lint.sh"`).
+const LINT_NAME_PATTERN = /(^|[:/_-])lint(s)?([:/_-]|$)/i
+const TYPECHECK_NAME_PATTERN = /(^|[:/_-])(type-?check|check[:_-]?types?|typings?)([:/_-]|$)/i
+
+// Package-manager install invocations. A tool named only as an install argument
+// (`npm install eslint`, `pnpm add -D tsd`) is being installed, not run, so its
+// arguments must not be read as exposing a lint/type-check surface.
+const INSTALL_COMMAND_PATTERNS: RegExp[] = [
+  /\bnpm (ci|install|i)\b/,
+  /\byarn (install|add)\b/,
+  /\bpnpm (install|i|add)\b/,
+  /\bbun (install|i|add)\b/,
+]
+
+// Mirrors the CI classifier's separators so each invocation in an aggregate
+// script (`eslint . && tsc --noEmit`) is judged on its own.
+const COMMAND_SEPARATORS = /&&|\|\||[;\n]/
+
+const matchesAny = (text: string, patterns: RegExp[]): boolean => patterns.some(pattern => pattern.test(text))
+
+// Returns the runnable command invocations across all script bodies, dropping
+// install invocations so their package-name arguments are never misread as
+// having run a linter/type-checker.
+const runnableInvocations = (scriptBodies: string[]): string[] => {
+  const invocations: string[] = []
+  for (const body of scriptBodies) {
+    for (const segment of body.split(COMMAND_SEPARATORS)) {
+      const text = segment.trim()
+      if (text.length > 0 && !matchesAny(text, INSTALL_COMMAND_PATTERNS)) {
+        invocations.push(text)
+      }
+    }
+  }
+  return invocations
+}
+
 const has = (filePaths: Set<string>, candidate: string): boolean => filePaths.has(candidate)
 
 interface EcosystemSignals {
@@ -52,8 +118,16 @@ const detectNode = (root: string, filePaths: Set<string>): { signals: EcosystemS
     return undefined
   }
 
-  const packageJson = readJson(root, 'package.json') as { scripts?: Record<string, string> } | undefined
-  const scripts = Object.keys(packageJson?.scripts ?? {}).sort()
+  const scriptMap = packageJsonScripts(readJson(root, 'package.json'))
+  const scripts = Object.keys(scriptMap).sort()
+  // Script bodies are inspected per-invocation (not just names) so a
+  // linter/type-checker run inside an aggregate script —
+  // `"test": "xo && tsc --noEmit && ava"` — or under a non-canonical name like
+  // `check:lint` is recognized, while a tool named only as an *install argument*
+  // (`"setup": "npm install eslint"`) is not misread as a runnable surface.
+  const invocations = runnableInvocations(Object.values(scriptMap))
+  const bodyHasLint = invocations.some(invocation => matchesAny(invocation, LINT_COMMAND_PATTERNS))
+  const bodyHasTypeCheck = invocations.some(invocation => matchesAny(invocation, TYPECHECK_COMMAND_PATTERNS))
 
   return {
     scripts,
@@ -61,10 +135,29 @@ const detectNode = (root: string, filePaths: Set<string>): { signals: EcosystemS
       ecosystem: 'node',
       hasBuild: hasAnyScript(scripts, ['build']),
       hasTest: hasAnyScript(scripts, ['test', 'test:unit', 'test:ci']),
-      hasLint: hasAnyScript(scripts, ['lint']),
-      hasTypeCheck: hasAnyScript(scripts, ['type-check', 'typecheck', 'check:types']),
+      hasLint: scripts.some(name => LINT_NAME_PATTERN.test(name)) || bodyHasLint,
+      hasTypeCheck: scripts.some(name => TYPECHECK_NAME_PATTERN.test(name)) || bodyHasTypeCheck,
     },
   }
+}
+
+// Safely extracts the `scripts` map from a parsed package.json, tolerating
+// non-object/`null` values so a malformed manifest cannot crash the scan.
+const packageJsonScripts = (packageJson: unknown): Record<string, string> => {
+  if (typeof packageJson !== 'object' || packageJson === null) {
+    return {}
+  }
+  const scripts = (packageJson as { scripts?: unknown }).scripts
+  if (typeof scripts !== 'object' || scripts === null) {
+    return {}
+  }
+  const result: Record<string, string> = {}
+  for (const [name, body] of Object.entries(scripts as Record<string, unknown>)) {
+    if (typeof body === 'string') {
+      result[name] = body
+    }
+  }
+  return result
 }
 
 const makefileNames = ['Makefile', 'makefile', 'GNUmakefile']
@@ -167,7 +260,64 @@ const detectRust = (filePaths: Set<string>): EcosystemSignals | undefined => {
   }
 }
 
-const pythonManifests = ['pyproject.toml', 'setup.py', 'setup.cfg']
+// The .NET SDK ships `dotnet build`/`dotnet test`/`dotnet format`, and the C#/F#
+// compiler type-checks, so a solution or project file implies these commands.
+const detectDotnet = (filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
+  const hasProject =
+    allPaths.some(filePath => /\.(sln|slnx|csproj|fsproj|vbproj)$/i.test(filePath))
+    || has(filePaths, 'global.json')
+  if (!hasProject) {
+    return undefined
+  }
+
+  return {
+    ecosystem: 'dotnet',
+    hasBuild: true,
+    hasTest: true,
+    hasLint: true,
+    hasTypeCheck: true,
+  }
+}
+
+// Autotools projects build with `./configure && make` and conventionally test
+// with `make check`. `Makefile` itself is generated by `configure`, so we key on
+// the committed `configure.ac`/`configure.in`/`Makefile.am` sources instead.
+const detectAutotools = (root: string, filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
+  const hasAutotools =
+    has(filePaths, 'configure.ac')
+    || has(filePaths, 'configure.in')
+    || has(filePaths, 'autogen.sh')
+    || allPaths.some(filePath => /(^|\/)Makefile\.am$/.test(filePath))
+  if (!hasAutotools) {
+    return undefined
+  }
+
+  // Automake declares the test suite via `TESTS`/`check_PROGRAMS`/`check_SCRIPTS`
+  // in a `Makefile.am`. Read the root one (the common case) to decide whether a
+  // `make check` actually runs tests, falling back to a conventional tests/ dir.
+  const rootMakefileAm = readText(root, 'Makefile.am') ?? ''
+  const declaresTests = /\b(TESTS|check_PROGRAMS|check_SCRIPTS|check_LTLIBRARIES)\b/.test(rootMakefileAm)
+  const hasTestDir = allPaths.some(filePath => /(^|\/)(tests?|unit|unittests?)\//i.test(filePath))
+
+  return {
+    ecosystem: 'autotools',
+    hasBuild: true,
+    hasTest: declaresTests || hasTestDir,
+    hasLint: false,
+    hasTypeCheck: false,
+  }
+}
+
+const pythonManifests = ['pyproject.toml', 'setup.py', 'setup.cfg', 'Pipfile']
+
+// A bare `requirements.txt` (or a `requirements/` directory of pinned files) is a
+// strong Python signal even without a packaging manifest — common in research and
+// application repos. Recognized so such projects are assessed rather than left
+// ecosystem-less (and silently exempt from the test/lint expectations).
+const hasRequirementsFile = (filePaths: Set<string>, allPaths: string[]): boolean =>
+  has(filePaths, 'requirements.txt')
+  || allPaths.some(filePath => /(^|\/)requirements(-[^/]+)?\.txt$/i.test(filePath))
+  || allPaths.some(filePath => /(^|\/)requirements\/[^/]+\.txt$/i.test(filePath))
 
 const parseConfigSections = (content: string): Set<string> => {
   const sections = new Set<string>()
@@ -188,7 +338,7 @@ const hasSectionPrefix = (sections: Set<string>, ...prefixes: string[]): boolean
 
 const detectPython = (root: string, filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
   const manifest = pythonManifests.find(name => has(filePaths, name))
-  if (!manifest) {
+  if (!manifest && !hasRequirementsFile(filePaths, allPaths)) {
     return undefined
   }
 
@@ -223,8 +373,8 @@ const detectPython = (root: string, filePaths: Set<string>, allPaths: string[]):
 
 /**
  * Detects verification command surfaces across every recognized ecosystem
- * (Node, Make, CMake, Bazel, Go, Rust, Python) and aggregates their capabilities so the
- * checks layer is no longer Node-only.
+ * (Node, Make, CMake, Bazel, Go, Rust, Python, .NET, Autotools) and aggregates
+ * their capabilities so the checks layer is no longer Node-only.
  */
 export const detectCommandSurfaces = (root: string, filePaths: string[]): CommandEvidence => {
   const filePathSet = new Set(filePaths)
@@ -238,9 +388,11 @@ export const detectCommandSurfaces = (root: string, filePaths: string[]): Comman
     detectGo(filePathSet),
     detectRust(filePathSet),
     detectPython(root, filePathSet, filePaths),
+    detectDotnet(filePathSet, filePaths),
+    detectAutotools(root, filePathSet, filePaths),
   ].filter((signal): signal is EcosystemSignals => signal !== undefined)
 
-  const ecosystemOrder: CommandEcosystem[] = ['node', 'make', 'cmake', 'bazel', 'go', 'rust', 'python']
+  const ecosystemOrder: CommandEcosystem[] = ['node', 'make', 'cmake', 'bazel', 'go', 'rust', 'python', 'dotnet', 'autotools']
   const ecosystems = ecosystemOrder.filter(name => signals.some(signal => signal.ecosystem === name))
 
   return {

@@ -224,6 +224,129 @@ describe('CI command-coverage checks', () => {
     expect(report.findings.filter(finding => finding.id.startsWith('ci.') && finding.id.endsWith('.not-run'))).toEqual([])
   })
 
+  it('resolves an `npm test` alias to the lint/type-check it runs', () => {
+    // The test script bundles lint + type-check + test (got-style). A CI step of
+    // `npm test` therefore covers all three, so no ci.*.not-run should fire even
+    // though the workflow never names lint/type-check/test directly.
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { test: 'xo && tsc --noEmit && ava' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  verify:\n    steps:\n      - run: npm install\n      - run: npm test\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    expect(report.ci.hasLint).toBe(true)
+    expect(report.ci.hasTypeCheck).toBe(true)
+    expect(report.ci.hasTest).toBe(true)
+    expect(ids).not.toContain('ci.lint.not-run')
+    expect(ids).not.toContain('ci.typecheck.not-run')
+  })
+
+  it('still flags ci.typecheck.not-run when CI only builds (bare tsc) but a dedicated type-check exists', () => {
+    // Regression: alias expansion must not let a build script's bare `tsc`
+    // (which emits, i.e. builds) be read as CI type-check coverage and suppress
+    // ci.typecheck.not-run when the dedicated `tsc --noEmit` command never runs.
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(path.join(root, 'index.ts'), 'export const x: number = 1\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { build: 'tsc', 'type-check': 'tsc --noEmit', test: 'jest', lint: 'eslint .' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  build:\n    steps:\n      - run: npm ci\n      - run: npm run build\n      - run: npm test\n      - run: npm run lint\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.commands.hasTypeCheck).toBe(true)
+    expect(report.ci.hasTypeCheck).toBe(false)
+    // The bare `tsc` build is still recognized as build coverage.
+    expect(report.ci.hasBuild).toBe(true)
+    expect(report.findings.map(finding => finding.id)).toContain('ci.typecheck.not-run')
+  })
+
+  it('does not expand root scripts for a step that runs in a subdirectory', () => {
+    // Monorepo: the root `test` bundles lint+type-check+test, but a job runs
+    // `npm test` in packages/api (resolving to that package's script, which we
+    // do not read). The root script body must not be attributed to that step, so
+    // ci.lint.not-run / ci.typecheck.not-run still fire.
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(path.join(root, 'index.ts'), 'export const x: number = 1\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { test: 'eslint . && tsc --noEmit && jest', lint: 'eslint .', 'type-check': 'tsc --noEmit' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  api:\n    defaults:\n      run:\n        working-directory: packages/api\n    steps:\n      - run: npm ci\n      - run: npm test\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    // The step still counts as test coverage by name, but not lint/type-check.
+    expect(report.ci.hasTest).toBe(true)
+    expect(report.ci.hasLint).toBe(false)
+    expect(report.ci.hasTypeCheck).toBe(false)
+    const ids = report.findings.map(finding => finding.id)
+    expect(ids).toContain('ci.lint.not-run')
+    expect(ids).toContain('ci.typecheck.not-run')
+  })
+
+  it('still expands aliases for a step-level working-directory of "."', () => {
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { test: 'xo && ava' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  verify:\n    steps:\n      - run: npm ci\n      - run: npm test\n        working-directory: .\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.ci.hasLint).toBe(true)
+  })
+
+  it('resolves nested `npm run <script>` aliases without looping on cycles', () => {
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm run ci.\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      // `ci` → `verify` → `lint`; `verify` also references itself to exercise the
+      // cycle guard.
+      JSON.stringify({
+        scripts: {
+          lint: 'eslint .',
+          test: 'jest',
+          verify: 'npm run lint && npm run verify',
+          ci: 'npm run verify && npm test',
+        },
+      }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  verify:\n    steps:\n      - run: npm ci\n      - run: npm run ci\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.ci.hasLint).toBe(true)
+    expect(report.ci.hasTest).toBe(true)
+    expect(report.findings.map(finding => finding.id)).not.toContain('ci.lint.not-run')
+  })
+
   it('does not falsely flag a Go repo whose CI runs the toolchain commands', () => {
     // detectGo marks lint (go vet) and type-check (compiler) as available; a
     // standard Go CI of `go test && go vet` must satisfy both rather than emit

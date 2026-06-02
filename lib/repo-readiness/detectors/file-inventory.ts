@@ -82,8 +82,31 @@ const generatedPathPatterns = [
   /(^|\/)vendor\//,
 ]
 
-const testPathPattern = /(^|\/)(__tests__|tests?|spec)\//i
-const testFilePattern = /\.(test|spec)\.[cm]?[jt]sx?$/i
+const testPathPattern = /(^|\/)(__tests__|tests?|spec|specs|testdata)\//i
+
+// Test-file naming conventions across ecosystems, matched on the basename so a
+// directory like `latest/` never counts. Without these, a Go `foo_test.go` or a
+// pytest `test_foo.py` living outside a `tests/` directory is misclassified as
+// source and the repository reports zero tests.
+const testFilePatterns: RegExp[] = [
+  // JS/TS: foo.test.ts, foo.spec.jsx, foo.test.mts
+  /\.(test|spec)\.[cm]?[jt]sx?$/i,
+  // Go: foo_test.go
+  /(^|\/)[^/]+_test\.go$/i,
+  // Python (pytest/unittest): test_foo.py or foo_test.py
+  /(^|\/)(test_[^/]+|[^/]+_test)\.py$/i,
+  // JVM / C#: FooTest.java, FooTests.kt, FooSpec.scala, FooTests.cs (case-sensitive
+  // suffix so a source file like `latest.java` is not caught).
+  /(^|\/)[A-Za-z0-9]+(Test|Tests|Spec|IT)\.(java|kt|kts|scala|cs)$/,
+  // Ruby / Elixir: foo_test.rb, foo_spec.rb, foo_test.exs
+  /(^|\/)[^/]+_(test|spec)\.(rb|exs?)$/i,
+  // C/C++ (gtest convention): foo_test.cc, foo_test.cpp
+  /(^|\/)[^/]+_test\.(cc|cpp|cxx|c)$/i,
+  // Swift (XCTest): FooTests.swift
+  /(^|\/)[^/]+Tests?\.swift$/,
+]
+
+const isTestFilePath = (repoPath: string): boolean => testFilePatterns.some(pattern => pattern.test(repoPath))
 
 const shouldIgnorePath = (repoPath: string, config: LocalReadinessConfig): boolean => (
   config.ignorePaths.some(pattern => pathMatchesPattern(repoPath, pattern))
@@ -116,7 +139,7 @@ const isSourcePath = (repoPath: string, extension: string): boolean => (
   sourceExtensions.has(extension)
   && !isGeneratedPath(repoPath)
   && !testPathPattern.test(repoPath)
-  && !testFilePattern.test(repoPath)
+  && !isTestFilePath(repoPath)
 )
 
 /**
@@ -300,7 +323,7 @@ export const walkFiles = (
       generated: isGeneratedPath(repoPath),
       minified: isMinifiedPath(repoPath),
       documentation: isDocumentationPath(repoPath, extension),
-      test: testPathPattern.test(repoPath) || testFilePattern.test(repoPath),
+      test: testPathPattern.test(repoPath) || isTestFilePath(repoPath),
       source: isSourcePath(repoPath, extension),
     })
   }
