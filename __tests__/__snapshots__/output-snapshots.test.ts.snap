@@ -29,6 +29,10 @@ exports[`augmented report snapshots summary and markdown with a folded insight: 
 |---|---|---|---|
 | quality | AGENTS.md | 80% | Instruction file is present but not actionable |
 
+## Suggested remediation
+
+- **analysis.instruction-quality:AGENTS.md** (\`AGENTS.md\`): Add the concrete validation commands and a brief orientation so an unfamiliar agent can set up, change, and verify.
+
 ## Score adjustments
 
 | Δ | Insight |
@@ -42,6 +46,7 @@ Deterministic score: 100   Augmented score: 96 (-4)
 Insights: 1 applied (provider: snap)
 
 - (quality, 80%) [AGENTS.md] Instruction file is present but not actionable: too terse Missing: where code lives.
+    → Add the concrete validation commands and a brief orientation so an unfamiliar agent can set up, change, and verify.
 
 Score adjustments:
   -4  analysis.instruction-quality:AGENTS.md"
@@ -555,6 +560,13 @@ exports[`scan output snapshots good-repo compact json 1`] = `
           {
             "id": "verify",
             "commandKinds": [
+              "install",
+              "lint",
+              "typecheck",
+              "test",
+              "build"
+            ],
+            "concreteKinds": [
               "install",
               "lint",
               "typecheck",

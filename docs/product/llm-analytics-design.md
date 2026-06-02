@@ -359,13 +359,41 @@ reviewable and shippable:
   and contradiction can use different models; analyzers declare their `task`).
   All new analyzers are host-delegating, so they work over MCP too. Remediation
   is carried as a field on existing insights rather than a separate analyzer for
-  now.
+  now (superseded by PR I).
 - **PR H — Evaluation harness.** ✅ `lib/analyze/evaluation.ts`: gold-set scoring
   (`scoreCase`), aggregation, precision/recall/F1 (`metricsFor`), and confidence
   `calibration` (mean stated confidence vs. observed accuracy per bucket). Pure,
   deterministic scoring math over (predicted insights, expected labels) so it is
   unit-tested without a model; the gold corpus and any live-model recording feed
   it via the record/replay harness from PR C.
+- **PR I — Remediation analyzer + dogfood wiring.** ✅ A dedicated
+  `remediationAnalyzer` (host-delegating, `task: 'remediation'`) turns each
+  finding's generic recommendation into repo-specific, actionable steps, emitting
+  `analysis.remediation:*` insights whose steps live in the `remediation` field.
+  It is advisory (no `scoreImpact`) and rejects hallucinated finding ids. The
+  augmented summary/markdown reporters now render the remediation text (a
+  "Suggested remediation" section). The dogfood harness gained an opt-in
+  `--analyze` flag that runs the layer over the cloned repositories **only when a
+  provider is configured in the environment** and writes `*.augmented.{json,md}`
+  alongside the deterministic reports — so the instruction-quality, triage, and
+  remediation analyzers are exercised as a real release story while the
+  deterministic scan path stays model-free.
+
+### The two-tier instruction-quality story (no core model dependency)
+
+Instruction quality is delivered in two tiers so the release story works offline
+and the core never depends on a model:
+
+- **Tier 1 (deterministic core).** The scanner reports instruction-surface
+  *presence* and structure — recognized ecosystems, scope/activation, size — and
+  flags `instructions.missing` / `instructions.local-private`. This is offline,
+  deterministic, and never calls a model.
+- **Tier 2 (opt-in LLM layer).** The `instruction-quality` analyzer judges
+  whether those surfaces are actually *actionable* (purpose, where code lives,
+  how to validate), and the `remediation` analyzer proposes repo-specific fixes.
+  Surfaced through `agentready analyze`, the Action's `analyze` input, the MCP
+  flow, and the dogfood `--analyze` flag — always behind an explicit
+  provider/opt-in, so absence changes nothing about the deterministic output.
 
 ## 13. Open questions
 
@@ -382,7 +410,7 @@ reviewable and shippable:
 
 ## Epic status
 
-All planned PRs (0, A–H) are implemented on the epic branch. Remaining
+All planned PRs (0, A–I) are implemented on the epic branch. Remaining
 follow-ups, tracked above: assembling and labeling the evaluation gold set,
 calibrating the provisional score weights against it, keyless-OIDC docs for
 cloud providers, and an optional apply-remediation mode.

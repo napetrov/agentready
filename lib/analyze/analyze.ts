@@ -5,6 +5,7 @@ import type { Analyzer } from './analyzers/types'
 import { instructionQualityAnalyzer } from './analyzers/instruction-quality'
 import { contradictionAnalyzer } from './analyzers/contradiction'
 import { falsePositiveAnalyzer } from './analyzers/false-positive'
+import { remediationAnalyzer } from './analyzers/remediation'
 import { type AnalyzeCache, nullCache } from './cache'
 import { type BudgetOptions, createBudgetTracker } from './budget'
 import { createRunner, type Runner } from './runner'
@@ -23,6 +24,7 @@ export const defaultAnalyzers: Analyzer[] = [
   instructionQualityAnalyzer,
   contradictionAnalyzer,
   falsePositiveAnalyzer,
+  remediationAnalyzer,
 ]
 
 export interface AnalyzeOptions {

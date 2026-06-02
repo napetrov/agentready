@@ -130,6 +130,8 @@
                   "go",
                   "rust",
                   "python",
+                  "gradle",
+                  "maven",
                   "dotnet",
                   "autotools"
                 ]
@@ -204,11 +206,25 @@
                               "build"
                             ]
                           }
+                        },
+                        "concreteKinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "install",
+                              "lint",
+                              "typecheck",
+                              "test",
+                              "build"
+                            ]
+                          }
                         }
                       },
                       "required": [
                         "id",
-                        "commandKinds"
+                        "commandKinds",
+                        "concreteKinds"
                       ],
                       "additionalProperties": false
                     }
@@ -639,6 +655,8 @@
                   "go",
                   "rust",
                   "python",
+                  "gradle",
+                  "maven",
                   "dotnet",
                   "autotools"
                 ]
@@ -713,11 +731,25 @@
                               "build"
                             ]
                           }
+                        },
+                        "concreteKinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "install",
+                              "lint",
+                              "typecheck",
+                              "test",
+                              "build"
+                            ]
+                          }
                         }
                       },
                       "required": [
                         "id",
-                        "commandKinds"
+                        "commandKinds",
+                        "concreteKinds"
                       ],
                       "additionalProperties": false
                     }

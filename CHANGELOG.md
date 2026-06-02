@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Action runtime migration: the first-party GitHub Action now declares `using: 'node24'` (was `node20`), ahead of GitHub retiring the Node 20 action runtime in 2026. CI runs on Node 24 too, so the bundled Action is exercised on its target runtime, and the code-scanning upload step is bumped to `github/codeql-action/upload-sarif` **v4** (pinned to the v4.36.1 commit SHA `87557b9c84dde89fdd9b10e88954ac2f4248e463`), which also runs on Node 24. The README workflow example and CI docs are updated to Node 24.
+- The package is published under the scoped name **`@napetrov/agentready`** (the unscoped `agentready` name is already taken on npm). The `agentready`/`agentready-mcp` command names are unchanged; only the package identity moves, so `npx @napetrov/agentready scan .` and `require('@napetrov/agentready')` are the published entry points. `publishConfig.access` is set to `public` so the scoped package publishes publicly. README, the pack smoke test, and the product docs are updated to match.
+
 ### Added
+- LLM analytics layer: a **remediation analyzer** (opt-in, `analysis.remediation:*`
+  insights) turns each deterministic finding's generic recommendation into
+  repo-specific, actionable steps using the detected stack and layout. It is
+  advisory — the steps are carried in the insight's `remediation` field and never
+  adjust the score — and rejects hallucinated finding ids. Added to the default
+  analyzer set and exported as `remediationAnalyzer`; the augmented summary and
+  markdown reporters now surface the remediation text (a "Suggested remediation"
+  section), powering a richer `explain`/`fix` experience. Like the rest of the
+  layer it is fail-open and host-delegating (works over the MCP flow), and the
+  deterministic core never depends on it.
+- Dogfood harness `--analyze` flag: `npm run agentready:dogfood -- --analyze`
+  runs the optional LLM layer over the cloned repositories **only when a provider
+  is configured in the environment** (`AGENTREADY_LLM_BASE_URL`/`OLLAMA_HOST`/
+  `OPENAI_API_KEY`), writing `*.augmented.{json,md}` alongside the deterministic
+  reports. The deterministic dogfood path is unchanged and model-free; this makes
+  the instruction-quality, false-positive-triage, and remediation analyzers a real
+  release story. The two-tier instruction-quality story (deterministic presence
+  /structure in core; semantic actionability judgment in the opt-in layer) is
+  documented in `docs/product/llm-analytics-design.md`.
 - .NET/C# and Autotools are now recognized command ecosystems, and a bare
   `requirements.txt` (or a `requirements/` directory / `requirements-*.txt`)
   counts as a Python project. Found scanning 100+ real repositories
@@ -27,6 +50,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with findings is updated to its resolved state once those findings clear,
   rather than lingering with stale content. The diff job summary/markdown now
   leads with a one-line ✅/⚠️ verdict so the status reads at a glance.
+- **Gradle** and **Maven** are now recognized command ecosystems. Gradle
+  (`build.gradle[.kts]`/`settings.gradle[.kts]`/`gradlew`) and Maven (`pom.xml`)
+  surface build + test always (the compiler type-checks as part of the build, so
+  no separate type-check command is claimed) and lint only when a known
+  static-analysis plugin is configured (checkstyle/pmd/spotbugs/spotless/ktlint/
+  detekt). The CI workflow parser learns the matching commands — `./gradlew
+  build`/`check`, `mvn`/`./mvnw package`/`verify`, and (for .NET) `dotnet
+  build`/`test`/`format` — so a JVM/.NET repo whose CI runs them is not falsely
+  flagged with `ci.*.not-run`. The `CommandEcosystem` schema/type and the
+  published JSON Schemas are updated accordingly.
+- Property/fuzz tests for the parsers (`__tests__/parser-fuzz.test.ts`): a seeded, dependency-free generator drives `classifyRunCommandKinds`/`classifyUsesCommandKinds`, the YAML workflow parser, and full `scanLocalReadiness` over malformed manifests, asserting the parsers are *total* (never throw) and shape-correct (valid, de-duplicated, canonically-ordered command kinds; clamped scores) on arbitrary and deliberately-broken input. Seeded so failures reproduce deterministically.
 - Dogfood release harness: `npm run agentready:dogfood -- --out <scratch-dir>`
   clones the configured real-repository set into a scratch directory and writes
   JSON/markdown reports there, keeping scan artifacts out of the tracked repo.
@@ -35,7 +69,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AgentReady now dogfoods its own GitHub Action in CI (`.github/workflows/ci.yml`): a `readiness` job runs the bundled Action (`uses: ./`) — diff mode with a sticky PR comment on pull requests, full scan on push — and uploads the SARIF report to the code-scanning dashboard (skipped for fork PRs where the token is read-only). The CodeQL upload action is pinned to a commit SHA.
 - CI command-coverage is now orchestrator-aware: the `ci` evidence carries an `orchestratorKinds` set so the `ci.*.not-run` checks stay silent, per command kind, when a workflow dispatches that command through a task runner the parser cannot decompose. General runners (`tox`, `nox`, `make`, `uv/poetry run`, `just`, `turbo`, `nx`, …) cover every kind; `pre-commit` covers only lint/type-check. Installing a runner (`pip install tox`) is distinguished from executing it, and install arguments are no longer misread as having run the tool — including arguments wrapped onto a continuation line (`pip install \` ⏎ `  pytest`), which are joined before the step is split into commands.
 - The `ci.test.not-run`, `ci.lint.not-run`, and `ci.typecheck.not-run` checks are now emitted at **info** severity (previously warnings), matching `ci.build.not-run`. Command-coverage inference is heuristic, so these surface a likely gap for a human to confirm and never gate the score.
-- `docs.architecture.missing` is **info** (was a warning) and recognizes architecture/design docs more broadly: `ARCHITECTURE`/`DESIGN`/`DEVELOPMENT`/`INTERNALS`/`HACKING` at the root, plus design/architecture/development docs under a `docs/` tree.
+- CI command-coverage `ci.*.not-run` checks are now gated on single-job confidence: when recognized verification commands are spread across more than one job (a multi-job pipeline or an OS/toolchain matrix that splits lint/test/build), a missing kind may run in another job through a marketplace action, matrix leg, or wrapper script the parser cannot classify — so the not-run findings are suppressed rather than risk a false positive (seen on repos like ripgrep/gin). They still fire when recognized verification commands are concentrated in a single job. Only jobs with a *concrete* verification kind count toward the spread: a dedicated dependency-install job (`npm ci`) does not, and a job that covers a kind only through an orchestrator does not either — tracked per job via a new `orchestratorKinds` field on each `ci.workflows[].jobs[]` entry (schemas updated), so a concrete `npm run lint` job still counts even when a separate `pre-commit/action` job globally covers lint.
+- CI command-coverage no longer counts a verification script *path* that is only read or manipulated, not executed. A segment led by a non-executing file utility (`chmod`, `cat`, `cp`, `mv`, `rm`, `ls`, …) is skipped, so `chmod +x test.sh` or `cat build.sh` no longer create false `test`/`build` coverage — only the actual execution (`./test.sh`, `bash run_test.sh`, Windows `call run_test.bat`) counts. Unrelated file names that merely contain `test`/`build` as a substring (e.g. `latest.sh`, `prebuild.sh`) were already excluded by the path-boundary anchors; this is now locked in by negative tests.
+- The low-precision `docs.architecture.missing` rule is replaced by a broader, higher-precision **`docs.developer.thin`** signal (info). The old rule fired on a non-trivial repo whenever a specific architecture/design doc was absent, tripping on most well-documented OSS projects. The new rule fires only when the *entire* developer-facing doc surface is thin — no `CONTRIBUTING`, no architecture/design/development notes (`ARCHITECTURE`/`DESIGN`/`DEVELOPMENT`/`INTERNALS`/`HACKING` at the root or `architecture`/`design`/`development`/`internals` docs under a `docs/` tree), and no populated `docs/` tree — so a project documented through any of those channels stays silent.
 - Lockfiles across ecosystems (`uv.lock`, `poetry.lock`, `Pipfile.lock`, `pdm.lock`, `Cargo.lock`, `go.sum`, `composer.lock`, `Gemfile.lock`, `gradle.lockfile`, `npm-shrinkwrap.json`, plus the existing npm/yarn/pnpm/bun lockfiles) are treated as generated, so a large committed lockfile no longer trips `files.large`. Found while assessing real repositories (fastapi's 1.1 MB `uv.lock`).
 - Semantic CI parsing: the CI detector (`detectors/ci-workflows.ts`) now parses each GitHub Actions workflow's steps with the `yaml` package — classifying `run:` commands (and a small map of known verification actions for `uses:`) into install/lint/type-check/test/build — instead of only listing workflow files. The `ci` evidence gains `workflows` (per-job detected command kinds) and aggregate `hasInstall`/`hasLint`/`hasTypeCheck`/`hasTest`/`hasBuild` flags (schemas and the public types are updated accordingly). New checks flag commands the repository exposes but CI never runs: `ci.test.not-run`, `ci.lint.not-run`, and `ci.typecheck.not-run` (warnings) and `ci.build.not-run` (info). To avoid false positives, these stay silent when the parse is low-confidence — a workflow exists but no command was recognized (e.g. CI runs entirely through composite/marketplace actions). Parsing is read-only and a malformed workflow degrades gracefully; workflow correctness is still delegated to actionlint/ShellCheck rather than reimplemented. The console and markdown reports gain a one-line "CI verification coverage" summary. The bundled Action now includes the `yaml` parser (~520kB → ~692kB).
 - GitHub Action pull-request comment: a new `pr-comment` input posts the markdown report as a single sticky pull-request comment, updating it in place on each run (matched via a hidden marker) instead of stacking new comments. It uses the workflow `github-token` (new `github-token` input, defaults to `${{ github.token }}`) and needs `permissions: pull-requests: write`. Fail-open — a missing permission, missing token, or non-pull-request run logs a notice/warning and never fails the action. The orchestration lives in `lib/action/pr-comment.ts` (GitHub-agnostic, with an injectable REST client) over the node20 global `fetch`, so the bundle stays free of `@actions/github`/`undici`.
@@ -58,6 +94,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- CI command-coverage spread gate now tracks each job's **concrete** verification
+  kinds separately, so a job that runs a command directly (e.g. `npm run lint`)
+  still counts toward the multi-job spread even when another step in the same job
+  is an opaque orchestrator (`pre-commit/action`, `tox`, `make ci`) that also
+  covers that kind. Previously such a job was discarded — treated as
+  orchestrator-only — which could revive a false `ci.*.not-run` finding on a
+  genuinely multi-job pipeline.
+- Gradle lint detection now recognizes every *applied* plugins-DSL form, not just
+  quoted `id("…tool…")`: a bare plugin accessor (`checkstyle`) and a version-catalog
+  alias (`alias(libs.plugins.spotless)`) inside a `plugins { … }` block now surface
+  the lint surface, while a static-analysis tool that appears only as a dependency
+  coordinate in `dependencies { … }` (e.g. `spotbugs-annotations`) still does not.
 - Test files in non-JS/TS ecosystems are now classified as tests instead of
   source. Go (`*_test.go`), Python (`test_*.py`/`*_test.py`), JVM/C#
   (`*Test`/`*Tests`/`*Spec`/`*IT`), Ruby/Elixir (`*_test`/`*_spec`), C/C++

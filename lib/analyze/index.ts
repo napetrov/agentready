@@ -70,6 +70,7 @@ export type { Analyzer, AnalyzerContext } from './analyzers/types'
 export { instructionQualityAnalyzer } from './analyzers/instruction-quality'
 export { contradictionAnalyzer } from './analyzers/contradiction'
 export { falsePositiveAnalyzer } from './analyzers/false-positive'
+export { remediationAnalyzer } from './analyzers/remediation'
 
 export { resolveProvider, singleProviderRouting, routingProviderIds } from './routing'
 export type { ProviderRouting } from './routing'

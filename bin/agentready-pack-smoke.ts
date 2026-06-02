@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Packs the published tarball, installs it into a throwaway project, and
 // verifies both consumption surfaces work against the real package metadata:
-//   1. the library import (`require('agentready')`) exposes the public API
+//   1. the library import (`require('@napetrov/agentready')`) exposes the public API
 //   2. the `agentready` bin runs and emits a valid scan report
 //
 // This guards the `main`/`types`/`exports` and `bin` entry points so the
@@ -69,7 +69,7 @@ try {
     [
       '-e',
       [
-        "const api = require('agentready');",
+        "const api = require('@napetrov/agentready');",
         "const expected = ['scanLocalReadiness','diffLocalReadiness','listFindingIds','validateLocalReadinessReportContract','formatScanMarkdown'];",
         'const missing = expected.filter(name => typeof api[name] !== "function");',
         'if (missing.length) { throw new Error("missing exports: " + missing.join(", ")); }',

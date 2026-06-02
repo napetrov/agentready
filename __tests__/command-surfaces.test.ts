@@ -247,7 +247,78 @@ describe('detectCommandSurfaces (units)', () => {
     write('CMakePresets.json', '{}\n')
     write('go.mod', 'module x\n')
     const evidence = detectCommandSurfaces(root, ['package.json', 'Makefile', 'CMakePresets.json', 'go.mod'])
-    // ecosystemOrder is node, make, cmake, bazel, go, rust, python.
+    // ecosystemOrder is node, make, cmake, bazel, go, rust, python, gradle, maven, dotnet, autotools.
     expect(evidence.ecosystems).toEqual(['node', 'make', 'cmake', 'go'])
+  })
+
+  it('recognizes Gradle (build/test always; type-check folded into build)', () => {
+    write('build.gradle.kts', 'plugins { kotlin("jvm") }\n')
+    write('gradlew', '#!/bin/sh\n')
+    const evidence = detectCommandSurfaces(root, ['build.gradle.kts', 'gradlew', 'settings.gradle.kts'])
+    expect(evidence.ecosystems).toEqual(['gradle'])
+    expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasTypeCheck: false })
+  })
+
+  it('surfaces Gradle lint only when a static-analysis plugin is configured', () => {
+    write('build.gradle', 'plugins { id "com.diffplug.spotless" }\n')
+    const withPlugin = detectCommandSurfaces(root, ['build.gradle'])
+    expect(withPlugin.hasLint).toBe(true)
+
+    rmSync(path.join(root, 'build.gradle'))
+    write('build.gradle', 'plugins { id "java" }\n')
+    const withoutPlugin = detectCommandSurfaces(root, ['build.gradle'])
+    expect(withoutPlugin.hasLint).toBe(false)
+  })
+
+  it('does not treat a Gradle dependency coordinate as a configured lint plugin', () => {
+    // A `spotbugs-annotations` dependency mentions "spotbugs" but configures no
+    // lint task, so it must not surface a Gradle lint command.
+    write('build.gradle.kts', 'dependencies {\n  compileOnly("com.github.spotbugs:spotbugs-annotations:4.8.3")\n}\n')
+    expect(detectCommandSurfaces(root, ['build.gradle.kts']).hasLint).toBe(false)
+  })
+
+  it('recognizes applied Gradle plugins via the bare accessor and version aliases', () => {
+    // Regression (Codex): the Kotlin/Groovy plugins-DSL has applied forms beyond
+    // `id("…tool…")` — a bare accessor (`checkstyle`) and a version-catalog alias
+    // (`alias(libs.plugins.spotless)`). Both configure a lint task, so both must
+    // surface lint; a `spotbugs` dependency in `dependencies {}` still must not.
+    write(
+      'build.gradle.kts',
+      [
+        'plugins {',
+        '    checkstyle',
+        '    alias(libs.plugins.spotless)',
+        '}',
+        'dependencies {',
+        '    testImplementation("com.github.spotbugs:spotbugs-annotations:4.8.3")',
+        '}',
+        '',
+      ].join('\n'),
+    )
+    expect(detectCommandSurfaces(root, ['build.gradle.kts']).hasLint).toBe(true)
+
+    rmSync(path.join(root, 'build.gradle.kts'))
+    // A bare accessor only counts inside the plugins block: a `detekt` substring
+    // that appears solely as a dependency coordinate must not surface lint.
+    write('build.gradle.kts', 'plugins {\n    java\n}\ndependencies {\n    implementation("io.gitlab.arturbosch.detekt:detekt-core:1.23.0")\n}\n')
+    expect(detectCommandSurfaces(root, ['build.gradle.kts']).hasLint).toBe(false)
+  })
+
+  it('recognizes a legacy `apply plugin:` Gradle lint configuration', () => {
+    write('build.gradle', "apply plugin: 'pmd'\n")
+    expect(detectCommandSurfaces(root, ['build.gradle']).hasLint).toBe(true)
+  })
+
+  it('recognizes Maven via pom.xml and detects checkstyle as lint', () => {
+    write('pom.xml', '<project><build><plugins><plugin><artifactId>maven-checkstyle-plugin</artifactId></plugin></plugins></build></project>\n')
+    const evidence = detectCommandSurfaces(root, ['pom.xml'])
+    expect(evidence.ecosystems).toEqual(['maven'])
+    expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasLint: true, hasTypeCheck: false })
+  })
+
+  it('does not treat a Maven dependency as a configured lint plugin', () => {
+    // `spotbugs-annotations` is a dependency, not the `spotbugs-maven-plugin`.
+    write('pom.xml', '<project><dependencies><dependency><artifactId>spotbugs-annotations</artifactId></dependency></dependencies></project>\n')
+    expect(detectCommandSurfaces(root, ['pom.xml']).hasLint).toBe(false)
   })
 })
