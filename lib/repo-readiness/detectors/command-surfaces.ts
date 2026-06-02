@@ -29,6 +29,39 @@ const readJson = (root: string, repoPath: string): unknown | undefined => {
 
 const hasAnyScript = (scripts: string[], names: string[]): boolean => names.some(name => scripts.includes(name))
 
+// Linters/formatters that, when invoked anywhere in a package script body,
+// expose a lint surface — even when the script is named `test` (e.g.
+// `"test": "xo && ava"`) or `check:lint` rather than `lint`.
+const LINT_COMMAND_PATTERNS: RegExp[] = [
+  /\beslint\b/,
+  /\bxo\b/,
+  /\bbiome\b/,
+  /\bprettier\b/,
+  /\bstandard\b/,
+  /\btslint\b/,
+  /\boxlint\b/,
+  /\brome\b/,
+]
+
+// Dedicated type-checkers invoked from a script body. A bare `tsc` is treated
+// as a *build* (it emits), not a type-check surface — only `tsc --noEmit` (and
+// purpose-built checkers) signal a check-only command, matching the original
+// semantics where `"build": "tsc"` did not count as a type-check.
+const TYPECHECK_COMMAND_PATTERNS: RegExp[] = [
+  /\btsc\b[^\n]*?--noemit\b/i,
+  /\btsd\b/,
+  /\bvue-tsc\b/,
+  /\bsvelte-check\b/,
+  /\battw\b/,
+]
+
+// Script names that signal a lint/type-check surface even when the body
+// delegates to a shell script we cannot inspect (e.g. `"lint": "./lint.sh"`).
+const LINT_NAME_PATTERN = /(^|[:/_-])lint(s)?([:/_-]|$)/i
+const TYPECHECK_NAME_PATTERN = /(^|[:/_-])(type-?check|check[:_-]?types?|typings?)([:/_-]|$)/i
+
+const matchesAny = (text: string, patterns: RegExp[]): boolean => patterns.some(pattern => pattern.test(text))
+
 const has = (filePaths: Set<string>, candidate: string): boolean => filePaths.has(candidate)
 
 interface EcosystemSignals {
@@ -52,8 +85,12 @@ const detectNode = (root: string, filePaths: Set<string>): { signals: EcosystemS
     return undefined
   }
 
-  const packageJson = readJson(root, 'package.json') as { scripts?: Record<string, string> } | undefined
-  const scripts = Object.keys(packageJson?.scripts ?? {}).sort()
+  const scriptMap = packageJsonScripts(readJson(root, 'package.json'))
+  const scripts = Object.keys(scriptMap).sort()
+  // Script bodies are inspected (not just names) so a linter/type-checker run
+  // inside an aggregate script — `"test": "xo && tsc --noEmit && ava"` — or under
+  // a non-canonical name like `check:lint` is still recognized.
+  const scriptBodies = Object.values(scriptMap).join('\n')
 
   return {
     scripts,
@@ -61,10 +98,30 @@ const detectNode = (root: string, filePaths: Set<string>): { signals: EcosystemS
       ecosystem: 'node',
       hasBuild: hasAnyScript(scripts, ['build']),
       hasTest: hasAnyScript(scripts, ['test', 'test:unit', 'test:ci']),
-      hasLint: hasAnyScript(scripts, ['lint']),
-      hasTypeCheck: hasAnyScript(scripts, ['type-check', 'typecheck', 'check:types']),
+      hasLint: scripts.some(name => LINT_NAME_PATTERN.test(name)) || matchesAny(scriptBodies, LINT_COMMAND_PATTERNS),
+      hasTypeCheck:
+        scripts.some(name => TYPECHECK_NAME_PATTERN.test(name)) || matchesAny(scriptBodies, TYPECHECK_COMMAND_PATTERNS),
     },
   }
+}
+
+// Safely extracts the `scripts` map from a parsed package.json, tolerating
+// non-object/`null` values so a malformed manifest cannot crash the scan.
+const packageJsonScripts = (packageJson: unknown): Record<string, string> => {
+  if (typeof packageJson !== 'object' || packageJson === null) {
+    return {}
+  }
+  const scripts = (packageJson as { scripts?: unknown }).scripts
+  if (typeof scripts !== 'object' || scripts === null) {
+    return {}
+  }
+  const result: Record<string, string> = {}
+  for (const [name, body] of Object.entries(scripts as Record<string, unknown>)) {
+    if (typeof body === 'string') {
+      result[name] = body
+    }
+  }
+  return result
 }
 
 const makefileNames = ['Makefile', 'makefile', 'GNUmakefile']

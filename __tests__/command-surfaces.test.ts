@@ -77,6 +77,41 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence.packageManager).toBe(manager)
   })
 
+  it('detects a linter invoked inside an aggregate test script', () => {
+    // got-style: the lint and type-check run inside `test`, not as `lint`/
+    // `type-check` scripts. Name-only detection misses them.
+    write('package.json', JSON.stringify({ scripts: { test: "xo && tsc --noEmit && ava", build: 'tsc' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(true)
+    expect(evidence.hasTypeCheck).toBe(true)
+  })
+
+  it('detects lint/type-check under non-canonical script names', () => {
+    // commander-style: `check:lint`/`check:type` rather than `lint`/`type-check`.
+    write('package.json', JSON.stringify({
+      scripts: { 'check:lint': 'eslint .', 'check:type': 'tsc -p tsconfig.json' },
+    }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(true)
+    expect(evidence.hasTypeCheck).toBe(true)
+  })
+
+  it('treats a bare `tsc` build as a build, not a dedicated type-check surface', () => {
+    // A bare `tsc` emits (a build); only `tsc --noEmit` / dedicated checkers are
+    // a check-only surface. This preserves the `ci.typecheck.not-run` semantics.
+    write('package.json', JSON.stringify({ scripts: { build: 'tsc', test: 'jest' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasBuild).toBe(true)
+    expect(evidence.hasTypeCheck).toBe(false)
+  })
+
+  it('does not invent lint/type-check surfaces for a plain test-only package', () => {
+    write('package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.hasLint).toBe(false)
+    expect(evidence.hasTypeCheck).toBe(false)
+  })
+
   it('parses Makefile target aliases (all/compile, check, fmt/format, types)', () => {
     write('Makefile', ['all:\n\tcc -o app main.c', 'check:\n\t./t.sh', 'fmt:\n\tclang-format', 'types:\n\tcc -fsyntax-only'].join('\n'))
     const evidence = detectCommandSurfaces(root, ['Makefile'])

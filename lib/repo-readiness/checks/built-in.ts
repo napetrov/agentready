@@ -53,7 +53,11 @@ export const buildFindings = (
   const isNode = report.commands.ecosystems.includes('node')
   const warningSeverity: ReadinessSeverity = config.errorOnWarnings ? 'error' : 'warning'
 
-  if (report.docs.readme.length === 0) {
+  // The agent entrypoint is the *root* README; a README nested under docs/ or a
+  // subpackage is still useful but does not satisfy the top-level "start here"
+  // surface. A root README has no path separator.
+  const hasRootReadme = report.docs.readme.some(readmePath => !readmePath.includes('/'))
+  if (!hasRootReadme) {
     findings.push({
       id: 'docs.readme.missing',
       title: 'Repository has no README',

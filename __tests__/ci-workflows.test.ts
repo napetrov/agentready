@@ -224,6 +224,59 @@ describe('CI command-coverage checks', () => {
     expect(report.findings.filter(finding => finding.id.startsWith('ci.') && finding.id.endsWith('.not-run'))).toEqual([])
   })
 
+  it('resolves an `npm test` alias to the lint/type-check it runs', () => {
+    // The test script bundles lint + type-check + test (got-style). A CI step of
+    // `npm test` therefore covers all three, so no ci.*.not-run should fire even
+    // though the workflow never names lint/type-check/test directly.
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ scripts: { test: 'xo && tsc --noEmit && ava' } }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  verify:\n    steps:\n      - run: npm install\n      - run: npm test\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    expect(report.ci.hasLint).toBe(true)
+    expect(report.ci.hasTypeCheck).toBe(true)
+    expect(report.ci.hasTest).toBe(true)
+    expect(ids).not.toContain('ci.lint.not-run')
+    expect(ids).not.toContain('ci.typecheck.not-run')
+  })
+
+  it('resolves nested `npm run <script>` aliases without looping on cycles', () => {
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm run ci.\n')
+    writeFileSync(
+      path.join(root, 'package.json'),
+      // `ci` → `verify` → `lint`; `verify` also references itself to exercise the
+      // cycle guard.
+      JSON.stringify({
+        scripts: {
+          lint: 'eslint .',
+          test: 'jest',
+          verify: 'npm run lint && npm run verify',
+          ci: 'npm run verify && npm test',
+        },
+      }),
+    )
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  verify:\n    steps:\n      - run: npm ci\n      - run: npm run ci\n',
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(report.ci.hasLint).toBe(true)
+    expect(report.ci.hasTest).toBe(true)
+    expect(report.findings.map(finding => finding.id)).not.toContain('ci.lint.not-run')
+  })
+
   it('does not falsely flag a Go repo whose CI runs the toolchain commands', () => {
     // detectGo marks lint (go vet) and type-check (compiler) as available; a
     // standard Go CI of `go test && go vet` must satisfy both rather than emit

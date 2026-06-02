@@ -39,6 +39,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- Test files in non-JS/TS ecosystems are now classified as tests instead of
+  source. Go (`*_test.go`), Python (`test_*.py`/`*_test.py`), JVM/C#
+  (`*Test`/`*Tests`/`*Spec`/`*IT`), Ruby/Elixir (`*_test`/`*_spec`), C/C++
+  gtest (`*_test.cc`), and Swift (`*Tests.swift`) conventions are recognized
+  even when the file lives outside a `tests/` directory. Found dogfooding
+  cobra, which reported 17 test files as `0 tests` and inflated its source count.
+- Node lint/type-check detection now inspects script **bodies** and
+  non-canonical script **names**, not just a script literally named
+  `lint`/`type-check`. A linter or type-checker run inside an aggregate script
+  (e.g. `"test": "xo && tsc --noEmit && ava"`) or under a name like
+  `check:lint`/`check:type` is recognized, eliminating false
+  `commands.lint.missing` / `commands.typecheck.missing` findings (found on
+  `sindresorhus/got` and `tj/commander.js`). A bare `"build": "tsc"` is still
+  treated as a build, not a dedicated type-check surface.
+- CI command-coverage now resolves `npm run <script>` / `npm test` aliases
+  against `package.json` (recursively, with a cycle guard) before classifying a
+  workflow step, so a CI step of `npm test` that runs lint + type-check + test
+  no longer produces false `ci.lint.not-run` / `ci.typecheck.not-run` findings.
+  The CI lint matcher also recognizes `xo`/`standard`/`tslint`/`oxlint`,
+  matching the command-surface detector.
+- `scan`/`analyze` now fail loudly when the target path does not exist or is a
+  regular file, instead of silently producing a phantom "empty repository"
+  report (previously a missing path scored ~68/100 with exit 0 under
+  `--fail-on off`).
+- The `docs.readme.missing` check now requires a **root** README. A README
+  nested under `docs/` or a subpackage no longer suppresses the missing-README
+  error, since the root README is the agent's primary entrypoint (the nested
+  file is still inventoried for reporters).
 - `prepublishOnly` and other publish/pack-only npm lifecycle scripts are no
   longer reported as install-time safety hooks; `prepublishOnly` runs before
   publishing, not during ordinary dependency installation.

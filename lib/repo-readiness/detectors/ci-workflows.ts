@@ -26,6 +26,9 @@ const RUN_PATTERNS: Record<CiCommandKind, RegExp[]> = {
   lint: [
     /\beslint\b/,
     /\b(prettier|biome)\b/,
+    // JS linters/style tools whose package-script surface the command detector
+    // also recognizes, so CI running them satisfies lint coverage.
+    /\b(xo|standard|tslint|oxlint|rome)\b/,
     /\bruff\b/,
     /\bflake8\b/,
     /\bpylint\b/,
@@ -276,6 +279,81 @@ const readText = (root: string, repoPath: string): string | undefined => {
   }
 }
 
+/**
+ * Reads the `scripts` map from the repository's root `package.json`, tolerating a
+ * missing or malformed manifest. CI steps frequently invoke verification work
+ * indirectly (`npm test` → `xo && tsc --noEmit && ava`), so resolving these
+ * aliases is what lets CI coverage detection see the underlying commands.
+ */
+const readPackageScripts = (root: string): Record<string, string> => {
+  const text = readText(root, 'package.json')
+  if (text === undefined) {
+    return {}
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return {}
+  }
+  if (typeof parsed !== 'object' || parsed === null) {
+    return {}
+  }
+  const scripts = (parsed as { scripts?: unknown }).scripts
+  if (typeof scripts !== 'object' || scripts === null) {
+    return {}
+  }
+  const result: Record<string, string> = {}
+  for (const [name, body] of Object.entries(scripts as Record<string, unknown>)) {
+    if (typeof body === 'string') {
+      result[name] = body
+    }
+  }
+  return result
+}
+
+// Captures the script a package-manager step invokes: `npm run <name>` (and the
+// `pnpm`/`yarn`/`bun` equivalents) plus the `test`/`start` lifecycle shorthands.
+// `npm install`/`npm ci` are intentionally not matched — they are not scripts.
+const SCRIPT_RUN_REF = /\b(?:npm|pnpm|yarn|bun)\s+run\s+(?:-s\s+|--silent\s+)?([a-zA-Z0-9:._-]+)/g
+const SCRIPT_LIFECYCLE_REF = /\b(?:npm|pnpm|yarn|bun)\s+(test|start)\b/g
+
+/**
+ * Appends the bodies of any package scripts a `run:` step invokes, recursively,
+ * so the classifier sees the real commands behind `npm run <script>`/`npm test`.
+ * A `seen` set bounds the recursion against cyclic or self-referential scripts.
+ * Bodies are appended (not substituted) because the classifier splits on command
+ * separators and unions the recognized kinds — it only needs the commands to be
+ * present somewhere in the text.
+ */
+const expandScriptAliases = (run: string, scripts: Record<string, string>, seen: Set<string> = new Set()): string => {
+  if (Object.keys(scripts).length === 0) {
+    return run
+  }
+
+  const refs = new Set<string>()
+  for (const match of run.matchAll(SCRIPT_RUN_REF)) {
+    refs.add(match[1])
+  }
+  for (const match of run.matchAll(SCRIPT_LIFECYCLE_REF)) {
+    refs.add(match[1])
+  }
+
+  let expanded = run
+  for (const ref of refs) {
+    if (seen.has(ref)) {
+      continue
+    }
+    const body = scripts[ref]
+    if (body === undefined) {
+      continue
+    }
+    seen.add(ref)
+    expanded += `\n${expandScriptAliases(body, scripts, seen)}`
+  }
+  return expanded
+}
+
 interface RawStep {
   name?: unknown
   uses?: unknown
@@ -293,15 +371,22 @@ interface RawWorkflow {
 
 const asString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined)
 
-const parseJob = (id: string, rawJob: unknown): { job: CiWorkflowJob; orchestratorKinds: Set<CiCommandKind> } => {
+const parseJob = (
+  id: string,
+  rawJob: unknown,
+  scripts: Record<string, string>,
+): { job: CiWorkflowJob; orchestratorKinds: Set<CiCommandKind> } => {
   const job = (rawJob ?? {}) as RawJob
   const steps = Array.isArray(job.steps) ? (job.steps as RawStep[]) : []
   const kinds = new Set<CiCommandKind>()
   const orchestratorKinds = new Set<CiCommandKind>()
 
   for (const step of steps) {
-    const run = asString(step?.run)
-    if (run) {
+    const rawRun = asString(step?.run)
+    if (rawRun) {
+      // Resolve `npm run <script>` / `npm test` aliases to their bodies so the
+      // verification commands they wrap are visible to the classifier.
+      const run = expandScriptAliases(rawRun, scripts)
       for (const kind of classifyRunCommandKinds(run)) {
         kinds.add(kind)
       }
@@ -326,6 +411,7 @@ const parseJob = (id: string, rawJob: unknown): { job: CiWorkflowJob; orchestrat
 const parseWorkflow = (
   root: string,
   file: string,
+  scripts: Record<string, string>,
 ): { workflow: CiWorkflow; orchestratorKinds: Set<CiCommandKind> } | undefined => {
   const text = readText(root, file)
   if (text === undefined) {
@@ -346,7 +432,7 @@ const parseWorkflow = (
   const parsedJobs =
     rawJobs && typeof rawJobs === 'object' && !Array.isArray(rawJobs)
       ? Object.entries(rawJobs as Record<string, unknown>)
-          .map(([id, rawJob]) => parseJob(id, rawJob))
+          .map(([id, rawJob]) => parseJob(id, rawJob, scripts))
           .sort((a, b) => a.job.id.localeCompare(b.job.id))
       : []
 
@@ -374,8 +460,9 @@ export const detectCiWorkflows = (root: string, filePaths: string[]): CiEvidence
     .filter(filePath => /^\.github\/workflows\/.+\.ya?ml$/i.test(filePath))
     .sort()
 
+  const scripts = readPackageScripts(root)
   const parsed = workflowFiles
-    .map(file => parseWorkflow(root, file))
+    .map(file => parseWorkflow(root, file, scripts))
     .filter((entry): entry is { workflow: CiWorkflow; orchestratorKinds: Set<CiCommandKind> } => entry !== undefined)
 
   const workflows = parsed.map(entry => entry.workflow)
