@@ -40,6 +40,26 @@ export interface IssueComment {
   body?: string
 }
 
+/** Tunes when and how postPrComment surfaces a comment. */
+export interface PrCommentOptions {
+  /**
+   * Injected REST client. Production derives one from `ctx`; tests pass a fake.
+   */
+  api?: IssueCommentApi
+  /**
+   * When true, only surface a comment if the run has findings. A clean run
+   * posts nothing new — but an existing sticky comment (left by an earlier run
+   * that did have findings) is still updated, so it reflects the now-resolved
+   * state instead of showing stale findings.
+   */
+  onlyOnFindings?: boolean
+  /**
+   * Whether the current run has findings/regressions. Only consulted when
+   * `onlyOnFindings` is set.
+   */
+  hasFindings?: boolean
+}
+
 /** Injectable fetch, so the REST client can be unit-tested without network. */
 export type FetchFn = typeof fetch
 
@@ -156,12 +176,16 @@ export const createFetchApi = (
  * when present. Fail-open: any missing prerequisite or API error is reported in
  * the outcome rather than thrown, so commenting never fails the action.
  *
- * `api` is injectable for testing; in production it is derived from `ctx`.
+ * With `options.onlyOnFindings`, a clean run (no findings) posts nothing new —
+ * avoiding empty "all clear" noise — yet still refreshes a prior sticky comment
+ * so it no longer shows resolved findings.
+ *
+ * `options.api` is injectable for testing; in production it is derived from `ctx`.
  */
 export const postPrComment = async (
   body: string,
   ctx: PrCommentContext,
-  api?: IssueCommentApi,
+  options: PrCommentOptions = {},
 ): Promise<PrCommentOutcome> => {
   const slug = parseRepository(ctx.repository)
   if (!slug) {
@@ -175,11 +199,17 @@ export const postPrComment = async (
     return { status: 'skipped', reason: 'not running on a pull request' }
   }
 
-  const client = api ?? createFetchApi(slug, ctx.token, ctx.apiUrl)
+  const client = options.api ?? createFetchApi(slug, ctx.token, ctx.apiUrl)
   const commentBody = withMarker(body)
 
   try {
     const existing = (await client.list(prNumber)).find((comment) => hasMarker(comment.body))
+    // Findings-only mode: a clean run with no prior comment stays silent. If a
+    // prior comment exists we fall through and update it, so it reflects that
+    // earlier findings are now resolved rather than lingering as stale.
+    if (options.onlyOnFindings && !options.hasFindings && !existing) {
+      return { status: 'skipped', reason: 'no findings to report' }
+    }
     if (existing) {
       await client.update(existing.id, commentBody)
       return { status: 'updated' }

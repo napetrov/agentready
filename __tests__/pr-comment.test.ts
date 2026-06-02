@@ -100,31 +100,31 @@ describe('postPrComment', () => {
   })
 
   it('skips when no repository is available', async () => {
-    const result = await postPrComment('body', ctx({ repository: undefined }), new FakeApi())
+    const result = await postPrComment('body', ctx({ repository: undefined }), { api: new FakeApi() })
     expect(result.status).toBe('skipped')
     expect(result.reason).toMatch(/GITHUB_REPOSITORY/)
   })
 
   it('skips on a malformed repository slug', async () => {
-    const result = await postPrComment('body', ctx({ repository: 'no-slash' }), new FakeApi())
+    const result = await postPrComment('body', ctx({ repository: 'no-slash' }), { api: new FakeApi() })
     expect(result.status).toBe('skipped')
   })
 
   it('skips when no token is provided', async () => {
-    const result = await postPrComment('body', ctx({ token: undefined }), new FakeApi())
+    const result = await postPrComment('body', ctx({ token: undefined }), { api: new FakeApi() })
     expect(result.status).toBe('skipped')
     expect(result.reason).toMatch(/github-token/)
   })
 
   it('skips when not running on a pull request', async () => {
-    const result = await postPrComment('body', ctx({ eventPath: writeEvent(dir, { ref: 'x' }) }), new FakeApi())
+    const result = await postPrComment('body', ctx({ eventPath: writeEvent(dir, { ref: 'x' }) }), { api: new FakeApi() })
     expect(result.status).toBe('skipped')
     expect(result.reason).toMatch(/pull request/)
   })
 
   it('creates a new comment when none exists', async () => {
     const api = new FakeApi([{ id: 1, body: 'unrelated' }])
-    const result = await postPrComment('the report', ctx(), api)
+    const result = await postPrComment('the report', ctx(), { api })
     expect(result.status).toBe('created')
     expect(api.created).toHaveLength(1)
     expect(api.created[0]).toEqual({ prNumber: 99, body: withMarker('the report') })
@@ -136,7 +136,7 @@ describe('postPrComment', () => {
       { id: 1, body: 'unrelated' },
       { id: 55, body: withMarker('old report') },
     ])
-    const result = await postPrComment('new report', ctx(), api)
+    const result = await postPrComment('new report', ctx(), { api })
     expect(result.status).toBe('updated')
     expect(api.updated).toEqual([{ commentId: 55, body: withMarker('new report') }])
     expect(api.created).toHaveLength(0)
@@ -150,9 +150,35 @@ describe('postPrComment', () => {
       create: async () => undefined,
       update: async () => undefined,
     }
-    const result = await postPrComment('body', ctx(), api)
+    const result = await postPrComment('body', ctx(), { api })
     expect(result.status).toBe('failed')
     expect(result.reason).toMatch(/boom/)
+  })
+
+  describe('onlyOnFindings', () => {
+    it('stays silent on a clean run with no prior comment', async () => {
+      const api = new FakeApi([{ id: 1, body: 'unrelated' }])
+      const result = await postPrComment('clean report', ctx(), { api, onlyOnFindings: true, hasFindings: false })
+      expect(result.status).toBe('skipped')
+      expect(result.reason).toMatch(/no findings/)
+      expect(api.created).toHaveLength(0)
+      expect(api.updated).toHaveLength(0)
+    })
+
+    it('updates a prior sticky comment to its resolved state on a clean run', async () => {
+      const api = new FakeApi([{ id: 55, body: withMarker('old findings') }])
+      const result = await postPrComment('resolved report', ctx(), { api, onlyOnFindings: true, hasFindings: false })
+      expect(result.status).toBe('updated')
+      expect(api.updated).toEqual([{ commentId: 55, body: withMarker('resolved report') }])
+      expect(api.created).toHaveLength(0)
+    })
+
+    it('creates a comment when the run has findings', async () => {
+      const api = new FakeApi()
+      const result = await postPrComment('findings report', ctx(), { api, onlyOnFindings: true, hasFindings: true })
+      expect(result.status).toBe('created')
+      expect(api.created[0]).toEqual({ prNumber: 99, body: withMarker('findings report') })
+    })
   })
 })
 

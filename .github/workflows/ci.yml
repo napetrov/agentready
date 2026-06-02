@@ -53,6 +53,9 @@ jobs:
           upload-sarif: 'true'
           job-summary: 'true'
           pr-comment: 'true'
+          # Keep the PR thread quiet on clean runs; the verdict still lands in
+          # the job summary. A prior comment is refreshed once findings resolve.
+          pr-comment-condition: 'on-findings'
 
       - name: Upload SARIF to code scanning
         # Pinned to a commit SHA (current v3) for supply-chain consistency with

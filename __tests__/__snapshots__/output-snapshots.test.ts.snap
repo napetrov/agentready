@@ -248,6 +248,8 @@ exports[`diff output snapshots summary and markdown for a regression between two
 exports[`diff output snapshots summary and markdown for a regression between two refs: diff markdown 1`] = `
 "## AgentReady PR readiness
 
+⚠️ 1 regression(s), 1 new finding(s).
+
 Base/head: \`HEAD~1\` .. \`HEAD\`
 Score delta: **-18**
 New findings: 1; resolved findings: 0
