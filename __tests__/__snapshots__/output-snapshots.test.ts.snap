@@ -566,7 +566,13 @@ exports[`scan output snapshots good-repo compact json 1`] = `
               "test",
               "build"
             ],
-            "orchestratorKinds": []
+            "concreteKinds": [
+              "install",
+              "lint",
+              "typecheck",
+              "test",
+              "build"
+            ]
           }
         ]
       }

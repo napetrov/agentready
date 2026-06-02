@@ -94,6 +94,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- CI command-coverage spread gate now tracks each job's **concrete** verification
+  kinds separately, so a job that runs a command directly (e.g. `npm run lint`)
+  still counts toward the multi-job spread even when another step in the same job
+  is an opaque orchestrator (`pre-commit/action`, `tox`, `make ci`) that also
+  covers that kind. Previously such a job was discarded — treated as
+  orchestrator-only — which could revive a false `ci.*.not-run` finding on a
+  genuinely multi-job pipeline.
+- Gradle lint detection now recognizes every *applied* plugins-DSL form, not just
+  quoted `id("…tool…")`: a bare plugin accessor (`checkstyle`) and a version-catalog
+  alias (`alias(libs.plugins.spotless)`) inside a `plugins { … }` block now surface
+  the lint surface, while a static-analysis tool that appears only as a dependency
+  coordinate in `dependencies { … }` (e.g. `spotbugs-annotations`) still does not.
 - Test files in non-JS/TS ecosystems are now classified as tests instead of
   source. Go (`*_test.go`), Python (`test_*.py`/`*_test.py`), JVM/C#
   (`*Test`/`*Tests`/`*Spec`/`*IT`), Ruby/Elixir (`*_test`/`*_spec`), C/C++

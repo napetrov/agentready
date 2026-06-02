@@ -378,14 +378,33 @@ const detectPython = (root: string, filePaths: Set<string>, allPaths: string[]):
 // matching how the CI parser classifies these commands.
 const gradleBuildFilePattern = /(^|\/)(build|settings)\.gradle(\.kts)?$/i
 const JVM_LINT_TOOLS = 'checkstyle|pmd|spotbugs|spotless|ktlint|detekt'
-// A Gradle lint surface requires the static-analysis plugin to be *applied* —
-// `id("…spotless…")`, `id 'checkstyle'`, or `apply plugin: 'pmd'`. Matching a
-// bare mention would misfire on dependency coordinates (e.g.
-// `spotbugs-annotations`) or version aliases that don't configure a lint task.
-const GRADLE_LINT_PLUGIN = new RegExp(
-  `(?:\\bid\\s*\\(?|\\bapply\\s+plugin:)\\s*["'][^"']*\\b(?:${JVM_LINT_TOOLS})\\b[^"']*["']`,
+const JVM_LINT_TOOL_RE = new RegExp(`\\b(?:${JVM_LINT_TOOLS})\\b`, 'i')
+// A Gradle lint surface requires the static-analysis plugin to be *applied*.
+// Legacy form: `apply plugin: 'pmd'`. Plugins-DSL form lives inside a
+// `plugins { … }` block and covers every applied syntax — quoted ids
+// (`id("com.diffplug.spotless")`), bare accessors (`checkstyle`), and version
+// catalog aliases (`alias(libs.plugins.spotless)`) — so we scope the broad
+// tool-name match to that block. Dependency coordinates such as
+// `spotbugs-annotations` live in `dependencies { … }`, never `plugins { … }`,
+// so scoping keeps them from misfiring.
+const GRADLE_PLUGINS_BLOCK = /\bplugins\s*\{([\s\S]*?)\}/gi
+const GRADLE_APPLY_PLUGIN = new RegExp(
+  `\\bapply\\s+plugin:\\s*["'][^"']*\\b(?:${JVM_LINT_TOOLS})\\b[^"']*["']`,
   'i',
 )
+const gradleHasLint = (content: string): boolean => {
+  if (GRADLE_APPLY_PLUGIN.test(content)) {
+    return true
+  }
+  GRADLE_PLUGINS_BLOCK.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = GRADLE_PLUGINS_BLOCK.exec(content)) !== null) {
+    if (JVM_LINT_TOOL_RE.test(match[1])) {
+      return true
+    }
+  }
+  return false
+}
 // A Maven lint surface requires the tool's plugin in an `<artifactId>` (e.g.
 // `maven-checkstyle-plugin`, `spotbugs-maven-plugin`), not a plain dependency
 // such as `<artifactId>spotbugs-annotations</artifactId>`.
@@ -411,7 +430,7 @@ const detectGradle = (
     ecosystem: 'gradle',
     hasBuild: true,
     hasTest: true,
-    hasLint: GRADLE_LINT_PLUGIN.test(content),
+    hasLint: gradleHasLint(content),
     hasTypeCheck: false,
   }
 }

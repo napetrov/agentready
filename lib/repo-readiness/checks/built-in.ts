@@ -168,19 +168,17 @@ export const buildFindings = (
   // a wrapper script the parser cannot classify. In that case `ci.X.not-run`
   // would be a false positive (seen on repos like ripgrep/gin), so we only emit
   // the not-run findings when concrete verification commands are concentrated in
-  // at most one job. A job counts only if it has a *concrete* verification kind:
-  //   - not `install` — a dedicated `npm ci` job introduces no uncertainty;
-  //   - not a kind that *this same job* covers only through an orchestrator
-  //     (e.g. a `uses: pre-commit/action` job classified as `lint`). The check is
-  //     per-job, so a concrete `npm run lint` job still counts even when a
-  //     separate pre-commit job globally covers lint.
-  // This stops install-only and orchestrator-only jobs from spuriously inflating
-  // the spread and suppressing unrelated checks.
+  // at most one job. A job counts only if it ran a *concrete* verification kind
+  // (`job.concreteKinds`, which already excludes kinds covered solely through an
+  // orchestrator such as `pre-commit/action`, `tox`, or `make ci`), other than
+  // `install` — a dedicated `npm ci` job introduces no uncertainty. Because the
+  // tracking is per-step, a job that runs `npm run lint` concretely still counts
+  // even when another step in the same job is an opaque orchestrator that also
+  // covers lint. This stops install-only and orchestrator-only jobs from
+  // spuriously inflating the spread and suppressing unrelated checks.
   const concreteVerificationJobs = report.ci.workflows
     .flatMap(workflow => workflow.jobs)
-    .filter(job =>
-      job.commandKinds.some(kind => kind !== 'install' && !job.orchestratorKinds.includes(kind)),
-    ).length
+    .filter(job => job.concreteKinds.some(kind => kind !== 'install')).length
   const commandsConcentratedInOneJob = concreteVerificationJobs <= 1
   if (report.ci.workflowFiles.length > 0 && ciParsedAnyCommand && commandsConcentratedInOneJob) {
     if (report.commands.hasTest && !report.ci.hasTest && !orchestratorCovers.has('test')) {

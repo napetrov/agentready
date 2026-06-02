@@ -207,7 +207,7 @@
                             ]
                           }
                         },
-                        "orchestratorKinds": {
+                        "concreteKinds": {
                           "type": "array",
                           "items": {
                             "type": "string",
@@ -224,7 +224,7 @@
                       "required": [
                         "id",
                         "commandKinds",
-                        "orchestratorKinds"
+                        "concreteKinds"
                       ],
                       "additionalProperties": false
                     }
@@ -732,7 +732,7 @@
                             ]
                           }
                         },
-                        "orchestratorKinds": {
+                        "concreteKinds": {
                           "type": "array",
                           "items": {
                             "type": "string",
@@ -749,7 +749,7 @@
                       "required": [
                         "id",
                         "commandKinds",
-                        "orchestratorKinds"
+                        "concreteKinds"
                       ],
                       "additionalProperties": false
                     }

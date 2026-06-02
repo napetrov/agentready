@@ -479,8 +479,8 @@ describe('CI command-coverage checks', () => {
   it('does not let a pre-commit orchestrator job suppress unrelated not-run findings', () => {
     // A `uses: pre-commit/action` lint job plus a `npm test` job is not a
     // concrete multi-job spread: pre-commit only covers lint/type-check (handled
-    // per-kind via orchestratorKinds), so a build command that is available but
-    // never run must still be reported.
+    // per-kind via the evidence-level orchestratorKinds), so a build command that
+    // is available but never run must still be reported.
     writeRepo(
       [
         'jobs:',
@@ -505,7 +505,7 @@ describe('CI command-coverage checks', () => {
     // pre-commit/action (orchestrator lint) + a concrete `npm run lint` job + a
     // `npm test` job: commands are genuinely spread across two concrete jobs, so
     // the gate must still suppress unrelated not-run findings. The per-job
-    // orchestrator check ensures the concrete lint job is not discarded just
+    // concreteKinds tracking ensures the concrete lint job is not discarded just
     // because pre-commit globally covers lint.
     writeRepo(
       [
@@ -526,6 +526,33 @@ describe('CI command-coverage checks', () => {
     const report = scanLocalReadiness(root, { now: fixedNow })
     const ids = report.findings.map(finding => finding.id)
     expect(ids.filter(id => id.endsWith('.not-run'))).toEqual([])
+  })
+
+  it('counts a job as concrete when it also runs an orchestrator covering the same kind', () => {
+    // Regression (Codex): a job that runs `npm run lint` concretely AND a
+    // `pre-commit/action` step (orchestrator lint/type-check) must still count
+    // as a concrete verification job. Together with a separate `npm test` job
+    // the commands are genuinely spread across two jobs, so the gate must
+    // suppress the unrelated `ci.build.not-run` rather than treat the lint job
+    // as orchestrator-only and discard it.
+    writeRepo(
+      [
+        'jobs:',
+        '  verify:',
+        '    steps:',
+        '      - uses: pre-commit/action@v3.0.1',
+        '      - run: npm run lint',
+        '  test:',
+        '    steps:',
+        '      - run: npm test',
+        '',
+      ].join('\n'),
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = report.findings.map(finding => finding.id)
+    // The lint job is concrete, so the two-job spread suppresses build's not-run.
+    expect(ids).not.toContain('ci.build.not-run')
   })
 
   it('still flags not-run when all recognized commands live in one job', () => {

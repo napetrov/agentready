@@ -277,6 +277,38 @@ describe('detectCommandSurfaces (units)', () => {
     expect(detectCommandSurfaces(root, ['build.gradle.kts']).hasLint).toBe(false)
   })
 
+  it('recognizes applied Gradle plugins via the bare accessor and version aliases', () => {
+    // Regression (Codex): the Kotlin/Groovy plugins-DSL has applied forms beyond
+    // `id("…tool…")` — a bare accessor (`checkstyle`) and a version-catalog alias
+    // (`alias(libs.plugins.spotless)`). Both configure a lint task, so both must
+    // surface lint; a `spotbugs` dependency in `dependencies {}` still must not.
+    write(
+      'build.gradle.kts',
+      [
+        'plugins {',
+        '    checkstyle',
+        '    alias(libs.plugins.spotless)',
+        '}',
+        'dependencies {',
+        '    testImplementation("com.github.spotbugs:spotbugs-annotations:4.8.3")',
+        '}',
+        '',
+      ].join('\n'),
+    )
+    expect(detectCommandSurfaces(root, ['build.gradle.kts']).hasLint).toBe(true)
+
+    rmSync(path.join(root, 'build.gradle.kts'))
+    // A bare accessor only counts inside the plugins block: a `detekt` substring
+    // that appears solely as a dependency coordinate must not surface lint.
+    write('build.gradle.kts', 'plugins {\n    java\n}\ndependencies {\n    implementation("io.gitlab.arturbosch.detekt:detekt-core:1.23.0")\n}\n')
+    expect(detectCommandSurfaces(root, ['build.gradle.kts']).hasLint).toBe(false)
+  })
+
+  it('recognizes a legacy `apply plugin:` Gradle lint configuration', () => {
+    write('build.gradle', "apply plugin: 'pmd'\n")
+    expect(detectCommandSurfaces(root, ['build.gradle']).hasLint).toBe(true)
+  })
+
   it('recognizes Maven via pom.xml and detects checkstyle as lint', () => {
     write('pom.xml', '<project><build><plugins><plugin><artifactId>maven-checkstyle-plugin</artifactId></plugin></plugins></build></project>\n')
     const evidence = detectCommandSurfaces(root, ['pom.xml'])

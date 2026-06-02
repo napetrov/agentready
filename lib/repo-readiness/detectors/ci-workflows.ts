@@ -509,6 +509,11 @@ const parseJob = (
   const steps = Array.isArray(job.steps) ? (job.steps as RawStep[]) : []
   const jobDefaultWorkingDir = readDefaultWorkingDir(job) ?? workflowDefaultWorkingDir
   const kinds = new Set<CiCommandKind>()
+  // Kinds this job runs through a concrete step we decomposed, tracked
+  // separately from the orchestrator coverage so a concrete command (e.g.
+  // `npm run lint`) still counts even when another step in the same job is an
+  // opaque orchestrator (`make ci`) that also covers that kind.
+  const concreteKinds = new Set<CiCommandKind>()
   const orchestratorKinds = new Set<CiCommandKind>()
 
   for (const step of steps) {
@@ -521,8 +526,11 @@ const parseJob = (
       // a step that runs elsewhere; only the root-script body expansion is gated.
       const workingDir = asString(step?.['working-directory']) ?? jobDefaultWorkingDir
       const run = isRootWorkingDir(workingDir) ? expandScriptAliases(rawRun, scripts) : rawRun
+      // A recognized `run:` command is concrete by construction — the
+      // orchestrator coverage of the same step is tracked separately.
       for (const kind of classifyRunCommandKinds(run)) {
         kinds.add(kind)
+        concreteKinds.add(kind)
       }
       for (const kind of orchestratorCoverageFor(run)) {
         orchestratorKinds.add(kind)
@@ -530,17 +538,27 @@ const parseJob = (
     }
     const uses = asString(step?.uses)
     if (uses) {
-      for (const kind of classifyUsesCommandKinds(uses)) {
+      const usesKinds = classifyUsesCommandKinds(uses)
+      const usesOrchestrator = usesOrchestratorCoverageFor(uses)
+      for (const kind of usesKinds) {
         kinds.add(kind)
       }
-      for (const kind of usesOrchestratorCoverageFor(uses)) {
+      for (const kind of usesOrchestrator) {
         orchestratorKinds.add(kind)
+      }
+      // A `uses:` action contributes a concrete kind only when it is not the
+      // action's own orchestrator coverage — `golangci-lint-action` runs lint
+      // concretely, while `pre-commit/action` only orchestrates lint/type-check.
+      for (const kind of usesKinds) {
+        if (!usesOrchestrator.includes(kind)) {
+          concreteKinds.add(kind)
+        }
       }
     }
   }
 
   return {
-    job: { id, commandKinds: sortKinds(kinds), orchestratorKinds: sortKinds(orchestratorKinds) },
+    job: { id, commandKinds: sortKinds(kinds), concreteKinds: sortKinds(concreteKinds) },
     orchestratorKinds,
   }
 }

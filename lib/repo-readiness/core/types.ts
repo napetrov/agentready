@@ -77,12 +77,16 @@ export interface CiWorkflowJob {
   /** Command kinds detected across the job's steps, sorted and unique. */
   commandKinds: CiCommandKind[]
   /**
-   * Command kinds this job covers only through an opaque orchestrator/task
-   * runner (e.g. a `pre-commit/action` step or `tox`), as opposed to a command
-   * we decomposed concretely. Sorted and unique. Used to tell a concrete
-   * verification job apart from an orchestrator-only one.
+   * Command kinds this job runs through a *concrete* step we decomposed (a
+   * recognized `run:` command or a concrete action such as
+   * `golangci-lint-action`), as opposed to kinds it covers only through an
+   * opaque orchestrator (`pre-commit/action`, `tox`, `make ci`). Sorted and
+   * unique. Used to tell a concrete verification job apart from an
+   * orchestrator-only one: a kind is recorded here when *some* step ran it
+   * concretely, even if another step in the same job is an opaque orchestrator
+   * that also (uncertainly) covers it.
    */
-  orchestratorKinds: CiCommandKind[]
+  concreteKinds: CiCommandKind[]
 }
 
 export interface CiWorkflow {

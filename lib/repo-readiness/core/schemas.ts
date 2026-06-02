@@ -98,7 +98,7 @@ export const ciCommandKindSchema = z.enum(['install', 'lint', 'typecheck', 'test
 export const ciWorkflowJobSchema = z.strictObject({
   id: z.string(),
   commandKinds: z.array(ciCommandKindSchema),
-  orchestratorKinds: z.array(ciCommandKindSchema),
+  concreteKinds: z.array(ciCommandKindSchema),
 })
 
 export const ciWorkflowSchema = z.strictObject({
