@@ -82,7 +82,7 @@ const generatedPathPatterns = [
   /(^|\/)vendor\//,
 ]
 
-const testPathPattern = /(^|\/)(__tests__|tests?|spec|specs|testdata)\//i
+const testPathPattern = /(^|\/)(__tests__|unit_tests?|tests?|spec|specs|testdata)\//i
 
 // Test-file naming conventions across ecosystems, matched on the basename so a
 // directory like `latest/` never counts. Without these, a Go `foo_test.go` or a

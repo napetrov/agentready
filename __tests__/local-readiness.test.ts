@@ -245,7 +245,13 @@ describe('local readiness', () => {
     writeRepoFile(root, 'pyproject.toml', '[project]\nname = "demo"\n')
     writeRepoFile(root, 'tests/test_demo.py', 'def test_demo():\n    assert True\n')
     writeRepoFile(root, 'examples/daal4py/data/batch/svd.csv', Buffer.alloc(1_100_000, 1))
+    writeRepoFile(root, 'examples/cpu/inference/python/models/bert_large/inference/cpu/configure.json', '{"nodes":[' + '"x",'.repeat(260_000) + '"y"]}')
+    writeRepoFile(root, 'examples/cpu/usecase/report.html', '<html>' + 'x'.repeat(1_100_000) + '</html>')
+    writeRepoFile(root, 'notebooks/demo.ipynb', '{"cells":[' + '{} ,'.repeat(280_000) + '{}]}')
     writeRepoFile(root, 'data/qr.csv', Buffer.alloc(1_100_000, 1))
+    writeRepoFile(root, 'src/tests/functional/plugin/shared/src/single_op/paged_attention_token_type_test_data.cpp', 'int data[] = {' + '1,'.repeat(600_000) + '};')
+    writeRepoFile(root, 'src/unit_tests/generated_fixture_test_data.cpp', 'int data[] = {' + '2,'.repeat(600_000) + '};')
+    writeRepoFile(root, 'src/tests/test_utils/functional_test_utils/layer_tests_summary/github/cache/CPU/test_cache_OP.lst', 'op\n'.repeat(400_000))
     // A generic large *text* file outside any data-fixture path stays a warning.
     writeRepoFile(root, 'assets/blob.csv', `${'1,2,3,4,5\n'.repeat(110_000)}`)
 
@@ -258,7 +264,31 @@ describe('local readiness', () => {
         title: 'Large checked-in example or fixture data can create agent context friction',
       }),
       expect.objectContaining({
+        id: 'files.large:examples/cpu/inference/python/models/bert_large/inference/cpu/configure.json',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.large:examples/cpu/usecase/report.html',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.large:notebooks/demo.ipynb',
+        severity: 'info',
+      }),
+      expect.objectContaining({
         id: 'files.large:data/qr.csv',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.large:src/tests/functional/plugin/shared/src/single_op/paged_attention_token_type_test_data.cpp',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.large:src/unit_tests/generated_fixture_test_data.cpp',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.large:src/tests/test_utils/functional_test_utils/layer_tests_summary/github/cache/CPU/test_cache_OP.lst',
         severity: 'info',
       }),
       expect.objectContaining({
