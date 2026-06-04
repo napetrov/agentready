@@ -59,6 +59,7 @@ interface LedgerEntry {
 
 const DEFAULT_REPORTS_DIR = path.join('reports', 'agentready-realworld-cron')
 const DEFAULT_BATCH_SIZE = 3
+const GIT_MAX_BUFFER_BYTES = 64 * 1024 * 1024
 const FALSE_POSITIVE_PATH_HINT = /(^|\/)(benchmarks?|data|examples?|fixtures?|golden|samples?|snapshots?|testdata|tests?)\//i
 const GENERATED_OR_VENDOR_HINT = /(^|\/)(vendor|third_party|node_modules|dist|build|target|coverage)\//i
 
@@ -167,15 +168,28 @@ const updateRotation = (reportsDir: string, previous: RotationState, poolSize: n
 
 const cloneOrFetch = (repo: RealWorldRepo, cloneDir: string): void => {
   if (existsSync(cloneDir)) {
-    execFileSync('git', ['-C', cloneDir, 'fetch', '--depth', '1', 'origin', 'HEAD'], { stdio: 'pipe' })
-    execFileSync('git', ['-C', cloneDir, 'reset', '--hard', 'FETCH_HEAD'], { stdio: 'pipe' })
+    execFileSync('git', ['-C', cloneDir, 'fetch', '--quiet', '--depth', '1', 'origin', 'HEAD'], {
+      maxBuffer: GIT_MAX_BUFFER_BYTES,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    })
+    execFileSync('git', ['-C', cloneDir, 'reset', '--quiet', '--hard', 'FETCH_HEAD'], {
+      maxBuffer: GIT_MAX_BUFFER_BYTES,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    })
     return
   }
-  execFileSync('git', ['clone', '--depth', '1', repo.url, cloneDir], { stdio: 'pipe' })
+  execFileSync('git', ['clone', '--quiet', '--depth', '1', repo.url, cloneDir], {
+    maxBuffer: GIT_MAX_BUFFER_BYTES,
+    stdio: ['ignore', 'ignore', 'pipe'],
+  })
 }
 
 const gitOutput = (repoDir: string, args: string[]): string =>
-  execFileSync('git', ['-C', repoDir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+  execFileSync('git', ['-C', repoDir, ...args], {
+    encoding: 'utf8',
+    maxBuffer: GIT_MAX_BUFFER_BYTES,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim()
 
 const independentSignalsFor = (repoDir: string): IndependentSignals => {
   const tracked = gitOutput(repoDir, ['ls-files']).split('\n').filter(Boolean)
@@ -381,4 +395,3 @@ try {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
   process.exit(1)
 }
-
