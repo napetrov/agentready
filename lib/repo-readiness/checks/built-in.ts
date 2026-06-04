@@ -16,6 +16,7 @@ const DOC_TREE = /(^|\/)docs?\//i
 
 const SCIENTIFIC_DATA_EXTENSIONS = new Set([
   '.csv',
+  '.htm',
   '.html',
   '.ipynb',
   '.tsv',
@@ -49,7 +50,7 @@ const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
     || /^data\/(examples?|samples?|fixtures?)\//.test(path)
     || /(^|\/)(examples?|samples?|notebooks?)\//.test(path)
     || /(^|\/)(examples?|samples?|notebooks?)\/.*\/data\//.test(path)
-    || /(^|\/)(tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
+    || /(^|\/)(tests?|unit_tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
     || /(^|\/)(benchmarks?|perf)\/.*\/(data|fixtures?|golden|snapshots?)\//.test(path)
   )
 }
