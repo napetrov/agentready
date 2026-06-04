@@ -16,10 +16,14 @@ const DOC_TREE = /(^|\/)docs?\//i
 
 const SCIENTIFIC_DATA_EXTENSIONS = new Set([
   '.csv',
+  '.html',
+  '.ipynb',
   '.tsv',
   '.json',
   '.jsonl',
+  '.lst',
   '.parquet',
+  '.pbtxt',
   '.npy',
   '.npz',
   '.h5',
@@ -29,15 +33,24 @@ const SCIENTIFIC_DATA_EXTENSIONS = new Set([
 
 const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
   const path = file.path.toLowerCase()
-  if (!SCIENTIFIC_DATA_EXTENSIONS.has(file.extension.toLowerCase())) {
-    return false
-  }
+  const extension = file.extension.toLowerCase()
+  const dataLikeExtension = SCIENTIFIC_DATA_EXTENSIONS.has(extension)
+  // Some C/C++ test fixtures encode large golden payloads directly in source.
+  // Keep this filename check delimiter-bound so production sources are not
+  // mistaken for fixture data.
+  const sourceEncodedTestData =
+    file.test
+    && ['.c', '.cc', '.cpp', '.cxx', '.h', '.hpp'].includes(extension)
+    && /(^|[._-])(test[_-]?data|data|fixture|fixtures|golden)([._-]|$)/.test(path.split('/').pop() ?? '')
+  if (!dataLikeExtension && !sourceEncodedTestData) return false
+
   return (
     /^data\/[^/]+$/.test(path)
     || /^data\/(examples?|samples?|fixtures?)\//.test(path)
+    || /(^|\/)(examples?|samples?|notebooks?)\//.test(path)
     || /(^|\/)(examples?|samples?|notebooks?)\/.*\/data\//.test(path)
-    || /(^|\/)(tests?|testdata|fixtures?)\//.test(path)
-    || /(^|\/)(benchmarks?|perf)\/.*\/(data|fixtures?)\//.test(path)
+    || /(^|\/)(tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
+    || /(^|\/)(benchmarks?|perf)\/.*\/(data|fixtures?|golden|snapshots?)\//.test(path)
   )
 }
 
