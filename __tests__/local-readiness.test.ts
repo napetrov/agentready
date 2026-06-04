@@ -269,6 +269,41 @@ describe('local readiness', () => {
     ]))
   })
 
+  test('downgrades large checked-in example and test data artifacts to info', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run tests before committing.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'pyproject.toml', '[project]\nname = "demo"\n')
+    writeRepoFile(root, 'tests/test_demo.py', 'def test_demo():\n    assert True\n')
+    writeRepoFile(root, 'examples/cpu/inference/configure.json', '[]'.repeat(600_000))
+    writeRepoFile(root, 'examples/cpu/report.html', '<div>result</div>'.repeat(80_000))
+    writeRepoFile(root, 'examples/cpu/notebook.ipynb', JSON.stringify({ cells: ['x'.repeat(1_100_000)] }))
+    writeRepoFile(root, 'tests/cache/CPU/test_cache_OP.lst', 'op\n'.repeat(400_000))
+    writeRepoFile(root, 'tests/single_op/paged_attention_token_type_test_data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
+    writeRepoFile(root, 'src/generated-data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const byId = new Map(report.findings.map(finding => [finding.id, finding]))
+
+    for (const fixturePath of [
+      'examples/cpu/inference/configure.json',
+      'examples/cpu/report.html',
+      'examples/cpu/notebook.ipynb',
+      'tests/cache/CPU/test_cache_OP.lst',
+      'tests/single_op/paged_attention_token_type_test_data.cpp',
+    ]) {
+      expect(byId.get(`files.large:${fixturePath}`)).toMatchObject({
+        severity: 'info',
+        title: 'Large checked-in example or fixture data can create agent context friction',
+      })
+    }
+    expect(byId.get('files.large:src/generated-data.cpp')).toMatchObject({
+      severity: 'warning',
+      title: 'Large checked-in file can create agent context friction',
+    })
+  })
+
   test('surfaces a large binary asset at info but a large text file at warning', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
