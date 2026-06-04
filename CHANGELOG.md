@@ -61,6 +61,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   flagged with `ci.*.not-run`. The `CommandEcosystem` schema/type and the
   published JSON Schemas are updated accordingly.
 - Property/fuzz tests for the parsers (`__tests__/parser-fuzz.test.ts`): a seeded, dependency-free generator drives `classifyRunCommandKinds`/`classifyUsesCommandKinds`, the YAML workflow parser, and full `scanLocalReadiness` over malformed manifests, asserting the parsers are *total* (never throw) and shape-correct (valid, de-duplicated, canonically-ordered command kinds; clamped scores) on arbitrary and deliberately-broken input. Seeded so failures reproduce deterministically.
+- Recurring real-world validation harness for AgentReady:
+  `npm run agentready:realworld-cron -- --batch-size <n>` rotates through a
+  tracked pool of public repositories, clones them into
+  `reports/agentready-realworld-cron/work/`, writes ignored per-run scan
+  artifacts, appends tracked ledger entries, and creates issue-candidate notes
+  for suspected scanner false positives or repo-selection blockers.
 - Dogfood release harness: `npm run agentready:dogfood -- --out <scratch-dir>`
   clones the configured real-repository set into a scratch directory and writes
   JSON/markdown reports there, keeping scan artifacts out of the tracked repo.

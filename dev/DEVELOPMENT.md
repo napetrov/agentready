@@ -98,6 +98,16 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 - Build the action bundle with `npm run build:action` after changing
   `lib/action/`; CI fails if the committed bundle is stale.
 
+### 2026-06-03 (real-world cron)
+- **ADDED RECURRING REAL-WORLD VALIDATION**: `bin/agentready-realworld-cron.ts`
+  (`npm run agentready:realworld-cron`) rotates through
+  `reports/agentready-realworld-cron/repo-pool.json`, shallow-clones real
+  repositories into ignored scratch space, runs the deterministic scanner, saves
+  ignored JSON/Markdown artifacts, appends tracked monthly ledger entries, and
+  writes issue-candidate markdown for suspected scanner false positives or
+  repo-selection blockers. The scanner remains no-network/no-execute; the cron
+  harness performs external `git clone` setup around it.
+
 ### 2026-05-30 (schemas)
 - **MADE ZOD THE CONTRACT SOURCE OF TRUTH**: Added `core/schemas.ts` with Zod
   schemas for the config, scan report, and diff report, guarded by compile-time

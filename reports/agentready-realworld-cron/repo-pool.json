@@ -1,0 +1,53 @@
+[
+  {
+    "name": "oneDAL",
+    "url": "https://github.com/uxlfoundation/oneDAL.git",
+    "tags": ["intel", "cpp", "cmake"]
+  },
+  {
+    "name": "scikit-learn-intelex",
+    "url": "https://github.com/uxlfoundation/scikit-learn-intelex.git",
+    "tags": ["intel", "python", "cmake"]
+  },
+  {
+    "name": "openvino",
+    "url": "https://github.com/openvinotoolkit/openvino.git",
+    "tags": ["intel", "cpp", "cmake"]
+  },
+  {
+    "name": "intel-extension-for-pytorch",
+    "url": "https://github.com/intel/intel-extension-for-pytorch.git",
+    "tags": ["intel", "python", "cpp"]
+  },
+  {
+    "name": "fastapi",
+    "url": "https://github.com/fastapi/fastapi.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "flask",
+    "url": "https://github.com/pallets/flask.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "pytest",
+    "url": "https://github.com/pytest-dev/pytest.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "vite",
+    "url": "https://github.com/vitejs/vite.git",
+    "tags": ["node", "monorepo"]
+  },
+  {
+    "name": "mdbook",
+    "url": "https://github.com/rust-lang/mdBook.git",
+    "tags": ["rust"]
+  },
+  {
+    "name": "gin",
+    "url": "https://github.com/gin-gonic/gin.git",
+    "tags": ["go"]
+  }
+]
+

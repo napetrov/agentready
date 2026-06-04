@@ -1,0 +1,6 @@
+/artifacts/*
+!/artifacts/.gitkeep
+/work/*
+!/work/.gitkeep
+/state.json
+
