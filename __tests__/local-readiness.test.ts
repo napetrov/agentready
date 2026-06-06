@@ -309,6 +309,7 @@ describe('local readiness', () => {
     writeRepoFile(root, 'examples/cpu/inference/configure.json', '[]'.repeat(600_000))
     writeRepoFile(root, 'examples/cpu/report.html', '<div>result</div>'.repeat(80_000))
     writeRepoFile(root, 'examples/cpu/notebook.ipynb', JSON.stringify({ cells: ['x'.repeat(1_100_000)] }))
+    writeRepoFile(root, 'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt', 'error\n'.repeat(300_000))
     writeRepoFile(root, 'tests/cache/CPU/test_cache_OP.lst', 'op\n'.repeat(400_000))
     writeRepoFile(root, 'tests/single_op/paged_attention_token_type_test_data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
     writeRepoFile(root, 'src/generated-data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
@@ -320,6 +321,7 @@ describe('local readiness', () => {
       'examples/cpu/inference/configure.json',
       'examples/cpu/report.html',
       'examples/cpu/notebook.ipynb',
+      'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt',
       'tests/cache/CPU/test_cache_OP.lst',
       'tests/single_op/paged_attention_token_type_test_data.cpp',
     ]) {

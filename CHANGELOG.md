@@ -100,6 +100,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- Large text snapshot/golden/fixture artifacts in benchmark-style snapshot
+  directories are now downgraded to informational fixture data findings instead
+  of warning/error `files.large` readiness blockers, while generic large text
+  files remain score-gating.
 - The CI bare-`tsc` build matcher no longer matches `vue-tsc` (a type-checker):
   a left `(?<![\w-])` boundary excludes the hyphenated suffix, so a CI step that
   runs only `vue-tsc` is no longer credited with build coverage.
