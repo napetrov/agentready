@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'fs'
+import { chmodSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import { execFileSync } from 'child_process'
@@ -658,6 +658,105 @@ describe('local readiness', () => {
     expect(paths).toContain('artifacts/keep.txt')
     expect(paths).toContain('src/app.ts')
     expect(paths).toContain('top.log')
+  })
+
+  test('keeps readiness metadata visible when broad dotfile ignores exist', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.gitignore', '.*\n')
+    writeRepoFile(root, '.github/workflows/4.x.yml', [
+      'name: 4.x',
+      'on: [push]',
+      'jobs:',
+      '  test:',
+      '    steps:',
+      '      - run: make test',
+      '',
+    ].join('\n'))
+    writeRepoFile(root, '.github/instructions/react.instructions.md', 'Use npm test for React changes.\n')
+    writeRepoFile(root, '.cursor/rules/frontend.mdc', 'Run frontend checks.\n')
+    writeRepoFile(root, '.claude/skills/review/SKILL.md', 'Review changed tests.\n')
+    writeRepoFile(root, 'Makefile', 'test:\n\ttrue\n')
+    writeRepoFile(root, 'src/app.c', 'int main(void) { return 0; }\n')
+    runGit(root, ['add', '.'])
+    runGit(root, [
+      'add',
+      '--force',
+      '.github/workflows/4.x.yml',
+      '.github/instructions/react.instructions.md',
+      '.cursor/rules/frontend.mdc',
+      '.claude/skills/review/SKILL.md',
+    ])
+    runGit(root, ['commit', '-m', 'base'])
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const paths = report.files.map(file => file.path)
+    const instructions = report.instructions.map(surface => surface.path)
+
+    expect(paths).toContain('.github/workflows/4.x.yml')
+    expect(instructions).toEqual(expect.arrayContaining([
+      'AGENTS.md',
+      '.github/instructions/react.instructions.md',
+      '.cursor/rules/frontend.mdc',
+      '.claude/skills/review/SKILL.md',
+    ]))
+    expect(report.ci.workflowFiles).toEqual(['.github/workflows/4.x.yml'])
+    expect(report.ci.hasTest).toBe(true)
+    expect(listFindingIds(report)).not.toContain('ci.workflow.missing')
+  })
+
+  test('does not invoke fsmonitor hooks while listing tracked readiness metadata', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.gitignore', '.*\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\non: [push]\njobs:\n  test:\n    steps:\n      - run: npm test\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeRepoFile(root, 'src/app.ts', 'export const value = 1\n')
+    runGit(root, ['add', '.'])
+    runGit(root, ['add', '--force', '.github/workflows/ci.yml'])
+    runGit(root, ['commit', '-m', 'base'])
+
+    const markerPath = path.join(root, 'fsmonitor-ran')
+    const hookPath = path.join(root, 'fsmonitor-hook.sh')
+    writeFileSync(hookPath, `#!/bin/sh\ntouch "${markerPath}"\nexit 0\n`)
+    chmodSync(hookPath, 0o755)
+    runGit(root, ['config', 'core.fsmonitor', hookPath])
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.ci.workflowFiles).toEqual(['.github/workflows/ci.yml'])
+    expect(report.files.map(file => file.path)).not.toContain('fsmonitor-ran')
+  })
+
+  test('keeps ignored untracked readiness metadata hidden', () => {
+    root = createTempRepo()
+    runGit(root, ['init', '--initial-branch=main'])
+    runGit(root, ['config', 'user.email', 'agentready@example.com'])
+    runGit(root, ['config', 'user.name', 'AgentReady Test'])
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, '.gitignore', '.github/\ntmp/\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeRepoFile(root, 'src/app.ts', 'export const value = 1\n')
+    runGit(root, ['add', '.'])
+    runGit(root, ['commit', '-m', 'base'])
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'tmp/AGENTS.md', 'Scratch instructions.\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const paths = report.files.map(file => file.path)
+
+    expect(paths).not.toContain('.github/workflows/ci.yml')
+    expect(paths).not.toContain('tmp/AGENTS.md')
+    expect(report.ci.workflowFiles).toEqual([])
+    expect(report.instructions.map(surface => surface.path)).toEqual([])
   })
 
   test('lets a nested .gitignore negation re-include a file the root ignores', () => {
