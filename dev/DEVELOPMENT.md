@@ -83,6 +83,14 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-06-06 (benchmark snapshot text fixtures)
+- **DOWNGRADED RUFF BENCHMARK SNAPSHOTS**: Large `.txt` files in benchmark
+  snapshot locations, including Ruff's `scripts/ty_benchmark/snapshots/`, are
+  recorded as intentional fixture data at `info` severity instead of
+  score-gating large text findings. Verification:
+  `npm test -- --runInBand __tests__/local-readiness.test.ts` and
+  `npm run ci`.
+
 ### 2026-05-30 (action + sarif)
 - **ADDED SARIF OUTPUT**: `reporters/sarif.ts` emits SARIF 2.1.0, collapsing
   `rule:instance` finding ids into stable rules with per-result levels and file
