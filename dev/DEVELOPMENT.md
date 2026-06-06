@@ -83,6 +83,13 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-06-06 (generated minified vendor assets)
+- **IGNORED GENERATED MINIFIED FINDINGS**: Minified files already classified as
+  generated or vendored are kept in file inventory evidence but no longer
+  produce minified-file readiness warnings. The bundled GitHub Action was
+  rebuilt so the first-party action uses the same predicate. Verification:
+  `npm run build:action`, `npm run agentready:action-smoke`, and `npm run ci`.
+
 ### 2026-06-06 (text snapshot fixture false positive)
 - **DOWNGRADED BENCHMARK SNAPSHOT TEXT FIXTURES**: Large text snapshot/golden
   fixture files, such as Ruff benchmark snapshots under

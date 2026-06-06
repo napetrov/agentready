@@ -290,7 +290,7 @@ export const buildFindings = (
     })
   }
 
-  for (const file of files.filter(file => file.minified && !config.allowMinifiedFiles)) {
+  for (const file of files.filter(file => file.minified && !file.generated && !config.allowMinifiedFiles)) {
     findings.push({
       id: `files.minified:${file.path}`,
       title: 'Minified file is checked into the repository',

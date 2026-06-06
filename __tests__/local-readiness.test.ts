@@ -216,6 +216,7 @@ describe('local readiness', () => {
       },
     }))
     writeRepoFile(root, 'public/app.min.js', 'var a=1;')
+    writeRepoFile(root, 'public/vendor/jquery/jquery.min.js', 'var jquery=true;')
     // A large binary asset: not loaded into an agent's text context, so it is
     // surfaced at info rather than dragging the score like a large text file.
     writeRepoFile(root, 'data/model.bin', Buffer.alloc(1_100_000, 1))
@@ -223,7 +224,7 @@ describe('local readiness', () => {
     const report = scanLocalReadiness(root, { now: fixedNow })
 
     expect(report.summary.largeFiles).toBe(1)
-    expect(report.summary.minifiedFiles).toBe(1)
+    expect(report.summary.minifiedFiles).toBe(2)
     expect(report.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'files.large:data/model.bin',
@@ -235,6 +236,7 @@ describe('local readiness', () => {
         severity: 'warning',
       }),
     ]))
+    expect(listFindingIds(report)).not.toContain('files.minified:public/vendor/jquery/jquery.min.js')
   })
 
   test('downgrades obvious scientific example data to informational context friction', () => {
