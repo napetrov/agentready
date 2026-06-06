@@ -216,6 +216,7 @@ describe('local readiness', () => {
       },
     }))
     writeRepoFile(root, 'public/app.min.js', 'var a=1;')
+    writeRepoFile(root, 'public/vendor/jquery/jquery.min.js', 'var jquery=true;')
     // A large binary asset: not loaded into an agent's text context, so it is
     // surfaced at info rather than dragging the score like a large text file.
     writeRepoFile(root, 'data/model.bin', Buffer.alloc(1_100_000, 1))
@@ -223,7 +224,7 @@ describe('local readiness', () => {
     const report = scanLocalReadiness(root, { now: fixedNow })
 
     expect(report.summary.largeFiles).toBe(1)
-    expect(report.summary.minifiedFiles).toBe(1)
+    expect(report.summary.minifiedFiles).toBe(2)
     expect(report.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'files.large:data/model.bin',
@@ -235,6 +236,7 @@ describe('local readiness', () => {
         severity: 'warning',
       }),
     ]))
+    expect(listFindingIds(report)).not.toContain('files.minified:public/vendor/jquery/jquery.min.js')
   })
 
   test('downgrades obvious scientific example data to informational context friction', () => {
@@ -312,7 +314,7 @@ describe('local readiness', () => {
     writeRepoFile(root, 'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt', 'error\n'.repeat(300_000))
     writeRepoFile(root, 'tests/cache/CPU/test_cache_OP.lst', 'op\n'.repeat(400_000))
     writeRepoFile(root, 'tests/single_op/paged_attention_token_type_test_data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
-    writeRepoFile(root, 'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt', 'diagnostic\n'.repeat(130_000))
+    writeRepoFile(root, 'scripts/ty_benchmark/snapshots/django_Mypy.txt', 'diagnostic\n'.repeat(130_000))
     writeRepoFile(root, 'src/generated-data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
 
     const report = scanLocalReadiness(root, { now: fixedNow })
@@ -322,7 +324,7 @@ describe('local readiness', () => {
       'examples/cpu/inference/configure.json',
       'examples/cpu/report.html',
       'examples/cpu/notebook.ipynb',
-      'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt',
+      'scripts/ty_benchmark/snapshots/django_Mypy.txt',
       'tests/cache/CPU/test_cache_OP.lst',
       'tests/single_op/paged_attention_token_type_test_data.cpp',
       'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt',
