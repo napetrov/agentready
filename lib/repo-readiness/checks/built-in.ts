@@ -298,13 +298,16 @@ export const buildFindings = (
     })
   }
 
-  for (const file of files.filter(file => file.minified && !file.generated && !config.allowMinifiedFiles)) {
+  for (const file of files.filter(file => file.minified && !config.allowMinifiedFiles)) {
+    const generatedAsset = file.generated
     findings.push({
       id: `files.minified:${file.path}`,
       title: 'Minified file is checked into the repository',
-      severity: warningSeverity,
+      severity: generatedAsset ? 'info' : warningSeverity,
       path: file.path,
-      recommendation: 'Prefer generated build output outside source control, or ignore it in AgentReady policy if intentional.',
+      recommendation: generatedAsset
+        ? 'Keep generated or vendored minified assets documented and consider AgentReady ignore paths if agents do not need to inspect them.'
+        : 'Prefer generated build output outside source control, or ignore it in AgentReady policy if intentional.',
     })
   }
 
