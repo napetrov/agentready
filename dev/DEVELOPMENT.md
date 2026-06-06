@@ -83,13 +83,13 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
-### 2026-06-06 (benchmark snapshot text fixtures)
-- **DOWNGRADED RUFF BENCHMARK SNAPSHOTS**: Large `.txt` files in benchmark
-  snapshot locations, including Ruff's `scripts/ty_benchmark/snapshots/`, are
-  recorded as intentional fixture data at `info` severity instead of
-  score-gating large text findings. Verification:
-  `npm test -- --runInBand __tests__/local-readiness.test.ts` and
-  `npm run ci`.
+### 2026-06-06 (text snapshot fixture false positive)
+- **DOWNGRADED BENCHMARK SNAPSHOT TEXT FIXTURES**: Large text snapshot/golden
+  fixture files, such as Ruff benchmark snapshots under
+  `scripts/ty_benchmark/snapshots/`, are treated as intentional fixture data at
+  `info` severity while generic large text files still warn. Verification:
+  `npm test -- --runTestsByPath __tests__/local-readiness.test.ts --runInBand`
+  and `npm run ci`.
 
 ### 2026-05-30 (action + sarif)
 - **ADDED SARIF OUTPUT**: `reporters/sarif.ts` emits SARIF 2.1.0, collapsing
