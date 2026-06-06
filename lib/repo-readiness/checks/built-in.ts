@@ -43,11 +43,11 @@ const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
     || /(^|\/)(examples?|samples?|notebooks?)\//.test(path)
     || /(^|\/)(examples?|samples?|notebooks?)\/.*\/data\//.test(path)
     || /(^|\/)(tests?|unit_tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
-    || /(^|\/)(benchmarks?|perf)\/.*\/(data|fixtures?|golden|snapshots?)\//.test(path)
+    || /(^|\/)(benchmarks?|[^/]*benchmark[^/]*|perf)\/(?:.*\/)?(data|fixtures?|golden|snapshots?)\//.test(path)
   )
   const textFixturePath = (
     /(^|\/)(tests?|unit_tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
-    || /(^|\/)(benchmarks?|perf)\/.*\/(fixtures?|golden|snapshots?)\//.test(path)
+    || /(^|\/)(benchmarks?|[^/]*benchmark[^/]*|perf)\/(?:.*\/)?(fixtures?|golden|snapshots?)\//.test(path)
   )
   const dataLikeExtension = SCIENTIFIC_DATA_EXTENSIONS.has(extension) || (textFixturePath && TEXT_FIXTURE_EXTENSIONS.has(extension))
   // Some C/C++ test fixtures encode large golden payloads directly in source.
