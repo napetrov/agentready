@@ -67,6 +67,10 @@ interface LedgerEntry {
 const DEFAULT_REPORTS_DIR = path.join('reports', 'agentready-realworld-cron')
 const DEFAULT_BATCH_SIZE = 3
 const GIT_MAX_BUFFER_BYTES = 64 * 1024 * 1024
+const GIT_LOW_RESOURCE_CONFIG = ['-c', 'pack.threads=1', '-c', 'index.threads=1', '-c', 'core.preloadIndex=false']
+const GIT_CLONE_MAX_ATTEMPTS = 3
+const GIT_RESOURCE_RETRY_DELAY_MS = 750
+const TRANSIENT_GIT_RESOURCE_ERROR = /unable to create thread|resource temporarily unavailable|fetch-pack: invalid index-pack output|index-pack failed/i
 const FALSE_POSITIVE_PATH_HINT = /(^|\/)(benchmarks?|data|examples?|fixtures?|golden|samples?|snapshots?|testdata|tests?)\//i
 const GENERATED_OR_VENDOR_HINT = /(^|\/)(vendor|third_party|node_modules|dist|build|target|coverage)\//i
 
@@ -178,7 +182,7 @@ export const readScannedRepoKeys = (reportsDir: string): Set<string> => {
     const lines = readFileSync(ledgerPath, 'utf8').split('\n').filter(Boolean)
     for (const line of lines) {
       const entry = JSON.parse(line) as Partial<LedgerEntry>
-      if (entry.repo) seen.add(repoKey(entry.repo))
+      if (entry.repo && entry.classification !== 'repo-selection-blocker') seen.add(repoKey(entry.repo))
     }
   }
 
@@ -222,30 +226,58 @@ const updateRotation = (reportsDir: string, nextIndex: number, now: Date): void 
   writeFileSync(path.join(reportsDir, 'state.json'), `${JSON.stringify(next, null, 2)}\n`)
 }
 
-const cloneOrFetch = (repo: RealWorldRepo, cloneDir: string): void => {
-  if (existsSync(cloneDir)) {
-    execFileSync('git', ['-C', cloneDir, 'fetch', '--quiet', '--depth', '1', 'origin', 'HEAD'], {
-      maxBuffer: GIT_MAX_BUFFER_BYTES,
-      stdio: ['ignore', 'ignore', 'pipe'],
-    })
-    execFileSync('git', ['-C', cloneDir, 'reset', '--quiet', '--hard', 'FETCH_HEAD'], {
-      maxBuffer: GIT_MAX_BUFFER_BYTES,
-      stdio: ['ignore', 'ignore', 'pipe'],
-    })
-    return
-  }
-  execFileSync('git', ['clone', '--quiet', '--depth', '1', repo.url, cloneDir], {
+export const isTransientGitResourceError = (message: string): boolean => TRANSIENT_GIT_RESOURCE_ERROR.test(message)
+
+const sleepSync = (ms: number): void => {
+  const blocker = new Int32Array(new SharedArrayBuffer(4))
+  Atomics.wait(blocker, 0, 0, ms)
+}
+
+function gitLowResource(args: string[]): Buffer
+function gitLowResource(args: string[], options: { encoding: BufferEncoding; stdout: 'pipe' }): string
+function gitLowResource(args: string[], options: { encoding?: BufferEncoding; stdout?: 'ignore' | 'pipe' } = {}): string | Buffer | null {
+  return execFileSync('git', [...GIT_LOW_RESOURCE_CONFIG, ...args], {
+    encoding: options.encoding,
     maxBuffer: GIT_MAX_BUFFER_BYTES,
-    stdio: ['ignore', 'ignore', 'pipe'],
+    stdio: ['ignore', options.stdout ?? 'ignore', 'pipe'],
+    env: {
+      ...process.env,
+      GIT_OPTIONAL_LOCKS: '0',
+    },
   })
 }
 
+const cloneOrFetchOnce = (repo: RealWorldRepo, cloneDir: string): void => {
+  if (existsSync(cloneDir)) {
+    gitLowResource(['-C', cloneDir, 'fetch', '--quiet', '--depth', '1', 'origin', 'HEAD'])
+    gitLowResource(['-C', cloneDir, 'reset', '--quiet', '--hard', 'FETCH_HEAD'])
+    return
+  }
+  gitLowResource(['clone', '--quiet', '--depth', '1', '--single-branch', repo.url, cloneDir])
+}
+
+const cloneOrFetch = (repo: RealWorldRepo, cloneDir: string): void => {
+  const errors: string[] = []
+
+  for (let attempt = 1; attempt <= GIT_CLONE_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      cloneOrFetchOnce(repo, cloneDir)
+      return
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      errors.push(`attempt ${attempt}/${GIT_CLONE_MAX_ATTEMPTS}: ${message}`)
+      if (!isTransientGitResourceError(message) || attempt === GIT_CLONE_MAX_ATTEMPTS) {
+        throw new Error(errors.join('\n\n'))
+      }
+
+      rmSync(cloneDir, { recursive: true, force: true })
+      sleepSync(GIT_RESOURCE_RETRY_DELAY_MS * attempt)
+    }
+  }
+}
+
 const gitOutput = (repoDir: string, args: string[]): string =>
-  execFileSync('git', ['-C', repoDir, ...args], {
-    encoding: 'utf8',
-    maxBuffer: GIT_MAX_BUFFER_BYTES,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  }).trim()
+  gitLowResource(['-C', repoDir, ...args], { encoding: 'utf8', stdout: 'pipe' }).trim()
 
 const independentSignalsFor = (repoDir: string): IndependentSignals => {
   const tracked = gitOutput(repoDir, ['ls-files']).split('\n').filter(Boolean)
@@ -427,7 +459,8 @@ const run = (): void => {
   for (const entry of entries) appendLedger(path.join(args.reportsDir, 'ledgers'), entry)
 
   if (args.repos.length === 0) {
-    updateRotation(args.reportsDir, selection.nextIndex, now)
+    const hasBlocker = entries.some(entry => entry.classification === 'repo-selection-blocker')
+    updateRotation(args.reportsDir, hasBlocker ? state.nextIndex : selection.nextIndex, now)
   }
 
   const summary = entries.reduce<Record<Classification, number>>(
