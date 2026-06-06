@@ -313,15 +313,20 @@ export const walkFiles = (
       continue
     }
 
-    // Only inventory regular files and symlink entries. Symlinks are classified
-    // by their path only and never followed, so targets outside the repository
-    // cannot be read.
     const isSymlink = stat.isSymbolicLink()
     if (!stat.isFile() && !isSymlink) {
       continue
     }
 
     const extension = path.extname(repoPath).toLowerCase()
+    // Symlinks are classified by path only and never followed. Keep only
+    // documentation symlinks visible because docs detection does not read file
+    // contents; manifest/workflow symlinks must stay out of `filePaths` so
+    // downstream detectors cannot follow them with readFileSync.
+    if (isSymlink && !isDocumentationPath(repoPath, extension)) {
+      continue
+    }
+
     const binary = isSymlink ? false : isLikelyBinary(absolutePath, extension, stat.size)
 
     files.push({

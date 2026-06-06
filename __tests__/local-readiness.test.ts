@@ -533,16 +533,18 @@ describe('local readiness', () => {
     expect(paths).toContain('src/app.ts')
   })
 
-  test('inventories symlink paths without following targets outside the repo', () => {
+  test('inventories documentation symlinks without exposing other symlink targets', () => {
     root = createTempRepo()
     const outside = createTempRepo()
     writeRepoFile(outside, 'secret.bin', Buffer.alloc(2_000_000, 1))
+    writeRepoFile(outside, 'package.json', JSON.stringify({ scripts: { test: 'outside-test' } }))
     writeRepoFile(root, 'README.md', '# Demo\n')
     writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
     writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
-    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
     writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    symlinkSync('README.md', path.join(root, 'linked-readme.md'))
     symlinkSync(path.join(outside, 'secret.bin'), path.join(root, 'external.bin'))
+    symlinkSync(path.join(outside, 'package.json'), path.join(root, 'package.json'))
     symlinkSync(path.join(root, 'src'), path.join(root, 'src-link'))
 
     try {
@@ -550,11 +552,15 @@ describe('local readiness', () => {
       const paths = report.files.map(file => file.path)
 
       expect(paths).toContain('src/app.ts')
-      expect(paths).toContain('external.bin')
-      expect(paths).toContain('src-link')
+      expect(paths).toContain('linked-readme.md')
+      expect(paths).not.toContain('package.json')
+      expect(paths).not.toContain('external.bin')
+      expect(paths).not.toContain('src-link')
       expect(paths).not.toContain('src-link/app.ts')
-      // The external 2 MB target must not be followed or sampled as a large file.
+      // The external targets must not be followed, sampled, or exposed to
+      // downstream manifest readers.
       expect(listFindingIds(report)).not.toContain('files.large:external.bin')
+      expect(report.commands.ecosystems).not.toContain('node')
     } finally {
       rmSync(outside, { recursive: true, force: true })
     }
