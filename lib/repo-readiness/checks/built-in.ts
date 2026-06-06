@@ -35,7 +35,10 @@ const SCIENTIFIC_DATA_EXTENSIONS = new Set([
 const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
   const path = file.path.toLowerCase()
   const extension = file.extension.toLowerCase()
-  const dataLikeExtension = SCIENTIFIC_DATA_EXTENSIONS.has(extension)
+  const benchmarkTextSnapshot =
+    extension === '.txt'
+    && /(^|\/)(benchmarks?|[^/]*benchmark[^/]*|perf)\/(?:.*\/)?(data|fixtures?|golden|snapshots?)\//.test(path)
+  const dataLikeExtension = SCIENTIFIC_DATA_EXTENSIONS.has(extension) || benchmarkTextSnapshot
   // Some C/C++ test fixtures encode large golden payloads directly in source.
   // Keep this filename check delimiter-bound so production sources are not
   // mistaken for fixture data.
@@ -51,7 +54,7 @@ const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
     || /(^|\/)(examples?|samples?|notebooks?)\//.test(path)
     || /(^|\/)(examples?|samples?|notebooks?)\/.*\/data\//.test(path)
     || /(^|\/)(tests?|unit_tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
-    || /(^|\/)(benchmarks?|perf)\/.*\/(data|fixtures?|golden|snapshots?)\//.test(path)
+    || /(^|\/)(benchmarks?|[^/]*benchmark[^/]*|perf)\/(?:.*\/)?(data|fixtures?|golden|snapshots?)\//.test(path)
   )
 }
 
