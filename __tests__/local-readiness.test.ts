@@ -430,6 +430,29 @@ describe('local readiness', () => {
     })
   })
 
+  test('downgrades large text benchmark snapshots to info', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run tests before committing.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'pyproject.toml', '[project]\nname = "demo"\n')
+    writeRepoFile(root, 'tests/test_demo.py', 'def test_demo():\n    assert True\n')
+    writeRepoFile(root, 'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt', 'diagnostic\n'.repeat(130_000))
+    writeRepoFile(root, 'src/notes.txt', 'note\n'.repeat(260_000))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const byId = new Map(report.findings.map(finding => [finding.id, finding]))
+
+    expect(byId.get('files.large:scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt')).toMatchObject({
+      severity: 'info',
+      title: 'Large checked-in example or fixture data can create agent context friction',
+    })
+    expect(byId.get('files.large:src/notes.txt')).toMatchObject({
+      severity: 'warning',
+      title: 'Large checked-in file can create agent context friction',
+    })
+  })
+
   test('surfaces a large binary asset at info but a large text file at warning', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
