@@ -13,9 +13,9 @@ Artifacts: artifacts/2026-06-06T20-42-13-862Z/prometheus/agentready.json, artifa
 ## Confirmation
 
 - Raw scan artifact: `artifacts/2026-06-06T20-42-13-862Z/prometheus/agentready.json` reports `files.large:cmd/promtool/testdata/rules_large.yml` as a warning, while `tsdb/testdata/20kseries.json` is already informational fixture data.
-- Independent repo signal: at commit `5e3c892bfc1209b739562f885a8cfa17c6cd7fa2`, the path is Prometheus promtool testdata (`cmd/promtool/testdata/rules_large.yml`) beside other rule fixtures.
-- Detector code path: `isLikelyIntentionalDataFixture` downgrades common fixture data extensions under `testdata`, but main currently omits `.yml`/`.yaml`.
-- Minimized fixture and fix already exist in PR #52 (`fix/yaml-testdata-large-file`), which adds a Prometheus-shaped YAML testdata case and downgrades YAML/YML fixture data to info. Current PR checks are green.
+- Independent repo signal: at commit `5e3c892bfc1209b739562f885a8cfa17c6cd7fa2`, `cmd/promtool/testdata/rules_large.yml` is a 1.1 MB YAML rule fixture under Prometheus promtool testdata, beside many other `.yml/.yaml` test fixtures.
+- Detector path: `isLikelyIntentionalDataFixture` downgrades common data extensions under `testdata`, but omitted `.yml`/`.yaml`, causing this fixture to be treated as generic large text context friction.
+- Minimized regression: `__tests__/local-readiness.test.ts` now includes a Prometheus-shaped `cmd/promtool/testdata/rules_large.yml` fixture and expects informational severity.
 
 ## Independent Signals
 

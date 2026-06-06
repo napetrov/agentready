@@ -280,6 +280,7 @@ describe('local readiness', () => {
     writeRepoFile(root, 'examples/cpu/usecase/report.html', '<html>' + 'x'.repeat(1_100_000) + '</html>')
     writeRepoFile(root, 'notebooks/demo.ipynb', '{"cells":[' + '{} ,'.repeat(280_000) + '{}]}')
     writeRepoFile(root, 'data/qr.csv', Buffer.alloc(1_100_000, 1))
+    writeRepoFile(root, 'cmd/promtool/testdata/rules_large.yml', 'groups:\n' + '  - name: example\n    rules:\n      - record: job:http_inprogress_requests:sum\n        expr: vector(1)\n'.repeat(10_000))
     writeRepoFile(root, 'src/tests/functional/plugin/shared/src/single_op/paged_attention_token_type_test_data.cpp', 'int data[] = {' + '1,'.repeat(600_000) + '};')
     writeRepoFile(root, 'src/unit_tests/generated_fixture_test_data.cpp', 'int data[] = {' + '2,'.repeat(600_000) + '};')
     writeRepoFile(root, 'src/tests/test_utils/functional_test_utils/layer_tests_summary/github/cache/CPU/test_cache_OP.lst', 'op\n'.repeat(400_000))
@@ -308,6 +309,10 @@ describe('local readiness', () => {
       }),
       expect.objectContaining({
         id: 'files.large:data/qr.csv',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.large:cmd/promtool/testdata/rules_large.yml',
         severity: 'info',
       }),
       expect.objectContaining({
