@@ -302,9 +302,9 @@ export const walkFiles = (
 
     let stat
     try {
-      // lstat (not stat) so symlinks are not followed: fast-glob is configured
-      // with followSymbolicLinks:false and already omits them, but guarding here
-      // keeps us from ever reading a target outside the repository.
+      // lstat (not stat) so symlink entries are classified by path only and
+      // never dereferenced. Combined with followSymbolicLinks:false, this keeps
+      // us from reading targets, including targets outside the repository.
       stat = lstatSync(absolutePath)
     } catch (error) {
       // Tolerate files that disappear mid-walk or cannot be stat'd (permissions),
