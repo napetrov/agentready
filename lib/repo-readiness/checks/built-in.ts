@@ -32,10 +32,24 @@ const SCIENTIFIC_DATA_EXTENSIONS = new Set([
   '.mtx',
 ])
 
+const TEXT_FIXTURE_EXTENSIONS = new Set(['.log', '.out', '.txt'])
+
 const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
   const path = file.path.toLowerCase()
   const extension = file.extension.toLowerCase()
-  const dataLikeExtension = SCIENTIFIC_DATA_EXTENSIONS.has(extension)
+  const fixturePath = (
+    /^data\/[^/]+$/.test(path)
+    || /^data\/(examples?|samples?|fixtures?)\//.test(path)
+    || /(^|\/)(examples?|samples?|notebooks?)\//.test(path)
+    || /(^|\/)(examples?|samples?|notebooks?)\/.*\/data\//.test(path)
+    || /(^|\/)(tests?|unit_tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
+    || /(^|\/)(benchmarks?|perf)\/.*\/(data|fixtures?|golden|snapshots?)\//.test(path)
+  )
+  const textFixturePath = (
+    /(^|\/)(tests?|unit_tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
+    || /(^|\/)(benchmarks?|perf)\/.*\/(fixtures?|golden|snapshots?)\//.test(path)
+  )
+  const dataLikeExtension = SCIENTIFIC_DATA_EXTENSIONS.has(extension) || (textFixturePath && TEXT_FIXTURE_EXTENSIONS.has(extension))
   // Some C/C++ test fixtures encode large golden payloads directly in source.
   // Keep this filename check delimiter-bound so production sources are not
   // mistaken for fixture data.
@@ -45,14 +59,7 @@ const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
     && /(^|[._-])(test[_-]?data|data|fixture|fixtures|golden)([._-]|$)/.test(path.split('/').pop() ?? '')
   if (!dataLikeExtension && !sourceEncodedTestData) return false
 
-  return (
-    /^data\/[^/]+$/.test(path)
-    || /^data\/(examples?|samples?|fixtures?)\//.test(path)
-    || /(^|\/)(examples?|samples?|notebooks?)\//.test(path)
-    || /(^|\/)(examples?|samples?|notebooks?)\/.*\/data\//.test(path)
-    || /(^|\/)(tests?|unit_tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
-    || /(^|\/)(benchmarks?|perf)\/.*\/(data|fixtures?|golden|snapshots?)\//.test(path)
-  )
+  return fixturePath
 }
 
 /**

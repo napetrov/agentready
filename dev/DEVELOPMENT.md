@@ -90,6 +90,14 @@ detection (Gradle/Maven, .NET, additional Python tooling).
   rebuilt so the first-party action uses the same predicate. Verification:
   `npm run build:action`, `npm run agentready:action-smoke`, and `npm run ci`.
 
+### 2026-06-06 (text snapshot fixture false positive)
+- **DOWNGRADED BENCHMARK SNAPSHOT TEXT FIXTURES**: Large text snapshot/golden
+  fixture files, such as Ruff benchmark snapshots under
+  `scripts/ty_benchmark/snapshots/`, are treated as intentional fixture data at
+  `info` severity while generic large text files still warn. Verification:
+  `npm test -- --runTestsByPath __tests__/local-readiness.test.ts --runInBand`
+  and `npm run ci`.
+
 ### 2026-05-30 (action + sarif)
 - **ADDED SARIF OUTPUT**: `reporters/sarif.ts` emits SARIF 2.1.0, collapsing
   `rule:instance` finding ids into stable rules with per-result levels and file

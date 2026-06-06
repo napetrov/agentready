@@ -103,6 +103,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Generated or vendored minified files are no longer emitted as minified-file
   readiness warnings; they remain visible in inventory counts without
   score-gating repos for intentional bundled assets.
+- Large text snapshot/golden/fixture artifacts in benchmark-style snapshot
+  directories are now downgraded to informational fixture data findings instead
+  of warning/error `files.large` readiness blockers, while generic large text
+  files remain score-gating.
 - The CI bare-`tsc` build matcher no longer matches `vue-tsc` (a type-checker):
   a left `(?<![\w-])` boundary excludes the hyphenated suffix, so a CI step that
   runs only `vue-tsc` is no longer credited with build coverage.
