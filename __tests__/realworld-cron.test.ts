@@ -1,7 +1,7 @@
 import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
-import { readScannedRepoKeys, repoKey, selectBatch } from '../bin/agentready-realworld-cron'
+import { isTransientGitResourceError, readScannedRepoKeys, repoKey, selectBatch } from '../bin/agentready-realworld-cron'
 
 describe('real-world cron repository selection', () => {
   const repos = [
@@ -32,6 +32,7 @@ describe('real-world cron repository selection', () => {
     writeFileSync(path.join(ledgersDir, '2026-06.jsonl'), [
       JSON.stringify({ repo: repos[1] }),
       JSON.stringify({ repo: { name: 'three', url: 'git@github.com:example/three.git' } }),
+      JSON.stringify({ repo: repos[3], classification: 'repo-selection-blocker' }),
       '',
     ].join('\n'))
 
@@ -39,5 +40,12 @@ describe('real-world cron repository selection', () => {
 
     expect(seen).toContain(repoKey(repos[1]))
     expect(seen).toContain(repoKey(repos[2]))
+    expect(seen).not.toContain(repoKey(repos[3]))
+  })
+
+  it('recognizes transient git resource failures as retryable', () => {
+    expect(isTransientGitResourceError('fatal: unable to create thread: Resource temporarily unavailable')).toBe(true)
+    expect(isTransientGitResourceError('fatal: fetch-pack: invalid index-pack output')).toBe(true)
+    expect(isTransientGitResourceError('fatal: repository not found')).toBe(false)
   })
 })
