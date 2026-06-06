@@ -278,7 +278,9 @@ export const walkFiles = (
   const relativePaths = fastGlob.sync('**/*', {
     cwd: root,
     dot: true,
-    onlyFiles: true,
+    // Include symlink entries so a tracked root README symlink is still counted
+    // as a documentation entrypoint without following or reading its target.
+    onlyFiles: false,
     followSymbolicLinks: false,
     suppressErrors: true,
     ignore: [
@@ -311,14 +313,16 @@ export const walkFiles = (
       continue
     }
 
-    // Only inventory regular files — never symlinks (whose target may be
-    // external) or other special entries (FIFOs, sockets, devices).
-    if (!stat.isFile()) {
+    // Only inventory regular files and symlink entries. Symlinks are classified
+    // by their path only and never followed, so targets outside the repository
+    // cannot be read.
+    const isSymlink = stat.isSymbolicLink()
+    if (!stat.isFile() && !isSymlink) {
       continue
     }
 
     const extension = path.extname(repoPath).toLowerCase()
-    const binary = isLikelyBinary(absolutePath, extension, stat.size)
+    const binary = isSymlink ? false : isLikelyBinary(absolutePath, extension, stat.size)
 
     files.push({
       path: repoPath,

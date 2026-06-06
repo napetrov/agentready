@@ -133,6 +133,18 @@ describe('local readiness', () => {
     expect(report.findings.map(finding => finding.id)).not.toContain('docs.readme.missing')
   })
 
+  test('accepts a root README symlink without following its target', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'packages/app/README.md', '# App\n')
+    symlinkSync('packages/app/README.md', path.join(root, 'readme.md'))
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.docs.readme).toContain('readme.md')
+    expect(report.findings.map(finding => finding.id)).not.toContain('docs.readme.missing')
+  })
+
   test('rejects a scan target that does not exist', () => {
     expect(() => scanLocalReadiness(path.join(tmpdir(), 'agentready-missing-xyz-404'))).toThrow(/does not exist/)
   })
@@ -521,7 +533,7 @@ describe('local readiness', () => {
     expect(paths).toContain('src/app.ts')
   })
 
-  test('does not inventory symlinks, including those pointing outside the repo', () => {
+  test('inventories symlink paths without following targets outside the repo', () => {
     root = createTempRepo()
     const outside = createTempRepo()
     writeRepoFile(outside, 'secret.bin', Buffer.alloc(2_000_000, 1))
@@ -538,9 +550,10 @@ describe('local readiness', () => {
       const paths = report.files.map(file => file.path)
 
       expect(paths).toContain('src/app.ts')
-      expect(paths).not.toContain('external.bin')
-      expect(paths.some(p => p.startsWith('src-link'))).toBe(false)
-      // The external 2 MB target must not leak in as a large-file finding.
+      expect(paths).toContain('external.bin')
+      expect(paths).toContain('src-link')
+      expect(paths).not.toContain('src-link/app.ts')
+      // The external 2 MB target must not be followed or sampled as a large file.
       expect(listFindingIds(report)).not.toContain('files.large:external.bin')
     } finally {
       rmSync(outside, { recursive: true, force: true })
