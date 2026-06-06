@@ -83,6 +83,13 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-06-06 (generated fixture large files)
+- **SUPPRESSED GENERATED TEST FIXTURES**: Large files in generated/test fixture
+  locations, including baseline and snapshot-style generated artifacts, are
+  suppressed as intentional generated data while ordinary large source/text
+  files remain score-gating. Verification: `npm run agentready:action-smoke`
+  and `npm run ci`.
+
 ### 2026-06-06 (generated minified vendor assets)
 - **IGNORED GENERATED MINIFIED FINDINGS**: Minified files already classified as
   generated or vendored are kept in file inventory evidence but no longer

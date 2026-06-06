@@ -100,6 +100,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- Large generated/test fixture artifacts, including baseline and generated
+  snapshot-style files, are suppressed as intentional generated data when they
+  are in explicit generated or test fixture locations.
 - Generated or vendored minified files are no longer emitted as minified-file
   readiness warnings; they remain visible in inventory counts without
   score-gating repos for intentional bundled assets.
