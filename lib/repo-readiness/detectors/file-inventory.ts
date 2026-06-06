@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync, realpathSync } from 'fs'
+import { closeSync, lstatSync, openSync, readFileSync, readSync, realpathSync } from 'fs'
 import path from 'path'
 import fastGlob from 'fast-glob'
 import ignore, { type Ignore } from 'ignore'
@@ -59,6 +59,33 @@ const binaryExtensions = new Set([
   '.webp',
   '.zip',
 ])
+
+const binarySampleBytes = 512
+
+const readBinarySample = (absolutePath: string): Buffer => {
+  const fileDescriptor = openSync(absolutePath, 'r')
+  try {
+    const sample = Buffer.allocUnsafe(binarySampleBytes)
+    const bytesRead = readSync(fileDescriptor, sample, 0, binarySampleBytes, 0)
+    return sample.subarray(0, bytesRead)
+  } finally {
+    closeSync(fileDescriptor)
+  }
+}
+
+const hasUtf8ReplacementCharacters = (sample: Buffer): boolean => {
+  const maxTrailingUtf8Bytes = 3
+  const trimLimit = Math.min(maxTrailingUtf8Bytes, sample.length)
+
+  for (let trimBytes = 0; trimBytes <= trimLimit; trimBytes += 1) {
+    const candidate = trimBytes === 0 ? sample : sample.subarray(0, sample.length - trimBytes)
+    if (!candidate.toString('utf8').includes('\uFFFD')) {
+      return false
+    }
+  }
+
+  return true
+}
 
 const generatedPathPatterns = [
   // Lockfiles across ecosystems: machine-generated, frequently large, and
@@ -125,10 +152,17 @@ const isLikelyBinary = (absolutePath: string, extension: string, sizeBytes: numb
   try {
     return isBinaryFileSync(absolutePath, sizeBytes)
   } catch (error) {
-    console.warn(`AgentReady: unable to sample file for binary detection (${absolutePath}): ${error instanceof Error ? error.message : String(error)}`)
+    try {
+      const sample = readBinarySample(absolutePath)
+      if (sample.includes(0)) {
+        return true
+      }
+      return hasUtf8ReplacementCharacters(sample)
+    } catch (fallbackError) {
+      console.warn(`AgentReady: unable to sample file for binary detection (${absolutePath}): ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`)
+      return false
+    }
   }
-
-  return false
 }
 
 const isInsideRoot = (rootRealPath: string, targetRealPath: string): boolean => {

@@ -399,6 +399,43 @@ describe('local readiness', () => {
     })
   })
 
+  test('falls back cleanly when binary sampling rejects valid UTF-8 box-drawing text', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    const clickHouseReferencePrefix = Buffer.from([
+      32, 32, 32, 226, 148, 140, 226, 148, 128, 226, 148, 128, 226, 148, 128, 226, 148, 128, 226, 148,
+      128, 226, 148, 128, 226, 148, 128, 226, 148, 128, 226, 148, 128, 120, 226, 148, 128, 226, 148,
+      144, 10, 49, 46, 32, 226, 148, 130, 32, 49, 50, 51, 52, 53, 54, 55, 56, 57, 32, 226, 148,
+      130, 32, 45, 45, 32, 49, 50, 51, 46, 52, 54, 32, 109, 105, 108, 108, 105, 111, 110, 10, 32,
+      32, 32, 226, 148, 148, 226, 148, 128, 226, 148, 128, 226, 148, 128, 226, 148, 128, 226, 148,
+      128, 226, 148, 128, 226, 148, 128, 226, 148, 128, 226, 148, 128, 226, 148, 128, 226, 148, 128,
+      226, 148, 152, 10,
+    ])
+    writeRepoFile(root, 'tests/queries/0_stateless/03156_nullable_number_tips.reference', Buffer.concat(Array(12).fill(clickHouseReferencePrefix)))
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+    try {
+      const report = scanLocalReadiness(root, {
+        now: fixedNow,
+        config: {
+          largeFileWarningBytes: 1_000,
+          largeFileErrorBytes: 100_000,
+        },
+      })
+
+      expect(warn).not.toHaveBeenCalled()
+      expect(report.files.find(file => file.path.endsWith('03156_nullable_number_tips.reference'))).toMatchObject({
+        binary: false,
+        test: true,
+      })
+      expect(listFindingIds(report)).toContain('files.large:tests/queries/0_stateless/03156_nullable_number_tips.reference')
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
   test('does not flag large lockfiles across ecosystems as large files', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
