@@ -4,6 +4,7 @@ import {
   appendFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -12,7 +13,7 @@ import {
 import path from 'path'
 import { formatScanMarkdown, scanLocalReadiness, type LocalReadinessReport } from '../lib/repo-readiness/local-readiness'
 
-interface RealWorldRepo {
+export interface RealWorldRepo {
   name: string
   url: string
   tags?: string[]
@@ -32,9 +33,15 @@ interface Args {
   keepWorktree: boolean
 }
 
-interface RotationState {
+export interface RotationState {
   nextIndex: number
   lastRunAt?: string
+}
+
+export interface BatchSelection {
+  repos: RealWorldRepo[]
+  nextIndex: number
+  skippedSeen: number
 }
 
 interface IndependentSignals {
@@ -149,18 +156,67 @@ const readRepoPool = (repoPoolPath: string): RealWorldRepo[] => {
   return repos
 }
 
-const selectBatch = (pool: RealWorldRepo[], state: RotationState, batchSize: number): RealWorldRepo[] => {
-  const selected: RealWorldRepo[] = []
-  const cappedSize = Math.min(batchSize, pool.length)
-  for (let offset = 0; offset < cappedSize; offset += 1) {
-    selected.push(pool[(state.nextIndex + offset) % pool.length])
+const normalizeRepoKey = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/^git@github\.com:/, 'https://github.com/')
+    .replace(/^https?:\/\/github\.com\//, 'github.com/')
+    .replace(/\.git$/i, '')
+    .replace(/\/+$/g, '')
+
+export const repoKey = (repo: RealWorldRepo): string => normalizeRepoKey(repo.url || repo.name)
+
+export const readScannedRepoKeys = (reportsDir: string): Set<string> => {
+  const ledgersDir = path.join(reportsDir, 'ledgers')
+  const seen = new Set<string>()
+  if (!existsSync(ledgersDir)) return seen
+
+  for (const file of readdirSync(ledgersDir)) {
+    if (!/^\d{4}-\d{2}\.jsonl$/.test(file)) continue
+    const ledgerPath = path.join(ledgersDir, file)
+    const lines = readFileSync(ledgerPath, 'utf8').split('\n').filter(Boolean)
+    for (const line of lines) {
+      const entry = JSON.parse(line) as Partial<LedgerEntry>
+      if (entry.repo) seen.add(repoKey(entry.repo))
+    }
   }
-  return selected
+
+  return seen
 }
 
-const updateRotation = (reportsDir: string, previous: RotationState, poolSize: number, scanned: number, now: Date): void => {
+export const selectBatch = (
+  pool: RealWorldRepo[],
+  state: RotationState,
+  batchSize: number,
+  seenRepos: Set<string>,
+): BatchSelection => {
+  const selected: RealWorldRepo[] = []
+  const selectedKeys = new Set<string>()
+  let skippedSeen = 0
+  let nextIndex = state.nextIndex
+
+  for (let offset = 0; offset < pool.length && selected.length < batchSize; offset += 1) {
+    const index = (state.nextIndex + offset) % pool.length
+    const repo = pool[index]
+    const key = repoKey(repo)
+    nextIndex = (index + 1) % pool.length
+
+    if (seenRepos.has(key) || selectedKeys.has(key)) {
+      skippedSeen += 1
+      continue
+    }
+
+    selected.push(repo)
+    selectedKeys.add(key)
+  }
+
+  return { repos: selected, nextIndex, skippedSeen }
+}
+
+const updateRotation = (reportsDir: string, nextIndex: number, now: Date): void => {
   const next: RotationState = {
-    nextIndex: poolSize === 0 ? 0 : (previous.nextIndex + scanned) % poolSize,
+    nextIndex,
     lastRunAt: now.toISOString(),
   }
   writeFileSync(path.join(reportsDir, 'state.json'), `${JSON.stringify(next, null, 2)}\n`)
@@ -358,13 +414,20 @@ const run = (): void => {
   const statePath = path.join(args.reportsDir, 'state.json')
   const state = readJsonFile<RotationState>(statePath, { nextIndex: 0 })
   const pool = args.repos.length > 0 ? args.repos : readRepoPool(args.repoPoolPath)
-  const batch = args.repos.length > 0 ? args.repos.slice(0, args.batchSize) : selectBatch(pool, state, args.batchSize)
+  const selection = args.repos.length > 0
+    ? { repos: args.repos.slice(0, args.batchSize), nextIndex: state.nextIndex, skippedSeen: 0 }
+    : selectBatch(pool, state, args.batchSize, readScannedRepoKeys(args.reportsDir))
+  const batch = selection.repos
+
+  if (batch.length === 0) {
+    throw new Error(`repo pool has no unscanned repositories left; add new entries to ${args.repoPoolPath}`)
+  }
 
   const entries = batch.map(repo => scanRepo(repo, args, runId, now))
   for (const entry of entries) appendLedger(path.join(args.reportsDir, 'ledgers'), entry)
 
   if (args.repos.length === 0) {
-    updateRotation(args.reportsDir, state, pool.length, batch.length, now)
+    updateRotation(args.reportsDir, selection.nextIndex, now)
   }
 
   const summary = entries.reduce<Record<Classification, number>>(
@@ -384,14 +447,17 @@ const run = (): void => {
     `AgentReady real-world cron run ${runId}`,
     `Reports: ${args.reportsDir}`,
     `Repos scanned: ${entries.length}`,
+    `Previously scanned repos skipped: ${selection.skippedSeen}`,
     `Classifications: ${JSON.stringify(summary)}`,
     '',
   ].join('\n'))
 }
 
-try {
-  run()
-} catch (error) {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
-  process.exit(1)
+if (require.main === module) {
+  try {
+    run()
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
+    process.exit(1)
+  }
 }

@@ -48,6 +48,235 @@
     "name": "gin",
     "url": "https://github.com/gin-gonic/gin.git",
     "tags": ["go"]
+  },
+  {
+    "name": "requests",
+    "url": "https://github.com/psf/requests.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "django",
+    "url": "https://github.com/django/django.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "pydantic",
+    "url": "https://github.com/pydantic/pydantic.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "ruff",
+    "url": "https://github.com/astral-sh/ruff.git",
+    "tags": ["python", "rust"]
+  },
+  {
+    "name": "black",
+    "url": "https://github.com/psf/black.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "scrapy",
+    "url": "https://github.com/scrapy/scrapy.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "sqlalchemy",
+    "url": "https://github.com/sqlalchemy/sqlalchemy.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "poetry",
+    "url": "https://github.com/python-poetry/poetry.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "numpy",
+    "url": "https://github.com/numpy/numpy.git",
+    "tags": ["python", "c"]
+  },
+  {
+    "name": "pandas",
+    "url": "https://github.com/pandas-dev/pandas.git",
+    "tags": ["python", "c"]
+  },
+  {
+    "name": "ripgrep",
+    "url": "https://github.com/BurntSushi/ripgrep.git",
+    "tags": ["rust"]
+  },
+  {
+    "name": "serde",
+    "url": "https://github.com/serde-rs/serde.git",
+    "tags": ["rust"]
+  },
+  {
+    "name": "tokio",
+    "url": "https://github.com/tokio-rs/tokio.git",
+    "tags": ["rust"]
+  },
+  {
+    "name": "clap",
+    "url": "https://github.com/clap-rs/clap.git",
+    "tags": ["rust"]
+  },
+  {
+    "name": "hyper",
+    "url": "https://github.com/hyperium/hyper.git",
+    "tags": ["rust"]
+  },
+  {
+    "name": "deno",
+    "url": "https://github.com/denoland/deno.git",
+    "tags": ["rust", "typescript"]
+  },
+  {
+    "name": "node",
+    "url": "https://github.com/nodejs/node.git",
+    "tags": ["javascript", "c++"]
+  },
+  {
+    "name": "typescript",
+    "url": "https://github.com/microsoft/TypeScript.git",
+    "tags": ["typescript"]
+  },
+  {
+    "name": "react",
+    "url": "https://github.com/facebook/react.git",
+    "tags": ["javascript"]
+  },
+  {
+    "name": "next.js",
+    "url": "https://github.com/vercel/next.js.git",
+    "tags": ["typescript", "react"]
+  },
+  {
+    "name": "vue",
+    "url": "https://github.com/vuejs/core.git",
+    "tags": ["typescript", "vue"]
+  },
+  {
+    "name": "svelte",
+    "url": "https://github.com/sveltejs/svelte.git",
+    "tags": ["typescript", "svelte"]
+  },
+  {
+    "name": "angular",
+    "url": "https://github.com/angular/angular.git",
+    "tags": ["typescript"]
+  },
+  {
+    "name": "eslint",
+    "url": "https://github.com/eslint/eslint.git",
+    "tags": ["javascript"]
+  },
+  {
+    "name": "prettier",
+    "url": "https://github.com/prettier/prettier.git",
+    "tags": ["javascript"]
+  },
+  {
+    "name": "kubernetes",
+    "url": "https://github.com/kubernetes/kubernetes.git",
+    "tags": ["go"]
+  },
+  {
+    "name": "prometheus",
+    "url": "https://github.com/prometheus/prometheus.git",
+    "tags": ["go"]
+  },
+  {
+    "name": "grafana",
+    "url": "https://github.com/grafana/grafana.git",
+    "tags": ["go", "typescript"]
+  },
+  {
+    "name": "terraform",
+    "url": "https://github.com/hashicorp/terraform.git",
+    "tags": ["go"]
+  },
+  {
+    "name": "ansible",
+    "url": "https://github.com/ansible/ansible.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "helm",
+    "url": "https://github.com/helm/helm.git",
+    "tags": ["go", "kubernetes"]
+  },
+  {
+    "name": "containerd",
+    "url": "https://github.com/containerd/containerd.git",
+    "tags": ["go"]
+  },
+  {
+    "name": "envoy",
+    "url": "https://github.com/envoyproxy/envoy.git",
+    "tags": ["c++", "bazel"]
+  },
+  {
+    "name": "grpc",
+    "url": "https://github.com/grpc/grpc.git",
+    "tags": ["c++"]
+  },
+  {
+    "name": "curl",
+    "url": "https://github.com/curl/curl.git",
+    "tags": ["c"]
+  },
+  {
+    "name": "redis",
+    "url": "https://github.com/redis/redis.git",
+    "tags": ["c"]
+  },
+  {
+    "name": "postgres",
+    "url": "https://github.com/postgres/postgres.git",
+    "tags": ["c"]
+  },
+  {
+    "name": "clickhouse",
+    "url": "https://github.com/ClickHouse/ClickHouse.git",
+    "tags": ["c++"]
+  },
+  {
+    "name": "opencv",
+    "url": "https://github.com/opencv/opencv.git",
+    "tags": ["c++", "python"]
+  },
+  {
+    "name": "arrow",
+    "url": "https://github.com/apache/arrow.git",
+    "tags": ["c++", "python", "rust"]
+  },
+  {
+    "name": "spark",
+    "url": "https://github.com/apache/spark.git",
+    "tags": ["scala", "python"]
+  },
+  {
+    "name": "pytorch",
+    "url": "https://github.com/pytorch/pytorch.git",
+    "tags": ["python", "c++"]
+  },
+  {
+    "name": "transformers",
+    "url": "https://github.com/huggingface/transformers.git",
+    "tags": ["python"]
+  },
+  {
+    "name": "langchain",
+    "url": "https://github.com/langchain-ai/langchain.git",
+    "tags": ["python", "typescript"]
+  },
+  {
+    "name": "qdrant",
+    "url": "https://github.com/qdrant/qdrant.git",
+    "tags": ["rust"]
+  },
+  {
+    "name": "milvus",
+    "url": "https://github.com/milvus-io/milvus.git",
+    "tags": ["go", "c++"]
   }
 ]
-

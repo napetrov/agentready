@@ -2,14 +2,20 @@
 
 This directory tracks recurring real-world validation for AgentReady.
 
-The cron runner samples real public repositories, clones them into the ignored
-`work/` scratch area, runs the local AgentReady scanner, and writes:
+The cron runner samples real public repositories that do not already appear in
+the ledger, clones them into the ignored `work/` scratch area, runs the local
+AgentReady scanner, and writes:
 
 - `artifacts/<run-id>/` - ignored per-run JSON/Markdown scan artifacts.
 - `ledgers/YYYY-MM.jsonl` - tracked run ledger entries.
 - `issues/*.md` - tracked candidate issues for suspected AgentReady bugs or
   repo-selection blockers that need a human/focused fix pass.
-- `state.json` - ignored rotation state, so each run advances through the pool.
+- `state.json` - ignored rotation state, so each run advances through unseen
+  entries in the pool.
+
+Repositories must not be repeated during the real-world validation campaign.
+When every repository in `repo-pool.json` has already appeared in the ledger,
+the runner stops and asks for new pool entries instead of wrapping around.
 
 Run manually:
 
@@ -37,4 +43,3 @@ Classification buckets:
 
 If a suspected AgentReady bug is confirmed, the follow-up should be a focused
 fix PR with the ledger entry and artifact path cited in the PR description.
-
