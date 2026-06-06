@@ -808,6 +808,27 @@ describe('local readiness', () => {
     expect(paths).toContain('src/app.ts')
   })
 
+  test('does not follow symlinked gitignore files outside the repo', () => {
+    root = createTempRepo()
+    const outside = createTempRepo()
+    writeRepoFile(outside, '.gitignore', 'src/\n')
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    symlinkSync(path.join(outside, '.gitignore'), path.join(root, '.gitignore'))
+
+    try {
+      const report = scanLocalReadiness(root, { now: fixedNow })
+      const paths = report.files.map(file => file.path)
+
+      expect(paths).toContain('src/app.ts')
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   test('inventories documentation symlinks without exposing other symlink targets', () => {
     root = createTempRepo()
     const outside = createTempRepo()

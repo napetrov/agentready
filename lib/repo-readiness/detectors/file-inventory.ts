@@ -260,7 +260,7 @@ const loadGitignoreMatchers = (root: string): Map<string, Ignore> => {
   const gitignoreFiles = fastGlob.sync('**/.gitignore', {
     cwd: root,
     dot: true,
-    onlyFiles: true,
+    onlyFiles: false,
     followSymbolicLinks: false,
     suppressErrors: true,
     ignore: ignoredDirectories.map(dir => `**/${dir}/**`),
@@ -268,7 +268,11 @@ const loadGitignoreMatchers = (root: string): Map<string, Ignore> => {
 
   for (const relativeFile of gitignoreFiles) {
     try {
-      const contents = readFileSync(path.join(root, relativeFile), 'utf8')
+      const absoluteFile = path.join(root, relativeFile)
+      if (!lstatSync(absoluteFile).isFile()) {
+        continue
+      }
+      const contents = readFileSync(absoluteFile, 'utf8')
       const dir = normalizeRepoPath(path.dirname(relativeFile))
       matchers.set(dir === '.' ? '' : dir, ignore().add(contents))
     } catch (error) {
