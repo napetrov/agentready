@@ -20,7 +20,9 @@ const SCIENTIFIC_DATA_EXTENSIONS = new Set([
   '.html',
   '.ipynb',
   '.tsv',
+  '.baseline',
   '.json',
+  '.jsonc',
   '.jsonl',
   '.yaml',
   '.yml',
@@ -32,6 +34,9 @@ const SCIENTIFIC_DATA_EXTENSIONS = new Set([
   '.h5',
   '.hdf5',
   '.mtx',
+  '.snapshot',
+  '.symbols',
+  '.types',
 ])
 
 const TEXT_FIXTURE_EXTENSIONS = new Set(['.log', '.out', '.txt'])
@@ -65,9 +70,18 @@ const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
     extension === ''
     && file.test
     && /(^|\/)([^/]+_)?corpus\//.test(path)
-  if (!dataLikeExtension && !sourceEncodedTestData && !extensionlessTestCorpusData) return false
+  const generatedTestArtifact =
+    file.test
+    && (
+      /(^|\/)(baselines?|snapshots?|golden)\//.test(path)
+      || (
+        /(^|\/)(benches|benchmarks?|perf)\//.test(path)
+        && /(^|[._-])(baseline|bundle|bundled|fixture|generated|golden|prod|runtime|snapshot|stats|trace)([._-]|$)/.test(path.split('/').pop() ?? '')
+      )
+    )
+  if (!dataLikeExtension && !sourceEncodedTestData && !extensionlessTestCorpusData && !generatedTestArtifact) return false
 
-  return fixturePath || extensionlessTestCorpusData
+  return fixturePath || extensionlessTestCorpusData || generatedTestArtifact
 }
 
 /**
