@@ -22,6 +22,8 @@ const SCIENTIFIC_DATA_EXTENSIONS = new Set([
   '.tsv',
   '.json',
   '.jsonl',
+  '.yaml',
+  '.yml',
   '.lst',
   '.parquet',
   '.pbtxt',
