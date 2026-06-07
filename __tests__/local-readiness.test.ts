@@ -145,6 +145,23 @@ describe('local readiness', () => {
     expect(report.findings.map(finding => finding.id)).not.toContain('docs.readme.missing')
   })
 
+  test('does not give root README credit to external documentation symlinks', () => {
+    root = createTempRepo()
+    const outside = createTempRepo()
+    writeRepoFile(outside, 'README.md', '# Outside\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    symlinkSync(path.join(outside, 'README.md'), path.join(root, 'README.md'))
+
+    try {
+      const report = scanLocalReadiness(root, { now: fixedNow })
+
+      expect(report.docs.readme).not.toContain('README.md')
+      expect(report.findings.map(finding => finding.id)).toContain('docs.readme.missing')
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   test('rejects a scan target that does not exist', () => {
     expect(() => scanLocalReadiness(path.join(tmpdir(), 'agentready-missing-xyz-404'))).toThrow(/does not exist/)
   })

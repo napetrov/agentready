@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync } from 'fs'
+import { lstatSync, readFileSync, realpathSync } from 'fs'
 import path from 'path'
 import fastGlob from 'fast-glob'
 import ignore, { type Ignore } from 'ignore'
@@ -126,6 +126,21 @@ const isLikelyBinary = (absolutePath: string, extension: string, sizeBytes: numb
     return isBinaryFileSync(absolutePath, sizeBytes)
   } catch (error) {
     console.warn(`AgentReady: unable to sample file for binary detection (${absolutePath}): ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  return false
+}
+
+const isInsideRoot = (rootRealPath: string, targetRealPath: string): boolean => {
+  const relativePath = path.relative(rootRealPath, targetRealPath)
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+}
+
+const isSafeDocumentationSymlink = (rootRealPath: string, absolutePath: string): boolean => {
+  try {
+    const targetRealPath = realpathSync(absolutePath)
+    return isInsideRoot(rootRealPath, targetRealPath) && lstatSync(targetRealPath).isFile()
+  } catch {
     return false
   }
 }
@@ -290,6 +305,7 @@ export const walkFiles = (
   })
 
   const files: LocalReadinessFile[] = []
+  const rootRealPath = realpathSync(root)
 
   for (const relativePath of relativePaths) {
     const repoPath = normalizeRepoPath(relativePath)
@@ -319,11 +335,14 @@ export const walkFiles = (
     }
 
     const extension = path.extname(repoPath).toLowerCase()
-    // Symlinks are classified by path only and never followed. Keep only
-    // documentation symlinks visible because docs detection does not read file
-    // contents; manifest/workflow symlinks must stay out of `filePaths` so
-    // downstream detectors cannot follow them with readFileSync.
-    if (isSymlink && !isDocumentationPath(repoPath, extension)) {
+    // Symlinks are classified by path only and never read. Keep only safe
+    // documentation symlinks visible: they must resolve to a regular file inside
+    // this repository so broken or external README links do not receive readiness
+    // credit, and manifest/workflow links stay out of downstream readers.
+    if (
+      isSymlink
+      && (!isDocumentationPath(repoPath, extension) || !isSafeDocumentationSymlink(rootRealPath, absolutePath))
+    ) {
       continue
     }
 
