@@ -404,6 +404,9 @@ describe('local readiness', () => {
     writeRepoFile(root, 'tests/single_op/paged_attention_token_type_test_data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
     writeRepoFile(root, 'scripts/ty_benchmark/snapshots/django_Mypy.txt', 'diagnostic\n'.repeat(130_000))
     writeRepoFile(root, 'test/extensions/compression/gzip/compressor_corpus/testcase-6170333611884544', 'x'.repeat(1_100_000))
+    writeRepoFile(root, 'tests/analyzer/graph/react-dom-production/resolved-effects.snapshot', 'snapshot\n'.repeat(140_000))
+    writeRepoFile(root, 'tests/benches/app-page-turbo.runtime.prod.js', 'export const bench = 1;\n'.repeat(80_000))
+    writeRepoFile(root, 'tests/benches/suite.ts', 'export const handWrittenBenchmark = true;\n'.repeat(80_000))
     writeRepoFile(root, 'src/generated-data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
 
     const report = scanLocalReadiness(root, { now: fixedNow })
@@ -418,6 +421,8 @@ describe('local readiness', () => {
       'tests/single_op/paged_attention_token_type_test_data.cpp',
       'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt',
       'test/extensions/compression/gzip/compressor_corpus/testcase-6170333611884544',
+      'tests/analyzer/graph/react-dom-production/resolved-effects.snapshot',
+      'tests/benches/app-page-turbo.runtime.prod.js',
     ]) {
       expect(byId.get(`files.large:${fixturePath}`)).toMatchObject({
         severity: 'info',
@@ -425,6 +430,10 @@ describe('local readiness', () => {
       })
     }
     expect(byId.get('files.large:src/generated-data.cpp')).toMatchObject({
+      severity: 'warning',
+      title: 'Large checked-in file can create agent context friction',
+    })
+    expect(byId.get('files.large:tests/benches/suite.ts')).toMatchObject({
       severity: 'warning',
       title: 'Large checked-in file can create agent context friction',
     })
@@ -549,11 +558,15 @@ describe('local readiness', () => {
     writeRepoFile(root, 'src/lib/dom.generated.d.ts', 'interface Document {}\n'.repeat(80_000))
     writeRepoFile(root, 'src/loc/lcl/fra/diagnosticMessages.generated.json.lcl', '{"message":"x"}\n'.repeat(90_000))
     writeRepoFile(root, 'src/large-first-party.ts', 'export const value = 1;\n'.repeat(70_000))
+    writeRepoFile(root, 'src/generated-data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
 
     const report = scanLocalReadiness(root, { now: fixedNow })
     const largeIds = listFindingIds(report).filter(id => id.startsWith('files.large'))
 
-    expect(largeIds).toEqual(['files.large:src/large-first-party.ts'])
+    expect(largeIds).toEqual([
+      'files.large:src/generated-data.cpp',
+      'files.large:src/large-first-party.ts',
+    ])
   })
 
   test('downgrades minified files in generated fixture trees', () => {

@@ -1,14 +1,14 @@
 # typescript: suspected-agentready-false-positive
 
-Run: 2026-06-06T09-55-52-882Z
+Run: 2026-06-06T16-38-48-707Z
 Repo: https://github.com/microsoft/TypeScript.git
 Commit: 7539c04d94b5adc924efb3f8fef90e4de18d39d3
 Score: 0
-Artifacts: artifacts/2026-06-06T09-55-52-882Z/typescript/agentready.json, artifacts/2026-06-06T09-55-52-882Z/typescript/agentready.md
+Artifacts: artifacts/2026-06-06T16-38-48-707Z/typescript/agentready.json, artifacts/2026-06-06T16-38-48-707Z/typescript/agentready.md
 
 ## Notes
 
-- possible false positives: files.large:tests/cases/fourslash/codeFixClassImplementInterfaceNoTruncation.ts (tests/cases/fourslash/codeFixClassImplementInterfaceNoTruncation.ts); files.large:tests/cases/fourslash/codeFixClassImplementInterfaceNoTruncationProperties.ts (tests/cases/fourslash/codeFixClassImplementInterfaceNoTruncationProperties.ts); files.large:tests/cases/fourslash/excessivelyLargeArrayLiteralCompletions.ts (tests/cases/fourslash/excessivelyLargeArrayLiteralCompletions.ts); files.large:tests/cases/fourslash/reallyLargeFile.ts (tests/cases/fourslash/reallyLargeFile.ts)
+- possible false positives: files.large:tests/baselines/reference/completionsCommentsClassMembers.baseline (tests/baselines/reference/completionsCommentsClassMembers.baseline); files.large:tests/baselines/reference/completionsCommentsCommentParsing.baseline (tests/baselines/reference/completionsCommentsCommentParsing.baseline); files.large:tests/baselines/reference/completionsCommitCharactersGlobal.baseline (tests/baselines/reference/completionsCommitCharactersGlobal.baseline); files.large:tests/baselines/reference/fixSignatureCaching.types (tests/baselines/reference/fixSignatureCaching.types); files.large:tests/baselines/reference/hugeDeclarationOutputGetsTruncatedWithError.types (tests/baselines/reference/hugeDeclarationOutputGetsTruncatedWithError.types)
 
 ## Independent Signals
 
