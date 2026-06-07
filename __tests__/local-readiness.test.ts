@@ -401,6 +401,7 @@ describe('local readiness', () => {
     writeRepoFile(root, 'examples/cpu/notebook.ipynb', JSON.stringify({ cells: ['x'.repeat(1_100_000)] }))
     writeRepoFile(root, 'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt', 'error\n'.repeat(300_000))
     writeRepoFile(root, 'cmd/promtool/testdata/rules_large.yml', `groups:\n${'- name: fixture\n  rules: []\n'.repeat(50_000)}`)
+    writeRepoFile(root, 'test/extensions/compression/gzip/compressor_corpus/clusterfuzz-testcase-minimized-compressor_fuzz_test-5407695477932032', 'payload\n'.repeat(180_000))
     writeRepoFile(root, 'tests/cache/CPU/test_cache_OP.lst', 'op\n'.repeat(400_000))
     writeRepoFile(root, 'tests/single_op/paged_attention_token_type_test_data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
     writeRepoFile(root, 'scripts/ty_benchmark/snapshots/django_Mypy.txt', 'diagnostic\n'.repeat(130_000))
@@ -422,6 +423,7 @@ describe('local readiness', () => {
       'examples/cpu/notebook.ipynb',
       'scripts/ty_benchmark/snapshots/django_Mypy.txt',
       'cmd/promtool/testdata/rules_large.yml',
+      'test/extensions/compression/gzip/compressor_corpus/clusterfuzz-testcase-minimized-compressor_fuzz_test-5407695477932032',
       'tests/cache/CPU/test_cache_OP.lst',
       'tests/single_op/paged_attention_token_type_test_data.cpp',
       'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt',
