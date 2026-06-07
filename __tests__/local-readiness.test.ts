@@ -349,6 +349,7 @@ describe('local readiness', () => {
     writeRepoFile(root, 'tests/cache/CPU/test_cache_OP.lst', 'op\n'.repeat(400_000))
     writeRepoFile(root, 'tests/single_op/paged_attention_token_type_test_data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
     writeRepoFile(root, 'scripts/ty_benchmark/snapshots/django_Mypy.txt', 'diagnostic\n'.repeat(130_000))
+    writeRepoFile(root, 'test/extensions/compression/gzip/compressor_corpus/testcase-6170333611884544', 'x'.repeat(1_100_000))
     writeRepoFile(root, 'src/generated-data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
 
     const report = scanLocalReadiness(root, { now: fixedNow })
@@ -362,6 +363,7 @@ describe('local readiness', () => {
       'tests/cache/CPU/test_cache_OP.lst',
       'tests/single_op/paged_attention_token_type_test_data.cpp',
       'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt',
+      'test/extensions/compression/gzip/compressor_corpus/testcase-6170333611884544',
     ]) {
       expect(byId.get(`files.large:${fixturePath}`)).toMatchObject({
         severity: 'info',

@@ -59,9 +59,15 @@ const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
     file.test
     && ['.c', '.cc', '.cpp', '.cxx', '.h', '.hpp'].includes(extension)
     && /(^|[._-])(test[_-]?data|data|fixture|fixtures|golden)([._-]|$)/.test(path.split('/').pop() ?? '')
-  if (!dataLikeExtension && !sourceEncodedTestData) return false
+  // Fuzz corpora often use extensionless seed inputs; keep this narrower than
+  // "any file under corpus/" so source/config files still use normal severity.
+  const extensionlessTestCorpusData =
+    extension === ''
+    && file.test
+    && /(^|\/)([^/]+_)?corpus\//.test(path)
+  if (!dataLikeExtension && !sourceEncodedTestData && !extensionlessTestCorpusData) return false
 
-  return fixturePath
+  return fixturePath || extensionlessTestCorpusData
 }
 
 /**
