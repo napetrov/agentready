@@ -202,7 +202,7 @@ const isLikelyBinary = (absolutePath: string, extension: string, sizeBytes: numb
 
   try {
     return isBinaryFileSync(absolutePath, sizeBytes)
-  } catch (error) {
+  } catch {
     try {
       const sample = readBinarySample(absolutePath)
       if (sample.includes(0)) {

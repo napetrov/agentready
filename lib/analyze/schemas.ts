@@ -68,10 +68,11 @@ export const augmentedReportSchema = z.strictObject({
 // (schema drops/retypes a field, OR adds one the interface doesn't declare)
 // produces a type error here. This is bidirectional, unlike a one-way `extends`.
 type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+const assertSchemaDriftGuards = (..._guards: true[]): void => {}
 const _insight: Exact<z.infer<typeof llmInsightSchema>, LlmInsight> = true
 const _adjustment: Exact<z.infer<typeof augmentedScoreAdjustmentSchema>, AugmentedScoreAdjustment> = true
 const _score: Exact<z.infer<typeof augmentedScoreSchema>, AugmentedScore> = true
 const _provenance: Exact<z.infer<typeof analysisProvenanceSchema>, AnalysisProvenance> = true
 const _report: Exact<z.infer<typeof augmentedReportSchema>, AugmentedReport> = true
 // Reference the guards so they are not flagged as unused.
-void _insight, _adjustment, _score, _provenance, _report
+assertSchemaDriftGuards(_insight, _adjustment, _score, _provenance, _report)
