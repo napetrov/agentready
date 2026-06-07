@@ -19,7 +19,7 @@ export interface RealWorldRepo {
   tags?: string[]
 }
 
-type Classification =
+export type Classification =
   | 'product-readiness-evidence'
   | 'compatible-no-material-findings'
   | 'suspected-agentready-false-positive'
@@ -44,7 +44,7 @@ export interface BatchSelection {
   skippedSeen: number
 }
 
-interface IndependentSignals {
+export interface IndependentSignals {
   trackedFiles: number
   manifests: string[]
   workflows: string[]
@@ -303,25 +303,32 @@ const findingCounts = (report: LocalReadinessReport): Record<string, number> =>
     return acc
   }, {})
 
+const isLikelyFalsePositiveFinding = (finding: LocalReadinessReport['findings'][number]): boolean => {
+  if (finding.severity === 'info' || !finding.path) return false
+  if (finding.id.startsWith('files.large') && FALSE_POSITIVE_PATH_HINT.test(finding.path)) return true
+  if (finding.id.startsWith('files.minified') && GENERATED_OR_VENDOR_HINT.test(finding.path)) return true
+  return false
+}
+
 const likelyFalsePositiveFindings = (report: LocalReadinessReport): string[] =>
   report.findings
-    .filter(finding => {
-      if (finding.severity === 'info' || !finding.path) return false
-      if (finding.id.startsWith('files.large') && FALSE_POSITIVE_PATH_HINT.test(finding.path)) return true
-      if (finding.id.startsWith('files.minified') && GENERATED_OR_VENDOR_HINT.test(finding.path)) return true
-      return false
-    })
+    .filter(isLikelyFalsePositiveFinding)
     .map(finding => `${finding.id}${finding.path ? ` (${finding.path})` : ''}`)
 
-const classify = (report: LocalReadinessReport, signals: IndependentSignals): { classification: Classification; notes: string[] } => {
+export const classify = (report: LocalReadinessReport, signals: IndependentSignals): { classification: Classification; notes: string[] } => {
   const notes: string[] = []
   const suspectedFalsePositives = likelyFalsePositiveFindings(report)
+  const materialFindings = report.findings.filter(finding => finding.severity === 'warning' || finding.severity === 'error')
 
   if (signals.trackedFiles === 0) {
     return { classification: 'repo-selection-blocker', notes: ['git reported zero tracked files'] }
   }
 
-  if (suspectedFalsePositives.length > 0) {
+  if (
+    suspectedFalsePositives.length > 0
+    && materialFindings.length > 0
+    && materialFindings.every(isLikelyFalsePositiveFinding)
+  ) {
     notes.push(`possible false positives: ${suspectedFalsePositives.slice(0, 5).join('; ')}`)
     return { classification: 'suspected-agentready-false-positive', notes }
   }
