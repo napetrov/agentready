@@ -105,6 +105,14 @@ detection (Gradle/Maven, .NET, additional Python tooling).
   `npm test -- --runTestsByPath __tests__/local-readiness.test.ts --runInBand`
   and `npm run ci`.
 
+### 2026-06-06 (README symlink inventory)
+- **KEPT README SYMLINKS SAFE**: Documentation symlinks remain visible for
+  README detection, but non-documentation symlinks such as `package.json` or
+  workflow files are excluded from the downstream `filePaths` reader surface so
+  detectors cannot follow targets outside the repository. Verification:
+  `npm test -- --runTestsByPath __tests__/local-readiness.test.ts --runInBand`,
+  `npm run agentready:action-smoke`, and `npm run ci`.
+
 ### 2026-05-30 (action + sarif)
 - **ADDED SARIF OUTPUT**: `reporters/sarif.ts` emits SARIF 2.1.0, collapsing
   `rule:instance` finding ids into stable rules with per-result levels and file

@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync } from 'fs'
+import { lstatSync, readFileSync, realpathSync } from 'fs'
 import path from 'path'
 import fastGlob from 'fast-glob'
 import ignore, { type Ignore } from 'ignore'
@@ -126,6 +126,21 @@ const isLikelyBinary = (absolutePath: string, extension: string, sizeBytes: numb
     return isBinaryFileSync(absolutePath, sizeBytes)
   } catch (error) {
     console.warn(`AgentReady: unable to sample file for binary detection (${absolutePath}): ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  return false
+}
+
+const isInsideRoot = (rootRealPath: string, targetRealPath: string): boolean => {
+  const relativePath = path.relative(rootRealPath, targetRealPath)
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+}
+
+const isSafeDocumentationSymlink = (rootRealPath: string, absolutePath: string): boolean => {
+  try {
+    const targetRealPath = realpathSync(absolutePath)
+    return isInsideRoot(rootRealPath, targetRealPath) && lstatSync(targetRealPath).isFile()
+  } catch {
     return false
   }
 }
@@ -278,7 +293,9 @@ export const walkFiles = (
   const relativePaths = fastGlob.sync('**/*', {
     cwd: root,
     dot: true,
-    onlyFiles: true,
+    // Include symlink entries so a tracked root README symlink is still counted
+    // as a documentation entrypoint without following or reading its target.
+    onlyFiles: false,
     followSymbolicLinks: false,
     suppressErrors: true,
     ignore: [
@@ -288,6 +305,7 @@ export const walkFiles = (
   })
 
   const files: LocalReadinessFile[] = []
+  const rootRealPath = realpathSync(root)
 
   for (const relativePath of relativePaths) {
     const repoPath = normalizeRepoPath(relativePath)
@@ -300,9 +318,9 @@ export const walkFiles = (
 
     let stat
     try {
-      // lstat (not stat) so symlinks are not followed: fast-glob is configured
-      // with followSymbolicLinks:false and already omits them, but guarding here
-      // keeps us from ever reading a target outside the repository.
+      // lstat (not stat) so symlink entries are classified by path only and
+      // never dereferenced. Combined with followSymbolicLinks:false, this keeps
+      // us from reading targets, including targets outside the repository.
       stat = lstatSync(absolutePath)
     } catch (error) {
       // Tolerate files that disappear mid-walk or cannot be stat'd (permissions),
@@ -311,14 +329,24 @@ export const walkFiles = (
       continue
     }
 
-    // Only inventory regular files — never symlinks (whose target may be
-    // external) or other special entries (FIFOs, sockets, devices).
-    if (!stat.isFile()) {
+    const isSymlink = stat.isSymbolicLink()
+    if (!stat.isFile() && !isSymlink) {
       continue
     }
 
     const extension = path.extname(repoPath).toLowerCase()
-    const binary = isLikelyBinary(absolutePath, extension, stat.size)
+    // Symlinks are classified by path only and never read. Keep only safe
+    // documentation symlinks visible: they must resolve to a regular file inside
+    // this repository so broken or external README links do not receive readiness
+    // credit, and manifest/workflow links stay out of downstream readers.
+    if (
+      isSymlink
+      && (!isDocumentationPath(repoPath, extension) || !isSafeDocumentationSymlink(rootRealPath, absolutePath))
+    ) {
+      continue
+    }
+
+    const binary = isSymlink ? false : isLikelyBinary(absolutePath, extension, stat.size)
 
     files.push({
       path: repoPath,

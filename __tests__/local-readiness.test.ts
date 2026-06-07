@@ -133,6 +133,35 @@ describe('local readiness', () => {
     expect(report.findings.map(finding => finding.id)).not.toContain('docs.readme.missing')
   })
 
+  test('accepts a root README symlink without following its target', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'packages/app/README.md', '# App\n')
+    symlinkSync('packages/app/README.md', path.join(root, 'readme.md'))
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.docs.readme).toContain('readme.md')
+    expect(report.findings.map(finding => finding.id)).not.toContain('docs.readme.missing')
+  })
+
+  test('does not give root README credit to external documentation symlinks', () => {
+    root = createTempRepo()
+    const outside = createTempRepo()
+    writeRepoFile(outside, 'README.md', '# Outside\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    symlinkSync(path.join(outside, 'README.md'), path.join(root, 'README.md'))
+
+    try {
+      const report = scanLocalReadiness(root, { now: fixedNow })
+
+      expect(report.docs.readme).not.toContain('README.md')
+      expect(report.findings.map(finding => finding.id)).toContain('docs.readme.missing')
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
   test('rejects a scan target that does not exist', () => {
     expect(() => scanLocalReadiness(path.join(tmpdir(), 'agentready-missing-xyz-404'))).toThrow(/does not exist/)
   })
@@ -521,16 +550,18 @@ describe('local readiness', () => {
     expect(paths).toContain('src/app.ts')
   })
 
-  test('does not inventory symlinks, including those pointing outside the repo', () => {
+  test('inventories documentation symlinks without exposing other symlink targets', () => {
     root = createTempRepo()
     const outside = createTempRepo()
     writeRepoFile(outside, 'secret.bin', Buffer.alloc(2_000_000, 1))
+    writeRepoFile(outside, 'package.json', JSON.stringify({ scripts: { test: 'outside-test' } }))
     writeRepoFile(root, 'README.md', '# Demo\n')
     writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
     writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
-    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
     writeRepoFile(root, 'src/app.ts', 'export const a = 1\n')
+    symlinkSync('README.md', path.join(root, 'linked-readme.md'))
     symlinkSync(path.join(outside, 'secret.bin'), path.join(root, 'external.bin'))
+    symlinkSync(path.join(outside, 'package.json'), path.join(root, 'package.json'))
     symlinkSync(path.join(root, 'src'), path.join(root, 'src-link'))
 
     try {
@@ -538,10 +569,15 @@ describe('local readiness', () => {
       const paths = report.files.map(file => file.path)
 
       expect(paths).toContain('src/app.ts')
+      expect(paths).toContain('linked-readme.md')
+      expect(paths).not.toContain('package.json')
       expect(paths).not.toContain('external.bin')
-      expect(paths.some(p => p.startsWith('src-link'))).toBe(false)
-      // The external 2 MB target must not leak in as a large-file finding.
+      expect(paths).not.toContain('src-link')
+      expect(paths).not.toContain('src-link/app.ts')
+      // The external targets must not be followed, sampled, or exposed to
+      // downstream manifest readers.
       expect(listFindingIds(report)).not.toContain('files.large:external.bin')
+      expect(report.commands.ecosystems).not.toContain('node')
     } finally {
       rmSync(outside, { recursive: true, force: true })
     }
