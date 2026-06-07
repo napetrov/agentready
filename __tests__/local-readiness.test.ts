@@ -384,6 +384,44 @@ describe('local readiness', () => {
     expect(largeIds).toEqual(['files.large:assets/blob.bin'])
   })
 
+  test('does not flag generated baselines or vendored dependency trees as large files', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeRepoFile(root, 'tests/baselines/reference/hugeDeclarationOutputGetsTruncatedWithError.types', 'type X = string;\n'.repeat(90_000))
+    writeRepoFile(root, 'tests/baselines/reference/completionsCommentsClassMembers.baseline', 'baseline\n'.repeat(150_000))
+    writeRepoFile(root, 'tests/cases/fourslash/reallyLargeFile.ts', 'verify.completions();\n'.repeat(90_000))
+    writeRepoFile(root, 'test/fixtures/snapshot/typescript.js', 'var ts = {};\n'.repeat(100_000))
+    writeRepoFile(root, 'deps/v8/test/cctest/test-api.cc', 'int value = 1;\n'.repeat(90_000))
+    writeRepoFile(root, 'third_party/abseil-cpp/symbols_x64_dbg.def', 'symbol\n'.repeat(180_000))
+    writeRepoFile(root, 'src/lib/dom.generated.d.ts', 'interface Document {}\n'.repeat(80_000))
+    writeRepoFile(root, 'src/loc/lcl/fra/diagnosticMessages.generated.json.lcl', '{"message":"x"}\n'.repeat(90_000))
+    writeRepoFile(root, 'src/large-first-party.ts', 'export const value = 1;\n'.repeat(70_000))
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const largeIds = listFindingIds(report).filter(id => id.startsWith('files.large'))
+
+    expect(largeIds).toEqual(['files.large:src/large-first-party.ts'])
+  })
+
+  test('does not flag minified files in generated fixture trees', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    writeRepoFile(root, 'test/fixtures/source-map/throw-class-method.min.js', 'var a=1;')
+    writeRepoFile(root, 'tests/fixtures/wpt/compression/third_party/pako/pako_inflate.min.js', 'var b=1;')
+    writeRepoFile(root, 'public/app.min.js', 'var c=1;')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const minifiedIds = listFindingIds(report).filter(id => id.startsWith('files.minified'))
+
+    expect(minifiedIds).toEqual(['files.minified:public/app.min.js'])
+  })
+
   test('loads config to ignore intentional paths and allow minified assets', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
