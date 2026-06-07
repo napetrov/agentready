@@ -264,8 +264,62 @@ describe('local readiness', () => {
         id: 'files.minified:public/app.min.js',
         severity: 'warning',
       }),
+      expect.objectContaining({
+        id: 'files.minified:public/vendor/jquery/jquery.min.js',
+        severity: 'info',
+      }),
     ]))
-    expect(listFindingIds(report)).not.toContain('files.minified:public/vendor/jquery/jquery.min.js')
+  })
+
+  test('does not score-gate generated or vendored minified assets', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: {
+        lint: 'eslint .',
+        test: 'jest',
+      },
+    }))
+    writeRepoFile(root, 'django/contrib/admin/static/admin/css/vendor/select2/select2.min.css', '.select2{display:block}')
+    writeRepoFile(root, 'django/contrib/admin/static/admin/js/vendor/jquery/jquery.min.js', 'window.jQuery={};')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'files.minified:django/contrib/admin/static/admin/css/vendor/select2/select2.min.css',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.minified:django/contrib/admin/static/admin/js/vendor/jquery/jquery.min.js',
+        severity: 'info',
+      }),
+    ]))
+  })
+
+  test('treats thirdparty trees as vendored generated paths', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run cargo test.\n')
+    writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
+    writeRepoFile(root, 'Cargo.toml', '[package]\nname = "demo"\nversion = "0.1.0"\n')
+    writeRepoFile(root, 'src/main.rs', 'fn main() {}\n')
+    writeRepoFile(
+      root,
+      'internal/core/thirdparty/tantivy/tantivy-binding/src/analyzer/data/jieba/dict.txt.big',
+      'word\n'.repeat(260_000),
+    )
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const byId = new Map(report.findings.map(finding => [finding.id, finding]))
+
+    expect(report.files.find(file => file.path.includes('/thirdparty/'))).toMatchObject({
+      generated: true,
+      source: false,
+    })
+    expect(byId.has('files.large:internal/core/thirdparty/tantivy/tantivy-binding/src/analyzer/data/jieba/dict.txt.big')).toBe(false)
   })
 
   test('downgrades obvious scientific example data to informational context friction', () => {
@@ -479,7 +533,7 @@ describe('local readiness', () => {
     expect(largeIds).toEqual(['files.large:src/large-first-party.ts'])
   })
 
-  test('does not flag minified files in generated fixture trees', () => {
+  test('downgrades minified files in generated fixture trees', () => {
     root = createTempRepo()
     writeRepoFile(root, 'README.md', '# Demo\n')
     writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
@@ -490,9 +544,23 @@ describe('local readiness', () => {
     writeRepoFile(root, 'public/app.min.js', 'var c=1;')
 
     const report = scanLocalReadiness(root, { now: fixedNow })
-    const minifiedIds = listFindingIds(report).filter(id => id.startsWith('files.minified'))
+    const minifiedFindings = report.findings.filter(finding => finding.id.startsWith('files.minified'))
 
-    expect(minifiedIds).toEqual(['files.minified:public/app.min.js'])
+    expect(minifiedFindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'files.minified:public/app.min.js',
+        severity: 'warning',
+      }),
+      expect.objectContaining({
+        id: 'files.minified:test/fixtures/source-map/throw-class-method.min.js',
+        severity: 'info',
+      }),
+      expect.objectContaining({
+        id: 'files.minified:tests/fixtures/wpt/compression/third_party/pako/pako_inflate.min.js',
+        severity: 'info',
+      }),
+    ]))
+    expect(minifiedFindings).toHaveLength(3)
   })
 
   test('loads config to ignore intentional paths and allow minified assets', () => {

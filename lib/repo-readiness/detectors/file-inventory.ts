@@ -112,6 +112,7 @@ const generatedPathPatterns = [
   /(^|\/)generated\//,
   /(^|\/)__generated__\//,
   /(^|\/)vendor\//,
+  /(^|\/)third[_-]?party\//i,
 ]
 
 const testPathPattern = /(^|\/)(__tests__|unit_tests?|tests?|spec|specs|testdata)\//i
