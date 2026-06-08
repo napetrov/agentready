@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-08
+
 ### Changed
 - Action runtime migration: the first-party GitHub Action now declares `using: 'node24'` (was `node20`), ahead of GitHub retiring the Node 20 action runtime in 2026. CI runs on Node 24 too, so the bundled Action is exercised on its target runtime, and the code-scanning upload step is bumped to `github/codeql-action/upload-sarif` **v4** (pinned to the v4.36.1 commit SHA `87557b9c84dde89fdd9b10e88954ac2f4248e463`), which also runs on Node 24. The README workflow example and CI docs are updated to Node 24.
 - The package is published under the scoped name **`@napetrov/agentready`** (the unscoped `agentready` name is already taken on npm). The `agentready`/`agentready-mcp` command names are unchanged; only the package identity moves, so `npx @napetrov/agentready scan .` and `require('@napetrov/agentready')` are the published entry points. `publishConfig.access` is set to `public` so the scoped package publishes publicly. README, the pack smoke test, and the product docs are updated to match.
