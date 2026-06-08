@@ -1,5 +1,5 @@
 {
-  "$id": "https://napetrov.github.io/agentready/schemas/v0.1.0/augmented-report.schema.json",
+  "$id": "https://napetrov.github.io/agentready/schemas/v0.2.0/augmented-report.schema.json",
   "title": "AgentReady augmented report",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
