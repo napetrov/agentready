@@ -83,6 +83,13 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-06-08 (fuzz corpus fixture false positive)
+- **DOWNGRADED FUZZ CORPUS SEED FILES**: Extensionless files under test corpus
+  directories, such as Envoy compressor fuzz seeds, are treated as intentional
+  fixture data at `info` severity instead of warning-level context friction.
+  Verification: local readiness tests, CI smoke gates, and the PR regression
+  diff.
+
 ### 2026-06-06 (generated fixture large files)
 - **SUPPRESSED GENERATED TEST FIXTURES**: Large files in generated/test fixture
   locations, including baseline and snapshot-style generated artifacts, are

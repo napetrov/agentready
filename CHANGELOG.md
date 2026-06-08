@@ -100,6 +100,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safety-signal detector for package scripts: install-time lifecycle hooks, destructive shell commands, network-download-piped-to-shell commands, and deploy/publish paths. Surfaced as typed `safetySignals` evidence with corresponding `safety.*` findings (destructive and network-exec are warnings; install hooks and deploy/publish are informational).
 
 ### Fixed
+- Extensionless fuzz-corpus seed files under test corpus directories are treated
+  as intentional fixture data, keeping large checked-in fuzz payloads from
+  surfacing as warning-level context-friction findings.
 - Large generated/test fixture artifacts, including baseline and generated
   snapshot-style files, are suppressed as intentional generated data when they
   are in explicit generated or test fixture locations.
