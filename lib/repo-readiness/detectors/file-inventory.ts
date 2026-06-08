@@ -1,4 +1,5 @@
-import { closeSync, lstatSync, openSync, readFileSync, readSync, realpathSync } from 'fs'
+import { closeSync, lstatSync, openSync, readFileSync, readSync, realpathSync, type Stats } from 'fs'
+import { execFileSync } from 'child_process'
 import path from 'path'
 import fastGlob from 'fast-glob'
 import ignore, { type Ignore } from 'ignore'
@@ -144,6 +145,55 @@ const isTestFilePath = (repoPath: string): boolean => testFilePatterns.some(patt
 const shouldIgnorePath = (repoPath: string, config: LocalReadinessConfig): boolean => (
   config.ignorePaths.some(pattern => pathMatchesPattern(repoPath, pattern))
 )
+
+// High-signal repository metadata is often committed even in projects with a
+// broad dotfile ignore such as `.*`. Keep these files visible to readiness
+// detectors so CI and agent-instruction surfaces do not disappear from scans.
+const isReadinessMetadataPath = (repoPath: string): boolean => (
+  /^\.github\/workflows\/.+\.ya?ml$/i.test(repoPath)
+  || repoPath === '.gitlab-ci.yml'
+  || repoPath === '.pre-commit-config.yaml'
+  || repoPath === '.pre-commit-config.yml'
+  || repoPath === '.circleci/config.yml'
+  || /(^|\/)(AGENTS\.md|AGENTS\.override\.md|CLAUDE\.md|CLAUDE\.local\.md|GEMINI\.md)$/i.test(repoPath)
+  || repoPath === '.cursorrules'
+  || repoPath === '.windsurfrules'
+  || repoPath === '.clinerules'
+  || repoPath === '.roomodes'
+  || /^\.roorules(-[^/]+)?$/.test(repoPath)
+  || repoPath === '.github/copilot-instructions.md'
+  || (repoPath.startsWith('.github/instructions/') && repoPath.endsWith('.instructions.md'))
+  || (repoPath.startsWith('.github/agents/') && repoPath.endsWith('.agent.md'))
+  || (repoPath.startsWith('.claude/rules/') && repoPath.endsWith('.md'))
+  || (repoPath.startsWith('.claude/skills/') && repoPath.endsWith('/SKILL.md'))
+  || (repoPath.startsWith('.cursor/rules/') && repoPath.endsWith('.mdc'))
+  || (repoPath.startsWith('.windsurf/rules/') && repoPath.endsWith('.md'))
+  || (repoPath.startsWith('.clinerules/') && (repoPath.endsWith('.md') || repoPath.endsWith('.txt')))
+  || (repoPath.startsWith('.roo/rules/') && (repoPath.endsWith('.md') || repoPath.endsWith('.txt')))
+  || (/^\.roo\/rules-[^/]+\//.test(repoPath) && (repoPath.endsWith('.md') || repoPath.endsWith('.txt')))
+)
+
+const loadTrackedPaths = (root: string): Set<string> | undefined => {
+  try {
+    const output = execFileSync('git', ['-c', 'core.fsmonitor=false', '-C', root, 'ls-files', '-z', '--'], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GIT_OPTIONAL_LOCKS: '0',
+      },
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+
+    return new Set(
+      output
+        .split('\0')
+        .filter(Boolean)
+        .map(normalizeRepoPath),
+    )
+  } catch {
+    return undefined
+  }
+}
 
 const isLikelyBinary = (absolutePath: string, extension: string, sizeBytes: number): boolean => {
   if (binaryExtensions.has(extension)) {
@@ -304,6 +354,52 @@ const isGitIgnored = (repoPath: string, matchers: Map<string, Ignore>): boolean 
   return evaluateGitignore(repoPath, false, matchers)
 }
 
+const shouldIncludeWalkedPath = (
+  repoPath: string,
+  config: LocalReadinessConfig,
+  gitignoreMatchers: Map<string, Ignore>,
+  trackedPaths: Set<string> | undefined,
+): boolean => {
+  if (shouldIgnorePath(repoPath, config)) {
+    return false
+  }
+
+  const ignored = isGitIgnored(repoPath, gitignoreMatchers)
+  if (!ignored) {
+    return true
+  }
+
+  return trackedPaths?.has(repoPath) === true && isReadinessMetadataPath(repoPath)
+}
+
+const shouldIncludeSymlink = (repoPath: string, absolutePath: string, rootRealPath: string): boolean => {
+  const extension = path.extname(repoPath).toLowerCase()
+  return isDocumentationPath(repoPath, extension) && isSafeDocumentationSymlink(rootRealPath, absolutePath)
+}
+
+const toLocalReadinessFile = (
+  repoPath: string,
+  absolutePath: string,
+  stat: Stats,
+  isSymlink: boolean,
+): LocalReadinessFile | undefined => {
+  const extension = path.extname(repoPath).toLowerCase()
+
+  const binary = isSymlink ? false : isLikelyBinary(absolutePath, extension, stat.size)
+
+  return {
+    path: repoPath,
+    sizeBytes: stat.size,
+    extension,
+    binary,
+    generated: isGeneratedPath(repoPath),
+    minified: isMinifiedPath(repoPath),
+    documentation: isDocumentationPath(repoPath, extension),
+    test: testPathPattern.test(repoPath) || isTestFilePath(repoPath),
+    source: isSourcePath(repoPath, extension),
+  }
+}
+
 /**
  * Walks the repository tree with `fast-glob`, skipping always-ignored
  * directories and any path matched by the repository's `.gitignore` files or the
@@ -322,6 +418,7 @@ export const walkFiles = (
   const gitignoreMatchers = options.respectGitignore === false
     ? new Map<string, Ignore>()
     : loadGitignoreMatchers(root)
+  const trackedPaths = options.respectGitignore === false ? undefined : loadTrackedPaths(root)
 
   // `.git` lives as a regular file (not a directory) inside the linked
   // worktrees `diff` creates, so ignore it by name as well as by directory.
@@ -345,7 +442,7 @@ export const walkFiles = (
   for (const relativePath of relativePaths) {
     const repoPath = normalizeRepoPath(relativePath)
 
-    if (isGitIgnored(repoPath, gitignoreMatchers) || shouldIgnorePath(repoPath, config)) {
+    if (!shouldIncludeWalkedPath(repoPath, config, gitignoreMatchers, trackedPaths)) {
       continue
     }
 
@@ -369,31 +466,18 @@ export const walkFiles = (
       continue
     }
 
-    const extension = path.extname(repoPath).toLowerCase()
     // Symlinks are classified by path only and never read. Keep only safe
     // documentation symlinks visible: they must resolve to a regular file inside
     // this repository so broken or external README links do not receive readiness
     // credit, and manifest/workflow links stay out of downstream readers.
-    if (
-      isSymlink
-      && (!isDocumentationPath(repoPath, extension) || !isSafeDocumentationSymlink(rootRealPath, absolutePath))
-    ) {
+    if (isSymlink && !shouldIncludeSymlink(repoPath, absolutePath, rootRealPath)) {
       continue
     }
 
-    const binary = isSymlink ? false : isLikelyBinary(absolutePath, extension, stat.size)
-
-    files.push({
-      path: repoPath,
-      sizeBytes: stat.size,
-      extension,
-      binary,
-      generated: isGeneratedPath(repoPath),
-      minified: isMinifiedPath(repoPath),
-      documentation: isDocumentationPath(repoPath, extension),
-      test: testPathPattern.test(repoPath) || isTestFilePath(repoPath),
-      source: isSourcePath(repoPath, extension),
-    })
+    const file = toLocalReadinessFile(repoPath, absolutePath, stat, isSymlink)
+    if (file) {
+      files.push(file)
+    }
   }
 
   return files.sort((a, b) => a.path.localeCompare(b.path))
