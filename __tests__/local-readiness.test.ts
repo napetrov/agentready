@@ -405,10 +405,12 @@ describe('local readiness', () => {
     writeRepoFile(root, 'tests/single_op/paged_attention_token_type_test_data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
     writeRepoFile(root, 'scripts/ty_benchmark/snapshots/django_Mypy.txt', 'diagnostic\n'.repeat(130_000))
     writeRepoFile(root, 'test/extensions/compression/gzip/compressor_corpus/testcase-6170333611884544', 'x'.repeat(1_100_000))
+    writeRepoFile(root, 'tests/__snapshots__/component.snap', 'snapshot\n'.repeat(140_000))
     writeRepoFile(root, 'tests/analyzer/graph/react-dom-production/resolved-effects.snapshot', 'snapshot\n'.repeat(140_000))
     writeRepoFile(root, 'tests/benches/app-page-turbo.runtime.prod.js', 'export const bench = 1;\n'.repeat(80_000))
     writeRepoFile(root, 'tests/benches/suite.ts', 'export const handWrittenBenchmark = true;\n'.repeat(80_000))
     writeRepoFile(root, 'tests/sqllogic/known_failures.txt', 'query intentionally fails\n'.repeat(80_000))
+    writeRepoFile(root, 'assets/component.snap', 'snapshot\n'.repeat(140_000))
     writeRepoFile(root, 'src/generated-data.cpp', `int data[] = {${'1,'.repeat(600_000)}};`)
 
     const report = scanLocalReadiness(root, { now: fixedNow })
@@ -424,6 +426,7 @@ describe('local readiness', () => {
       'tests/single_op/paged_attention_token_type_test_data.cpp',
       'scripts/ty_benchmark/snapshots/homeassistant_Pyright.txt',
       'test/extensions/compression/gzip/compressor_corpus/testcase-6170333611884544',
+      'tests/__snapshots__/component.snap',
       'tests/analyzer/graph/react-dom-production/resolved-effects.snapshot',
       'tests/benches/app-page-turbo.runtime.prod.js',
       'tests/sqllogic/known_failures.txt',
@@ -434,6 +437,10 @@ describe('local readiness', () => {
       })
     }
     expect(byId.get('files.large:src/generated-data.cpp')).toMatchObject({
+      severity: 'warning',
+      title: 'Large checked-in file can create agent context friction',
+    })
+    expect(byId.get('files.large:assets/component.snap')).toMatchObject({
       severity: 'warning',
       title: 'Large checked-in file can create agent context friction',
     })

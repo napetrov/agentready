@@ -14,7 +14,7 @@ type EvidenceForChecks = Omit<LocalReadinessReport, 'findings' | 'summary'>
 // as developer documentation).
 const DOC_TREE = /(^|\/)docs?\//i
 
-const SCIENTIFIC_DATA_EXTENSIONS = new Set([
+const INTENTIONAL_DATA_EXTENSIONS = new Set([
   '.csv',
   '.htm',
   '.html',
@@ -34,6 +34,7 @@ const SCIENTIFIC_DATA_EXTENSIONS = new Set([
   '.h5',
   '.hdf5',
   '.mtx',
+  '.snap',
   '.snapshot',
   '.symbols',
   '.types',
@@ -56,7 +57,7 @@ const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
     /(^|\/)(tests?|unit_tests?|testdata|fixtures?|golden|snapshots?)\//.test(path)
     || /(^|\/)(benchmarks?|[^/]*benchmark[^/]*|perf)\/(?:.*\/)?(fixtures?|golden|snapshots?)\//.test(path)
   )
-  const dataLikeExtension = SCIENTIFIC_DATA_EXTENSIONS.has(extension) || (textFixturePath && TEXT_FIXTURE_EXTENSIONS.has(extension))
+  const dataLikeExtension = INTENTIONAL_DATA_EXTENSIONS.has(extension) || (textFixturePath && TEXT_FIXTURE_EXTENSIONS.has(extension))
   // Some C/C++ test fixtures encode large golden payloads directly in source.
   // Keep this filename check delimiter-bound so production sources are not
   // mistaken for fixture data.
