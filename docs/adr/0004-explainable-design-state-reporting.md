@@ -34,7 +34,7 @@ main story. The primary human output should be:
 
 - readiness verdict and gate status
 - repository topology summary
-- documentation role coverage
+- documentation role evidence
 - command/CI verification map
 - architecture/design-state insights
 - gateable findings
@@ -47,7 +47,7 @@ Add `DesignStateInsight`:
 
 ```ts
 export type DesignStateCategory =
-  | 'documentation-coverage'
+  | 'documentation-evidence'
   | 'architecture-boundary'
   | 'verification-locality'
   | 'context-selection'
@@ -64,6 +64,7 @@ export interface DesignStateInsight {
   gateable: boolean
   summary: string
   evidenceIds: string[]
+  findingIds?: string[]
   paths: string[]
   confidence: EvidenceConfidence
   recommendation?: string
@@ -85,6 +86,9 @@ Build insights from deterministic evidence after findings are created:
 - Findings remain the compatibility and gating primitive.
 - Design-state insights can reference findings, repository evidence, or both.
 - Every insight must be explainable from existing evidence IDs and paths.
+- `gateable` is derived from referenced findings: default advisory insights are
+  `gateable: false`; only insights backed by warning/error findings from an
+  explicit policy pack become `gateable: true`.
 - LLM insights from `analyze` remain separate under the augmented report and
   must be clearly labeled as model-generated.
 
@@ -125,10 +129,10 @@ Verdict: warning gate passes; score 84/100
 
 ### Repository topology
 - `packages/cli`: package, TypeScript, 42 source, 18 test, public CLI entrypoint
-- `docs/`: docs root, covers entrypoint + architecture roles
+- `docs/`: docs root, has entrypoint + architecture role evidence
 
 ### Design-state insights
-- INFO documentation-coverage: Architecture role is covered by `docs/design.md`.
+- INFO documentation-evidence: Architecture role evidence found in `docs/design.md`.
 - INFO verification-locality: Test command maps to repository root, not package roots.
 - WARNING context-selection: generated-heavy root `proto/gen/` needs ignore guidance.
 
@@ -142,8 +146,9 @@ Verdict: warning gate passes; score 84/100
 CLI and JSON changes:
 
 - `--format json` includes all design-state structures.
-- `--format compact` or existing compact mode may omit large raw evidence but
-  must keep insights and finding summaries.
+- Compact report variants may omit raw `files` and raw evidence arrays, but
+  must keep `summary`, `findings`, and `designState` summaries when present.
+  This is guidance for the existing compact JSON helpers, not a new CLI format.
 - `--format markdown` should show enough evidence to be useful in PR comments
   without dumping the full file inventory.
 - Existing GitHub Action summary can use the same markdown sections, with a

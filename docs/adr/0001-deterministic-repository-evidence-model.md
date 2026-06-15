@@ -35,11 +35,15 @@ Checks and reporters should consume this model instead of independently
 reconstructing architecture hints from file counts, command booleans, or
 filename-specific assumptions.
 
-The evidence model should be descriptive and provenance-rich:
+The evidence model should be descriptive and provenance-rich. The canonical
+report shape, rollout phases, thresholds, and ID rules live in
+[ADR 0000](0000-canonical-report-contract-and-rollout.md).
 
-- Every evidence item has a stable `id`, `kind`, `path` or path set,
-  `confidence`, and `source`.
-- `source` identifies the detector and whether the item was directly observed
+- Every addressable evidence item has a stable `id`, `kind`, `paths`, and
+  `sources`.
+- Heuristic classifications are represented as claim-level records with their
+  own `confidence`, `signals`, and `sources`.
+- `sources` identify the detector and whether the item was directly observed
   from a file, derived from a manifest, inferred from naming conventions, or
   read from config.
 - Low-confidence inference is allowed, but it must be marked as inference and
@@ -70,8 +74,10 @@ export interface EvidenceSource {
 
 export interface RepositoryRootEvidence {
   id: string
-  kind: 'app' | 'library' | 'package' | 'service' | 'tool' | 'docs' | 'test' | 'unknown'
+  kind: 'repository-root'
+  rootKind: 'app' | 'library' | 'package' | 'service' | 'tool' | 'docs' | 'test' | 'unknown'
   path: string
+  paths: string[]
   languages: string[]
   packageManager?: PackageManager
   manifests: string[]
@@ -85,7 +91,9 @@ export interface RepositoryRootEvidence {
 
 export interface ArchitectureBoundaryEvidence {
   id: string
+  kind: 'architecture-boundary'
   path: string
+  paths: string[]
   role:
     | 'entrypoint'
     | 'public-api'
@@ -101,13 +109,31 @@ export interface ArchitectureBoundaryEvidence {
   sources: EvidenceSource[]
 }
 
+export interface VerificationSurfaceEvidence {
+  id: string
+  kind: 'verification-surface'
+  paths: string[]
+  rootIds: string[]
+  commandKind: CiCommandKind
+  commandText?: string
+  workflowJobId?: string
+  confidence: EvidenceConfidence
+  sources: EvidenceSource[]
+}
+
 export interface RepositoryEvidence {
   roots: RepositoryRootEvidence[]
   boundaries: ArchitectureBoundaryEvidence[]
   documentSurfaces: DocumentSurfaceEvidence[]
   verificationSurfaces: VerificationSurfaceEvidence[]
+  topology: RepositoryTopologyEvidence
 }
 ```
+
+In implementation, avoid overloading `kind`: use `kind: 'repository-root'` for
+the evidence item type and `rootKind` for `app | library | package | ...`.
+`DocumentSurfaceEvidence` and `RepositoryTopologyEvidence` are defined by ADRs
+0002, 0003, and 0000. They all follow `EvidenceItemBase` from ADR 0000.
 
 Keep the existing top-level report fields for compatibility, but add
 `repositoryEvidence` to `LocalReadinessReport`. Existing fields such as
@@ -134,8 +160,9 @@ Detection should be deterministic and conservative:
 - Use language-aware parsers or structured manifest readers when available.
 - Sort all evidence deterministically by normalized path and id.
 - Use path normalization already present in `core/util.ts`.
-- Never execute package scripts, build tools, language servers, or repository
-  commands.
+- Follow the ADR 0000 never-execute rule: parse static text only; never execute
+  package scripts, build tools, language servers, repository commands, shell
+  expansions, package-manager introspection, or `make` dry-runs.
 
 Report contracts must make the provenance explicit. A root inferred only from
 `src/` naming should be less authoritative than a root found through
@@ -149,9 +176,9 @@ opaque heuristics. Reporters can show why the scanner believes a directory is a
 package, app, public API, generated area, or test support area. Diff mode can
 then track architectural changes, not only new findings.
 
-The main cost is schema expansion. To control churn, introduce the new evidence
-as additive fields first, update JSON Schema and contract tests, then migrate
-checks/reporters gradually.
+The main cost is schema expansion. To control churn, use the ADR 0000 rollout:
+add optional fields first, dual-populate legacy fields, prove projections match,
+then migrate checks and reporters gradually.
 
 ## Verification
 

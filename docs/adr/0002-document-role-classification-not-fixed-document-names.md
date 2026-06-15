@@ -1,4 +1,4 @@
-# ADR 0002: Classify Document Roles Instead Of Requiring Fixed Document Names
+# ADR 0002: Classify Document Roles Instead of Requiring Fixed Document Names
 
 ## Status
 
@@ -39,9 +39,11 @@ Document roles should describe the problem a document solves:
 - `operation`: deploy, release, incident, maintenance, runbook.
 - `api`: public API, CLI, protocol, package contract.
 
-Checks should ask whether a non-trivial repository has enough role coverage for
-agent operability. They should not require a particular filename unless a
-specific policy pack opts into that convention.
+Checks should ask whether a non-trivial repository has enough candidate role
+evidence for agent operability. They should not require a particular filename
+unless a specific policy pack opts into that convention. "Coverage" in this ADR
+means deterministic role evidence, not a semantic guarantee that the document is
+good or complete.
 
 ## Detailed Implementation
 
@@ -60,16 +62,22 @@ export type DocumentRole =
   | 'api'
 
 export interface DocumentSurfaceEvidence {
+  id: string
+  kind: 'document-surface'
   path: string
-  roles: DocumentRole[]
+  paths: string[]
+  roleClaims: EvidenceClaim<'document-role'>[]
   title?: string
   headings: string[]
   linkedPaths: string[]
-  commandBlocks: string[]
-  confidence: EvidenceConfidence
+  commandBlocks: { index: number; language?: string; text: string; truncated: boolean }[]
   sources: EvidenceSource[]
 }
 ```
+
+The legacy-looking `roles: DocumentRole[]` projection may be exposed in compact
+reporters, but the canonical JSON should use `roleClaims` so confidence and
+provenance are per role.
 
 Implement `detectors/document-surfaces.ts`:
 
@@ -79,7 +87,8 @@ Implement `detectors/document-surfaces.ts`:
    - tool instruction surfaces
    - issue/PR templates and workflow docs
 2. Parse Markdown/rST/adoc text for headings, title, links, and fenced command
-   blocks. Do not use an LLM for this.
+   blocks. Do not use an LLM for this. Apply the ADR 0000 document-size limits
+   and truncate stored command blocks to `maxCommandBlockBytes`.
 3. Assign roles using weighted deterministic signals:
    - path segments: `docs/architecture`, `adr`, `decisions`, `development`,
      `contributing`, `runbook`, `api`, `ops`, `environment`
@@ -89,15 +98,28 @@ Implement `detectors/document-surfaces.ts`:
    - links: entrypoint docs linking to deeper docs gain entrypoint evidence
    - command blocks: setup/test/build docs gain development evidence
    - instruction detector output: agent surfaces gain agent-instruction role
-4. Emit all roles with confidence and source notes.
+4. Emit all roles as `roleClaims` with confidence and source notes.
+
+Initial confidence rules:
+
+| Signal | Claim |
+| --- | --- |
+| Root `README.*` with purpose/setup heading or command block | `entrypoint` high |
+| Root `README.*` without setup/development signals | `entrypoint` medium |
+| `docs/design*`, `docs/architecture*`, or `adr/**` with substantial headings | `architecture` high |
+| Any file with only an "Architecture" heading and little content | `architecture` low |
+| `DEVELOPMENT.*` or docs page with setup plus test/build/lint commands | `development` high |
+| Fenced command blocks alone without surrounding setup text | `development` low |
+| Instruction detector evidence | `agent-instruction` high |
 
 Modify checks:
 
-- Replace `docs.developer.thin` internals with role coverage:
-  - non-trivial repos should have at least one `entrypoint` role and one of
-    `development`, `architecture`, or `decision-record`.
-  - missing role coverage should normally be `info`, unless a policy pack
-    strengthens it.
+- Replace `docs.developer.thin` internals with role evidence:
+  - non-trivial repos use ADR 0000's `nonTrivialSourceFiles` threshold.
+  - a role suppresses a missing-role finding only when it has a high-confidence
+    claim and non-trivial parsed content.
+  - missing role evidence emits the ADR 0000 default info findings unless a
+    policy pack strengthens them.
 - Keep `docs.readme.missing` only as a root entrypoint convention check for the
   default policy, and consider downgrading it when another high-confidence
   `entrypoint` surface exists.
@@ -107,7 +129,7 @@ Modify checks:
 Reporter changes:
 
 - Add a "Documentation roles" section to markdown/console output.
-- Show role coverage and the paths that satisfy each role.
+- Show role evidence and the paths that support each role claim.
 - For missing-role findings, recommend the missing information, not a fixed
   file name. Example: "Add or link developer-facing docs that explain module
   boundaries and validation commands" instead of "Add ARCHITECTURE.md".
@@ -144,8 +166,8 @@ conservative.
 
 - Add fixtures where architecture lives in `docs/design.md`, `adr/`,
   `DEVELOPMENT.md`, and package-level docs.
-- Assert that role coverage suppresses generic "thin docs" findings.
+- Assert that high-confidence role evidence suppresses generic "thin docs" findings.
 - Assert that a repo with only a root README but no deeper development or
-  architecture role still receives a role-coverage insight.
+  architecture role still receives a missing-role insight.
 - Assert that conventional filenames still classify correctly.
-- Add reporter snapshots for role coverage and missing-role recommendations.
+- Add reporter snapshots for role evidence and missing-role recommendations.
