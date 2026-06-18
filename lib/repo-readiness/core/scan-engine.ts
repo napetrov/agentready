@@ -6,6 +6,7 @@ import { detectCiWorkflows } from '../detectors/ci-workflows'
 import { detectCommandSurfaces } from '../detectors/command-surfaces'
 import { detectDocs } from '../detectors/docs'
 import { walkFiles } from '../detectors/file-inventory'
+import { buildDesignState, detectRepositoryEvidence } from '../detectors/repository-evidence'
 import { detectSafetySignals } from '../detectors/safety-signals'
 import {
   detectInstructionSurfaces,
@@ -64,6 +65,14 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
   }
 
   const findings = buildFindings(files, partialReport, config)
+  const repositoryEvidence = detectRepositoryEvidence(
+    absoluteRoot,
+    files,
+    partialReport.commands,
+    partialReport.ci,
+    partialReport.instructions,
+  )
+  const designState = buildDesignState(repositoryEvidence, findings, partialReport.safetySignals)
 
   return {
     ...partialReport,
@@ -78,6 +87,12 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
       binaryFiles: files.filter(file => file.binary).length,
       generatedFiles: files.filter(file => file.generated).length,
       minifiedFiles: files.filter(file => file.minified).length,
+    },
+    repositoryEvidence,
+    designState,
+    reportContract: {
+      schemaVersion: 'local-readiness/v2',
+      experimentalFields: ['repositoryEvidence', 'designState'],
     },
     findings,
   }

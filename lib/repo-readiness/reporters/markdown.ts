@@ -1,4 +1,4 @@
-import type { CiEvidence, LocalReadinessReport, ReadinessDiffReport, ReadinessFinding } from '../core/types'
+import type { CiEvidence, DesignStateInsight, LocalReadinessReport, ReadinessDiffReport, ReadinessFinding } from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
 
 // Summarizes which verification commands CI actually runs, parsed from the
@@ -26,6 +26,48 @@ const markdownFindingList = (findings: ReadinessFinding[]): string[] => {
   })
 }
 
+const markdownTopology = (report: LocalReadinessReport): string[] => {
+  const evidence = report.repositoryEvidence
+  if (!evidence) return []
+  const roots = evidence.roots.slice(0, 8).map(root => {
+    const languages = root.languages.length > 0 ? `, ${root.languages.join('/')}` : ''
+    return `- \`${root.path}\`: ${root.rootKind}${languages}, ${root.sourceFiles} source, ${root.testFiles} tests, ${root.documentationFiles} docs`
+  })
+  return [
+    '',
+    '### Repository topology',
+    `Roots: ${evidence.topology.metrics.rootCount}; languages: ${evidence.topology.metrics.languageCount}; roots without local tests: ${evidence.topology.metrics.rootsWithoutLocalTests}; roots without local docs: ${evidence.topology.metrics.rootsWithoutLocalDocs}`,
+    ...roots,
+  ]
+}
+
+const markdownDocumentRoles = (report: LocalReadinessReport): string[] => {
+  const surfaces = report.repositoryEvidence?.documentSurfaces
+    .filter(surface => surface.roleClaims.length > 0)
+    .slice(0, 8)
+  if (!surfaces || surfaces.length === 0) return []
+  return [
+    '',
+    '### Documentation roles',
+    ...surfaces.map(surface => {
+      const roles = surface.roleClaims.map(claim => `${claim.value} (${claim.confidence})`).join(', ')
+      return `- \`${surface.path}\`: ${roles}`
+    }),
+  ]
+}
+
+const markdownInsights = (title: string, insights: DesignStateInsight[]): string[] => {
+  if (insights.length === 0) return []
+  return [
+    '',
+    `### ${title}`,
+    ...insights.slice(0, 8).map(insight => {
+      const paths = insight.paths.length > 0 ? ` Paths: ${insight.paths.slice(0, 3).map(path => `\`${path}\``).join(', ')}.` : ''
+      return `- **${insight.severity.toUpperCase()}** ${insight.category}: ${insight.summary}${paths}`
+    }),
+  ]
+}
+
 export function formatScanMarkdown(report: LocalReadinessReport): string {
   return [
     '## AgentReady scan',
@@ -35,6 +77,11 @@ export function formatScanMarkdown(report: LocalReadinessReport): string {
     `Capabilities: ${report.capabilities.length}; safety signals: ${report.safetySignals.length}`,
     ciCoverageLine(report.ci),
     `Findings: ${report.findings.length}`,
+    ...markdownTopology(report),
+    ...markdownDocumentRoles(report),
+    ...markdownInsights('Design-state strengths', report.designState?.strengths ?? []),
+    ...markdownInsights('Design-state risks', report.designState?.risks ?? []),
+    ...markdownInsights('Design-state ambiguities', report.designState?.ambiguities ?? []),
     '',
     '### Findings',
     ...markdownFindingList(report.findings),
