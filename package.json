@@ -75,7 +75,7 @@
     "cosmiconfig": "^9.0.1",
     "fast-glob": "^3.3.3",
     "ignore": "^6.0.2",
-    "isbinaryfile": "^5.0.7",
+    "isbinaryfile": "^6.0.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
