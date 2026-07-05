@@ -1,9 +1,10 @@
 import { closeSync, lstatSync, openSync, readFileSync, readSync, realpathSync, type Stats } from 'fs'
 import { execFileSync } from 'child_process'
+import { createRequire } from 'module'
 import path from 'path'
 import fastGlob from 'fast-glob'
 import ignore, { type Ignore } from 'ignore'
-import { isBinaryFileSync } from 'isbinaryfile'
+import type { isBinaryFileSync as isBinaryFileSyncType } from 'isbinaryfile'
 import type { LocalReadinessConfig, LocalReadinessFile } from '../core/types'
 import { normalizeRepoPath, pathMatchesPattern } from '../core/util'
 
@@ -62,6 +63,13 @@ const binaryExtensions = new Set([
 ])
 
 const binarySampleBytes = 512
+const requireFromHere = createRequire(__filename)
+let cachedIsBinaryFileSync: typeof isBinaryFileSyncType | undefined
+
+const getIsBinaryFileSync = (): typeof isBinaryFileSyncType => {
+  cachedIsBinaryFileSync ??= requireFromHere('isbinaryfile').isBinaryFileSync as typeof isBinaryFileSyncType
+  return cachedIsBinaryFileSync
+}
 
 const readBinarySample = (absolutePath: string): Buffer => {
   const fileDescriptor = openSync(absolutePath, 'r')
@@ -87,6 +95,10 @@ const hasUtf8ReplacementCharacters = (sample: Buffer): boolean => {
 
   return true
 }
+
+const hasBinaryControlCharacters = (sample: Buffer): boolean => (
+  sample.some(byte => byte < 7 || (byte > 13 && byte < 32))
+)
 
 const generatedPathPatterns = [
   // Lockfiles across ecosystems: machine-generated, frequently large, and
@@ -201,18 +213,19 @@ const isLikelyBinary = (absolutePath: string, extension: string, sizeBytes: numb
   }
 
   try {
-    return isBinaryFileSync(absolutePath, sizeBytes)
-  } catch {
+    const sample = readBinarySample(absolutePath)
+    if (sample.includes(0) || hasBinaryControlCharacters(sample) || hasUtf8ReplacementCharacters(sample)) {
+      return true
+    }
+
     try {
-      const sample = readBinarySample(absolutePath)
-      if (sample.includes(0)) {
-        return true
-      }
-      return hasUtf8ReplacementCharacters(sample)
-    } catch (fallbackError) {
-      console.warn(`AgentReady: unable to sample file for binary detection (${absolutePath}): ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`)
+      return getIsBinaryFileSync()(sample, { size: sizeBytes })
+    } catch {
       return false
     }
+  } catch (error) {
+    console.warn(`AgentReady: unable to sample file for binary detection (${absolutePath}): ${error instanceof Error ? error.message : String(error)}`)
+    return false
   }
 }
 
