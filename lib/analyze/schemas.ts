@@ -74,5 +74,4 @@ const _adjustment: Exact<z.infer<typeof augmentedScoreAdjustmentSchema>, Augment
 const _score: Exact<z.infer<typeof augmentedScoreSchema>, AugmentedScore> = true
 const _provenance: Exact<z.infer<typeof analysisProvenanceSchema>, AnalysisProvenance> = true
 const _report: Exact<z.infer<typeof augmentedReportSchema>, AugmentedReport> = true
-// Reference the guards so they are not flagged as unused.
 assertSchemaDriftGuards(_insight, _adjustment, _score, _provenance, _report)

@@ -42,6 +42,32 @@ export interface ReadinessFinding {
   recommendation: string
 }
 
+export type EvidenceConfidence = 'low' | 'medium' | 'high'
+
+export type EvidenceSourceKind = 'file' | 'manifest' | 'workflow' | 'config' | 'inference'
+
+export interface EvidenceSource {
+  detector: string
+  kind: EvidenceSourceKind
+  path?: string
+  note?: string
+}
+
+export interface EvidenceItemBase {
+  id: string
+  kind: string
+  paths: string[]
+  sources: EvidenceSource[]
+}
+
+export interface EvidenceClaim<TKind extends string = string, TValue extends string = string> {
+  kind: TKind
+  value: TValue
+  confidence: EvidenceConfidence
+  signals: string[]
+  sources: EvidenceSource[]
+}
+
 export interface ContractValidationResult {
   valid: boolean
   errors: string[]
@@ -156,6 +182,175 @@ export interface SafetySignalEvidence {
   notes: string[]
 }
 
+export type DocumentRole =
+  | 'entrypoint'
+  | 'development'
+  | 'architecture'
+  | 'decision-record'
+  | 'contribution'
+  | 'environment'
+  | 'agent-instruction'
+  | 'operation'
+  | 'api'
+
+export interface DocumentCommandBlock {
+  index: number
+  language?: string
+  text: string
+  truncated: boolean
+}
+
+export interface DocumentSurfaceEvidence extends EvidenceItemBase {
+  kind: 'document-surface'
+  path: string
+  roleClaims: EvidenceClaim<'document-role', DocumentRole>[]
+  title?: string
+  headings: string[]
+  linkedPaths: string[]
+  commandBlocks: DocumentCommandBlock[]
+}
+
+export type RepositoryRootKind = 'app' | 'library' | 'package' | 'service' | 'tool' | 'docs' | 'test' | 'unknown'
+
+export interface RepositoryRootEvidence extends EvidenceItemBase {
+  kind: 'repository-root'
+  rootKind: RepositoryRootKind
+  path: string
+  languages: string[]
+  packageManager?: PackageManager
+  manifests: string[]
+  sourceFiles: number
+  testFiles: number
+  documentationFiles: number
+  generatedFiles: number
+  confidence: EvidenceConfidence
+}
+
+export type ArchitectureBoundaryRole =
+  | 'entrypoint'
+  | 'public-api'
+  | 'internal-module'
+  | 'adapter'
+  | 'domain'
+  | 'infrastructure'
+  | 'test-support'
+  | 'generated'
+  | 'unknown'
+
+export interface ArchitectureBoundaryEvidence extends EvidenceItemBase {
+  kind: 'architecture-boundary'
+  path: string
+  role: ArchitectureBoundaryRole
+  signals: string[]
+  confidence: EvidenceConfidence
+}
+
+export interface VerificationSurfaceEvidence extends EvidenceItemBase {
+  kind: 'verification-surface'
+  rootIds: string[]
+  commandKind: CiCommandKind
+  commandText?: string
+  workflowJobId?: string
+  confidence: EvidenceConfidence
+}
+
+export interface DependencyHintEvidence extends EvidenceItemBase {
+  kind: 'dependency-hint'
+  fromRootId: string
+  toRootId?: string
+  relationship: 'workspace' | 'manifest' | 'import-path' | 'unknown'
+  confidence: EvidenceConfidence
+}
+
+export interface TestProximityHintEvidence extends EvidenceItemBase {
+  kind: 'test-proximity-hint'
+  rootId: string
+  nearbyTestPaths: string[]
+  confidence: EvidenceConfidence
+}
+
+export interface DocumentationProximityHintEvidence extends EvidenceItemBase {
+  kind: 'documentation-proximity-hint'
+  rootId: string
+  documentSurfaceIds: string[]
+  roleClaims: DocumentRole[]
+  confidence: EvidenceConfidence
+}
+
+export interface GeneratedPressureEvidence extends EvidenceItemBase {
+  kind: 'generated-pressure'
+  rootId: string
+  generatedFileRatio: number
+  generatedBytesRatio: number
+  confidence: EvidenceConfidence
+}
+
+export interface RepositoryTopologyMetrics {
+  rootCount: number
+  languageCount: number
+  sourceToNearbyTestRatio?: number
+  docsToSourceProximityRatio?: number
+  generatedFileRatio: number
+  largestRootShare: number
+  publicApiSurfaceCount: number
+  rootsWithoutLocalTests: number
+  rootsWithoutLocalDocs: number
+  verificationMappedRootCount: number
+}
+
+export interface RepositoryTopologyEvidence {
+  dependencyHints: DependencyHintEvidence[]
+  testProximityHints: TestProximityHintEvidence[]
+  documentationProximityHints: DocumentationProximityHintEvidence[]
+  generatedPressure: GeneratedPressureEvidence[]
+  metrics: RepositoryTopologyMetrics
+}
+
+export interface RepositoryEvidence {
+  roots: RepositoryRootEvidence[]
+  boundaries: ArchitectureBoundaryEvidence[]
+  documentSurfaces: DocumentSurfaceEvidence[]
+  verificationSurfaces: VerificationSurfaceEvidence[]
+  topology: RepositoryTopologyEvidence
+}
+
+export type DesignStateCategory =
+  | 'documentation-evidence'
+  | 'architecture-boundary'
+  | 'verification-locality'
+  | 'context-selection'
+  | 'generated-content'
+  | 'safety'
+  | 'agent-instruction'
+  | 'ci-alignment'
+
+export interface DesignStateInsight {
+  id: string
+  category: DesignStateCategory
+  title: string
+  severity: ReadinessSeverity
+  gateable: boolean
+  summary: string
+  evidenceIds: string[]
+  findingIds?: string[]
+  paths: string[]
+  confidence: EvidenceConfidence
+  recommendation?: string
+}
+
+export interface DesignStateSummary {
+  strengths: DesignStateInsight[]
+  risks: DesignStateInsight[]
+  ambiguities: DesignStateInsight[]
+}
+
+export interface LocalReadinessReportContract {
+  schemaVersion: 'local-readiness/v2'
+  experimentalFields: LocalReadinessExperimentalField[]
+}
+
+export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState'
+
 export interface LocalReadinessReport {
   root: string
   generatedAt: string
@@ -182,6 +377,9 @@ export interface LocalReadinessReport {
   instructions: InstructionSurfaceEvidence[]
   capabilities: CapabilitySurfaceEvidence[]
   safetySignals: SafetySignalEvidence[]
+  repositoryEvidence: RepositoryEvidence
+  designState: DesignStateSummary
+  reportContract: LocalReadinessReportContract
   findings: ReadinessFinding[]
   files: LocalReadinessFile[]
 }

@@ -42,7 +42,7 @@ describe('local readiness', () => {
 
   test('scans local repository readiness without GitHub input', () => {
     root = createTempRepo()
-    writeRepoFile(root, 'README.md', '# Demo\n\nRun tests with npm test.\n')
+    writeRepoFile(root, 'README.md', '# Demo\n\n## Setup\n\nRun tests:\n\n```sh\nnpm test\n```\n')
     writeRepoFile(root, 'AGENTS.md', 'Use npm test before committing.\n')
     writeRepoFile(root, 'docs/ARCHITECTURE.md', '# Architecture\n')
     writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
@@ -71,7 +71,87 @@ describe('local readiness', () => {
       hasTypeCheck: true,
     })
     expect(report.instructions.map(surface => surface.path)).toContain('AGENTS.md')
+    expect(report.reportContract).toEqual({
+      schemaVersion: 'local-readiness/v2',
+      experimentalFields: ['repositoryEvidence', 'designState'],
+    })
+    expect(report.repositoryEvidence?.documentSurfaces).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'document-surface:README.md',
+        roleClaims: expect.arrayContaining([
+          expect.objectContaining({ value: 'entrypoint', confidence: 'high' }),
+          expect.objectContaining({ value: 'development' }),
+        ]),
+      }),
+      expect.objectContaining({
+        id: 'document-surface:AGENTS.md',
+        roleClaims: expect.arrayContaining([
+          expect.objectContaining({ value: 'agent-instruction', confidence: 'high' }),
+        ]),
+      }),
+      expect.objectContaining({
+        id: 'document-surface:docs/ARCHITECTURE.md',
+        roleClaims: expect.arrayContaining([
+          expect.objectContaining({ value: 'architecture', confidence: 'high' }),
+        ]),
+      }),
+    ]))
+    expect(report.repositoryEvidence?.topology.metrics).toMatchObject({
+      rootCount: expect.any(Number),
+      languageCount: expect.any(Number),
+      rootsWithoutLocalTests: expect.any(Number),
+      rootsWithoutLocalDocs: expect.any(Number),
+    })
+    expect(report.designState?.strengths.map(insight => insight.id)).toContain('design-state:documentation-evidence')
     expect(report.findings).toEqual([])
+    expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
+  })
+
+  test('emits deterministic repository evidence and design-state markdown sections', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n\nSee [design](docs/design.md).\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test before committing.\n')
+    writeRepoFile(root, 'docs/design.md', '# Architecture\n\n## Modules\n')
+    writeRepoFile(root, 'package.json', JSON.stringify({
+      scripts: {
+        test: 'npm --prefix packages/cli test',
+      },
+    }))
+    writeRepoFile(root, 'packages/cli/package.json', JSON.stringify({
+      scripts: {
+        test: 'jest',
+      },
+    }))
+    writeRepoFile(root, 'packages/cli/src/index.ts', 'export const cli = true\n')
+    writeRepoFile(root, 'packages/cli/__tests__/index.test.ts', 'test("cli", () => expect(true).toBe(true))\n')
+
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const reportAgain = scanLocalReadiness(root, { now: fixedNow })
+
+    expect(report.repositoryEvidence).toEqual(reportAgain.repositoryEvidence)
+    expect(report.designState).toEqual(reportAgain.designState)
+    expect(report.repositoryEvidence?.roots).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'root:packages/cli',
+        rootKind: 'package',
+        packageManager: 'npm',
+        manifests: ['packages/cli/package.json'],
+        sourceFiles: 1,
+        testFiles: 1,
+      }),
+    ]))
+    expect(report.repositoryEvidence?.verificationSurfaces).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'verification-surface:commands:test',
+        commandKind: 'test',
+        paths: ['package.json'],
+        rootIds: [],
+      }),
+    ]))
+    const markdown = formatScanMarkdown(report)
+    expect(markdown).toContain('### Repository topology')
+    expect(markdown).toContain('### Documentation roles')
+    expect(markdown).toContain('### Design-state strengths')
     expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
   })
 

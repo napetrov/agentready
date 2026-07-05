@@ -101,6 +101,37 @@ describe('real-world cron classification', () => {
     instructions: [],
     capabilities: [],
     safetySignals: [],
+    repositoryEvidence: {
+      roots: [],
+      boundaries: [],
+      documentSurfaces: [],
+      verificationSurfaces: [],
+      topology: {
+        dependencyHints: [],
+        testProximityHints: [],
+        documentationProximityHints: [],
+        generatedPressure: [],
+        metrics: {
+          rootCount: 0,
+          languageCount: 0,
+          generatedFileRatio: 0,
+          largestRootShare: 0,
+          publicApiSurfaceCount: 0,
+          rootsWithoutLocalTests: 0,
+          rootsWithoutLocalDocs: 0,
+          verificationMappedRootCount: 0,
+        },
+      },
+    },
+    designState: {
+      strengths: [],
+      risks: [],
+      ambiguities: [],
+    },
+    reportContract: {
+      schemaVersion: 'local-readiness/v2',
+      experimentalFields: ['repositoryEvidence', 'designState'],
+    },
     findings: findings.map(finding => ({
       ruleId: finding.id.split(':')[0],
       title: 'Finding',

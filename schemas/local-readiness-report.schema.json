@@ -425,6 +425,1209 @@
         "additionalProperties": false
       }
     },
+    "repositoryEvidence": {
+      "type": "object",
+      "properties": {
+        "roots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "repository-root"
+              },
+              "rootKind": {
+                "type": "string",
+                "enum": [
+                  "app",
+                  "library",
+                  "package",
+                  "service",
+                  "tool",
+                  "docs",
+                  "test",
+                  "unknown"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "languages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "packageManager": {
+                "type": "string",
+                "enum": [
+                  "npm",
+                  "pnpm",
+                  "yarn",
+                  "bun"
+                ]
+              },
+              "manifests": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sourceFiles": {
+                "type": "number"
+              },
+              "testFiles": {
+                "type": "number"
+              },
+              "documentationFiles": {
+                "type": "number"
+              },
+              "generatedFiles": {
+                "type": "number"
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "detector": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "file",
+                        "manifest",
+                        "workflow",
+                        "config",
+                        "inference"
+                      ]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "detector",
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "rootKind",
+              "path",
+              "paths",
+              "languages",
+              "manifests",
+              "sourceFiles",
+              "testFiles",
+              "documentationFiles",
+              "generatedFiles",
+              "confidence",
+              "sources"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "boundaries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "architecture-boundary"
+              },
+              "path": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "entrypoint",
+                  "public-api",
+                  "internal-module",
+                  "adapter",
+                  "domain",
+                  "infrastructure",
+                  "test-support",
+                  "generated",
+                  "unknown"
+                ]
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "detector": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "file",
+                        "manifest",
+                        "workflow",
+                        "config",
+                        "inference"
+                      ]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "detector",
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "path",
+              "paths",
+              "role",
+              "signals",
+              "confidence",
+              "sources"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "documentSurfaces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "document-surface"
+              },
+              "path": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "roleClaims": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "document-role"
+                    },
+                    "value": {
+                      "type": "string",
+                      "enum": [
+                        "entrypoint",
+                        "development",
+                        "architecture",
+                        "decision-record",
+                        "contribution",
+                        "environment",
+                        "agent-instruction",
+                        "operation",
+                        "api"
+                      ]
+                    },
+                    "confidence": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high"
+                      ]
+                    },
+                    "signals": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "detector": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "file",
+                              "manifest",
+                              "workflow",
+                              "config",
+                              "inference"
+                            ]
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "detector",
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "value",
+                    "confidence",
+                    "signals",
+                    "sources"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "title": {
+                "type": "string"
+              },
+              "headings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "linkedPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "commandBlocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "language": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "truncated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "text",
+                    "truncated"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "detector": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "file",
+                        "manifest",
+                        "workflow",
+                        "config",
+                        "inference"
+                      ]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "detector",
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "path",
+              "paths",
+              "roleClaims",
+              "headings",
+              "linkedPaths",
+              "commandBlocks",
+              "sources"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "verificationSurfaces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "verification-surface"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rootIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "commandKind": {
+                "type": "string",
+                "enum": [
+                  "install",
+                  "lint",
+                  "typecheck",
+                  "test",
+                  "build"
+                ]
+              },
+              "commandText": {
+                "type": "string"
+              },
+              "workflowJobId": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "detector": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "file",
+                        "manifest",
+                        "workflow",
+                        "config",
+                        "inference"
+                      ]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "detector",
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "paths",
+              "rootIds",
+              "commandKind",
+              "confidence",
+              "sources"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "topology": {
+          "type": "object",
+          "properties": {
+            "dependencyHints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "dependency-hint"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "detector": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "file",
+                            "manifest",
+                            "workflow",
+                            "config",
+                            "inference"
+                          ]
+                        },
+                        "path": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "detector",
+                        "kind"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "fromRootId": {
+                    "type": "string"
+                  },
+                  "toRootId": {
+                    "type": "string"
+                  },
+                  "relationship": {
+                    "type": "string",
+                    "enum": [
+                      "workspace",
+                      "manifest",
+                      "import-path",
+                      "unknown"
+                    ]
+                  },
+                  "confidence": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "paths",
+                  "sources",
+                  "fromRootId",
+                  "relationship",
+                  "confidence"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "testProximityHints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "test-proximity-hint"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "detector": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "file",
+                            "manifest",
+                            "workflow",
+                            "config",
+                            "inference"
+                          ]
+                        },
+                        "path": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "detector",
+                        "kind"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "rootId": {
+                    "type": "string"
+                  },
+                  "nearbyTestPaths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "confidence": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "paths",
+                  "sources",
+                  "rootId",
+                  "nearbyTestPaths",
+                  "confidence"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "documentationProximityHints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "documentation-proximity-hint"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "detector": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "file",
+                            "manifest",
+                            "workflow",
+                            "config",
+                            "inference"
+                          ]
+                        },
+                        "path": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "detector",
+                        "kind"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "rootId": {
+                    "type": "string"
+                  },
+                  "documentSurfaceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "roleClaims": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "entrypoint",
+                        "development",
+                        "architecture",
+                        "decision-record",
+                        "contribution",
+                        "environment",
+                        "agent-instruction",
+                        "operation",
+                        "api"
+                      ]
+                    }
+                  },
+                  "confidence": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "paths",
+                  "sources",
+                  "rootId",
+                  "documentSurfaceIds",
+                  "roleClaims",
+                  "confidence"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "generatedPressure": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "generated-pressure"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "detector": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "file",
+                            "manifest",
+                            "workflow",
+                            "config",
+                            "inference"
+                          ]
+                        },
+                        "path": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "detector",
+                        "kind"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "rootId": {
+                    "type": "string"
+                  },
+                  "generatedFileRatio": {
+                    "type": "number"
+                  },
+                  "generatedBytesRatio": {
+                    "type": "number"
+                  },
+                  "confidence": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "paths",
+                  "sources",
+                  "rootId",
+                  "generatedFileRatio",
+                  "generatedBytesRatio",
+                  "confidence"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "metrics": {
+              "type": "object",
+              "properties": {
+                "rootCount": {
+                  "type": "number"
+                },
+                "languageCount": {
+                  "type": "number"
+                },
+                "sourceToNearbyTestRatio": {
+                  "type": "number"
+                },
+                "docsToSourceProximityRatio": {
+                  "type": "number"
+                },
+                "generatedFileRatio": {
+                  "type": "number"
+                },
+                "largestRootShare": {
+                  "type": "number"
+                },
+                "publicApiSurfaceCount": {
+                  "type": "number"
+                },
+                "rootsWithoutLocalTests": {
+                  "type": "number"
+                },
+                "rootsWithoutLocalDocs": {
+                  "type": "number"
+                },
+                "verificationMappedRootCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "rootCount",
+                "languageCount",
+                "generatedFileRatio",
+                "largestRootShare",
+                "publicApiSurfaceCount",
+                "rootsWithoutLocalTests",
+                "rootsWithoutLocalDocs",
+                "verificationMappedRootCount"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "dependencyHints",
+            "testProximityHints",
+            "documentationProximityHints",
+            "generatedPressure",
+            "metrics"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "roots",
+        "boundaries",
+        "documentSurfaces",
+        "verificationSurfaces",
+        "topology"
+      ],
+      "additionalProperties": false
+    },
+    "designState": {
+      "type": "object",
+      "properties": {
+        "strengths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "documentation-evidence",
+                  "architecture-boundary",
+                  "verification-locality",
+                  "context-selection",
+                  "generated-content",
+                  "safety",
+                  "agent-instruction",
+                  "ci-alignment"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              },
+              "gateable": {
+                "type": "boolean"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "evidenceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "findingIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "recommendation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "category",
+              "title",
+              "severity",
+              "gateable",
+              "summary",
+              "evidenceIds",
+              "paths",
+              "confidence"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "documentation-evidence",
+                  "architecture-boundary",
+                  "verification-locality",
+                  "context-selection",
+                  "generated-content",
+                  "safety",
+                  "agent-instruction",
+                  "ci-alignment"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              },
+              "gateable": {
+                "type": "boolean"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "evidenceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "findingIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "recommendation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "category",
+              "title",
+              "severity",
+              "gateable",
+              "summary",
+              "evidenceIds",
+              "paths",
+              "confidence"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "ambiguities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "documentation-evidence",
+                  "architecture-boundary",
+                  "verification-locality",
+                  "context-selection",
+                  "generated-content",
+                  "safety",
+                  "agent-instruction",
+                  "ci-alignment"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              },
+              "gateable": {
+                "type": "boolean"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "evidenceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "findingIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "recommendation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "category",
+              "title",
+              "severity",
+              "gateable",
+              "summary",
+              "evidenceIds",
+              "paths",
+              "confidence"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "strengths",
+        "risks",
+        "ambiguities"
+      ],
+      "additionalProperties": false
+    },
+    "reportContract": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "local-readiness/v2"
+        },
+        "experimentalFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "repositoryEvidence",
+              "designState"
+            ]
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "experimentalFields"
+      ],
+      "additionalProperties": false
+    },
     "findings": {
       "type": "array",
       "items": {
@@ -521,6 +1724,9 @@
     "instructions",
     "capabilities",
     "safetySignals",
+    "repositoryEvidence",
+    "designState",
+    "reportContract",
     "findings",
     "files"
   ],

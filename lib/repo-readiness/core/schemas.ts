@@ -1,10 +1,13 @@
 import { z } from 'zod'
 import type {
+  DesignStateSummary,
+  DocumentSurfaceEvidence,
   CiEvidence,
   CommandEvidence,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
+  RepositoryEvidence,
   ReadinessDiffReport,
   ReadinessFinding,
 } from './types'
@@ -33,6 +36,41 @@ export const commandEcosystemSchema = z.enum([
 ])
 export const capabilityKindSchema = z.enum(['mcp', 'skill', 'hook', 'plugin', 'lsp'])
 export const safetyCategorySchema = z.enum(['install-hook', 'destructive', 'network-exec', 'deploy'])
+export const evidenceConfidenceSchema = z.enum(['low', 'medium', 'high'])
+export const evidenceSourceKindSchema = z.enum(['file', 'manifest', 'workflow', 'config', 'inference'])
+export const documentRoleSchema = z.enum([
+  'entrypoint',
+  'development',
+  'architecture',
+  'decision-record',
+  'contribution',
+  'environment',
+  'agent-instruction',
+  'operation',
+  'api',
+])
+export const repositoryRootKindSchema = z.enum(['app', 'library', 'package', 'service', 'tool', 'docs', 'test', 'unknown'])
+export const architectureBoundaryRoleSchema = z.enum([
+  'entrypoint',
+  'public-api',
+  'internal-module',
+  'adapter',
+  'domain',
+  'infrastructure',
+  'test-support',
+  'generated',
+  'unknown',
+])
+export const designStateCategorySchema = z.enum([
+  'documentation-evidence',
+  'architecture-boundary',
+  'verification-locality',
+  'context-selection',
+  'generated-content',
+  'safety',
+  'agent-instruction',
+  'ci-alignment',
+])
 
 export const instructionEcosystemSchema = z.enum([
   'codex',
@@ -133,6 +171,174 @@ export const safetySignalSchema = z.strictObject({
   notes: z.array(z.string()),
 })
 
+export const evidenceSourceSchema = z.strictObject({
+  detector: z.string(),
+  kind: evidenceSourceKindSchema,
+  path: z.string().optional(),
+  note: z.string().optional(),
+})
+
+export const evidenceClaimSchema = z.strictObject({
+  kind: z.string(),
+  value: z.string(),
+  confidence: evidenceConfidenceSchema,
+  signals: z.array(z.string()),
+  sources: z.array(evidenceSourceSchema),
+})
+
+export const documentCommandBlockSchema = z.strictObject({
+  index: z.number().int().min(0),
+  language: z.string().optional(),
+  text: z.string(),
+  truncated: z.boolean(),
+})
+
+export const documentSurfaceSchema = z.strictObject({
+  id: z.string(),
+  kind: z.literal('document-surface'),
+  path: z.string(),
+  paths: z.array(z.string()),
+  roleClaims: z.array(evidenceClaimSchema.extend({
+    kind: z.literal('document-role'),
+    value: documentRoleSchema,
+  })),
+  title: z.string().optional(),
+  headings: z.array(z.string()),
+  linkedPaths: z.array(z.string()),
+  commandBlocks: z.array(documentCommandBlockSchema),
+  sources: z.array(evidenceSourceSchema),
+})
+
+export const repositoryRootSchema = z.strictObject({
+  id: z.string(),
+  kind: z.literal('repository-root'),
+  rootKind: repositoryRootKindSchema,
+  path: z.string(),
+  paths: z.array(z.string()),
+  languages: z.array(z.string()),
+  packageManager: packageManagerSchema.optional(),
+  manifests: z.array(z.string()),
+  sourceFiles: z.number(),
+  testFiles: z.number(),
+  documentationFiles: z.number(),
+  generatedFiles: z.number(),
+  confidence: evidenceConfidenceSchema,
+  sources: z.array(evidenceSourceSchema),
+})
+
+export const architectureBoundarySchema = z.strictObject({
+  id: z.string(),
+  kind: z.literal('architecture-boundary'),
+  path: z.string(),
+  paths: z.array(z.string()),
+  role: architectureBoundaryRoleSchema,
+  signals: z.array(z.string()),
+  confidence: evidenceConfidenceSchema,
+  sources: z.array(evidenceSourceSchema),
+})
+
+export const verificationSurfaceSchema = z.strictObject({
+  id: z.string(),
+  kind: z.literal('verification-surface'),
+  paths: z.array(z.string()),
+  rootIds: z.array(z.string()),
+  commandKind: ciCommandKindSchema,
+  commandText: z.string().optional(),
+  workflowJobId: z.string().optional(),
+  confidence: evidenceConfidenceSchema,
+  sources: z.array(evidenceSourceSchema),
+})
+
+export const dependencyHintSchema = z.strictObject({
+  id: z.string(),
+  kind: z.literal('dependency-hint'),
+  paths: z.array(z.string()),
+  sources: z.array(evidenceSourceSchema),
+  fromRootId: z.string(),
+  toRootId: z.string().optional(),
+  relationship: z.enum(['workspace', 'manifest', 'import-path', 'unknown']),
+  confidence: evidenceConfidenceSchema,
+})
+
+export const testProximityHintSchema = z.strictObject({
+  id: z.string(),
+  kind: z.literal('test-proximity-hint'),
+  paths: z.array(z.string()),
+  sources: z.array(evidenceSourceSchema),
+  rootId: z.string(),
+  nearbyTestPaths: z.array(z.string()),
+  confidence: evidenceConfidenceSchema,
+})
+
+export const documentationProximityHintSchema = z.strictObject({
+  id: z.string(),
+  kind: z.literal('documentation-proximity-hint'),
+  paths: z.array(z.string()),
+  sources: z.array(evidenceSourceSchema),
+  rootId: z.string(),
+  documentSurfaceIds: z.array(z.string()),
+  roleClaims: z.array(documentRoleSchema),
+  confidence: evidenceConfidenceSchema,
+})
+
+export const generatedPressureSchema = z.strictObject({
+  id: z.string(),
+  kind: z.literal('generated-pressure'),
+  paths: z.array(z.string()),
+  sources: z.array(evidenceSourceSchema),
+  rootId: z.string(),
+  generatedFileRatio: z.number(),
+  generatedBytesRatio: z.number(),
+  confidence: evidenceConfidenceSchema,
+})
+
+export const repositoryTopologySchema = z.strictObject({
+  dependencyHints: z.array(dependencyHintSchema),
+  testProximityHints: z.array(testProximityHintSchema),
+  documentationProximityHints: z.array(documentationProximityHintSchema),
+  generatedPressure: z.array(generatedPressureSchema),
+  metrics: z.strictObject({
+    rootCount: z.number(),
+    languageCount: z.number(),
+    sourceToNearbyTestRatio: z.number().optional(),
+    docsToSourceProximityRatio: z.number().optional(),
+    generatedFileRatio: z.number(),
+    largestRootShare: z.number(),
+    publicApiSurfaceCount: z.number(),
+    rootsWithoutLocalTests: z.number(),
+    rootsWithoutLocalDocs: z.number(),
+    verificationMappedRootCount: z.number(),
+  }),
+})
+
+export const repositoryEvidenceSchema = z.strictObject({
+  roots: z.array(repositoryRootSchema),
+  boundaries: z.array(architectureBoundarySchema),
+  documentSurfaces: z.array(documentSurfaceSchema),
+  verificationSurfaces: z.array(verificationSurfaceSchema),
+  topology: repositoryTopologySchema,
+})
+
+export const designStateInsightSchema = z.strictObject({
+  id: z.string(),
+  category: designStateCategorySchema,
+  title: z.string(),
+  severity: severitySchema,
+  gateable: z.boolean(),
+  summary: z.string(),
+  evidenceIds: z.array(z.string()),
+  findingIds: z.array(z.string()).optional(),
+  paths: z.array(z.string()),
+  confidence: evidenceConfidenceSchema,
+  recommendation: z.string().optional(),
+})
+
+export const designStateSummarySchema = z.strictObject({
+  strengths: z.array(designStateInsightSchema),
+  risks: z.array(designStateInsightSchema),
+  ambiguities: z.array(designStateInsightSchema),
+})
+
 export const instructionSurfaceSchema = z.strictObject({
   path: z.string(),
   ecosystems: z.array(instructionEcosystemSchema),
@@ -172,6 +378,12 @@ export const localReadinessReportSchema = z.strictObject({
   instructions: z.array(instructionSurfaceSchema),
   capabilities: z.array(capabilitySurfaceSchema),
   safetySignals: z.array(safetySignalSchema),
+  repositoryEvidence: repositoryEvidenceSchema,
+  designState: designStateSummarySchema,
+  reportContract: z.strictObject({
+    schemaVersion: z.literal('local-readiness/v2'),
+    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState'])),
+  }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),
 })
@@ -208,13 +420,31 @@ export const localReadinessConfigSchema = z
   .partial()
   .strict()
 
-// Compile-time drift guards: these aliases fail to type-check if a schema's
-// inferred output stops matching the interface it represents.
-type AssertExtends<Actual extends Expected, Expected> = Actual
-type _Finding = AssertExtends<z.infer<typeof readinessFindingSchema>, ReadinessFinding>
-type _File = AssertExtends<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile>
-type _Commands = AssertExtends<z.infer<typeof commandEvidenceSchema>, CommandEvidence>
-type _Ci = AssertExtends<z.infer<typeof ciEvidenceSchema>, CiEvidence>
-type _Report = AssertExtends<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport>
-type _Diff = AssertExtends<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport>
-type _Config = AssertExtends<z.infer<typeof localReadinessConfigSchema>, Partial<LocalReadinessConfig>>
+// Compile-time drift guards: each alias resolves to `true` only when the
+// schema's inferred output and the interface are mutually assignable. A
+// mismatch in either direction (schema drops/retypes a field, OR interface adds
+// one the schema does not emit) produces a type error here.
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+const assertSchemaDriftGuards = (..._guards: true[]): void => {}
+const _finding: Exact<z.infer<typeof readinessFindingSchema>, ReadinessFinding> = true
+const _file: Exact<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile> = true
+const _commands: Exact<z.infer<typeof commandEvidenceSchema>, CommandEvidence> = true
+const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
+const _documentSurface: Exact<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence> = true
+const _repositoryEvidence: Exact<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence> = true
+const _designState: Exact<z.infer<typeof designStateSummarySchema>, DesignStateSummary> = true
+const _report: Exact<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport> = true
+const _diff: Exact<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport> = true
+const _config: Exact<z.infer<typeof localReadinessConfigSchema>, Partial<LocalReadinessConfig>> = true
+assertSchemaDriftGuards(
+  _finding,
+  _file,
+  _commands,
+  _ci,
+  _documentSurface,
+  _repositoryEvidence,
+  _designState,
+  _report,
+  _diff,
+  _config,
+)
