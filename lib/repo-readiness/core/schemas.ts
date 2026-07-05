@@ -187,7 +187,7 @@ export const evidenceClaimSchema = z.strictObject({
 })
 
 export const documentCommandBlockSchema = z.strictObject({
-  index: z.number(),
+  index: z.number().int().min(0),
   language: z.string().optional(),
   text: z.string(),
   truncated: z.boolean(),
@@ -378,12 +378,12 @@ export const localReadinessReportSchema = z.strictObject({
   instructions: z.array(instructionSurfaceSchema),
   capabilities: z.array(capabilitySurfaceSchema),
   safetySignals: z.array(safetySignalSchema),
-  repositoryEvidence: repositoryEvidenceSchema.optional(),
-  designState: designStateSummarySchema.optional(),
+  repositoryEvidence: repositoryEvidenceSchema,
+  designState: designStateSummarySchema,
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
-    experimentalFields: z.array(z.string()),
-  }).optional(),
+    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState'])),
+  }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),
 })
@@ -420,16 +420,31 @@ export const localReadinessConfigSchema = z
   .partial()
   .strict()
 
-// Compile-time drift guards: these aliases fail to type-check if a schema's
-// inferred output stops matching the interface it represents.
-type AssertExtends<Actual extends Expected, Expected> = Actual
-type _Finding = AssertExtends<z.infer<typeof readinessFindingSchema>, ReadinessFinding>
-type _File = AssertExtends<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile>
-type _Commands = AssertExtends<z.infer<typeof commandEvidenceSchema>, CommandEvidence>
-type _Ci = AssertExtends<z.infer<typeof ciEvidenceSchema>, CiEvidence>
-type _DocumentSurface = AssertExtends<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence>
-type _RepositoryEvidence = AssertExtends<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence>
-type _DesignState = AssertExtends<z.infer<typeof designStateSummarySchema>, DesignStateSummary>
-type _Report = AssertExtends<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport>
-type _Diff = AssertExtends<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport>
-type _Config = AssertExtends<z.infer<typeof localReadinessConfigSchema>, Partial<LocalReadinessConfig>>
+// Compile-time drift guards: each alias resolves to `true` only when the
+// schema's inferred output and the interface are mutually assignable. A
+// mismatch in either direction (schema drops/retypes a field, OR interface adds
+// one the schema does not emit) produces a type error here.
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+const assertSchemaDriftGuards = (..._guards: true[]): void => {}
+const _finding: Exact<z.infer<typeof readinessFindingSchema>, ReadinessFinding> = true
+const _file: Exact<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile> = true
+const _commands: Exact<z.infer<typeof commandEvidenceSchema>, CommandEvidence> = true
+const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
+const _documentSurface: Exact<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence> = true
+const _repositoryEvidence: Exact<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence> = true
+const _designState: Exact<z.infer<typeof designStateSummarySchema>, DesignStateSummary> = true
+const _report: Exact<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport> = true
+const _diff: Exact<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport> = true
+const _config: Exact<z.infer<typeof localReadinessConfigSchema>, Partial<LocalReadinessConfig>> = true
+assertSchemaDriftGuards(
+  _finding,
+  _file,
+  _commands,
+  _ci,
+  _documentSurface,
+  _repositoryEvidence,
+  _designState,
+  _report,
+  _diff,
+  _config,
+)

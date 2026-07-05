@@ -783,7 +783,9 @@
                       "type": "object",
                       "properties": {
                         "index": {
-                          "type": "number"
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
                         },
                         "language": {
                           "type": "string"
@@ -1624,7 +1626,11 @@
             "experimentalFields": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "repositoryEvidence",
+                  "designState"
+                ]
               }
             }
           },
@@ -1730,6 +1736,9 @@
         "instructions",
         "capabilities",
         "safetySignals",
+        "repositoryEvidence",
+        "designState",
+        "reportContract",
         "findings",
         "files"
       ],
@@ -2505,7 +2514,9 @@
                       "type": "object",
                       "properties": {
                         "index": {
-                          "type": "number"
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
                         },
                         "language": {
                           "type": "string"
@@ -3346,7 +3357,11 @@
             "experimentalFields": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "repositoryEvidence",
+                  "designState"
+                ]
               }
             }
           },
@@ -3452,6 +3467,9 @@
         "instructions",
         "capabilities",
         "safetySignals",
+        "repositoryEvidence",
+        "designState",
+        "reportContract",
         "findings",
         "files"
       ],

@@ -112,6 +112,7 @@ const collectRoots = (files: LocalReadinessFile[], commands: CommandEvidence): R
       if (existing.rootKind === 'unknown' && rootKind !== 'unknown') existing.rootKind = rootKind
       if (existing.confidence !== 'high' && confidence === 'high') existing.confidence = confidence
       if (manifest && !existing.manifests.includes(manifest)) existing.manifests.push(manifest)
+      if (manifest && path.posix.basename(manifest) === 'package.json') existing.packageManager = commands.packageManager ?? 'npm'
       existing.sources.push(source)
       return existing
     }
@@ -131,8 +132,8 @@ const collectRoots = (files: LocalReadinessFile[], commands: CommandEvidence): R
       confidence,
       sources: [source],
     }
-    if (rootPath === '' && commands.packageManager) {
-      root.packageManager = commands.packageManager
+    if (manifest && path.posix.basename(manifest) === 'package.json') {
+      root.packageManager = commands.packageManager ?? 'npm'
     }
     roots.set(rootPath, root)
     return root
@@ -237,7 +238,7 @@ const claim = (
   value: DocumentRole,
   confidence: EvidenceConfidence,
   signals: string[],
-): EvidenceClaim<'document-role'> => ({
+): EvidenceClaim<'document-role', DocumentRole> => ({
   kind: 'document-role',
   value,
   confidence,
@@ -348,8 +349,8 @@ const detectRoleClaims = (
   file: LocalReadinessFile,
   parsed: Pick<DocumentSurfaceEvidence, 'headings' | 'linkedPaths' | 'commandBlocks'>,
   instructions: InstructionSurfaceEvidence[],
-): EvidenceClaim<'document-role'>[] => {
-  const claims: EvidenceClaim<'document-role'>[] = []
+): EvidenceClaim<'document-role', DocumentRole>[] => {
+  const claims: EvidenceClaim<'document-role', DocumentRole>[] = []
   const headingText = parsed.headings.join(' ').toLowerCase()
   const context: RoleRuleContext = {
     file,
@@ -451,15 +452,28 @@ const collectVerificationSurfaces = (
   ci: CiEvidence,
   roots: RepositoryRootEvidence[],
 ): VerificationSurfaceEvidence[] => {
-  const repositoryRoot = roots.find(root => root.path === '.') ?? roots[0]
+  const repositoryRoot = roots.find(root => root.path === '.')
+  const repositoryCommandRootIds = repositoryRoot && (repositoryRoot.sourceFiles > 0 || repositoryRoot.testFiles > 0)
+    ? [repositoryRoot.id]
+    : []
+  const repositoryCommandPaths = commands.packageManager
+    ? ['package.json']
+    : repositoryCommandRootIds.length > 0 && repositoryRoot
+      ? repositoryRoot.paths
+      : ['.']
+  const commandSource = sourceFor(
+    commands.packageManager ? 'manifest' : 'inference',
+    commands.packageManager ? 'package.json' : undefined,
+    'repository-level command evidence; root coverage not inferred',
+  )
   const surfaces: VerificationSurfaceEvidence[] = commandKinds(commands).map(kind => ({
     id: `verification-surface:commands:${kind}`,
     kind: 'verification-surface' as const,
-    paths: repositoryRoot ? repositoryRoot.paths : ['.'],
-    rootIds: repositoryRoot ? [repositoryRoot.id] : [],
+    paths: repositoryCommandPaths,
+    rootIds: repositoryCommandRootIds,
     commandKind: kind,
-    confidence: 'low' as EvidenceConfidence,
-    sources: [sourceFor('manifest', commands.packageManager ? 'package.json' : undefined, 'repository-level command evidence')],
+    confidence: repositoryCommandRootIds.length > 0 ? 'medium' as EvidenceConfidence : 'low' as EvidenceConfidence,
+    sources: [commandSource],
   }))
 
   for (const workflow of ci.workflows) {
@@ -469,7 +483,7 @@ const collectVerificationSurfaces = (
           id: `verification-surface:${workflow.file}:job.${job.id}:${kind}`,
           kind: 'verification-surface' as const,
           paths: [workflow.file],
-          rootIds: repositoryRoot ? [repositoryRoot.id] : [],
+          rootIds: [],
           commandKind: kind,
           workflowJobId: job.id,
           confidence: 'medium' as EvidenceConfidence,

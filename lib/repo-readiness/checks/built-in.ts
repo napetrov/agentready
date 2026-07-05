@@ -7,7 +7,7 @@ import type {
   SafetyCategory,
 } from '../core/types'
 
-type EvidenceForChecks = Omit<LocalReadinessReport, 'findings' | 'summary'>
+type EvidenceForChecks = Omit<LocalReadinessReport, 'findings' | 'summary' | 'repositoryEvidence' | 'designState' | 'reportContract'>
 
 // A `docs/` or `doc/` directory anywhere in the tree (matched together with the
 // file's `documentation` flag so a stray non-doc file under docs/ does not count

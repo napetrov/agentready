@@ -62,11 +62,16 @@ export const augmentedReportSchema = z.strictObject({
   analysis: analysisProvenanceSchema,
 })
 
-// Compile-time drift guards: these aliases fail to type-check if a schema's
-// inferred output stops matching the interface it represents.
-type AssertExtends<Actual extends Expected, Expected> = Actual
-type _Insight = AssertExtends<z.infer<typeof llmInsightSchema>, LlmInsight>
-type _Adjustment = AssertExtends<z.infer<typeof augmentedScoreAdjustmentSchema>, AugmentedScoreAdjustment>
-type _Score = AssertExtends<z.infer<typeof augmentedScoreSchema>, AugmentedScore>
-type _Provenance = AssertExtends<z.infer<typeof analysisProvenanceSchema>, AnalysisProvenance>
-type _Report = AssertExtends<z.infer<typeof augmentedReportSchema>, AugmentedReport>
+// Compile-time drift guards: each alias resolves to `true` only when the
+// schema's inferred output and the interface are *mutually* assignable, and is
+// then assigned to a `true` constant — so a mismatch in either direction
+// (schema drops/retypes a field, OR adds one the interface doesn't declare)
+// produces a type error here. This is bidirectional, unlike a one-way `extends`.
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+const assertSchemaDriftGuards = (..._guards: true[]): void => {}
+const _insight: Exact<z.infer<typeof llmInsightSchema>, LlmInsight> = true
+const _adjustment: Exact<z.infer<typeof augmentedScoreAdjustmentSchema>, AugmentedScoreAdjustment> = true
+const _score: Exact<z.infer<typeof augmentedScoreSchema>, AugmentedScore> = true
+const _provenance: Exact<z.infer<typeof analysisProvenanceSchema>, AnalysisProvenance> = true
+const _report: Exact<z.infer<typeof augmentedReportSchema>, AugmentedReport> = true
+assertSchemaDriftGuards(_insight, _adjustment, _score, _provenance, _report)

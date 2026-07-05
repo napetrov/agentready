@@ -60,9 +60,9 @@ export interface EvidenceItemBase {
   sources: EvidenceSource[]
 }
 
-export interface EvidenceClaim<TKind extends string = string> {
+export interface EvidenceClaim<TKind extends string = string, TValue extends string = string> {
   kind: TKind
-  value: string
+  value: TValue
   confidence: EvidenceConfidence
   signals: string[]
   sources: EvidenceSource[]
@@ -203,7 +203,7 @@ export interface DocumentCommandBlock {
 export interface DocumentSurfaceEvidence extends EvidenceItemBase {
   kind: 'document-surface'
   path: string
-  roleClaims: EvidenceClaim<'document-role'>[]
+  roleClaims: EvidenceClaim<'document-role', DocumentRole>[]
   title?: string
   headings: string[]
   linkedPaths: string[]
@@ -346,8 +346,10 @@ export interface DesignStateSummary {
 
 export interface LocalReadinessReportContract {
   schemaVersion: 'local-readiness/v2'
-  experimentalFields: string[]
+  experimentalFields: LocalReadinessExperimentalField[]
 }
+
+export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState'
 
 export interface LocalReadinessReport {
   root: string
@@ -375,9 +377,9 @@ export interface LocalReadinessReport {
   instructions: InstructionSurfaceEvidence[]
   capabilities: CapabilitySurfaceEvidence[]
   safetySignals: SafetySignalEvidence[]
-  repositoryEvidence?: RepositoryEvidence
-  designState?: DesignStateSummary
-  reportContract?: LocalReadinessReportContract
+  repositoryEvidence: RepositoryEvidence
+  designState: DesignStateSummary
+  reportContract: LocalReadinessReportContract
   findings: ReadinessFinding[]
   files: LocalReadinessFile[]
 }

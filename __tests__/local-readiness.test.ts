@@ -134,6 +134,7 @@ describe('local readiness', () => {
       expect.objectContaining({
         id: 'root:packages/cli',
         rootKind: 'package',
+        packageManager: 'npm',
         manifests: ['packages/cli/package.json'],
         sourceFiles: 1,
         testFiles: 1,
@@ -143,6 +144,8 @@ describe('local readiness', () => {
       expect.objectContaining({
         id: 'verification-surface:commands:test',
         commandKind: 'test',
+        paths: ['package.json'],
+        rootIds: [],
       }),
     ]))
     const markdown = formatScanMarkdown(report)
