@@ -259,11 +259,9 @@ exports[`diff output snapshots summary and markdown for a regression between two
           "id": "verification-surface:commands:lint",
           "kind": "verification-surface",
           "paths": [
-            "."
+            "package.json"
           ],
-          "rootIds": [
-            "root:."
-          ],
+          "rootIds": [],
           "commandKind": "lint",
           "confidence": "low",
           "sources": [
@@ -271,7 +269,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
               "detector": "repository-evidence",
               "kind": "manifest",
               "path": "package.json",
-              "note": "repository-level command evidence"
+              "note": "repository-level command evidence; root coverage not inferred"
             }
           ]
         },
@@ -279,11 +277,9 @@ exports[`diff output snapshots summary and markdown for a regression between two
           "id": "verification-surface:commands:test",
           "kind": "verification-surface",
           "paths": [
-            "."
+            "package.json"
           ],
-          "rootIds": [
-            "root:."
-          ],
+          "rootIds": [],
           "commandKind": "test",
           "confidence": "low",
           "sources": [
@@ -291,7 +287,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
               "detector": "repository-evidence",
               "kind": "manifest",
               "path": "package.json",
-              "note": "repository-level command evidence"
+              "note": "repository-level command evidence; root coverage not inferred"
             }
           ]
         }
@@ -328,7 +324,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
           "publicApiSurfaceCount": 0,
           "rootsWithoutLocalTests": 0,
           "rootsWithoutLocalDocs": 0,
-          "verificationMappedRootCount": 1
+          "verificationMappedRootCount": 0
         }
       }
     },
@@ -362,7 +358,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
             "verification-surface:commands:test"
           ],
           "paths": [
-            "."
+            "package.json"
           ],
           "confidence": "medium",
           "gateable": false
@@ -536,11 +532,9 @@ exports[`diff output snapshots summary and markdown for a regression between two
           "id": "verification-surface:commands:lint",
           "kind": "verification-surface",
           "paths": [
-            "."
+            "package.json"
           ],
-          "rootIds": [
-            "root:."
-          ],
+          "rootIds": [],
           "commandKind": "lint",
           "confidence": "low",
           "sources": [
@@ -548,7 +542,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
               "detector": "repository-evidence",
               "kind": "manifest",
               "path": "package.json",
-              "note": "repository-level command evidence"
+              "note": "repository-level command evidence; root coverage not inferred"
             }
           ]
         },
@@ -556,11 +550,9 @@ exports[`diff output snapshots summary and markdown for a regression between two
           "id": "verification-surface:commands:test",
           "kind": "verification-surface",
           "paths": [
-            "."
+            "package.json"
           ],
-          "rootIds": [
-            "root:."
-          ],
+          "rootIds": [],
           "commandKind": "test",
           "confidence": "low",
           "sources": [
@@ -568,7 +560,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
               "detector": "repository-evidence",
               "kind": "manifest",
               "path": "package.json",
-              "note": "repository-level command evidence"
+              "note": "repository-level command evidence; root coverage not inferred"
             }
           ]
         }
@@ -605,7 +597,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
           "publicApiSurfaceCount": 0,
           "rootsWithoutLocalTests": 0,
           "rootsWithoutLocalDocs": 0,
-          "verificationMappedRootCount": 1
+          "verificationMappedRootCount": 0
         }
       }
     },
@@ -637,7 +629,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
             "verification-surface:commands:test"
           ],
           "paths": [
-            "."
+            "package.json"
           ],
           "confidence": "medium",
           "gateable": false
@@ -847,11 +839,9 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
         "id": "verification-surface:commands:build",
         "kind": "verification-surface",
         "paths": [
-          "."
+          "package.json"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "build",
         "confidence": "low",
         "sources": [
@@ -859,7 +849,7 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
             "detector": "repository-evidence",
             "kind": "manifest",
             "path": "package.json",
-            "note": "repository-level command evidence"
+            "note": "repository-level command evidence; root coverage not inferred"
           }
         ]
       }
@@ -955,7 +945,7 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
         "publicApiSurfaceCount": 0,
         "rootsWithoutLocalTests": 1,
         "rootsWithoutLocalDocs": 1,
-        "verificationMappedRootCount": 1
+        "verificationMappedRootCount": 0
       }
     }
   },
@@ -971,7 +961,7 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
           "verification-surface:commands:build"
         ],
         "paths": [
-          "."
+          "package.json"
         ],
         "confidence": "medium",
         "gateable": false
@@ -1091,7 +1081,7 @@ Roots: 2; languages: 1; roots without local tests: 1; roots without local docs: 
 - \`src\`: unknown, TypeScript, 1 source, 0 tests, 0 docs
 
 ### Design-state strengths
-- **INFO** verification-locality: 1 command or CI verification surface(s) were detected. Paths: \`.\`.
+- **INFO** verification-locality: 1 command or CI verification surface(s) were detected. Paths: \`package.json\`.
 
 ### Design-state risks
 - **INFO** verification-locality: 1 source root(s) have no path-local test evidence. Paths: \`src\`.
@@ -1638,9 +1628,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "paths": [
           ".github/workflows/ci.yml"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "build",
         "workflowJobId": "verify",
         "confidence": "medium",
@@ -1658,9 +1646,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "paths": [
           ".github/workflows/ci.yml"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "install",
         "workflowJobId": "verify",
         "confidence": "medium",
@@ -1678,9 +1664,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "paths": [
           ".github/workflows/ci.yml"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "lint",
         "workflowJobId": "verify",
         "confidence": "medium",
@@ -1698,9 +1682,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "paths": [
           ".github/workflows/ci.yml"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "test",
         "workflowJobId": "verify",
         "confidence": "medium",
@@ -1718,9 +1700,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "paths": [
           ".github/workflows/ci.yml"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "typecheck",
         "workflowJobId": "verify",
         "confidence": "medium",
@@ -1736,11 +1716,9 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "id": "verification-surface:commands:build",
         "kind": "verification-surface",
         "paths": [
-          "."
+          "package.json"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "build",
         "confidence": "low",
         "sources": [
@@ -1748,7 +1726,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
             "detector": "repository-evidence",
             "kind": "manifest",
             "path": "package.json",
-            "note": "repository-level command evidence"
+            "note": "repository-level command evidence; root coverage not inferred"
           }
         ]
       },
@@ -1756,11 +1734,9 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "id": "verification-surface:commands:lint",
         "kind": "verification-surface",
         "paths": [
-          "."
+          "package.json"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "lint",
         "confidence": "low",
         "sources": [
@@ -1768,7 +1744,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
             "detector": "repository-evidence",
             "kind": "manifest",
             "path": "package.json",
-            "note": "repository-level command evidence"
+            "note": "repository-level command evidence; root coverage not inferred"
           }
         ]
       },
@@ -1776,11 +1752,9 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "id": "verification-surface:commands:test",
         "kind": "verification-surface",
         "paths": [
-          "."
+          "package.json"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "test",
         "confidence": "low",
         "sources": [
@@ -1788,7 +1762,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
             "detector": "repository-evidence",
             "kind": "manifest",
             "path": "package.json",
-            "note": "repository-level command evidence"
+            "note": "repository-level command evidence; root coverage not inferred"
           }
         ]
       },
@@ -1796,11 +1770,9 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "id": "verification-surface:commands:typecheck",
         "kind": "verification-surface",
         "paths": [
-          "."
+          "package.json"
         ],
-        "rootIds": [
-          "root:."
-        ],
+        "rootIds": [],
         "commandKind": "typecheck",
         "confidence": "low",
         "sources": [
@@ -1808,7 +1780,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
             "detector": "repository-evidence",
             "kind": "manifest",
             "path": "package.json",
-            "note": "repository-level command evidence"
+            "note": "repository-level command evidence; root coverage not inferred"
           }
         ]
       }
@@ -1940,7 +1912,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         "publicApiSurfaceCount": 0,
         "rootsWithoutLocalTests": 1,
         "rootsWithoutLocalDocs": 1,
-        "verificationMappedRootCount": 1
+        "verificationMappedRootCount": 0
       }
     }
   },
@@ -1983,8 +1955,8 @@ exports[`scan output snapshots good-repo compact json 1`] = `
           "verification-surface:commands:typecheck"
         ],
         "paths": [
-          ".",
-          ".github/workflows/ci.yml"
+          ".github/workflows/ci.yml",
+          "package.json"
         ],
         "confidence": "medium",
         "gateable": false
@@ -2069,7 +2041,7 @@ Roots: 4; languages: 1; roots without local tests: 1; roots without local docs: 
 
 ### Design-state strengths
 - **INFO** documentation-evidence: 3 document surface(s) have deterministic role evidence. Paths: \`AGENTS.md\`, \`README.md\`, \`docs/ARCHITECTURE.md\`.
-- **INFO** verification-locality: 9 command or CI verification surface(s) were detected. Paths: \`.\`, \`.github/workflows/ci.yml\`.
+- **INFO** verification-locality: 9 command or CI verification surface(s) were detected. Paths: \`.github/workflows/ci.yml\`, \`package.json\`.
 
 ### Design-state risks
 - **INFO** verification-locality: 1 source root(s) have no path-local test evidence. Paths: \`src\`.
