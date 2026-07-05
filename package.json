@@ -74,7 +74,7 @@
     "commander": "^12.1.0",
     "cosmiconfig": "^9.0.2",
     "fast-glob": "^3.3.3",
-    "ignore": "^6.0.2",
+    "ignore": "^7.0.5",
     "isbinaryfile": "^5.0.7",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
