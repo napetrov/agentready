@@ -56,11 +56,12 @@ Known dogfood regression matrix:
 
 ### P0 — Release blockers / product decisions
 
-- [x] **Pick the npm package identity.** Published as the scoped
+- [x] **Pick the npm package identity.** The intended package identity is the scoped
   **`@napetrov/agentready`** (the unscoped `agentready` name is taken). Updated
-  `package.json` (name + `publishConfig.access: public`), README `npx` examples,
-  the product docs, and the pack-smoke `require` expectation. The `agentready`
-  bin name is unchanged. _(S, decision)_
+  `package.json` (name + `publishConfig.access: public`), the product docs, and
+  the pack-smoke `require` expectation. The `agentready` bin name is unchanged.
+  The package is not published yet; README install instructions must not imply
+  npm availability before the first release. _(S, decision)_
 - [x] **Keep dogfood outputs out of the repo.** Store real-repo scan outputs as
   CI artifacts, job summaries, scratch files, or release-note drafts. Do not add
   per-run evaluation markdown to the tracked tree; sanitized summaries may keep
@@ -102,6 +103,25 @@ Known dogfood regression matrix:
   `using: 'node24'`, CI runs on Node 24, and the code-scanning upload step is on
   `github/codeql-action/upload-sarif` v4 (pinned to the v4.36.1 SHA). Dependabot
   continues to bump the pinned SHA on its weekly github-actions schedule. _(S)_
+
+
+### P2 — Product trust and adoption polish
+
+- [ ] **README first-impression pass.** Keep install instructions truthful while
+  npm is unpublished, explain AgentReady versus CI/lint/Scorecard/security
+  scanners, and link sample reports before the architecture deep dive. _(S)_
+- [ ] **Sample reports.** Maintain compact examples for a high-readiness repo and
+  an improvement-plan repo under `examples/reports/`; these are product examples,
+  not raw dogfood artifacts. _(S)_
+- [ ] **v0.3 issue drafts / milestone.** Keep ready-to-open issue drafts in
+  `docs/roadmap/v0.3-issue-drafts.md` until they are mirrored into GitHub
+  Issues. _(S)_
+- [ ] **Policy-pack design.** Add the policy-pack story to docs before
+  implementation: no-op `default`, then a meaningful `enterprise` or
+  `ml-scientific` pack that adjusts severity without mutating raw evidence. _(M)_
+- [ ] **Evaluation story.** Publish a small benchmark plan that compares
+  AgentReady findings against real coding-agent friction across a mixed repo
+  corpus. Keep raw artifacts outside the tracked repo. _(M)_
 
 ### P2 — Depth and differentiation
 

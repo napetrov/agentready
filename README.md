@@ -1,6 +1,6 @@
 # AgentReady
 
-AgentReady is an open-source, local-first scanner for AI coding-agent readiness.
+AgentReady is an open-source, local-first scanner for AI coding-agent readiness. It answers a different question than lint, CI, Scorecard, or secret scanners: not “is this code good?”, but “can a coding agent operate in this repository safely and leave reviewable evidence?”
 
 The core question is:
 
@@ -9,6 +9,8 @@ The core question is:
 AgentReady is a command-line tool and library. It scans a repository on disk, observes facts with deterministic detectors, evaluates them against built-in checks, and emits a readiness report and an experimental score. No external service is contacted, and the repository's own scripts are never executed.
 
 It is designed around the major coding agents — Codex, Claude Code, GitHub Copilot, Cursor, Windsurf, Cline, Roo, and Gemini.
+
+See example output before installing: [high-readiness report](examples/reports/high-readiness.md) and [improvement-plan report](examples/reports/improvement-plan.md).
 
 ## What It Scans
 
@@ -29,6 +31,14 @@ Most repositories were not designed for autonomous agents. Even when CI passes, 
 
 AgentReady treats repository readiness as agent operability, not generic code quality. It is descriptive before prescriptive: early output shows what is present, what is missing, what overlaps, and what may create friction.
 
+AgentReady complements, rather than replaces, existing checks:
+
+- **CI/lint/test** prove the current change still works; AgentReady checks whether an agent can discover the right checks before editing.
+- **Scorecard/security scanners** look for supply-chain and vulnerability signals; AgentReady looks for agent-facing context, command, capability, and review surfaces.
+- **Repo docs** help humans; AgentReady verifies whether that guidance is findable, scoped, and machine-reportable.
+
+The intended output is a prioritized improvement plan for agent onboarding, plus stable evidence that CI and enterprise tools can consume.
+
 ## Architecture
 
 Evidence collection is separated from policy:
@@ -39,23 +49,23 @@ Evidence collection is separated from policy:
 - **Reporters** render console, JSON, and markdown output (`lib/repo-readiness/reporters/`).
 - The **scan engine** wires these together (`lib/repo-readiness/core/scan-engine.ts`).
 
-See [docs/product/architecture.md](docs/product/architecture.md) for the full model.
+See [docs/product/architecture.md](docs/product/architecture.md) for the full model, [docs/product/positioning.md](docs/product/positioning.md) for the product boundary, and [docs/roadmap/v0.3-issue-drafts.md](docs/roadmap/v0.3-issue-drafts.md) for the next milestone issue drafts.
 
 ## Install And Run
 
-Prerequisites: Node.js 18+.
+Prerequisites: Node.js 24+ for the current development branch.
 
 ```bash
+git clone https://github.com/napetrov/agentready.git
+cd agentready
 npm ci
 npm run agentready -- scan .
 ```
 
-Once published you can run it without cloning (the package is published as the
-scoped `@napetrov/agentready`; the `agentready` command name is unchanged):
-
-```bash
-npx @napetrov/agentready scan .
-```
+The package name is reserved in this repository as the scoped
+`@napetrov/agentready`, and the installed command name remains `agentready`. The
+package is **not published yet**; until the first npm release, use the local
+development command above or the first-party GitHub Action from this repository.
 
 ### Scan
 
@@ -251,6 +261,14 @@ steps:
 The deterministic gates run first and are unaffected; augmented-score gating is
 opt-in via `analyze-min-score`. Without a provider, `analyze` runs
 deterministic-only.
+
+### Policy direction
+
+Policy packs are planned for v0.3 so the core scanner can stay broad and descriptive while teams tune severity for OSS, enterprise rollout, or scientific/ML repositories. See [docs/product/policy-packs.md](docs/product/policy-packs.md).
+
+### Evaluation / benchmarks
+
+AgentReady should earn trust by comparing readiness findings against real agent friction. The initial benchmark plan is in [docs/product/evaluation.md](docs/product/evaluation.md).
 
 ### Configuration
 
