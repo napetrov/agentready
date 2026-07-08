@@ -4,10 +4,12 @@ The detailed, prioritized work breakdown lives in
 [dev/BACKLOG.md](../../dev/BACKLOG.md). This file holds the milestone view.
 
 Sequencing note: consumption surfaces (package API/exports, schema-driven
-config, a first-party GitHub Action, and SARIF) are prioritized ahead of deeper
-analysis because they unlock adoption immediately. Import-graph analysis,
-hosted viewers, badges, and dashboards stay deferred. The readiness model,
-instruction-surface detection, finding IDs, and worktree `diff` remain custom.
+config, a first-party GitHub Action, and SARIF) were prioritized ahead of deeper
+analysis because they unlock adoption immediately. The next phase shifts from
+scanner breadth to product trust: clear positioning, policy packs, sample
+reports, and benchmark evidence. Import-graph analysis, hosted viewers, badges,
+and dashboards stay deferred. The readiness model, instruction-surface
+detection, finding IDs, and worktree `diff` remain custom.
 
 ## v0.1: Repository Readiness Scanner — delivered
 
@@ -25,7 +27,7 @@ Delivered:
 - console, JSON, and markdown reporters
 - experimental readiness score
 - `agentready diff` between git refs with a regression gate (worktree-based, never mutates the working tree)
-- npm package with a `bin` and a `dist` build for `npx` usage
+- npm package metadata with a `bin` and a `dist` build for future `npx` usage; the package is not published yet
 - capability-surface detector for MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
 - safety detector for dangerous package scripts and deploy/publish paths
 
@@ -51,9 +53,10 @@ Features:
 - SARIF output and code-scanning upload
 - file-handling reuse (fast-glob / ignore / picomatch / isbinaryfile / yaml)
 
-## v0.3: Policy And Deeper Analysis
+## v0.3: Policy, Positioning, And Evidence Calibration
 
-Goal: connect findings to real agent friction and team standards.
+Goal: connect findings to real agent friction and team standards, while making
+the product easier to understand before installation.
 
 Features:
 
@@ -62,7 +65,7 @@ Features:
   detector parses workflow steps and classifies install/lint/type-check/test/
   build commands, with `ci.*.not-run` checks that flag commands the repo exposes
   but CI never runs
-- built-in policy packs and repository-specific thresholds
+- built-in policy packs and repository-specific thresholds (`default`, `oss`, `enterprise`, and `ml-scientific` are candidate shapes)
 - instruction-file overlap and contradiction checks
 - stale path and command validation
 - companion-tool ingestion (actionlint, Gitleaks, OSV-Scanner/Trivy, Scorecard)
@@ -71,7 +74,17 @@ Features:
 - git churn and risk signals
 - language/framework policy packs (Java/.NET, broader Python tooling)
 - CODEOWNERS and PR-template analysis
-- benchmark harness for comparing score dimensions against real agent performance
+- benchmark harness and public summary for comparing score dimensions against real agent performance
+
+## v0.3 first-impression polish
+
+Documentation/product work that should ship alongside policy work:
+
+- README positioning that explains AgentReady versus CI, lint, Scorecard, and security scanners
+- sample high-readiness and improvement-plan reports under `examples/reports/`
+- issue-draft roadmap for the v0.3 milestone
+- evaluation plan for real-agent benchmark calibration
+- GitHub repository metadata: description, topics, and stale homepage cleanup
 
 ## Later
 
