@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-08
+
+### Changed
+- Clarified README install instructions while the npm package remains unpublished: local development and GitHub Action usage are documented, and the future `@napetrov/agentready` package path is no longer presented as available today.
+- Added product positioning that explains AgentReady as repository operability for coding agents, complementary to CI, lint, Scorecard, SAST, and dependency/security scanners.
+- Added compact sample reports for a high-readiness repository and an improvement-plan repository so users can see output before installing.
+- Added policy-pack and evaluation docs, plus v0.3 issue drafts for policy selection, benchmark calibration, instruction-quality analysis, and repository metadata polish.
+
 ## [0.2.0] - 2026-06-08
 
 ### Changed
