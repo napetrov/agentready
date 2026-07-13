@@ -97,6 +97,45 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     ],
     references: [DOCS],
   },
+  'commands.reference.npm-script': {
+    id: 'commands.reference.npm-script',
+    title: 'Instruction/README references an npm/yarn/pnpm/bun script that does not exist',
+    category: 'commands',
+    defaultSeverity: 'warning',
+    rationale:
+      'An agent that trusts a documented command (e.g. `npm run buld`) wastes a turn discovering it fails, and may guess the wrong replacement. AgentReady only flags unambiguous `<manager> run <script>` and bare `test`/`start` forms against the detected package.json scripts, to keep false positives low.',
+    remediation: [
+      'Fix the typo, or add the missing script to package.json.',
+      'If the command is intentionally illustrative (not meant to be copy-pasted), say so nearby.',
+    ],
+    references: [DOCS],
+  },
+  'commands.reference.make-target': {
+    id: 'commands.reference.make-target',
+    title: 'Instruction/README references a make target that does not exist',
+    category: 'commands',
+    defaultSeverity: 'warning',
+    rationale:
+      'A documented `make test`/`make lint` that no longer has a matching Makefile target sends an agent down a dead end.',
+    remediation: [
+      'Fix the typo, or add the missing target to the Makefile.',
+      'If the command is intentionally illustrative, say so nearby.',
+    ],
+    references: [DOCS],
+  },
+  'commands.reference.package-manager-mismatch': {
+    id: 'commands.reference.package-manager-mismatch',
+    title: 'Instruction/README references a different package manager than the lockfile',
+    category: 'commands',
+    defaultSeverity: 'info',
+    rationale:
+      'Guidance that says "npm install" in a repo whose lockfile is pnpm-lock.yaml can produce a second, conflicting lockfile if an agent follows it literally. This is a softer text heuristic than the script/target checks — docs can legitimately discuss more than one package manager — so it stays informational.',
+    remediation: [
+      'Update the instructions to reference the package manager the lockfile implies.',
+      'If multiple package managers are genuinely supported, say so explicitly.',
+    ],
+    references: [DOCS],
+  },
   'ci.workflow.missing': {
     id: 'ci.workflow.missing',
     title: 'No CI workflow detected',

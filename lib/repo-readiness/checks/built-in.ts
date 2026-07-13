@@ -1,4 +1,5 @@
 import type {
+  CommandReferenceKind,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
@@ -169,6 +170,31 @@ export const buildFindings = (
       title: 'TypeScript repository has no type-check command',
       severity: warningSeverity,
       recommendation: 'Expose a type-check command and run it in CI.',
+    })
+  }
+
+  // Command references an agent would trust from the doc/instruction surface
+  // itself, but that do not match reality. `npm-script`/`make-target` mismatches
+  // are unambiguous (the referenced name is simply absent), so they warn;
+  // `package-manager-mismatch` is a softer text heuristic (docs can legitimately
+  // discuss more than one package manager) so it stays informational.
+  const commandReferenceTitles: Record<CommandReferenceKind, string> = {
+    'npm-script': 'Instruction/README references an npm/yarn/pnpm/bun script that does not exist',
+    'make-target': 'Instruction/README references a make target that does not exist',
+    'package-manager-mismatch': 'Instruction/README references a different package manager than the lockfile',
+  }
+  const commandReferenceSeverity: Record<CommandReferenceKind, ReadinessSeverity> = {
+    'npm-script': warningSeverity,
+    'make-target': warningSeverity,
+    'package-manager-mismatch': 'info',
+  }
+  for (const reference of report.commandReferences) {
+    findings.push({
+      id: `commands.reference.${reference.kind}:${reference.path}:${reference.reference}`,
+      title: commandReferenceTitles[reference.kind],
+      severity: commandReferenceSeverity[reference.kind],
+      path: reference.path,
+      recommendation: `"${reference.reference}" — ${reference.detail} Update the reference or add the missing command so agents can trust it.`,
     })
   }
 

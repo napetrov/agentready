@@ -104,10 +104,36 @@ export interface CommandEvidence {
   ecosystems: CommandEcosystem[]
   /** Node package scripts, kept for backward compatibility and detail. */
   scripts: string[]
+  /** Makefile target names, when the repository has a Makefile. */
+  makeTargets: string[]
   hasBuild: boolean
   hasTest: boolean
   hasLint: boolean
   hasTypeCheck: boolean
+}
+
+/**
+ * A kind of command reference an instruction file or README can make that is
+ * checkable against detected command evidence.
+ */
+export type CommandReferenceKind = 'npm-script' | 'make-target' | 'package-manager-mismatch'
+
+/**
+ * A command mentioned in a doc/instruction file that does not match the
+ * repository's actual command surfaces — e.g. `npm run buld` when no `buld`
+ * script exists, or `make test` when the Makefile has no `test` target. Text
+ * heuristics inherently miss some real commands and can misfire on prose that
+ * merely discusses a command rather than telling an agent to run it, so this
+ * is intentionally scoped to unambiguous, high-signal patterns.
+ */
+export interface CommandReferenceEvidence {
+  /** Repo-relative path of the doc/instruction file the reference was found in. */
+  path: string
+  /** The exact command reference matched, e.g. `npm run buld`. */
+  reference: string
+  kind: CommandReferenceKind
+  /** Human-readable explanation of the mismatch. */
+  detail: string
 }
 
 /** A class of verification command an agent can run to validate its work. */
@@ -389,6 +415,7 @@ export interface LocalReadinessReport {
     environment: string[]
   }
   commands: CommandEvidence
+  commandReferences: CommandReferenceEvidence[]
   ci: CiEvidence
   instructions: InstructionSurfaceEvidence[]
   capabilities: CapabilitySurfaceEvidence[]

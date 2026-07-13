@@ -166,7 +166,11 @@ const makeTargetPattern = /^([a-zA-Z0-9_.\-/]+)\s*:/gm
 const hasCiScript = (filePaths: string[], names: string[]): boolean =>
   filePaths.some(filePath => names.some(name => new RegExp(`(^|/)${name}\\.(sh|bat|ps1)$`, 'i').test(filePath)))
 
-const detectMake = (root: string, filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
+const detectMake = (
+  root: string,
+  filePaths: Set<string>,
+  allPaths: string[],
+): { signals: EcosystemSignals; targets: string[] } | undefined => {
   const makefile = makefileNames.find(name => has(filePaths, name))
   if (!makefile) {
     return undefined
@@ -181,11 +185,14 @@ const detectMake = (root: string, filePaths: Set<string>, allPaths: string[]): E
   const hasTarget = (...names: string[]): boolean => names.some(name => targets.has(name))
 
   return {
-    ecosystem: 'make',
-    hasBuild: hasTarget('build', 'all', 'compile') || hasCiScript(allPaths, ['build', 'build-doc']),
-    hasTest: hasTarget('test', 'tests', 'check') || hasCiScript(allPaths, ['test', 'run_test']),
-    hasLint: hasTarget('lint', 'fmt', 'format'),
-    hasTypeCheck: hasTarget('typecheck', 'type-check', 'types'),
+    signals: {
+      ecosystem: 'make',
+      hasBuild: hasTarget('build', 'all', 'compile') || hasCiScript(allPaths, ['build', 'build-doc']),
+      hasTest: hasTarget('test', 'tests', 'check') || hasCiScript(allPaths, ['test', 'run_test']),
+      hasLint: hasTarget('lint', 'fmt', 'format'),
+      hasTypeCheck: hasTarget('typecheck', 'type-check', 'types'),
+    },
+    targets: [...targets].sort(),
   }
 }
 
@@ -464,9 +471,10 @@ export const detectCommandSurfaces = (root: string, filePaths: string[]): Comman
   const filePathSet = new Set(filePaths)
 
   const node = detectNode(root, filePathSet)
+  const make = detectMake(root, filePathSet, filePaths)
   const signals: EcosystemSignals[] = [
     node?.signals,
-    detectMake(root, filePathSet, filePaths),
+    make?.signals,
     detectCmake(filePathSet, filePaths),
     detectBazel(filePathSet, filePaths),
     detectGo(filePathSet),
@@ -497,6 +505,7 @@ export const detectCommandSurfaces = (root: string, filePaths: string[]): Comman
     packageManager: detectPackageManager(filePathSet),
     ecosystems,
     scripts: node?.scripts ?? [],
+    makeTargets: make?.targets ?? [],
     hasBuild: signals.some(signal => signal.hasBuild),
     hasTest: signals.some(signal => signal.hasTest),
     hasLint: signals.some(signal => signal.hasLint),

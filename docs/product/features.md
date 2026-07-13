@@ -69,7 +69,12 @@ Features:
   but CI never runs
 - built-in policy packs and repository-specific thresholds (`default`, `oss`, `enterprise`, and `ml-scientific` are candidate shapes)
 - instruction-file overlap and contradiction checks
-- stale path and command validation
+- stale command reference validation — **delivered**: `commands.reference.*`
+  checks flag `npm`/`yarn`/`pnpm`/`bun run <script>` (and bare `test`/`start`)
+  references in READMEs/instruction files whose script doesn't exist, `make
+  <target>` references with no matching Makefile target, and explicit
+  package-manager mentions that disagree with the detected lockfile. Stale
+  *path* validation (broken links in docs, not command references) remains open.
 - companion-tool ingestion (actionlint, Gitleaks, OSV-Scanner/Trivy, Scorecard)
   with AgentReady as the report hub
 - import graph and boundary checks

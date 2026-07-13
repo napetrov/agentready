@@ -134,6 +134,12 @@
                 "type": "string"
               }
             },
+            "makeTargets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "hasBuild": {
               "type": "boolean"
             },
@@ -150,12 +156,45 @@
           "required": [
             "ecosystems",
             "scripts",
+            "makeTargets",
             "hasBuild",
             "hasTest",
             "hasLint",
             "hasTypeCheck"
           ],
           "additionalProperties": false
+        },
+        "commandReferences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "reference": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "npm-script",
+                  "make-target",
+                  "package-manager-mismatch"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "reference",
+              "kind",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
         },
         "ci": {
           "type": "object",
@@ -1844,6 +1883,7 @@
         "summary",
         "docs",
         "commands",
+        "commandReferences",
         "ci",
         "instructions",
         "capabilities",

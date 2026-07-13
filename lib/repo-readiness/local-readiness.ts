@@ -20,6 +20,8 @@ export type {
   CiWorkflowJob,
   CommandEcosystem,
   CommandEvidence,
+  CommandReferenceEvidence,
+  CommandReferenceKind,
   CompactLocalReadinessReport,
   CompactReadinessDiffReport,
   ContractValidationResult,

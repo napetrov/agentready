@@ -4,6 +4,7 @@ import type {
   DocumentSurfaceEvidence,
   CiEvidence,
   CommandEvidence,
+  CommandReferenceEvidence,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
@@ -155,10 +156,20 @@ export const commandEvidenceSchema = z.strictObject({
   packageManager: packageManagerSchema.optional(),
   ecosystems: z.array(commandEcosystemSchema),
   scripts: z.array(z.string()),
+  makeTargets: z.array(z.string()),
   hasBuild: z.boolean(),
   hasTest: z.boolean(),
   hasLint: z.boolean(),
   hasTypeCheck: z.boolean(),
+})
+
+export const commandReferenceKindSchema = z.enum(['npm-script', 'make-target', 'package-manager-mismatch'])
+
+export const commandReferenceEvidenceSchema = z.strictObject({
+  path: z.string(),
+  reference: z.string(),
+  kind: commandReferenceKindSchema,
+  detail: z.string(),
 })
 
 export const ciCommandKindSchema = z.enum(['install', 'lint', 'typecheck', 'test', 'build'])
@@ -404,6 +415,7 @@ export const localReadinessReportSchema = z.strictObject({
     environment: z.array(z.string()),
   }),
   commands: commandEvidenceSchema,
+  commandReferences: z.array(commandReferenceEvidenceSchema),
   ci: ciEvidenceSchema,
   instructions: z.array(instructionSurfaceSchema),
   capabilities: z.array(capabilitySurfaceSchema),
@@ -460,6 +472,7 @@ const assertSchemaDriftGuards = (..._guards: true[]): void => {}
 const _finding: Exact<z.infer<typeof readinessFindingSchema>, ReadinessFinding> = true
 const _file: Exact<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile> = true
 const _commands: Exact<z.infer<typeof commandEvidenceSchema>, CommandEvidence> = true
+const _commandReference: Exact<z.infer<typeof commandReferenceEvidenceSchema>, CommandReferenceEvidence> = true
 const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
 const _documentSurface: Exact<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence> = true
 const _repositoryEvidence: Exact<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence> = true
@@ -472,6 +485,7 @@ assertSchemaDriftGuards(
   _finding,
   _file,
   _commands,
+  _commandReference,
   _ci,
   _documentSurface,
   _repositoryEvidence,

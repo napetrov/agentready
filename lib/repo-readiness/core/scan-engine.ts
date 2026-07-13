@@ -4,6 +4,7 @@ import { buildFindings } from '../checks/built-in'
 import { calculateDimensionScores } from '../checks/catalog'
 import { detectCapabilitySurfaces } from '../detectors/capability-surfaces'
 import { detectCiWorkflows } from '../detectors/ci-workflows'
+import { detectCommandReferences } from '../detectors/command-references'
 import { detectCommandSurfaces } from '../detectors/command-surfaces'
 import { detectDocs } from '../detectors/docs'
 import { walkFiles } from '../detectors/file-inventory'
@@ -53,13 +54,21 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     sizeBytes: file.sizeBytes,
   }))
 
+  const docs = detectDocs(filePaths)
+  const commands = detectCommandSurfaces(absoluteRoot, filePaths)
+  const instructions = detectInstructionSurfaces(instructionInput)
+  // Command references are checked in README(s) and instruction files — the
+  // surfaces an agent actually reads for "how do I validate my change".
+  const commandReferenceDocPaths = [...docs.readme, ...instructions.map(surface => surface.path)]
+
   const partialReport = {
     root: absoluteRoot,
     generatedAt: (options.now ?? new Date()).toISOString(),
-    docs: detectDocs(filePaths),
-    commands: detectCommandSurfaces(absoluteRoot, filePaths),
+    docs,
+    commands,
+    commandReferences: detectCommandReferences(absoluteRoot, commandReferenceDocPaths, commands),
     ci: detectCiWorkflows(absoluteRoot, filePaths),
-    instructions: detectInstructionSurfaces(instructionInput),
+    instructions,
     capabilities: detectCapabilitySurfaces(filePaths),
     safetySignals: detectSafetySignals(absoluteRoot, filePaths),
     files,

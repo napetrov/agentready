@@ -25,6 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which, combined with the array's fixed length, forces each category to
   appear exactly once by pigeonhole — so schema-based CI/editor validation
   rejects the same malformed reports the scanner's own runtime check does.
+- Command reference validation: a new `commandReferences` detector scans
+  READMEs and instruction files for command references that don't match the
+  repository's actual command surfaces — `npm`/`yarn`/`pnpm`/`bun run
+  <script>` (and bare `test`/`start`) mentions whose script isn't in
+  `package.json`, `make <target>` mentions with no matching Makefile target,
+  and package-manager mentions that disagree with the detected lockfile.
+  Emits `commands.reference.npm-script`/`commands.reference.make-target`
+  (warning) and `commands.reference.package-manager-mismatch` (info,
+  since docs can legitimately discuss more than one package manager).
+  `CommandEvidence` also gained `makeTargets` (the Makefile target names,
+  already parsed internally but not previously exposed).
 
 ## [0.2.0] - 2026-06-08
 

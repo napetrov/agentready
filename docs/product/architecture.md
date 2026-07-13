@@ -47,6 +47,7 @@ agentready
     [x] package-managers
     [x] ci-workflows
     [x] command-surfaces   (Node, Make, CMake, Bazel, Go, Rust, Python)
+    [x] command-references (stale npm/yarn/pnpm/bun script, Makefile target, and package-manager mentions in docs/instructions)
     [x] docs
     [x] capability-surfaces (MCP, skills, hooks, plugins, LSP)
     [x] safety-signals     (dangerous package scripts, deploy/publish)

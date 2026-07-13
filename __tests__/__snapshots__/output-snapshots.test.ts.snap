@@ -77,11 +77,13 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "lint",
         "test"
       ],
+      "makeTargets": [],
       "hasBuild": false,
       "hasTest": true,
       "hasLint": true,
       "hasTypeCheck": false
     },
+    "commandReferences": [],
     "ci": {
       "workflowFiles": [
         ".github/workflows/ci.yml"
@@ -457,11 +459,13 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "lint",
         "test"
       ],
+      "makeTargets": [],
       "hasBuild": false,
       "hasTest": true,
       "hasLint": true,
       "hasTypeCheck": false
     },
+    "commandReferences": [],
     "ci": {
       "workflowFiles": [
         ".github/workflows/ci.yml"
@@ -850,11 +854,13 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
     "scripts": [
       "build"
     ],
+    "makeTargets": [],
     "hasBuild": true,
     "hasTest": false,
     "hasLint": false,
     "hasTypeCheck": false
   },
+  "commandReferences": [],
   "ci": {
     "workflowFiles": [],
     "workflows": [],
@@ -1444,11 +1450,13 @@ exports[`scan output snapshots good-repo compact json 1`] = `
       "test",
       "type-check"
     ],
+    "makeTargets": [],
     "hasBuild": true,
     "hasTest": true,
     "hasLint": true,
     "hasTypeCheck": true
   },
+  "commandReferences": [],
   "ci": {
     "workflowFiles": [
       ".github/workflows/ci.yml"

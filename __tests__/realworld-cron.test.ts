@@ -83,11 +83,13 @@ describe('real-world cron classification', () => {
     commands: {
       ecosystems: [],
       scripts: [],
+      makeTargets: [],
       hasBuild: false,
       hasTest: false,
       hasLint: false,
       hasTypeCheck: false,
     },
+    commandReferences: [],
     ci: {
       workflowFiles: [],
       workflows: [],
