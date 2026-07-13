@@ -47,6 +47,10 @@ export type {
   LocalReadinessReport,
   LocalReadinessReportContract,
   PackageManager,
+  PortfolioReport,
+  PortfolioRepoResult,
+  PortfolioScanOptions,
+  PortfolioSummary,
   RepositoryEvidence,
   RepositoryRootEvidence,
   RepositoryRootKind,
@@ -72,8 +76,11 @@ export {
   scanLocalReadiness,
 } from './core/scan-engine'
 
+export { resolvePortfolioTargets, scanPortfolio } from './core/portfolio'
+
 export {
   validateLocalReadinessReportContract,
+  validatePortfolioReportContract,
   validateReadinessDiffReportContract,
 } from './core/contracts'
 
@@ -84,11 +91,12 @@ export type { InitOptions, InitResult } from './core/scaffold'
 
 export {
   evaluateDiffGate,
+  evaluatePortfolioGate,
   evaluateScanGate,
   meetsThreshold,
   FAIL_ON_SEVERITIES,
 } from './core/gate'
-export type { FailOnSeverity, GateOptions, GateResult } from './core/gate'
+export type { FailOnSeverity, GateOptions, GateResult, PortfolioGateOptions } from './core/gate'
 
 export { adjustFindings, applyPolicy, POLICY_NAMES } from './core/policy'
 export type { PolicyName, PolicyPack, PolicyResult, PolicySeverityAdjustment } from './core/policy'
@@ -109,6 +117,7 @@ export { DEFAULT_POLICY, ENTERPRISE_POLICY, POLICY_PACKS, resolvePolicyPack } fr
 export {
   localReadinessConfigSchema,
   localReadinessReportSchema,
+  portfolioReportSchema,
   readinessDiffReportSchema,
   readinessDimensionScoreListSchema,
   readinessRuleCategorySchema,
@@ -116,5 +125,6 @@ export {
 
 export { formatDiffSummary, formatPolicySummary, formatScanSummary } from './reporters/console'
 export { formatDiffMarkdown, formatScanMarkdown } from './reporters/markdown'
+export { formatPortfolioMarkdown, formatPortfolioSummary } from './reporters/portfolio'
 export { formatScanSarif } from './reporters/sarif'
 export type { SarifLog, SarifOptions } from './reporters/sarif'

@@ -76,8 +76,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `high`-tier surface; the `enterprise` policy pack escalates it to warning
   (four escalations now, was three). Console/markdown reporters call out the
   high-risk count in the capabilities line.
+- Local multi-repo/portfolio batch mode: `agentready batch [paths...]
+  [--root <dir>]` scans every target independently (`core/portfolio.ts`,
+  reusing `scanLocalReadiness`) and aggregates into one portfolio report — a
+  repo that fails to scan is captured per-repo, never aborting the batch.
+  `--root <dir>` scans every immediate non-hidden subdirectory of `dir`, the
+  shape of a "clone of every repo" platform-team directory. `summary`/`json`/
+  `markdown` output; `--min-score`/`--fail-on-scan-error` (default on;
+  `--no-fail-on-scan-error` to disable) gate the batch. New schema:
+  `schemas/portfolio-report.schema.json`. No hosted service required.
 
 ### Fixed
+- `agentready scan`/`diff --output <file>` now writes a non-default policy's
+  summary (`--policy enterprise`, etc.) into the same file as the report
+  instead of always printing it to stdout — a saved markdown/summary report
+  now carries the policy context that explains why the policy gate may have
+  failed.
 - `commands.reference.npm-script` no longer flags workspace-qualified
   references (`npm run dev --workspace packages/app`, `-w`, `--workspaces`):
   the script may exist only in the workspace package, not the root

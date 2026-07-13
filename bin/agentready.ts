@@ -7,11 +7,14 @@ import {
   compactReport,
   diffLocalReadiness,
   evaluateDiffGate,
+  evaluatePortfolioGate,
   evaluateScanGate,
   FAIL_ON_SEVERITIES,
   formatDiffMarkdown,
   formatDiffSummary,
   formatPolicySummary,
+  formatPortfolioMarkdown,
+  formatPortfolioSummary,
   formatRuleDoc,
   formatScanMarkdown,
   formatScanSarif,
@@ -21,9 +24,12 @@ import {
   loadConfig,
   POLICY_NAMES,
   resolvePolicyPack,
+  resolvePortfolioTargets,
   scaffoldInit,
   scanLocalReadiness,
+  scanPortfolio,
   validateLocalReadinessReportContract,
+  validatePortfolioReportContract,
   validateReadinessDiffReportContract,
   type FailOnSeverity,
   type PolicyName,
@@ -139,6 +145,7 @@ Examples:
   agentready scan . --fail-on warning --min-score 80
   agentready scan . --policy enterprise --fail-on error
   agentready diff --base origin/main --head HEAD . --fail-on-regression
+  agentready batch --root ~/repos --format markdown --output portfolio.md
   agentready validate-config .`,
     )
 
@@ -156,21 +163,26 @@ Examples:
     const policy = resolvePolicy(options.policy)
 
     const format = resolveFormat(options)
+    let content: string
     if (format === 'json') {
-      emit(JSON.stringify(options.compact ? compactReport(report) : report, null, 2), options.output)
+      content = JSON.stringify(options.compact ? compactReport(report) : report, null, 2)
     } else if (format === 'markdown') {
-      emit(formatScanMarkdown(report), options.output)
+      content = formatScanMarkdown(report)
     } else if (format === 'sarif') {
-      emit(JSON.stringify(formatScanSarif(report), null, 2), options.output)
+      content = JSON.stringify(formatScanSarif(report), null, 2)
     } else {
-      emit(formatScanSummary(report), options.output)
+      content = formatScanSummary(report)
     }
-    // Policy metadata is human-readable console noise, not part of the raw
-    // report contract, so it's only printed for non-machine-readable formats
-    // and only when a non-default policy was explicitly requested.
+    // Policy metadata is human-readable, not part of the raw report contract,
+    // so it's only appended for non-machine-readable formats and only when a
+    // non-default policy was explicitly requested. Appended to the same
+    // content string (rather than a separate console.log) so it honors
+    // --output too: a saved file should carry the policy context that
+    // explains why the policy gate may have failed, not just stdout.
     if (policy.name !== 'default' && (format === 'summary' || format === 'markdown')) {
-      console.log(formatPolicySummary(applyPolicy(report, policy)))
+      content += `\n\n${formatPolicySummary(applyPolicy(report, policy))}`
     }
+    emit(content, options.output)
 
     const gate = evaluateScanGate(report, { failOnSeverity: options.failOn, minScore: options.minScore, policy })
     if (gate.failed) {
@@ -200,22 +212,25 @@ Examples:
     const policy = resolvePolicy(options.policy)
 
     const format = resolveFormat(options)
+    let content: string
     if (format === 'json') {
-      emit(JSON.stringify(options.compact ? compactDiffReport(report) : report, null, 2), options.output)
+      content = JSON.stringify(options.compact ? compactDiffReport(report) : report, null, 2)
     } else if (format === 'markdown') {
-      emit(formatDiffMarkdown(report), options.output)
+      content = formatDiffMarkdown(report)
     } else if (format === 'sarif') {
       // SARIF describes the head state; PR code scanning surfaces head findings.
-      emit(JSON.stringify(formatScanSarif(report.headReport), null, 2), options.output)
+      content = JSON.stringify(formatScanSarif(report.headReport), null, 2)
     } else {
-      emit(formatDiffSummary(report), options.output)
+      content = formatDiffSummary(report)
     }
     // Reported against the head report, matching how --min-score already
     // treats diff mode as "head state"; see the scan command for why this is
-    // skipped for machine-readable formats and the default policy.
+    // appended to `content` (not a separate console.log) and skipped for
+    // machine-readable formats and the default policy.
     if (policy.name !== 'default' && (format === 'summary' || format === 'markdown')) {
-      console.log(formatPolicySummary(applyPolicy(report.headReport, policy)))
+      content += `\n\n${formatPolicySummary(applyPolicy(report.headReport, policy))}`
     }
+    emit(content, options.output)
 
     const gate = evaluateDiffGate(report, {
       failOnSeverity: options.failOn,
@@ -228,6 +243,61 @@ Examples:
       process.exitCode = 1
     }
   })
+
+  const BATCH_FORMATS = ['summary', 'json', 'markdown'] as const
+  type BatchFormat = (typeof BATCH_FORMATS)[number]
+
+  program
+    .command('batch')
+    .description('Scan multiple repositories and emit an aggregated portfolio summary')
+    .argument('[paths...]', 'repository paths to scan')
+    .option('--root <dir>', 'also scan every immediate subdirectory of this directory as a repo')
+    .addOption(new Option('--format <fmt>', 'output format').choices(BATCH_FORMATS).default('summary'))
+    .option('--output <file>', 'write the report to a file instead of stdout')
+    .option('--config <path>', 'path to an explicit config file, applied to every repo')
+    .option('--min-score <n>', 'fail when any scanned repo drops below n (0-100)', parseMinScore)
+    .option('--no-fail-on-scan-error', 'do not fail the batch when a repo could not be scanned')
+    .action(
+      (
+        paths: string[],
+        options: {
+          root?: string
+          format: BatchFormat
+          output?: string
+          config?: string
+          minScore?: number
+          failOnScanError?: boolean
+        },
+      ) => {
+        const targets = resolvePortfolioTargets(paths, options.root)
+        if (targets.length === 0) {
+          throw new Error('agentready batch: no repository paths given (pass paths, and/or --root <dir>)')
+        }
+
+        const report = scanPortfolio(targets, { configPath: options.config })
+        const validation = validatePortfolioReportContract(report)
+        if (!validation.valid) {
+          throw new Error(`portfolio report contract validation failed: ${validation.errors.join('; ')}`)
+        }
+
+        if (options.format === 'json') {
+          emit(JSON.stringify(report, null, 2), options.output)
+        } else if (options.format === 'markdown') {
+          emit(formatPortfolioMarkdown(report), options.output)
+        } else {
+          emit(formatPortfolioSummary(report), options.output)
+        }
+
+        const gate = evaluatePortfolioGate(report, {
+          minScore: options.minScore,
+          failOnScanError: options.failOnScanError,
+        })
+        if (gate.failed) {
+          console.error(`Portfolio gate failed: ${gate.failureReasons.join('; ')}`)
+          process.exitCode = 1
+        }
+      },
+    )
 
   program
     .command('validate-config')

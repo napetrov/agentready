@@ -11,6 +11,7 @@ import { z } from 'zod'
 import {
   localReadinessConfigSchema,
   localReadinessReportSchema,
+  portfolioReportSchema,
   readinessDiffReportSchema,
   readinessDimensionScoreListSchema,
   readinessRuleCategorySchema,
@@ -51,6 +52,12 @@ const entries: SchemaEntry[] = [
     id: 'readiness-diff-report',
     title: 'AgentReady diff report',
     schema: readinessDiffReportSchema,
+  },
+  {
+    file: 'portfolio-report.schema.json',
+    id: 'portfolio-report',
+    title: 'AgentReady portfolio (multi-repo) scan report',
+    schema: portfolioReportSchema,
   },
   {
     file: 'llm-insight.schema.json',

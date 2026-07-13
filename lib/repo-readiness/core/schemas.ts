@@ -10,6 +10,7 @@ import type {
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
+  PortfolioReport,
   RepositoryEvidence,
   ReadinessDiffReport,
   ReadinessDimensionScore,
@@ -460,6 +461,45 @@ export const readinessDiffReportSchema = z.strictObject({
   regressions: z.array(readinessFindingSchema),
 })
 
+const severityCountsSchema = z.strictObject({
+  info: z.number().int().min(0),
+  warning: z.number().int().min(0),
+  error: z.number().int().min(0),
+})
+
+export const portfolioRepoResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({
+    path: z.string(),
+    ok: z.literal(true),
+    score: z.number(),
+    findingCount: z.number().int().min(0),
+    bySeverity: severityCountsSchema,
+    topFindings: z.array(readinessFindingSchema),
+  }),
+  z.strictObject({
+    path: z.string(),
+    ok: z.literal(false),
+    error: z.string(),
+  }),
+])
+
+export const portfolioSummarySchema = z.strictObject({
+  repoCount: z.number().int().min(0),
+  scannedCount: z.number().int().min(0),
+  scanErrorCount: z.number().int().min(0),
+  averageScore: z.number().nullable(),
+  minScore: z.number().nullable(),
+  maxScore: z.number().nullable(),
+  totalFindings: z.number().int().min(0),
+  bySeverity: severityCountsSchema,
+})
+
+export const portfolioReportSchema = z.strictObject({
+  generatedAt: z.string(),
+  repos: z.array(portfolioRepoResultSchema),
+  summary: portfolioSummarySchema,
+})
+
 // User-facing config. Every field is optional; the loader merges the result
 // over `defaultConfig`. Custom messages keep validation errors readable.
 export const localReadinessConfigSchema = z
@@ -492,6 +532,7 @@ const _designState: Exact<z.infer<typeof designStateSummarySchema>, DesignStateS
 const _dimensionScore: Exact<z.infer<typeof readinessDimensionScoreSchema>, ReadinessDimensionScore> = true
 const _report: Exact<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport> = true
 const _diff: Exact<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport> = true
+const _portfolio: Exact<z.infer<typeof portfolioReportSchema>, PortfolioReport> = true
 const _config: Exact<z.infer<typeof localReadinessConfigSchema>, Partial<LocalReadinessConfig>> = true
 assertSchemaDriftGuards(
   _finding,

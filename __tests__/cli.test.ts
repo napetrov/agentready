@@ -136,6 +136,21 @@ describe('--policy option', () => {
     expect(result.error).toBeDefined() // Commander rejects an out-of-choices value
   })
 
+  it('writes the policy summary to --output instead of stdout, alongside the report', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'agentready-cli-policy-output-'))
+    try {
+      const outFile = path.join(dir, 'out.md')
+      const result = await run(['scan', root, '--format', 'markdown', '--policy', 'enterprise', '--output', outFile])
+      expect(result.stdout).toBe('') // nothing written to stdout
+      const written = readFileSync(outFile, 'utf8')
+      expect(written).toContain('## AgentReady scan')
+      expect(written).toContain('Policy: enterprise')
+      expect(written).toContain('instructions.missing: warning -> error')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('applies to diff mode too, gating on the head report under the policy', async () => {
     const runGit = (args: string[]): void => {
       execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], { cwd: root, stdio: ['ignore', 'ignore', 'pipe'] })
@@ -191,6 +206,59 @@ describe('diff command', () => {
     const result = await run(['diff', root, '--base', 'HEAD~1', '--head', 'HEAD', '--fail-on-regression'])
     expect(result.stdout).toContain('AgentReady diff:')
     expect(result.exitCode).toBe(1)
+  })
+})
+
+describe('batch command', () => {
+  it('scans multiple explicit repo paths and prints an aggregated summary', async () => {
+    const result = await run(['batch', goodFixture, badFixture])
+    expect(result.stdout).toContain('AgentReady portfolio: 2 repo(s) (2 scanned, 0 failed)')
+    expect(result.exitCode).toBe(0)
+  })
+
+  it('scans every immediate subdirectory of --root', async () => {
+    const result = await run(['batch', '--root', fixtureRoot])
+    // fixtureRoot has more than just good-repo/bad-repo, but both are present.
+    expect(result.stdout).toContain('AgentReady portfolio:')
+    expect(result.stdout).toMatch(/repo\(s\) \(\d+ scanned, 0 failed\)/)
+  })
+
+  it('emits JSON with --format json', async () => {
+    const result = await run(['batch', goodFixture, badFixture, '--format', 'json'])
+    const report = JSON.parse(result.stdout)
+    expect(report.summary.repoCount).toBe(2)
+    expect(report.summary.scannedCount).toBe(2)
+    expect(report.repos).toHaveLength(2)
+  })
+
+  it('emits markdown with --format markdown', async () => {
+    const result = await run(['batch', goodFixture, badFixture, '--format', 'markdown'])
+    expect(result.stdout).toContain('## AgentReady portfolio scan')
+    expect(result.stdout).toContain('| Repo | Score | Error | Warning | Info | Notes |')
+  })
+
+  it('fails when a repo could not be scanned', async () => {
+    const missing = path.join(fixtureRoot, 'this-repo-does-not-exist')
+    const result = await run(['batch', goodFixture, missing])
+    expect(result.stdout).toContain('1 failed')
+    expect(result.exitCode).toBe(1)
+  })
+
+  it('does not fail on a scan error when --no-fail-on-scan-error is set', async () => {
+    const missing = path.join(fixtureRoot, 'this-repo-does-not-exist')
+    const result = await run(['batch', goodFixture, missing, '--no-fail-on-scan-error'])
+    expect(result.exitCode).toBe(0)
+  })
+
+  it('fails when a scanned repo drops below --min-score', async () => {
+    const result = await run(['batch', goodFixture, badFixture, '--min-score', '90'])
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain('scored below the minimum 90')
+  })
+
+  it('errors when given no paths and no --root', async () => {
+    const result = await run(['batch'])
+    expect(result.error).toBeDefined()
   })
 })
 

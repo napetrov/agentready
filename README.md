@@ -107,6 +107,22 @@ uncommitted changes:
 npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
 ```
 
+### Batch (portfolio) scans
+
+`batch` scans multiple repositories in one invocation and emits an aggregated
+summary — no hosted service required. Pass explicit paths, `--root <dir>` to
+scan every immediate subdirectory of `dir`, or both:
+
+```bash
+npm run agentready -- batch ~/repos/service-a ~/repos/service-b
+npm run agentready -- batch --root ~/repos --format markdown --output portfolio.md
+npm run agentready -- batch --root ~/repos --min-score 70   # gate on any repo below 70
+```
+
+One repo failing to scan never aborts the batch; it's reported per-repo
+instead. `--fail-on-scan-error` (default on; pass `--no-fail-on-scan-error`
+to disable) and `--min-score` gate the exit code.
+
 ### Explain a finding
 
 `explain` prints the rationale, remediation, and references for a readiness

@@ -500,3 +500,52 @@ export type CompactReadinessDiffReport = Omit<ReadinessDiffReport, 'baseReport' 
   baseReport: CompactLocalReadinessReport
   headReport: CompactLocalReadinessReport
 }
+
+/**
+ * One repository's outcome in a portfolio (multi-repo) scan. `ok: false` means
+ * the scan itself failed (e.g. the path is not a valid target) — every other
+ * field is then omitted rather than defaulted, so a scan failure can never be
+ * confused with a clean 100-score repo.
+ */
+export type PortfolioRepoResult =
+  | {
+      path: string
+      ok: true
+      score: number
+      findingCount: number
+      bySeverity: Record<ReadinessSeverity, number>
+      /** Warning/error findings, worst-severity-first, capped for a bounded summary. */
+      topFindings: ReadinessFinding[]
+    }
+  | {
+      path: string
+      ok: false
+      error: string
+    }
+
+export interface PortfolioSummary {
+  repoCount: number
+  scannedCount: number
+  scanErrorCount: number
+  /** `null` when no repo scanned successfully (nothing to average). */
+  averageScore: number | null
+  minScore: number | null
+  maxScore: number | null
+  totalFindings: number
+  bySeverity: Record<ReadinessSeverity, number>
+}
+
+export interface PortfolioReport {
+  generatedAt: string
+  /** Worst-scoring repos first; scan failures (`ok: false`) sort before every scored repo. */
+  repos: PortfolioRepoResult[]
+  summary: PortfolioSummary
+}
+
+export interface PortfolioScanOptions {
+  now?: Date
+  configPath?: string
+  config?: Partial<LocalReadinessConfig>
+  /** Warning/error findings kept per repo in `topFindings` (default 5). */
+  topFindingsPerRepo?: number
+}

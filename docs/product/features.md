@@ -98,6 +98,16 @@ Features:
   `low`. `safety.capability.high-risk` (info) flags each `high`-tier surface,
   and the `enterprise` policy pack escalates it to warning — see
   `docs/product/policy-packs.md`.
+- local multi-repo/portfolio batch mode — **delivered**: `agentready batch
+  [paths...] [--root <dir>]` scans every given path (plus, with `--root`,
+  every immediate non-hidden subdirectory of it — the shape of a platform
+  team's "clone of every repo" directory) independently via the same
+  `scanLocalReadiness` pipeline, so one broken repo never aborts the batch.
+  Emits an aggregated `summary`/`json`/`markdown` report
+  (`report.summary.averageScore`/`minScore`/`maxScore`, severity totals, and
+  per-repo `topFindings`) with no hosted service required, gated by
+  `--min-score` and `--fail-on-scan-error`/`--no-fail-on-scan-error`. Schema:
+  `schemas/portfolio-report.schema.json`.
 - benchmark harness and public summary for comparing score dimensions against real agent performance
 
 ## v0.3 first-impression polish
@@ -116,10 +126,6 @@ Possible later features:
 
 - hosted report viewer
 - organization-wide scan dashboard
-- local multi-repo/portfolio batch mode: scan N repositories in one CLI
-  invocation and emit an aggregated JSON/Markdown summary, without requiring a
-  hosted service — the natural entry point for platform teams rolling agents
-  out across many repos
 - public badge
 - trend tracking
 - generated starter instruction files

@@ -1,6 +1,6 @@
 import type { z } from 'zod'
 import type { ContractValidationResult } from './types'
-import { localReadinessReportSchema, readinessDiffReportSchema } from './schemas'
+import { localReadinessReportSchema, portfolioReportSchema, readinessDiffReportSchema } from './schemas'
 
 /**
  * Renders a Zod issue path into a readable, dotted string with bracketed array
@@ -33,6 +33,10 @@ export function validateLocalReadinessReportContract(report: unknown): ContractV
 
 export function validateReadinessDiffReportContract(report: unknown): ContractValidationResult {
   return toValidationResult(readinessDiffReportSchema.safeParse(report))
+}
+
+export function validatePortfolioReportContract(report: unknown): ContractValidationResult {
+  return toValidationResult(portfolioReportSchema.safeParse(report))
 }
 
 export type { ContractValidationResult } from './types'

@@ -41,6 +41,7 @@ agentready
     [x] config-loading
     [x] git worktree helper (safe ref scanning for diff)
     [x] policy-engine      (PolicyPack/PolicyResult model, gate integration; see checks/policy-packs)
+    [x] portfolio-scan     (multi-repo batch scan + aggregated summary, local only; see cli batch)
   detectors/
     [x] instruction-files
     [x] repo-shape / file-inventory
@@ -63,7 +64,7 @@ agentready
     [x] markdown
     [ ] sarif
   cli/
-    [x] commands (scan, diff)
+    [x] commands (scan, diff, batch)
     [x] config-loading
 ```
 

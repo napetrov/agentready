@@ -275,7 +275,7 @@ Verified against the current `main`/branch code before accepting:
   reimplemented. _(M)_
 - [x] **Policy packs** (`docs/product/policy-packs.md`) — **delivered**: a
   typed `PolicyPack`/`PolicyResult` model (`core/policy.ts`), a no-op `default`
-  pack and a real `enterprise` pack (`checks/policy-packs.ts`, three severity
+  pack and a real `enterprise` pack (`checks/policy-packs.ts`, four severity
   escalations), `--policy <name>` on `scan`/`diff`, and a `policy` Action input.
   Shipped as first-class TypeScript rather than external OPA/Conftest-style
   ingestion over JSON evidence — matches the design doc, not this bullet's
@@ -291,6 +291,15 @@ Verified against the current `main`/branch code before accepting:
   config and skills stay `low`. New `safety.capability.high-risk` (info)
   finding per `high`-tier surface; the `enterprise` policy pack escalates it
   to warning. _(M)_
+- [x] **Local multi-repo/portfolio batch mode** — delivered:
+  `agentready batch [paths...] [--root <dir>]` (`core/portfolio.ts`) scans
+  every target independently through the same `scanLocalReadiness` pipeline —
+  one broken repo never aborts the batch, it's just captured as a per-repo
+  scan error — and aggregates into `summary`/`json`/`markdown` output
+  (`report.summary.averageScore/minScore/maxScore`, severity totals, and
+  per-repo `topFindings`), gated by `--min-score` and
+  `--fail-on-scan-error`/`--no-fail-on-scan-error`. No hosted service
+  required. Schema: `schemas/portfolio-report.schema.json`. _(M)_
 
 ## P2 — LLM / agentic analytics layer (optional, opt-in)
 

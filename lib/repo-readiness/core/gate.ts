@@ -2,6 +2,7 @@ import { adjustFindings, applyPolicy, type PolicyPack } from './policy'
 import { computeRegressions } from './scan-engine'
 import type {
   LocalReadinessReport,
+  PortfolioReport,
   ReadinessDiffReport,
   ReadinessFinding,
   ReadinessSeverity,
@@ -110,6 +111,37 @@ export const evaluateDiffGate = (report: ReadinessDiffReport, options: GateOptio
 
   const score = options.policy ? applyPolicy(report.headReport, options.policy).effectiveScore : report.headReport.summary.score
   checkMinScore(score, options.minScore, failureReasons)
+
+  return { failed: failureReasons.length > 0, failureReasons }
+}
+
+export interface PortfolioGateOptions {
+  /** Fail when any successfully-scanned repo's score drops below this minimum. */
+  minScore?: number
+  /** Fail when one or more repos could not be scanned at all. Defaults to `true`. */
+  failOnScanError?: boolean
+}
+
+/**
+ * Evaluates the configured gates for a portfolio (multi-repo) scan: a repo
+ * that could not be scanned at all, and any successfully-scanned repo whose
+ * score falls below `minScore`.
+ */
+export const evaluatePortfolioGate = (report: PortfolioReport, options: PortfolioGateOptions = {}): GateResult => {
+  const failOnScanError = options.failOnScanError ?? true
+  const failureReasons: string[] = []
+
+  if (failOnScanError && report.summary.scanErrorCount > 0) {
+    failureReasons.push(`${report.summary.scanErrorCount} repo(s) could not be scanned`)
+  }
+
+  if (options.minScore !== undefined) {
+    const minScore = options.minScore
+    const belowMinimum = report.repos.filter(repo => repo.ok && repo.score < minScore).length
+    if (belowMinimum > 0) {
+      failureReasons.push(`${belowMinimum} repo(s) scored below the minimum ${minScore}`)
+    }
+  }
 
   return { failed: failureReasons.length > 0, failureReasons }
 }
