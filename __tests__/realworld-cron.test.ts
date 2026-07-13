@@ -83,11 +83,14 @@ describe('real-world cron classification', () => {
     commands: {
       ecosystems: [],
       scripts: [],
+      makeTargets: [],
       hasBuild: false,
       hasTest: false,
       hasLint: false,
       hasTypeCheck: false,
     },
+    commandReferences: [],
+    governance: {},
     ci: {
       workflowFiles: [],
       workflows: [],
@@ -128,9 +131,10 @@ describe('real-world cron classification', () => {
       risks: [],
       ambiguities: [],
     },
+    dimensions: [],
     reportContract: {
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState'],
+      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions'],
     },
     findings: findings.map(finding => ({
       ruleId: finding.id.split(':')[0],

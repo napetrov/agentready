@@ -7,6 +7,179 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Dimension-score rollup: every scan report now includes `dimensions`, a
+  per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) score
+  computed with the same severity-penalty model as the overall `summary.score`.
+  A repo with unsafe scripts but strong CI no longer looks identical to one with
+  the opposite profile under a single number. Exposed as
+  `calculateDimensionScores`/`RULE_CATEGORIES` from `checks/catalog.ts`, listed
+  in `reportContract.experimentalFields`, and rendered in the console (`Dimensions: ...`
+  line, with severity counts) and markdown (`### Dimension scores`) reporters.
+  The schema requires exactly one entry per category (rejecting an empty or
+  duplicated `dimensions` array) and constrains `score` to 0-100 and the
+  finding counts to non-negative integers. The uniqueness constraint is
+  enforced in the published JSON Schemas too, not just the runtime Zod
+  validator: draft-7 has no `minContains`/`maxContains`, so
+  `bin/agentready-emit-schemas.ts` uses a `contains`-per-category `allOf`
+  which, combined with the array's fixed length, forces each category to
+  appear exactly once by pigeonhole — so schema-based CI/editor validation
+  rejects the same malformed reports the scanner's own runtime check does.
+- Command reference validation: a new `commandReferences` detector scans
+  READMEs and instruction files for command references that don't match the
+  repository's actual command surfaces — `npm`/`yarn`/`pnpm`/`bun run
+  <script>` (and bare `test`/`start`) mentions whose script isn't in
+  `package.json`, `make <target>` mentions with no matching Makefile target,
+  and package-manager mentions that disagree with the detected lockfile.
+  Emits `commands.reference.npm-script`/`commands.reference.make-target`
+  (warning) and `commands.reference.package-manager-mismatch` (info,
+  since docs can legitimately discuss more than one package manager).
+  `CommandEvidence` also gained `makeTargets` (the Makefile target names,
+  already parsed internally but not previously exposed). Multi-target Makefile
+  rules (`build test: setup`) are now parsed correctly, make-option tokens
+  (`make -j test`, `make -C dir test`) are no longer misread as targets, bare
+  `npm start` is not flagged when a root `server.js` provides npm's documented
+  fallback, bare `bun test` is never flagged since Bun's test runner needs no
+  script, `docs.contributing` is scanned alongside READMEs, and repeated
+  identical references in one document are deduped to one finding.
+- Policy packs: a typed `PolicyPack`/`PolicyResult` model
+  (`lib/repo-readiness/core/policy.ts`) applies team-specific severity
+  adjustments to gating without ever mutating raw findings or `summary.score`.
+  Ships with a no-op `default` pack and a real `enterprise` pack (three
+  escalations: `instructions.missing` warning→error,
+  `safety.install-hook`/`safety.deploy` info→warning) in
+  `lib/repo-readiness/checks/policy-packs.ts`. `--policy <name>` on `agentready
+  scan`/`diff` applies it to `--fail-on`/`--min-score` gating and prints the
+  adjustments (with reasons) for human-readable output formats; a `policy`
+  input on the GitHub Action does the same, with new `policy-adjustments-count`
+  and `policy-effective-score` outputs. See
+  [docs/product/policy-packs.md](docs/product/policy-packs.md) for the full
+  design and what's still open (`oss`/`ml-scientific` packs, a config-file
+  shape, folding `PolicyResult` into the JSON/SARIF report contract).
+- Governance surface detection: a new `governance` detector reports whether a
+  CODEOWNERS file and a pull-request template exist at a GitHub-recognized
+  path (repo root, `.github/`, or `docs/`; presence-only — it does not infer
+  ownership boundaries from git history/blame). Emits
+  `docs.pull-request-template.missing` (info, any repo size — a PR template
+  benefits every repo, however small) and `docs.codeowners.missing` (info,
+  only for non-trivial repos with more than 20 source files, where routing a
+  review actually matters). Report field: `report.governance` (`{
+  codeownersPath?, pullRequestTemplatePath? }`).
+- Capability-surface risk tiers: `CapabilitySurfaceEvidence` gained a
+  `riskTier` (`low`/`medium`/`high`) field, so `report.capabilities` no longer
+  treats an MCP config, a hook, a plugin, and a static LSP file as equally
+  "present." MCP server configs, hook scripts, plugin manifests, and a Claude
+  Code settings file that configures a non-empty `hooks` block are `high`
+  (arbitrary commands, or — for MCP — a tool set static config can't verify);
+  a settings file with no `hooks` key is `medium`; LSP/editor config and
+  skills stay `low`. New `safety.capability.high-risk` (info) finding per
+  `high`-tier surface; the `enterprise` policy pack escalates it to warning
+  (four escalations now, was three). Console/markdown reporters call out the
+  high-risk count in the capabilities line.
+- Local multi-repo/portfolio batch mode: `agentready batch [paths...]
+  [--root <dir>]` scans every target independently (`core/portfolio.ts`,
+  reusing `scanLocalReadiness`) and aggregates into one portfolio report — a
+  repo that fails to scan is captured per-repo, never aborting the batch.
+  `--root <dir>` scans every immediate non-hidden subdirectory of `dir`, the
+  shape of a "clone of every repo" platform-team directory. `summary`/`json`/
+  `markdown` output; `--min-score`/`--fail-on-scan-error` (default on;
+  `--no-fail-on-scan-error` to disable) gate the batch. New schema:
+  `schemas/portfolio-report.schema.json`. No hosted service required.
+- Empirical validation scaffold (scaffold only): `npm run agentready:benchmark`
+  (`bin/agentready-evaluate.ts`) automates the deterministic half of
+  `docs/product/evaluation.md`'s "Minimal public benchmark" — a fixed,
+  profile-diverse 10-repo corpus (`reports/evaluation/corpus.json`, including
+  AgentReady itself scanned in place), a scan of each repo, and a generated
+  `reports/evaluation/README.md` with the corpus table, scan commands, and
+  finding counts by category. Giving the same bounded task to real coding
+  agents and recording their friction is explicitly not automated — the
+  report marks those sections `TODO` rather than inventing data.
+
+### Fixed
+- `agentready scan`/`diff --output <file>` now writes a non-default policy's
+  summary (`--policy enterprise`, etc.) into the same file as the report
+  instead of always printing it to stdout — a saved markdown/summary report
+  now carries the policy context that explains why the policy gate may have
+  failed.
+- `commands.reference.npm-script` no longer flags workspace-qualified
+  references (`npm run dev --workspace packages/app`, `-w`, `--workspaces`):
+  the script may exist only in the workspace package, not the root
+  `package.json` this detector checks against.
+- `agentready diff --fail-on-regression` now recomputes regressions against
+  policy-adjusted severities when `--policy` is set, instead of only applying
+  the policy to the separate `--fail-on` new-findings check. Previously a
+  policy that escalates a *new* finding's severity (e.g. `enterprise` raising
+  `safety.install-hook`/`safety.deploy` from info to warning) was invisible to
+  `report.regressions`, which is always built from raw severities — so
+  `--fail-on-regression` alone could pass a PR the policy was meant to gate.
+- Command-reference validation now checks root-*scope* instruction files
+  (e.g. `.claude/CLAUDE.md`, `.github/copilot-instructions.md` — always
+  loaded, per `detectInstructionSurfaces`'s own `scope: 'root'`
+  classification) and `.github/CONTRIBUTING.md`, instead of only slashless
+  paths. Previously these always-loaded, repo-level files were skipped
+  because their path contains a `/`, so a stale `npm run <script>` reference
+  in the primary agent instruction file could go unflagged. Genuinely
+  nested/package-scoped docs (`packages/foo/CLAUDE.md`,
+  `packages/foo/README.md`) are still excluded.
+- The GitHub Action's `markdown-report-path` artifact now includes the policy
+  summary and augmented-analysis section, matching the job summary/PR
+  comment. Previously `report.md` was written before those sections were
+  appended to `summaryMarkdown`, so a run with `policy: enterprise` (or
+  `analyze: true`) left the saved markdown file looking like a plain
+  deterministic report — misleading for anyone who uploads or inspects that
+  artifact directly, and giving no clue why a policy gate failed.
+- Command-reference document reads (`README`/instruction files) are now
+  capped at 200KB at the I/O layer via `openSync`/`readSync`, instead of
+  reading (and UTF-8 decoding) the whole file before truncating the decoded
+  string. A mislabeled huge file (e.g. a binary asset with a `.md` extension)
+  no longer forces a full read into memory just to scan for command
+  references.
+- `commands.reference.make-target` no longer misreads a variable override
+  (`make PREFIX=/usr/local install`, `make CFLAGS=-O2 test`) as a missing
+  target — GNU make treats any `=`-containing argument as a variable
+  assignment, not a target.
+- `docs.pull-request-template.missing` no longer fires for a
+  `PULL_REQUEST_TEMPLATE/` directory at the repo root or under `docs/`
+  (GitHub recognizes both, alongside `.github/`); only the `.github/` case
+  was previously matched.
+- Capability-surface risk classification no longer treats an empty
+  matcher-group array (`{ hooks: { PreToolUse: [] } }`) as a configured hook
+  — it's as inert as an empty `hooks` object, so it's `medium` risk, not
+  `high`.
+- `agentready batch --format markdown` now escapes `|` in repo paths/error
+  messages before interpolating them into table cells, so a path or error
+  containing a pipe can no longer corrupt the rendered table.
+- The GitHub Action's diff-mode policy summary text and `policyAdjustmentsCount`
+  output could previously diverge: the rendered adjustment list covered the
+  whole head report while the count covered only new findings. Both are now
+  derived from the same finding set.
+- `portfolioRepoResultSchema.score` and `portfolioSummarySchema`'s
+  `averageScore`/`minScore`/`maxScore` are now bounded to `0-100` integers in
+  both the runtime Zod schema and the generated JSON Schema, matching the
+  same contract already enforced on dimension scores.
+- The `.github/`-is-root-equivalent carve-out for command-reference checks
+  was too broad: it matched any path starting with `.github/`, including a
+  genuinely nested component under it (e.g. a local composite action at
+  `.github/actions/foo/README.md` with its own `package.json` scripts). Now
+  only a doc directly under `.github/` (one path segment) counts as
+  root-equivalent; deeper paths are treated the same as any other
+  package-scoped doc and excluded.
+- Command-reference checks never read through a symlinked doc (e.g. a root
+  `README.md` symlinked to `packages/app/README.md`). Previously such a
+  symlink was still visible as a slashless, root-scope path, but reading it
+  followed the link and checked the *target's* content (which can document a
+  different package's own scripts) against the *root's* command surface — a
+  false positive. Matches the "classify a symlink by path, never dereference
+  it" invariant the file-inventory walker already applies elsewhere.
+- `commands.reference.make-target` now recognizes path-like targets
+  (`make docs/html`) instead of truncating the capture at the `/` and
+  reporting a false missing-target warning; matches how the command-surface
+  Makefile parser already preserves slash-containing target names.
+- `agentready batch --config <path>` now resolves a relative config path
+  once, against the caller's working directory, instead of passing it
+  through unchanged to every target repo (where it would be re-resolved
+  against each different repo root and typically not found).
+
 ## [0.2.0] - 2026-06-08
 
 ### Changed

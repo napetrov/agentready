@@ -42,6 +42,22 @@ export interface ReadinessFinding {
   recommendation: string
 }
 
+/** The grouping every rule in the catalog is filed under; also the dimension-score axis. */
+export type ReadinessRuleCategory = 'docs' | 'commands' | 'ci' | 'instructions' | 'files' | 'safety'
+
+/**
+ * A per-category rollup of the same severity-penalty model `calculateScore`
+ * applies to the whole report, so a repo with e.g. unsafe scripts but great CI
+ * doesn't look identical to one with the opposite profile under a single
+ * number. Purely a view over `findings`; it never changes gating.
+ */
+export interface ReadinessDimensionScore {
+  category: ReadinessRuleCategory
+  score: number
+  findingCount: number
+  bySeverity: Record<ReadinessSeverity, number>
+}
+
 export type EvidenceConfidence = 'low' | 'medium' | 'high'
 
 export type EvidenceSourceKind = 'file' | 'manifest' | 'workflow' | 'config' | 'inference'
@@ -88,10 +104,49 @@ export interface CommandEvidence {
   ecosystems: CommandEcosystem[]
   /** Node package scripts, kept for backward compatibility and detail. */
   scripts: string[]
+  /** Makefile target names, when the repository has a Makefile. */
+  makeTargets: string[]
   hasBuild: boolean
   hasTest: boolean
   hasLint: boolean
   hasTypeCheck: boolean
+}
+
+/**
+ * A kind of command reference an instruction file or README can make that is
+ * checkable against detected command evidence.
+ */
+export type CommandReferenceKind = 'npm-script' | 'make-target' | 'package-manager-mismatch'
+
+/**
+ * A command mentioned in a doc/instruction file that does not match the
+ * repository's actual command surfaces — e.g. `npm run buld` when no `buld`
+ * script exists, or `make test` when the Makefile has no `test` target. Text
+ * heuristics inherently miss some real commands and can misfire on prose that
+ * merely discusses a command rather than telling an agent to run it, so this
+ * is intentionally scoped to unambiguous, high-signal patterns.
+ */
+export interface CommandReferenceEvidence {
+  /** Repo-relative path of the doc/instruction file the reference was found in. */
+  path: string
+  /** The exact command reference matched, e.g. `npm run buld`. */
+  reference: string
+  kind: CommandReferenceKind
+  /** Human-readable explanation of the mismatch. */
+  detail: string
+}
+
+/**
+ * Review-routing surfaces: whether the repo tells a reviewer (human or agent)
+ * who owns a change and what evidence a PR description should contain. Both
+ * are presence checks (does the file exist, at a path GitHub recognizes), not
+ * an inference of actual ownership boundaries from git history.
+ */
+export interface GovernanceEvidence {
+  /** Path to CODEOWNERS, if found at a GitHub-recognized location (root, .github/, or docs/). */
+  codeownersPath?: string
+  /** Path to a pull-request template, if found at a GitHub-recognized location (root, .github/, or docs/; single file or .github/PULL_REQUEST_TEMPLATE/). */
+  pullRequestTemplatePath?: string
 }
 
 /** A class of verification command an agent can run to validate its work. */
@@ -157,12 +212,26 @@ export interface CiEvidence {
  */
 export type CapabilityKind = 'mcp' | 'skill' | 'hook' | 'plugin' | 'lsp'
 
+/**
+ * Blast-radius classification for a capability surface: `high` can run
+ * arbitrary commands or grant an agent new tools with unknown scope (a hook
+ * script, a configured hooks block, an MCP server, a plugin manifest —
+ * plugins can themselves bundle MCP servers and hooks, and static config
+ * cannot reveal an MCP server's actual tool set); `medium` is config that
+ * *could* define a high-risk surface but does not appear to (e.g. Claude
+ * Code settings with no `hooks` key); `low` is read-only, informational, or
+ * editor/formatting config with no execution surface (an LSP config, a
+ * skill's instructions).
+ */
+export type CapabilityRiskTier = 'low' | 'medium' | 'high'
+
 export interface CapabilitySurfaceEvidence {
   kind: CapabilityKind
   path: string
   /** The tool that owns the surface (e.g. claude-code, cursor, vscode). */
   tool: string
   notes: string[]
+  riskTier: CapabilityRiskTier
 }
 
 /**
@@ -349,7 +418,7 @@ export interface LocalReadinessReportContract {
   experimentalFields: LocalReadinessExperimentalField[]
 }
 
-export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState'
+export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState' | 'dimensions'
 
 export interface LocalReadinessReport {
   root: string
@@ -373,12 +442,16 @@ export interface LocalReadinessReport {
     environment: string[]
   }
   commands: CommandEvidence
+  commandReferences: CommandReferenceEvidence[]
+  governance: GovernanceEvidence
   ci: CiEvidence
   instructions: InstructionSurfaceEvidence[]
   capabilities: CapabilitySurfaceEvidence[]
   safetySignals: SafetySignalEvidence[]
   repositoryEvidence: RepositoryEvidence
   designState: DesignStateSummary
+  /** Per-category rollups of `summary.score`'s severity-penalty model. See `ReadinessDimensionScore`. */
+  dimensions: ReadinessDimensionScore[]
   reportContract: LocalReadinessReportContract
   findings: ReadinessFinding[]
   files: LocalReadinessFile[]
@@ -426,4 +499,53 @@ export type CompactLocalReadinessReport = Omit<LocalReadinessReport, 'files'> & 
 export type CompactReadinessDiffReport = Omit<ReadinessDiffReport, 'baseReport' | 'headReport'> & {
   baseReport: CompactLocalReadinessReport
   headReport: CompactLocalReadinessReport
+}
+
+/**
+ * One repository's outcome in a portfolio (multi-repo) scan. `ok: false` means
+ * the scan itself failed (e.g. the path is not a valid target) — every other
+ * field is then omitted rather than defaulted, so a scan failure can never be
+ * confused with a clean 100-score repo.
+ */
+export type PortfolioRepoResult =
+  | {
+      path: string
+      ok: true
+      score: number
+      findingCount: number
+      bySeverity: Record<ReadinessSeverity, number>
+      /** Warning/error findings, worst-severity-first, capped for a bounded summary. */
+      topFindings: ReadinessFinding[]
+    }
+  | {
+      path: string
+      ok: false
+      error: string
+    }
+
+export interface PortfolioSummary {
+  repoCount: number
+  scannedCount: number
+  scanErrorCount: number
+  /** `null` when no repo scanned successfully (nothing to average). */
+  averageScore: number | null
+  minScore: number | null
+  maxScore: number | null
+  totalFindings: number
+  bySeverity: Record<ReadinessSeverity, number>
+}
+
+export interface PortfolioReport {
+  generatedAt: string
+  /** Worst-scoring repos first; scan failures (`ok: false`) sort before every scored repo. */
+  repos: PortfolioRepoResult[]
+  summary: PortfolioSummary
+}
+
+export interface PortfolioScanOptions {
+  now?: Date
+  configPath?: string
+  config?: Partial<LocalReadinessConfig>
+  /** Warning/error findings kept per repo in `topFindings` (default 5). */
+  topFindingsPerRepo?: number
 }

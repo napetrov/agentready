@@ -1,16 +1,23 @@
 import { mkdirSync, writeFileSync } from 'fs'
 import path from 'path'
 import {
+  adjustFindings,
+  applyPolicy,
   diffLocalReadiness,
   evaluateDiffGate,
   evaluateScanGate,
   formatDiffMarkdown,
+  formatPolicySummary,
   formatScanMarkdown,
   formatScanSarif,
+  resolvePolicyPack,
   scanLocalReadiness,
   type FailOnSeverity,
   type LocalReadinessReport,
+  type PolicyName,
+  type PolicyPack,
   type ReadinessDiffReport,
+  type ReadinessFinding,
 } from '../repo-readiness/local-readiness'
 import {
   analyzeReport,
@@ -31,6 +38,8 @@ export interface ActionInputs {
   failOnSeverity: FailOnSeverity
   failOnRegression: boolean
   minScore?: number
+  /** Policy pack name; defaults to 'default' (a no-op) when not set. */
+  policy?: PolicyName
   sarif: boolean
   /** Directory the report artifacts are written to. */
   outputDir: string
@@ -60,6 +69,51 @@ export interface ActionResult {
   augmentedScore?: number
   /** Path to the written augmented report, when the analytics layer ran. */
   augmentedReportPath?: string
+  /** Number of findings the policy pack adjusted the severity of (0 for the default policy). */
+  policyAdjustmentsCount: number
+  /** The policy-adjusted score, when a non-default policy ran. `score` is always the raw, policy-independent value. */
+  policyEffectiveScore?: number
+}
+
+interface PolicySummary {
+  effectiveScore: number
+  adjustmentsCount: number
+  summaryText: string
+}
+
+/**
+ * Shared by both scan and diff mode: computes the effective score against the
+ * full `report`, but scopes `severityAdjustments` (and therefore both the
+ * rendered summary text and `adjustmentsCount`) to `adjustmentTargetFindings`
+ * — the full report in scan mode, only `newFindings` in diff mode. Both
+ * derive from the same set so the PR comment's adjustment list can never
+ * diverge from the `policyAdjustmentsCount` output (e.g. the comment listing
+ * adjustments across the whole head report while the count reflects only new
+ * findings). `effectiveScore` still reflects the full report/head state,
+ * matching what `evaluateDiffGate`'s min-score check actually gates on.
+ */
+const summarizePolicy = (
+  policy: PolicyPack,
+  report: LocalReadinessReport,
+  adjustmentTargetFindings: ReadinessFinding[],
+): PolicySummary => {
+  const { effectiveScore } = applyPolicy(report, policy)
+  const { severityAdjustments } = adjustFindings(adjustmentTargetFindings, policy)
+  const effectiveThresholds: Record<string, ReadinessFinding['severity']> = {}
+  for (const adjustment of severityAdjustments) {
+    effectiveThresholds[adjustment.findingId.split(':')[0]] = adjustment.to
+  }
+  return {
+    effectiveScore,
+    adjustmentsCount: severityAdjustments.length,
+    summaryText: formatPolicySummary({
+      policy: policy.name,
+      effectiveThresholds,
+      severityAdjustments,
+      adjustedFindings: adjustmentTargetFindings,
+      effectiveScore,
+    }),
+  }
 }
 
 /**
@@ -72,6 +126,10 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
   const jsonReportPath = path.join(inputs.outputDir, 'report.json')
   const markdownReportPath = path.join(inputs.outputDir, 'report.md')
   const sarifReportPath = inputs.sarif ? path.join(inputs.outputDir, 'report.sarif') : undefined
+  const policy = resolvePolicyPack(inputs.policy ?? 'default')
+  if (!policy) {
+    throw new Error(`unknown policy "${inputs.policy}"`)
+  }
 
   const failureReasons: string[] = []
   let score: number
@@ -82,6 +140,12 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
   // The deterministic scan report, captured for the optional analyze step. In
   // diff mode this is the head report.
   let scanReport: LocalReadinessReport
+  let policyAdjustmentsCount = 0
+  // score/report outputs stay the raw deterministic values, matching how
+  // augmentedScore is a separate additive output rather than overwriting
+  // score — set whenever a non-default policy runs, even if it made no
+  // adjustments (in which case it simply equals the raw score).
+  let policyEffectiveScore: number | undefined
 
   if (inputs.mode === 'diff') {
     if (!inputs.baseRef || !inputs.headRef) {
@@ -94,7 +158,6 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     })
     writeFileSync(jsonReportPath, `${JSON.stringify(report, null, 2)}\n`)
     summaryMarkdown = formatDiffMarkdown(report)
-    writeFileSync(markdownReportPath, `${summaryMarkdown}\n`)
 
     score = report.headReport.summary.score
     findingsCount = report.newFindings.length
@@ -102,28 +165,43 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     sarifSource = report.headReport
     scanReport = report.headReport
 
+    if (policy.name !== 'default') {
+      const summary = summarizePolicy(policy, report.headReport, report.newFindings)
+      policyEffectiveScore = summary.effectiveScore
+      policyAdjustmentsCount = summary.adjustmentsCount
+      summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${summary.summaryText}`
+    }
+
     failureReasons.push(
       ...evaluateDiffGate(report, {
         failOnSeverity: inputs.failOnSeverity,
         failOnRegression: inputs.failOnRegression,
         minScore: inputs.minScore,
+        policy,
       }).failureReasons,
     )
   } else {
     const report: LocalReadinessReport = scanLocalReadiness(inputs.path, { configPath: inputs.configPath })
     writeFileSync(jsonReportPath, `${JSON.stringify(report, null, 2)}\n`)
     summaryMarkdown = formatScanMarkdown(report)
-    writeFileSync(markdownReportPath, `${summaryMarkdown}\n`)
 
     score = report.summary.score
     findingsCount = report.findings.length
     sarifSource = report
     scanReport = report
 
+    if (policy.name !== 'default') {
+      const summary = summarizePolicy(policy, report, report.findings)
+      policyEffectiveScore = summary.effectiveScore
+      policyAdjustmentsCount = summary.adjustmentsCount
+      summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${summary.summaryText}`
+    }
+
     failureReasons.push(
       ...evaluateScanGate(report, {
         failOnSeverity: inputs.failOnSeverity,
         minScore: inputs.minScore,
+        policy,
       }).failureReasons,
     )
   }
@@ -159,6 +237,13 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     }
   }
 
+  // Written once, after every summaryMarkdown mutation above (policy summary,
+  // augmented analysis) — otherwise the markdown-report-path artifact stays
+  // raw while the job summary/PR comment (same summaryMarkdown value) carries
+  // the full picture, which is misleading for anyone who uploads or inspects
+  // that file directly.
+  writeFileSync(markdownReportPath, `${summaryMarkdown}\n`)
+
   return {
     score,
     findingsCount,
@@ -169,7 +254,9 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     summaryMarkdown,
     failed: failureReasons.length > 0,
     failureReasons,
+    policyAdjustmentsCount,
     ...(augmentedScore !== undefined ? { augmentedScore } : {}),
     ...(augmentedReportPath !== undefined ? { augmentedReportPath } : {}),
+    ...(policyEffectiveScore !== undefined ? { policyEffectiveScore } : {}),
   }
 }

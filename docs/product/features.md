@@ -25,7 +25,9 @@ Delivered:
 - context-friction detection for large files and oversized always-on instruction files
 - detection of local/private instruction files
 - console, JSON, and markdown reporters
-- experimental readiness score
+- experimental readiness score, plus a per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`)
+  dimension-score rollup (`report.dimensions`) using the same severity-penalty model, so console/markdown
+  output shows where a repo is weak instead of one opaque number
 - `agentready diff` between git refs with a regression gate (worktree-based, never mutates the working tree)
 - npm package metadata with a `bin` and a `dist` build for future `npx` usage; the package is not published yet
 - capability-surface detector for MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
@@ -65,16 +67,56 @@ Features:
   detector parses workflow steps and classifies install/lint/type-check/test/
   build commands, with `ci.*.not-run` checks that flag commands the repo exposes
   but CI never runs
-- built-in policy packs and repository-specific thresholds (`default`, `oss`, `enterprise`, and `ml-scientific` are candidate shapes)
+- built-in policy packs — **delivered (partial)**: `default` (no-op) and
+  `enterprise` (four severity escalations) ship as `--policy <name>` on
+  `scan`/`diff` and a `policy` Action input; see `docs/product/policy-packs.md`.
+  `oss`/`ml-scientific` and a config-file `policyOptions` shape remain candidates.
 - instruction-file overlap and contradiction checks
-- stale path and command validation
+- stale command reference validation — **delivered**: `commands.reference.*`
+  checks flag `npm`/`yarn`/`pnpm`/`bun run <script>` (and bare `test`/`start`)
+  references in READMEs/instruction files whose script doesn't exist, `make
+  <target>` references with no matching Makefile target, and explicit
+  package-manager mentions that disagree with the detected lockfile. Stale
+  *path* validation (broken links in docs, not command references) remains open.
 - companion-tool ingestion (actionlint, Gitleaks, OSV-Scanner/Trivy, Scorecard)
   with AgentReady as the report hub
 - import graph and boundary checks
 - git churn and risk signals
 - language/framework policy packs (Java/.NET, broader Python tooling)
-- CODEOWNERS and PR-template analysis
-- benchmark harness and public summary for comparing score dimensions against real agent performance
+- CODEOWNERS and PR-template analysis — **delivered (presence-only)**:
+  `docs.codeowners.missing` (info, non-trivial repos only, >20 source files)
+  and `docs.pull-request-template.missing` (info, any repo size) detect
+  whether either review-routing surface exists at a GitHub-recognized path.
+  Inferring actual ownership boundaries from git history/blame remains open
+  (see "git churn and risk signals" above).
+- capability-surface risk tiers — **delivered**: `detectCapabilitySurfaces` now
+  classifies every MCP/skill/hook/plugin/LSP surface by blast-radius
+  (`report.capabilities[].riskTier`, `low`/`medium`/`high`). MCP configs, hook
+  scripts, a Claude Code settings file that configures a non-empty `hooks`
+  block, and plugin manifests default to `high` (arbitrary commands, or a tool
+  set this scanner can't verify statically); LSP/editor config and skills stay
+  `low`. `safety.capability.high-risk` (info) flags each `high`-tier surface,
+  and the `enterprise` policy pack escalates it to warning — see
+  `docs/product/policy-packs.md`.
+- local multi-repo/portfolio batch mode — **delivered**: `agentready batch
+  [paths...] [--root <dir>]` scans every given path (plus, with `--root`,
+  every immediate non-hidden subdirectory of it — the shape of a platform
+  team's "clone of every repo" directory) independently via the same
+  `scanLocalReadiness` pipeline, so one broken repo never aborts the batch.
+  Emits an aggregated `summary`/`json`/`markdown` report
+  (`report.summary.averageScore`/`minScore`/`maxScore`, severity totals, and
+  per-repo `topFindings`) with no hosted service required, gated by
+  `--min-score` and `--fail-on-scan-error`/`--no-fail-on-scan-error`. Schema:
+  `schemas/portfolio-report.schema.json`.
+- benchmark harness and public summary for comparing score dimensions against
+  real agent performance — **delivered (scaffold only)**: `agentready:benchmark`
+  (`bin/agentready-evaluate.ts`) scans a fixed, profile-diverse 10-repo corpus
+  (`reports/evaluation/corpus.json`) and generates `reports/evaluation/README.md`
+  with the corpus table, scan commands, and finding counts by category. Real
+  coding-agent runs and human judgment of true/false positives — the actual
+  "against real agent performance" comparison — are explicitly out of scope
+  for this automated tool; the report marks those sections `TODO`. See
+  `docs/product/evaluation.md`.
 
 ## v0.3 first-impression polish
 

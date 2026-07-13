@@ -1,3 +1,4 @@
+import { POLICY_NAMES, type PolicyName } from '../repo-readiness/local-readiness'
 import { runAction, type ActionInputs, type ActionMode, type FailOnSeverity } from './run'
 import { postPrComment } from './pr-comment'
 import * as core from './runtime'
@@ -36,6 +37,11 @@ const parseInputs = (): ActionInputs => {
     throw new Error('analyze-min-score must be a finite number between 0 and 100')
   }
 
+  const policy = (core.getInput('policy') || 'default') as PolicyName
+  if (!POLICY_NAMES.includes(policy)) {
+    throw new Error(`policy must be one of: ${POLICY_NAMES.join(', ')}`)
+  }
+
   return {
     path: core.getInput('path') || '.',
     mode,
@@ -45,6 +51,7 @@ const parseInputs = (): ActionInputs => {
     failOnSeverity,
     failOnRegression: core.getBooleanInput('fail-on-regression'),
     minScore,
+    policy,
     sarif: core.getBooleanInput('upload-sarif'),
     outputDir: core.getInput('output-dir') || '.agentready',
     toolVersion: optionalInput('tool-version'),
@@ -70,6 +77,10 @@ const main = async (): Promise<void> => {
   }
   if (result.augmentedReportPath) {
     core.setOutput('augmented-report-path', result.augmentedReportPath)
+  }
+  core.setOutput('policy-adjustments-count', String(result.policyAdjustmentsCount))
+  if (result.policyEffectiveScore !== undefined) {
+    core.setOutput('policy-effective-score', String(result.policyEffectiveScore))
   }
 
   if (core.getBooleanInput('job-summary')) {

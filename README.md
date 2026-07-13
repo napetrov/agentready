@@ -45,7 +45,7 @@ Evidence collection is separated from policy:
 
 - **Detectors** observe facts about the repository (`lib/repo-readiness/detectors/`).
 - **Checks** evaluate those facts against rules and emit findings (`lib/repo-readiness/checks/`).
-- **Scoring** converts findings into an experimental readiness score (`lib/repo-readiness/core/scoring.ts`).
+- **Scoring** converts findings into an experimental readiness score, plus a per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) dimension-score rollup so, e.g., unsafe scripts don't get averaged away by strong CI (`lib/repo-readiness/core/scoring.ts`, `lib/repo-readiness/checks/catalog.ts`).
 - **Reporters** render console, JSON, and markdown output (`lib/repo-readiness/reporters/`).
 - The **scan engine** wires these together (`lib/repo-readiness/core/scan-engine.ts`).
 
@@ -81,6 +81,22 @@ The legacy `--json` / `--markdown` / `--sarif` flags are still accepted. Both
 `scan` and `diff` support `--fail-on <off|info|warning|error>` (default `error`)
 and `--min-score <0-100>`; the process exits non-zero when a gate trips.
 
+### Policy packs
+
+`--policy <name>` applies a team-specific severity policy to gating without
+changing the raw findings or score. `default` is a no-op; `enterprise` escalates
+missing agent instructions to `error` and install/deploy safety signals to
+`warning`, for organization-wide rollout governance:
+
+```bash
+npm run agentready -- scan . --policy enterprise --fail-on error
+```
+
+A non-default policy also prints its severity adjustments (with reasons) to
+human-readable output. See [docs/product/policy-packs.md](docs/product/policy-packs.md)
+for the design and what's still open (`oss`/`ml-scientific` packs, a config-file
+shape).
+
 ### Diff (PR readiness)
 
 `diff` compares two git refs and fails on new regressions. It uses a temporary
@@ -90,6 +106,22 @@ uncommitted changes:
 ```bash
 npm run agentready -- diff --base origin/main --head HEAD . --fail-on-regression
 ```
+
+### Batch (portfolio) scans
+
+`batch` scans multiple repositories in one invocation and emits an aggregated
+summary — no hosted service required. Pass explicit paths, `--root <dir>` to
+scan every immediate subdirectory of `dir`, or both:
+
+```bash
+npm run agentready -- batch ~/repos/service-a ~/repos/service-b
+npm run agentready -- batch --root ~/repos --format markdown --output portfolio.md
+npm run agentready -- batch --root ~/repos --min-score 70   # gate on any repo below 70
+```
+
+One repo failing to scan never aborts the batch; it's reported per-repo
+instead. `--fail-on-scan-error` (default on; pass `--no-fail-on-scan-error`
+to disable) and `--min-score` gate the exit code.
 
 ### Explain a finding
 
@@ -187,10 +219,11 @@ steps:
 ```
 
 Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
-`fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
+`fail-on-severity`, `fail-on-regression`, `min-score`, `policy`, `job-summary`,
 `pr-comment`, `pr-comment-condition`, `github-token`, `upload-sarif`, `output-dir`, `tool-version`,
 `analyze`, and `analyze-min-score`; outputs include `score`, `findings-count`,
-`regressions-count`, the report paths, and (when `analyze` is on)
+`regressions-count`, the report paths, `policy-adjustments-count`, (when
+`policy` is non-default) `policy-effective-score`, and (when `analyze` is on)
 `augmented-score`/`augmented-report-path`. See [`action.yml`](action.yml) for
 the authoritative contract.
 

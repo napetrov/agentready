@@ -3,6 +3,27 @@
 AgentReady should be judged by whether its findings predict real friction for
 coding agents, not only by parser coverage or score stability.
 
+## Status
+
+**Delivered (scaffold only):** `npm run agentready:benchmark`
+(`bin/agentready-evaluate.ts`) automates the deterministic half of the
+"Minimal public benchmark" below — a fixed, profile-diverse 10-repo corpus
+(`reports/evaluation/corpus.json`, one entry per profile in that section,
+including AgentReady itself scanned in place), a scan of each repo, and an
+aggregated `reports/evaluation/README.md` in the tracked-summary shape
+described here (corpus table, finding counts by category, and a
+`Repo`/`AgentReady signal`/`Observed agent friction`/`Decision` table).
+
+**Not delivered, and not automatable by this tool:** giving the same bounded
+task to real coding agents and recording their operational friction (task
+success, tool calls, hallucinated commands, reviewer corrections). That step
+requires actually running agents and a human judging the result — the
+generated report marks the "Observed agent friction"/"Decision" columns and
+the "Confirmed true/false positives" and "Missing signals" sections `TODO`
+rather than inventing plausible-looking data. Completing this milestone for
+real means a human (or a follow-up session with agent access) runs bounded
+tasks against the corpus and fills those sections in by hand.
+
 ## Core question
 
 For a bounded coding task in a repository, does the AgentReady report predict:
@@ -69,11 +90,15 @@ detector, policy, or documentation improvements.
 
 ## First milestone
 
-Create `reports/evaluation/README.md` or a release-note section with:
+`npm run agentready:benchmark` generates `reports/evaluation/README.md` with
+these already filled in:
 
 - the 10-repo corpus
 - the command used to scan each repo
 - finding counts by category
+
+What still needs a human/agent-run pass to complete the milestone for real:
+
 - three confirmed true positives
 - three confirmed false positives or severity adjustments
 - two missing signals to add next

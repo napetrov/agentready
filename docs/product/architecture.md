@@ -37,32 +37,34 @@ agentready
     [x] scan-engine        (scan + diff orchestration)
     [x] evidence-model     (typed report/evidence shapes)
     [x] finding-model      (findings with stable ids)
-    [x] scoring-model      (experimental severity-based score)
+    [x] scoring-model      (experimental severity-based score, plus a per-category dimension rollup)
     [x] config-loading
     [x] git worktree helper (safe ref scanning for diff)
-    [ ] policy-engine
+    [x] policy-engine      (PolicyPack/PolicyResult model, gate integration; see checks/policy-packs)
+    [x] portfolio-scan     (multi-repo batch scan + aggregated summary, local only; see cli batch)
   detectors/
     [x] instruction-files
     [x] repo-shape / file-inventory
     [x] package-managers
     [x] ci-workflows
     [x] command-surfaces   (Node, Make, CMake, Bazel, Go, Rust, Python)
+    [x] command-references (stale npm/yarn/pnpm/bun script, Makefile target, and package-manager mentions in docs/instructions)
     [x] docs
-    [x] capability-surfaces (MCP, skills, hooks, plugins, LSP)
+    [x] capability-surfaces (MCP, skills, hooks, plugins, LSP; each classified by blast-radius risk tier)
     [x] safety-signals     (dangerous package scripts, deploy/publish)
-    [ ] ownership
+    [x] governance         (CODEOWNERS / PR-template presence; not git-history-based ownership inference)
     [ ] risk-signals
   checks/
     [x] built-in-rules
     [ ] configurable-rule-runner
-    [ ] policy-packs
+    [x] policy-packs       (default no-op + enterprise; oss/ml-scientific remain candidates)
   reporters/
     [x] console
     [x] json
     [x] markdown
     [ ] sarif
   cli/
-    [x] commands (scan, diff)
+    [x] commands (scan, diff, batch)
     [x] config-loading
 ```
 
@@ -133,7 +135,7 @@ Local repository scanning, available today:
 - detect agent capability surfaces (MCP configs, skills, hooks, plugins, and code-intelligence/LSP config)
 - heuristic detection of dangerous package scripts (install hooks, destructive commands, network-piped shells, deploy/publish)
 - emit console, JSON, and markdown reports
-- produce an experimental score
+- produce an experimental score, plus a per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) dimension-score rollup so a repo with e.g. unsafe scripts but strong CI doesn't average out to look the same as the opposite profile
 - `diff` two git refs (via worktrees) and gate on regressions
 
 The v0.1 family is complete; v0.2 (automation and policy) is the next milestone.

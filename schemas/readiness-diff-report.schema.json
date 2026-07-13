@@ -143,6 +143,12 @@
                 "type": "string"
               }
             },
+            "makeTargets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "hasBuild": {
               "type": "boolean"
             },
@@ -159,11 +165,56 @@
           "required": [
             "ecosystems",
             "scripts",
+            "makeTargets",
             "hasBuild",
             "hasTest",
             "hasLint",
             "hasTypeCheck"
           ],
+          "additionalProperties": false
+        },
+        "commandReferences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "reference": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "npm-script",
+                  "make-target",
+                  "package-manager-mismatch"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "reference",
+              "kind",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "governance": {
+          "type": "object",
+          "properties": {
+            "codeownersPath": {
+              "type": "string"
+            },
+            "pullRequestTemplatePath": {
+              "type": "string"
+            }
+          },
           "additionalProperties": false
         },
         "ci": {
@@ -386,13 +437,22 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "riskTier": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
               }
             },
             "required": [
               "kind",
               "path",
               "tool",
-              "notes"
+              "notes",
+              "riskTier"
             ],
             "additionalProperties": false
           }
@@ -1616,6 +1676,126 @@
           ],
           "additionalProperties": false
         },
+        "dimensions": {
+          "minItems": 6,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": [
+                  "docs",
+                  "commands",
+                  "ci",
+                  "instructions",
+                  "files",
+                  "safety"
+                ]
+              },
+              "score": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "findingCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "bySeverity": {
+                "type": "object",
+                "properties": {
+                  "info": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "warning": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "error": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "info",
+                  "warning",
+                  "error"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "category",
+              "score",
+              "findingCount",
+              "bySeverity"
+            ],
+            "additionalProperties": false
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "docs"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "commands"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "ci"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "instructions"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "files"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "safety"
+                  }
+                }
+              }
+            }
+          ]
+        },
         "reportContract": {
           "type": "object",
           "properties": {
@@ -1629,7 +1809,8 @@
                 "type": "string",
                 "enum": [
                   "repositoryEvidence",
-                  "designState"
+                  "designState",
+                  "dimensions"
                 ]
               }
             }
@@ -1732,12 +1913,15 @@
         "summary",
         "docs",
         "commands",
+        "commandReferences",
+        "governance",
         "ci",
         "instructions",
         "capabilities",
         "safetySignals",
         "repositoryEvidence",
         "designState",
+        "dimensions",
         "reportContract",
         "findings",
         "files"
@@ -1874,6 +2058,12 @@
                 "type": "string"
               }
             },
+            "makeTargets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "hasBuild": {
               "type": "boolean"
             },
@@ -1890,11 +2080,56 @@
           "required": [
             "ecosystems",
             "scripts",
+            "makeTargets",
             "hasBuild",
             "hasTest",
             "hasLint",
             "hasTypeCheck"
           ],
+          "additionalProperties": false
+        },
+        "commandReferences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "reference": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "npm-script",
+                  "make-target",
+                  "package-manager-mismatch"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "reference",
+              "kind",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "governance": {
+          "type": "object",
+          "properties": {
+            "codeownersPath": {
+              "type": "string"
+            },
+            "pullRequestTemplatePath": {
+              "type": "string"
+            }
+          },
           "additionalProperties": false
         },
         "ci": {
@@ -2117,13 +2352,22 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "riskTier": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
               }
             },
             "required": [
               "kind",
               "path",
               "tool",
-              "notes"
+              "notes",
+              "riskTier"
             ],
             "additionalProperties": false
           }
@@ -3347,6 +3591,126 @@
           ],
           "additionalProperties": false
         },
+        "dimensions": {
+          "minItems": 6,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": [
+                  "docs",
+                  "commands",
+                  "ci",
+                  "instructions",
+                  "files",
+                  "safety"
+                ]
+              },
+              "score": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "findingCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "bySeverity": {
+                "type": "object",
+                "properties": {
+                  "info": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "warning": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "error": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "info",
+                  "warning",
+                  "error"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "category",
+              "score",
+              "findingCount",
+              "bySeverity"
+            ],
+            "additionalProperties": false
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "docs"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "commands"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "ci"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "instructions"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "files"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "safety"
+                  }
+                }
+              }
+            }
+          ]
+        },
         "reportContract": {
           "type": "object",
           "properties": {
@@ -3360,7 +3724,8 @@
                 "type": "string",
                 "enum": [
                   "repositoryEvidence",
-                  "designState"
+                  "designState",
+                  "dimensions"
                 ]
               }
             }
@@ -3463,12 +3828,15 @@
         "summary",
         "docs",
         "commands",
+        "commandReferences",
+        "governance",
         "ci",
         "instructions",
         "capabilities",
         "safetySignals",
         "repositoryEvidence",
         "designState",
+        "dimensions",
         "reportContract",
         "findings",
         "files"

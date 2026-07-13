@@ -161,12 +161,20 @@ const packageJsonScripts = (packageJson: unknown): Record<string, string> => {
 }
 
 const makefileNames = ['Makefile', 'makefile', 'GNUmakefile']
-const makeTargetPattern = /^([a-zA-Z0-9_.\-/]+)\s*:/gm
+// A rule line can list several space-separated targets sharing one prerequisite
+// list (`build test: setup`), so the capture group allows spaces and callers
+// split it on whitespace — a single-target capture would otherwise miss every
+// name in a shared rule.
+const makeTargetPattern = /^([a-zA-Z0-9_.\-/ ]+):/gm
 
 const hasCiScript = (filePaths: string[], names: string[]): boolean =>
   filePaths.some(filePath => names.some(name => new RegExp(`(^|/)${name}\\.(sh|bat|ps1)$`, 'i').test(filePath)))
 
-const detectMake = (root: string, filePaths: Set<string>, allPaths: string[]): EcosystemSignals | undefined => {
+const detectMake = (
+  root: string,
+  filePaths: Set<string>,
+  allPaths: string[],
+): { signals: EcosystemSignals; targets: string[] } | undefined => {
   const makefile = makefileNames.find(name => has(filePaths, name))
   if (!makefile) {
     return undefined
@@ -175,17 +183,22 @@ const detectMake = (root: string, filePaths: Set<string>, allPaths: string[]): E
   const content = readText(root, makefile) ?? ''
   const targets = new Set<string>()
   for (const match of content.matchAll(makeTargetPattern)) {
-    targets.add(match[1].toLowerCase())
+    for (const target of match[1].trim().split(/\s+/)) {
+      if (target) targets.add(target.toLowerCase())
+    }
   }
 
   const hasTarget = (...names: string[]): boolean => names.some(name => targets.has(name))
 
   return {
-    ecosystem: 'make',
-    hasBuild: hasTarget('build', 'all', 'compile') || hasCiScript(allPaths, ['build', 'build-doc']),
-    hasTest: hasTarget('test', 'tests', 'check') || hasCiScript(allPaths, ['test', 'run_test']),
-    hasLint: hasTarget('lint', 'fmt', 'format'),
-    hasTypeCheck: hasTarget('typecheck', 'type-check', 'types'),
+    signals: {
+      ecosystem: 'make',
+      hasBuild: hasTarget('build', 'all', 'compile') || hasCiScript(allPaths, ['build', 'build-doc']),
+      hasTest: hasTarget('test', 'tests', 'check') || hasCiScript(allPaths, ['test', 'run_test']),
+      hasLint: hasTarget('lint', 'fmt', 'format'),
+      hasTypeCheck: hasTarget('typecheck', 'type-check', 'types'),
+    },
+    targets: [...targets].sort(),
   }
 }
 
@@ -464,9 +477,10 @@ export const detectCommandSurfaces = (root: string, filePaths: string[]): Comman
   const filePathSet = new Set(filePaths)
 
   const node = detectNode(root, filePathSet)
+  const make = detectMake(root, filePathSet, filePaths)
   const signals: EcosystemSignals[] = [
     node?.signals,
-    detectMake(root, filePathSet, filePaths),
+    make?.signals,
     detectCmake(filePathSet, filePaths),
     detectBazel(filePathSet, filePaths),
     detectGo(filePathSet),
@@ -497,6 +511,7 @@ export const detectCommandSurfaces = (root: string, filePaths: string[]): Comman
     packageManager: detectPackageManager(filePathSet),
     ecosystems,
     scripts: node?.scripts ?? [],
+    makeTargets: make?.targets ?? [],
     hasBuild: signals.some(signal => signal.hasBuild),
     hasTest: signals.some(signal => signal.hasTest),
     hasLint: signals.some(signal => signal.hasLint),

@@ -4,6 +4,22 @@ The deterministic core should stay descriptive and conservative. Policy packs
 are the planned layer that turns the same evidence into team- or domain-specific
 severity, thresholds, and recommendations.
 
+## Status
+
+**Delivered:** the `PolicyPack`/`PolicyResult` model (`lib/repo-readiness/core/policy.ts`),
+a no-op `default` pack and a real `enterprise` pack (`lib/repo-readiness/checks/policy-packs.ts`),
+`--policy <name>` on `agentready scan`/`diff` (gating + a printed adjustment
+summary for human-readable formats), and a `policy` input on the GitHub Action
+(`policy-adjustments-count`/`policy-effective-score` outputs). Raw findings and
+`summary.score` are never mutated by a policy — see `PolicyResult.effectiveScore`
+and `severityAdjustments` below, which is exactly what shipped.
+
+**Not yet delivered:** `oss` and `ml-scientific` packs (still candidates, see
+below), the `policyOptions`/config-file shape (thresholds are currently fixed
+per pack, not configurable), and folding `PolicyResult` into the JSON/SARIF
+report contract (it's CLI/Action-surfaced only today, not part of `scan
+--format json`'s output, to keep that format's schema policy-independent).
+
 ## Goals
 
 - Keep default scans useful for any repository without assuming one stack,
@@ -13,17 +29,22 @@ severity, thresholds, and recommendations.
 - Support `scan`, `diff`, the GitHub Action, and reports with the same policy
   semantics.
 
-## Proposed CLI shape
+## CLI shape
+
+`default` and `enterprise` are real today; `oss` and `ml-scientific` remain
+proposed (see "Candidate built-in packs" below).
 
 ```bash
-agentready scan . --policy default
-agentready scan . --policy oss
-agentready scan . --policy enterprise
-agentready scan . --policy ml-scientific
-agentready diff --base origin/main --head HEAD . --policy enterprise --fail-on-regression
+agentready scan . --policy default        # delivered — no-op
+agentready scan . --policy enterprise     # delivered
+agentready scan . --policy oss            # proposed
+agentready scan . --policy ml-scientific  # proposed
+agentready diff --base origin/main --head HEAD . --policy enterprise --fail-on-regression  # delivered
 ```
 
-Configuration should be data-only and merge with explicit CLI selection:
+Proposed (not yet implemented): configuration should be data-only and merge
+with explicit CLI selection, so a policy can be set once per repo instead of
+on every invocation:
 
 ```json
 {
@@ -56,18 +77,28 @@ Possible expectations:
 - PR review evidence is easy to include in comments/job summaries
 - large fixtures are tolerated when they are clearly intentional
 
-### `enterprise`
+### `enterprise` — delivered (partial)
 
 Optimized for organization-wide agent rollout and governance.
 
-Possible expectations:
+Delivered escalations (`lib/repo-readiness/checks/policy-packs.ts`):
 
-- explicit agent instruction entrypoint for non-trivial repos
+- `instructions.missing` (warning → error): explicit agent instruction entrypoint
+  is required, not optional.
+- `safety.install-hook` (info → warning): install-time hooks must be visible
+  enough to gate on.
+- `safety.deploy` (info → warning): deploy/publish scripts must be visible
+  enough to gate on.
+- `safety.capability.high-risk` (info → warning): capability surfaces the
+  risk-tier classifier scored `high` blast radius (MCP server configs, hook
+  scripts, configured hooks blocks, plugin manifests) must be visible enough
+  to gate on, not just listed.
+
+Remaining candidate expectations (not yet implemented):
+
 - local build/test/lint/type-check surfaces or documented exemption
 - CI runs discovered local verification surfaces
-- dangerous deploy/publish/install hooks are called out with higher severity
 - private/local instruction files do not leak into always-on guidance
-- capability surfaces (MCP, hooks, plugins) are visible for approval workflows
 
 ### `ml-scientific`
 
@@ -98,6 +129,8 @@ type PolicyResult = {
     to: "info" | "warning" | "error";
     reason: string;
   }>;
+  adjustedFindings: unknown[]; // findings with policy-adjusted severities
+  effectiveScore: number; // calculateScore() re-run over adjustedFindings
 };
 ```
 
@@ -105,9 +138,10 @@ This keeps baseline scans comparable while making policy gates auditable.
 
 ## First implementation slice
 
-1. Add a typed `PolicyPack` interface and a built-in `default` pack that is a
+1. [x] Add a typed `PolicyPack` interface and a built-in `default` pack that is a
    no-op over today's behavior.
-2. Add `--policy <name>` to CLI and Action inputs, plus report metadata.
-3. Implement one meaningful pack (`enterprise` or `ml-scientific`) with tests
-   that show severity adjustments and unchanged raw evidence.
-4. Add diff gating on policy-adjusted severity while preserving raw finding IDs.
+2. [x] Add `--policy <name>` to CLI and Action inputs. (Report *metadata* — folding
+   `PolicyResult` into the JSON/SARIF contract — remains open; see Status above.)
+3. [x] Implement one meaningful pack (`enterprise`) with tests that show severity
+   adjustments and unchanged raw evidence. `ml-scientific` remains a candidate.
+4. [x] Add diff gating on policy-adjusted severity while preserving raw finding IDs.

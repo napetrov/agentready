@@ -98,6 +98,84 @@ describe('scan command', () => {
   })
 })
 
+describe('--policy option', () => {
+  let root: string
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-cli-policy-'))
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'jest', lint: 'eslint .', build: 'tsc' } }))
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'name: CI\njobs:\n  test:\n    steps:\n      - run: npm run lint\n      - run: npm test\n      - run: npm run build\n',
+    )
+    // No AGENTS.md: instructions.missing (warning by default) is the only
+    // finding, so only the enterprise policy's escalation of it changes
+    // gating/score — CI is present so ci.workflow.missing doesn't also fire.
+  })
+  afterEach(() => rmSync(root, { recursive: true, force: true }))
+
+  it('does not affect gating or output under the default policy', async () => {
+    const withoutFlag = await run(['scan', root, '--fail-on', 'error'])
+    const withDefault = await run(['scan', root, '--fail-on', 'error', '--policy', 'default'])
+    expect(withoutFlag.exitCode).toBe(0)
+    expect(withDefault.exitCode).toBe(0)
+    expect(withDefault.stdout).not.toContain('Policy:')
+  })
+
+  it('escalates instructions.missing to error under --policy enterprise and prints the adjustment', async () => {
+    const result = await run(['scan', root, '--fail-on', 'error', '--policy', 'enterprise'])
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toMatch(/gate failed/)
+    expect(result.stdout).toContain('Policy: enterprise')
+    expect(result.stdout).toContain('instructions.missing: warning -> error')
+  })
+
+  it('rejects an unrecognized policy name', async () => {
+    const result = await run(['scan', root, '--policy', 'bogus'])
+    expect(result.error).toBeDefined() // Commander rejects an out-of-choices value
+  })
+
+  it('writes the policy summary to --output instead of stdout, alongside the report', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'agentready-cli-policy-output-'))
+    try {
+      const outFile = path.join(dir, 'out.md')
+      const result = await run(['scan', root, '--format', 'markdown', '--policy', 'enterprise', '--output', outFile])
+      expect(result.stdout).toBe('') // nothing written to stdout
+      const written = readFileSync(outFile, 'utf8')
+      expect(written).toContain('## AgentReady scan')
+      expect(written).toContain('Policy: enterprise')
+      expect(written).toContain('instructions.missing: warning -> error')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('applies to diff mode too, gating on the head report under the policy', async () => {
+    const runGit = (args: string[]): void => {
+      execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], { cwd: root, stdio: ['ignore', 'ignore', 'pipe'] })
+    }
+    runGit(['init', '-b', 'main'])
+    runGit(['config', 'user.email', 't@e.com'])
+    runGit(['config', 'user.name', 'T'])
+    runGit(['add', '.'])
+    runGit(['commit', '-m', 'base'])
+
+    // base === head, so nothing is a *new* finding — this isolates the
+    // min-score gate's use of the policy-adjusted head score specifically.
+    // Raw score is 100 minus the instructions.missing warning penalty (-7) and
+    // the docs.pull-request-template.missing info penalty (-2) = 91; enterprise
+    // escalates instructions.missing to error, dropping it further to 80.
+    const defaultResult = await run(['diff', root, '--base', 'HEAD', '--head', 'HEAD', '--fail-on', 'off', '--min-score', '90'])
+    const enterpriseResult = await run([
+      'diff', root, '--base', 'HEAD', '--head', 'HEAD', '--fail-on', 'off', '--min-score', '90', '--policy', 'enterprise',
+    ])
+    expect(defaultResult.exitCode).toBe(0)
+    expect(enterpriseResult.exitCode).toBe(1)
+    expect(enterpriseResult.stderr).toMatch(/score/i)
+  })
+})
+
 describe('diff command', () => {
   let root: string
   const runGit = (args: string[]): void => {
@@ -129,6 +207,84 @@ describe('diff command', () => {
     const result = await run(['diff', root, '--base', 'HEAD~1', '--head', 'HEAD', '--fail-on-regression'])
     expect(result.stdout).toContain('AgentReady diff:')
     expect(result.exitCode).toBe(1)
+  })
+})
+
+describe('batch command', () => {
+  it('scans multiple explicit repo paths and prints an aggregated summary', async () => {
+    const result = await run(['batch', goodFixture, badFixture])
+    expect(result.stdout).toContain('AgentReady portfolio: 2 repo(s) (2 scanned, 0 failed)')
+    expect(result.exitCode).toBe(0)
+  })
+
+  it('scans every immediate subdirectory of --root', async () => {
+    const result = await run(['batch', '--root', fixtureRoot])
+    // fixtureRoot has more than just good-repo/bad-repo, but both are present.
+    expect(result.stdout).toContain('AgentReady portfolio:')
+    expect(result.stdout).toMatch(/repo\(s\) \(\d+ scanned, 0 failed\)/)
+  })
+
+  it('emits JSON with --format json', async () => {
+    const result = await run(['batch', goodFixture, badFixture, '--format', 'json'])
+    const report = JSON.parse(result.stdout)
+    expect(report.summary.repoCount).toBe(2)
+    expect(report.summary.scannedCount).toBe(2)
+    expect(report.repos).toHaveLength(2)
+  })
+
+  it('emits markdown with --format markdown', async () => {
+    const result = await run(['batch', goodFixture, badFixture, '--format', 'markdown'])
+    expect(result.stdout).toContain('## AgentReady portfolio scan')
+    expect(result.stdout).toContain('| Repo | Score | Error | Warning | Info | Notes |')
+  })
+
+  it('fails when a repo could not be scanned', async () => {
+    const missing = path.join(fixtureRoot, 'this-repo-does-not-exist')
+    const result = await run(['batch', goodFixture, missing])
+    expect(result.stdout).toContain('1 failed')
+    expect(result.exitCode).toBe(1)
+  })
+
+  it('does not fail on a scan error when --no-fail-on-scan-error is set', async () => {
+    const missing = path.join(fixtureRoot, 'this-repo-does-not-exist')
+    const result = await run(['batch', goodFixture, missing, '--no-fail-on-scan-error'])
+    expect(result.exitCode).toBe(0)
+  })
+
+  it('fails when a scanned repo drops below --min-score', async () => {
+    const result = await run(['batch', goodFixture, badFixture, '--min-score', '90'])
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain('scored below the minimum 90')
+  })
+
+  it('errors when given no paths and no --root', async () => {
+    const result = await run(['batch'])
+    expect(result.error).toBeDefined()
+  })
+
+  it('resolves a relative --config against the caller\'s cwd, not each target repo root', async () => {
+    // --config is one shared file the caller names relative to their own
+    // working directory; it must not be re-resolved against every different
+    // target root (where a same-named relative file may not exist at all).
+    const cwdDir = mkdtempSync(path.join(tmpdir(), 'agentready-cli-batch-cwd-'))
+    const previousCwd = process.cwd()
+    try {
+      writeFileSync(path.join(cwdDir, 'shared.json'), JSON.stringify({ largeFileWarningBytes: 1 }))
+      process.chdir(cwdDir)
+
+      const result = await run(['batch', goodFixture, '--config', 'shared.json', '--format', 'json'])
+      const report = JSON.parse(result.stdout)
+      expect(report.summary.scanErrorCount).toBe(0)
+      const repo = report.repos[0]
+      expect(repo.ok).toBe(true)
+      // largeFileWarningBytes: 1 forces every file over 1 byte into a
+      // files.large finding — proof the shared config actually took effect,
+      // not just that the scan didn't error.
+      expect(repo.findingCount).toBeGreaterThan(0)
+    } finally {
+      process.chdir(previousCwd)
+      rmSync(cwdDir, { recursive: true, force: true })
+    }
   })
 })
 

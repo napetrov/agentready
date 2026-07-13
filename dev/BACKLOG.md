@@ -116,9 +116,9 @@ Known dogfood regression matrix:
 - [ ] **v0.3 issue drafts / milestone.** Keep ready-to-open issue drafts in
   `docs/roadmap/v0.3-issue-drafts.md` until they are mirrored into GitHub
   Issues. _(S)_
-- [ ] **Policy-pack design.** Add the policy-pack story to docs before
-  implementation: no-op `default`, then a meaningful `enterprise` or
-  `ml-scientific` pack that adjusts severity without mutating raw evidence. _(M)_
+- [x] **Policy-pack design.** Delivered; see the "Policy packs" bullet under
+  "P2 — Semantic CI & policy" below for the shipped shape (`default` +
+  `enterprise`, severity adjustment without mutating raw evidence).
 - [ ] **Evaluation story.** Publish a small benchmark plan that compares
   AgentReady findings against real coding-agent friction across a mixed repo
   corpus. Keep raw artifacts outside the tracked repo. _(M)_
@@ -273,10 +273,46 @@ Verified against the current `main`/branch code before accepting:
   was recognized) to avoid false positives. Parsing is read-only; workflow
   correctness is still delegated to actionlint/ShellCheck rather than
   reimplemented. _(M)_
-- [ ] **Policy packs.** Keep built-in rules in TypeScript; add optional
-  policy-pack ingestion over the AgentReady JSON evidence (OPA/Conftest-style).
-  Add `@agentready/policy-default` once the package split happens. _(L)_
+- [x] **Policy packs** (`docs/product/policy-packs.md`) — **delivered**: a
+  typed `PolicyPack`/`PolicyResult` model (`core/policy.ts`), a no-op `default`
+  pack and a real `enterprise` pack (`checks/policy-packs.ts`, four severity
+  escalations), `--policy <name>` on `scan`/`diff`, and a `policy` Action input.
+  Shipped as first-class TypeScript rather than external OPA/Conftest-style
+  ingestion over JSON evidence — matches the design doc, not this bullet's
+  original OPA framing. `oss`/`ml-scientific` packs and a config-file
+  `policy`/`policyOptions` shape remain open; `@agentready/policy-default` as
+  a separate package still depends on the package-split work below. _(L)_
 - [ ] **Instruction-file overlap / contradiction checks.** _(M)_
+- [x] **Capability-surface risk tiers** — delivered: `CapabilitySurfaceEvidence`
+  gained a `riskTier` (`low`/`medium`/`high`) field. MCP configs, hook scripts,
+  plugin manifests, and a Claude Code settings file that configures a
+  non-empty `hooks` block are `high` (arbitrary commands, or a tool set static
+  config can't verify); a settings file with no `hooks` key is `medium`; LSP
+  config and skills stay `low`. New `safety.capability.high-risk` (info)
+  finding per `high`-tier surface; the `enterprise` policy pack escalates it
+  to warning. _(M)_
+- [x] **Local multi-repo/portfolio batch mode** — delivered:
+  `agentready batch [paths...] [--root <dir>]` (`core/portfolio.ts`) scans
+  every target independently through the same `scanLocalReadiness` pipeline —
+  one broken repo never aborts the batch, it's just captured as a per-repo
+  scan error — and aggregates into `summary`/`json`/`markdown` output
+  (`report.summary.averageScore/minScore/maxScore`, severity totals, and
+  per-repo `topFindings`), gated by `--min-score` and
+  `--fail-on-scan-error`/`--no-fail-on-scan-error`. No hosted service
+  required. Schema: `schemas/portfolio-report.schema.json`. _(M)_
+- [x] **Empirical validation scaffold** (`docs/product/evaluation.md`) —
+  **delivered (scaffold only)**: `npm run agentready:benchmark`
+  (`bin/agentready-evaluate.ts`) automates the deterministic half of the
+  "Minimal public benchmark" — a fixed 10-repo, profile-diverse corpus
+  (`reports/evaluation/corpus.json`, one entry per profile from the doc,
+  including AgentReady itself scanned in place, never cloned), scans each
+  repo, and generates `reports/evaluation/README.md` with the corpus table,
+  scan commands, and finding counts by category. Giving the same bounded task
+  to real coding agents and recording their friction is explicitly NOT
+  automated — that needs an actual agent run and human judgment, so the
+  report marks the friction/decision/true-false-positive sections `TODO`
+  rather than inventing data. Completing the milestone for real is future
+  work; see `docs/product/evaluation.md`'s Status section. _(M)_
 
 ## P2 — LLM / agentic analytics layer (optional, opt-in)
 
@@ -319,7 +355,9 @@ Proposed steps where the layer can plug in (to be refined in the next PR):
   enforces a floor in CI, catching plumbing regressions (broken hallucination
   guards, dropped score folding, id drift) without calling a model; the same
   harness can score a live model in a one-off recording run. Human-agreement and
-  task-friction correlation (via the benchmark harness) remain future work. _(L)_
+  task-friction correlation (via the empirical validation scaffold above) remain
+  future work — that scaffold generates the corpus/scan half but not real agent
+  runs. _(L)_
 
 ## P2 — Companion-tool orchestration (do not reimplement)
 

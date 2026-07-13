@@ -11,7 +11,10 @@ import { z } from 'zod'
 import {
   localReadinessConfigSchema,
   localReadinessReportSchema,
+  portfolioReportSchema,
   readinessDiffReportSchema,
+  readinessDimensionScoreListSchema,
+  readinessRuleCategorySchema,
 } from '../lib/repo-readiness/local-readiness'
 import { augmentedReportSchema, llmInsightSchema } from '../lib/analyze'
 
@@ -51,6 +54,12 @@ const entries: SchemaEntry[] = [
     schema: readinessDiffReportSchema,
   },
   {
+    file: 'portfolio-report.schema.json',
+    id: 'portfolio-report',
+    title: 'AgentReady portfolio (multi-repo) scan report',
+    schema: portfolioReportSchema,
+  },
+  {
     file: 'llm-insight.schema.json',
     id: 'llm-insight',
     title: 'AgentReady LLM insight',
@@ -64,8 +73,29 @@ const entries: SchemaEntry[] = [
   },
 ]
 
+// draft-7 has no keyword for "distinct values of a sub-property across array
+// items" (that needs 2019-09's minContains/maxContains), but combining
+// `contains` (supported since draft-6) with the schema's own `.length(6)`
+// gets the same result by pigeonhole: requiring each of the 6 categories to
+// appear at least once in an array of exactly 6 items forces each to appear
+// exactly once. This mirrors the runtime Zod `.refine()` uniqueness check in
+// `readinessDimensionScoreListSchema`, which JSON Schema can't otherwise
+// express, so generated consumers (CI, editors) reject the same malformed
+// `dimensions` arrays the scanner's own runtime validation does.
+const isSchema = (candidate: unknown, target: z.ZodType): boolean => candidate === target
+
+const dimensionCategoryOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }): void => {
+  if (!isSchema(ctx.zodSchema, readinessDimensionScoreListSchema)) return
+  ctx.jsonSchema.allOf = readinessRuleCategorySchema.options.map(category => ({
+    contains: { properties: { category: { const: category } } },
+  }))
+}
+
 const render = (entry: SchemaEntry): string => {
-  const jsonSchema = z.toJSONSchema(entry.schema, { target: 'draft-7' }) as Record<string, unknown>
+  const jsonSchema = z.toJSONSchema(entry.schema, {
+    target: 'draft-7',
+    override: dimensionCategoryOverride,
+  }) as Record<string, unknown>
   const document = {
     $id: `${baseId}/v${version}/${entry.id}.schema.json`,
     title: entry.title,

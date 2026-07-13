@@ -1,5 +1,8 @@
+import { adjustFindings, applyPolicy, type PolicyPack } from './policy'
+import { computeRegressions } from './scan-engine'
 import type {
   LocalReadinessReport,
+  PortfolioReport,
   ReadinessDiffReport,
   ReadinessFinding,
   ReadinessSeverity,
@@ -21,6 +24,12 @@ export interface GateOptions {
   failOnRegression?: boolean
   /** Fail when the (head) score drops below this minimum. */
   minScore?: number
+  /**
+   * When provided, the severity/score gates use this policy pack's
+   * adjustments instead of the raw deterministic findings/score. Raw evidence
+   * is never mutated; this only changes what the gate reacts to.
+   */
+  policy?: PolicyPack
 }
 
 export interface GateResult {
@@ -53,12 +62,16 @@ export const evaluateScanGate = (report: LocalReadinessReport, options: GateOpti
   const failOnSeverity = options.failOnSeverity ?? 'error'
   const failureReasons: string[] = []
 
-  const severityHits = countSeverityHits(report.findings, failOnSeverity)
+  const policyResult = options.policy ? applyPolicy(report, options.policy) : undefined
+  const findings = policyResult?.adjustedFindings ?? report.findings
+  const score = policyResult?.effectiveScore ?? report.summary.score
+
+  const severityHits = countSeverityHits(findings, failOnSeverity)
   if (severityHits > 0) {
     failureReasons.push(`${severityHits} finding(s) at or above "${failOnSeverity}"`)
   }
 
-  checkMinScore(report.summary.score, options.minScore, failureReasons)
+  checkMinScore(score, options.minScore, failureReasons)
 
   return { failed: failureReasons.length > 0, failureReasons }
 }
@@ -72,16 +85,63 @@ export const evaluateDiffGate = (report: ReadinessDiffReport, options: GateOptio
   const failOnSeverity = options.failOnSeverity ?? 'error'
   const failureReasons: string[] = []
 
-  if (options.failOnRegression && report.regressions.length > 0) {
-    failureReasons.push(`${report.regressions.length} readiness regression(s) introduced`)
+  if (options.failOnRegression) {
+    // `report.regressions` is always computed from raw, unadjusted findings.
+    // Under a policy that escalates severity (e.g. `enterprise` promoting
+    // `safety.*` findings from info to warning), a newly introduced info
+    // finding can be gateable under the policy but invisible to the raw
+    // regression set — recompute against policy-adjusted findings so
+    // `--fail-on-regression` sees what the policy actually gates on.
+    const regressions = options.policy
+      ? computeRegressions(
+          adjustFindings(report.baseReport.findings, options.policy).adjustedFindings,
+          adjustFindings(report.headReport.findings, options.policy).adjustedFindings,
+        )
+      : report.regressions
+    if (regressions.length > 0) {
+      failureReasons.push(`${regressions.length} readiness regression(s) introduced`)
+    }
   }
 
-  const severityHits = countSeverityHits(report.newFindings, failOnSeverity)
+  const newFindings = options.policy ? adjustFindings(report.newFindings, options.policy).adjustedFindings : report.newFindings
+  const severityHits = countSeverityHits(newFindings, failOnSeverity)
   if (severityHits > 0) {
     failureReasons.push(`${severityHits} new finding(s) at or above "${failOnSeverity}"`)
   }
 
-  checkMinScore(report.headReport.summary.score, options.minScore, failureReasons)
+  const score = options.policy ? applyPolicy(report.headReport, options.policy).effectiveScore : report.headReport.summary.score
+  checkMinScore(score, options.minScore, failureReasons)
+
+  return { failed: failureReasons.length > 0, failureReasons }
+}
+
+export interface PortfolioGateOptions {
+  /** Fail when any successfully-scanned repo's score drops below this minimum. */
+  minScore?: number
+  /** Fail when one or more repos could not be scanned at all. Defaults to `true`. */
+  failOnScanError?: boolean
+}
+
+/**
+ * Evaluates the configured gates for a portfolio (multi-repo) scan: a repo
+ * that could not be scanned at all, and any successfully-scanned repo whose
+ * score falls below `minScore`.
+ */
+export const evaluatePortfolioGate = (report: PortfolioReport, options: PortfolioGateOptions = {}): GateResult => {
+  const failOnScanError = options.failOnScanError ?? true
+  const failureReasons: string[] = []
+
+  if (failOnScanError && report.summary.scanErrorCount > 0) {
+    failureReasons.push(`${report.summary.scanErrorCount} repo(s) could not be scanned`)
+  }
+
+  if (options.minScore !== undefined) {
+    const minScore = options.minScore
+    const belowMinimum = report.repos.filter(repo => repo.ok && repo.score < minScore).length
+    if (belowMinimum > 0) {
+      failureReasons.push(`${belowMinimum} repo(s) scored below the minimum ${minScore}`)
+    }
+  }
 
   return { failed: failureReasons.length > 0, failureReasons }
 }

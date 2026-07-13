@@ -1,3 +1,4 @@
+import type { PolicyResult } from '../core/policy'
 import type { CiEvidence, LocalReadinessReport, ReadinessDiffReport } from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
 
@@ -11,12 +12,36 @@ const ciCoverageLine = (ci: CiEvidence): string => {
   return `CI: ${ci.workflowFiles.length} workflow${plural} (${detail})`
 }
 
+// Omits zero-count severities so a clean dimension stays a bare `category
+// score` and only findings-bearing dimensions grow a "(N error, N warning)"
+// suffix, keeping the one-line summary scannable.
+const dimensionDetail = (bySeverity: { info: number; warning: number; error: number }): string =>
+  (['error', 'warning', 'info'] as const)
+    .filter(severity => bySeverity[severity] > 0)
+    .map(severity => `${bySeverity[severity]} ${severity}`)
+    .join(', ')
+
+const dimensionsLine = (report: LocalReadinessReport): string =>
+  `Dimensions: ${(report.dimensions ?? [])
+    .map(dimension => {
+      const detail = dimensionDetail(dimension.bySeverity)
+      return `${dimension.category} ${dimension.score}${detail ? ` (${detail})` : ''}`
+    })
+    .join(', ')}`
+
+const capabilitiesLine = (report: LocalReadinessReport): string => {
+  const highRisk = report.capabilities.filter(surface => surface.riskTier === 'high').length
+  const highRiskDetail = highRisk > 0 ? `, ${highRisk} high-risk` : ''
+  return `Capabilities: ${report.capabilities.length}${highRiskDetail}, safety signals: ${report.safetySignals.length}`
+}
+
 export function formatScanSummary(report: LocalReadinessReport): string {
   const lines = [
     `AgentReady score: ${report.summary.score}/100`,
     `Files: ${report.summary.totalFiles} (${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs)`,
-    `Capabilities: ${report.capabilities.length}, safety signals: ${report.safetySignals.length}`,
+    capabilitiesLine(report),
     ciCoverageLine(report.ci),
+    dimensionsLine(report),
     `Findings: ${report.findings.length}`,
   ]
 
@@ -24,6 +49,24 @@ export function formatScanSummary(report: LocalReadinessReport): string {
     lines.push(`- [${finding.severity}] ${finding.title}${finding.path ? ` (${finding.path})` : ''}`)
   }
 
+  return lines.join('\n')
+}
+
+/**
+ * Renders a policy pack's severity adjustments and effective score. Only
+ * meaningful when a non-default policy was explicitly requested; the raw
+ * `report.summary.score`/`findings` are never changed by policy.
+ */
+export function formatPolicySummary(result: PolicyResult): string {
+  if (result.severityAdjustments.length === 0) {
+    return `Policy: ${result.policy} (no severity adjustments; effective score ${result.effectiveScore}/100)`
+  }
+  const lines = [
+    `Policy: ${result.policy} (${result.severityAdjustments.length} severity adjustment(s), effective score ${result.effectiveScore}/100)`,
+  ]
+  for (const adjustment of result.severityAdjustments) {
+    lines.push(`- ${adjustment.findingId}: ${adjustment.from} -> ${adjustment.to} (${adjustment.reason})`)
+  }
   return lines.join('\n')
 }
 

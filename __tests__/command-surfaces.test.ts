@@ -182,6 +182,18 @@ describe('detectCommandSurfaces (units)', () => {
     expect(evidence).toMatchObject({ hasBuild: true, hasTest: true, hasLint: true, hasTypeCheck: true })
   })
 
+  it('exposes the raw Makefile target names for command-reference validation', () => {
+    write('Makefile', 'build:\n\tcc -o app main.c\ntest:\n\t./t.sh\n')
+    const evidence = detectCommandSurfaces(root, ['Makefile'])
+    expect(evidence.makeTargets).toEqual(['build', 'test'])
+  })
+
+  it('reports empty makeTargets for a non-Make repo', () => {
+    write('package.json', JSON.stringify({ scripts: { test: 'jest' } }))
+    const evidence = detectCommandSurfaces(root, ['package.json'])
+    expect(evidence.makeTargets).toEqual([])
+  })
+
   it('recognizes CI script conventions beside a Makefile', () => {
     write('makefile', 'help:\n\t@echo help\n')
     write('.ci/scripts/build.sh', '#!/usr/bin/env bash\n')

@@ -1,4 +1,5 @@
-import type { ReadinessSeverity } from '../core/types'
+import { calculateScore } from '../core/scoring'
+import type { ReadinessDimensionScore, ReadinessFinding, ReadinessRuleCategory, ReadinessSeverity } from '../core/types'
 
 /**
  * Human-facing documentation for a single readiness rule. The deterministic
@@ -13,7 +14,7 @@ export interface RuleDoc {
   /** Short title, matching the finding title the detector emits. */
   title: string
   /** Grouping used for display and filtering. */
-  category: 'docs' | 'commands' | 'ci' | 'instructions' | 'files' | 'safety'
+  category: ReadinessRuleCategory
   /**
    * Default severity. Some `warning` rules escalate to `error` when
    * `errorOnWarnings` is set; `safety.*` severities vary by category.
@@ -95,6 +96,71 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Run it in CI.',
     ],
     references: [DOCS],
+  },
+  'commands.reference.npm-script': {
+    id: 'commands.reference.npm-script',
+    title: 'Instruction/README references an npm/yarn/pnpm/bun script that does not exist',
+    category: 'commands',
+    defaultSeverity: 'warning',
+    rationale:
+      'An agent that trusts a documented command (e.g. `npm run buld`) wastes a turn discovering it fails, and may guess the wrong replacement. AgentReady only flags unambiguous `<manager> run <script>` and bare `test`/`start` forms against the detected package.json scripts, to keep false positives low.',
+    remediation: [
+      'Fix the typo, or add the missing script to package.json.',
+      'If the command is intentionally illustrative (not meant to be copy-pasted), say so nearby.',
+    ],
+    references: [DOCS],
+  },
+  'commands.reference.make-target': {
+    id: 'commands.reference.make-target',
+    title: 'Instruction/README references a make target that does not exist',
+    category: 'commands',
+    defaultSeverity: 'warning',
+    rationale:
+      'A documented `make test`/`make lint` that no longer has a matching Makefile target sends an agent down a dead end.',
+    remediation: [
+      'Fix the typo, or add the missing target to the Makefile.',
+      'If the command is intentionally illustrative, say so nearby.',
+    ],
+    references: [DOCS],
+  },
+  'commands.reference.package-manager-mismatch': {
+    id: 'commands.reference.package-manager-mismatch',
+    title: 'Instruction/README references a different package manager than the lockfile',
+    category: 'commands',
+    defaultSeverity: 'info',
+    rationale:
+      'Guidance that says "npm install" in a repo whose lockfile is pnpm-lock.yaml can produce a second, conflicting lockfile if an agent follows it literally. This is a softer text heuristic than the script/target checks — docs can legitimately discuss more than one package manager — so it stays informational.',
+    remediation: [
+      'Update the instructions to reference the package manager the lockfile implies.',
+      'If multiple package managers are genuinely supported, say so explicitly.',
+    ],
+    references: [DOCS],
+  },
+  'docs.codeowners.missing': {
+    id: 'docs.codeowners.missing',
+    title: 'No CODEOWNERS file detected',
+    category: 'docs',
+    defaultSeverity: 'info',
+    rationale:
+      'Without CODEOWNERS, neither a human nor an agent knows who should review a change, so a PR can sit unassigned. Fires only for non-trivial repos (>20 source files), where more than one likely reviewer makes routing matter.',
+    remediation: [
+      'Add a CODEOWNERS file at the repo root, .github/, or docs/.',
+      'Map at least the main source directories to a reviewer or team.',
+    ],
+    references: [DOCS, 'https://docs.github.com/articles/about-code-owners'],
+  },
+  'docs.pull-request-template.missing': {
+    id: 'docs.pull-request-template.missing',
+    title: 'No pull-request template detected',
+    category: 'docs',
+    defaultSeverity: 'info',
+    rationale:
+      'A PR template tells an agent what evidence a reviewer expects — files changed and why, verification commands run, known skipped checks — instead of leaving it to guess.',
+    remediation: [
+      'Add .github/pull_request_template.md (or docs/, or a root pull_request_template.md).',
+      'Include a short checklist: what changed, why, and how it was verified.',
+    ],
+    references: [DOCS, 'https://docs.github.com/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository'],
   },
   'ci.workflow.missing': {
     id: 'ci.workflow.missing',
@@ -265,7 +331,23 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     ],
     references: [DOCS],
   },
+  'safety.capability.high-risk': {
+    id: 'safety.capability.high-risk',
+    title: 'High blast-radius agent capability surface detected',
+    category: 'safety',
+    defaultSeverity: 'info',
+    rationale:
+      'An MCP server config, hook script, configured hooks block, or plugin manifest can run arbitrary commands or grant an agent tools whose scope this scanner cannot verify statically (an MCP server\'s actual tool set is only visible over the protocol at runtime, not in its launch config). Listing every capability surface as equally "present" hides which ones actually widen what an agent can do.',
+    remediation: [
+      'Review what the MCP server, hook, or plugin actually grants access to before approving it for agent use.',
+      'Route high-risk capability surfaces through an approval workflow (e.g. the enterprise policy pack) rather than trusting presence alone.',
+    ],
+    references: [DOCS, 'https://modelcontextprotocol.io/'],
+  },
 }
+
+/** Every dimension axis, in the order reports should display them. */
+export const RULE_CATEGORIES: ReadinessRuleCategory[] = ['docs', 'commands', 'ci', 'instructions', 'files', 'safety']
 
 /** Resolves a rule key from a rule id or an instance finding id (`rule:instance`). */
 export const ruleKeyFor = (findingOrRuleId: string): string => findingOrRuleId.split(':')[0]
@@ -273,6 +355,27 @@ export const ruleKeyFor = (findingOrRuleId: string): string => findingOrRuleId.s
 /** Looks up rule documentation by rule id or full finding id. */
 export const getRuleDoc = (findingOrRuleId: string): RuleDoc | undefined =>
   RULE_CATALOG[ruleKeyFor(findingOrRuleId)]
+
+/**
+ * Splits findings by the catalog category their rule is filed under and scores
+ * each group with the same penalty model as the overall score, so e.g. a
+ * repo with unsafe scripts but strong CI doesn't average out to look the same
+ * as one with the opposite profile.
+ */
+export const calculateDimensionScores = (findings: ReadinessFinding[]): ReadinessDimensionScore[] =>
+  RULE_CATEGORIES.map(category => {
+    const categoryFindings = findings.filter(finding => getRuleDoc(finding.id)?.category === category)
+    const bySeverity: Record<ReadinessSeverity, number> = { info: 0, warning: 0, error: 0 }
+    for (const finding of categoryFindings) {
+      bySeverity[finding.severity] += 1
+    }
+    return {
+      category,
+      score: calculateScore(categoryFindings),
+      findingCount: categoryFindings.length,
+      bySeverity,
+    }
+  })
 
 /** Sorted list of documented rule ids. */
 export const listRuleIds = (): string[] => Object.keys(RULE_CATALOG).sort()

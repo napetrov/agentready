@@ -1,4 +1,5 @@
 import type {
+  CommandReferenceKind,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
@@ -7,7 +8,10 @@ import type {
   SafetyCategory,
 } from '../core/types'
 
-type EvidenceForChecks = Omit<LocalReadinessReport, 'findings' | 'summary' | 'repositoryEvidence' | 'designState' | 'reportContract'>
+type EvidenceForChecks = Omit<
+  LocalReadinessReport,
+  'findings' | 'summary' | 'repositoryEvidence' | 'designState' | 'dimensions' | 'reportContract'
+>
 
 // A `docs/` or `doc/` directory anywhere in the tree (matched together with the
 // file's `documentation` flag so a stray non-doc file under docs/ does not count
@@ -166,6 +170,55 @@ export const buildFindings = (
       title: 'TypeScript repository has no type-check command',
       severity: warningSeverity,
       recommendation: 'Expose a type-check command and run it in CI.',
+    })
+  }
+
+  // Command references an agent would trust from the doc/instruction surface
+  // itself, but that do not match reality. `npm-script`/`make-target` mismatches
+  // are unambiguous (the referenced name is simply absent), so they warn;
+  // `package-manager-mismatch` is a softer text heuristic (docs can legitimately
+  // discuss more than one package manager) so it stays informational.
+  const commandReferenceTitles: Record<CommandReferenceKind, string> = {
+    'npm-script': 'Instruction/README references an npm/yarn/pnpm/bun script that does not exist',
+    'make-target': 'Instruction/README references a make target that does not exist',
+    'package-manager-mismatch': 'Instruction/README references a different package manager than the lockfile',
+  }
+  const commandReferenceSeverity: Record<CommandReferenceKind, ReadinessSeverity> = {
+    'npm-script': warningSeverity,
+    'make-target': warningSeverity,
+    'package-manager-mismatch': 'info',
+  }
+  for (const reference of report.commandReferences) {
+    findings.push({
+      id: `commands.reference.${reference.kind}:${reference.path}:${reference.reference}`,
+      title: commandReferenceTitles[reference.kind],
+      severity: commandReferenceSeverity[reference.kind],
+      path: reference.path,
+      recommendation: `"${reference.reference}" — ${reference.detail} Update the reference or add the missing command so agents can trust it.`,
+    })
+  }
+
+  // Review-routing surfaces. Both are informational: neither blocks an agent
+  // from making a change, but their absence means a human (or the agent
+  // itself) has to guess who should review it and what evidence to include.
+  // CODEOWNERS matters most once there's more than one likely reviewer, so
+  // it's scoped to non-trivial repos the same way docs.developer.thin is; a
+  // PR template costs nothing at any repo size, so it always applies.
+  if (sourceFileCount > 20 && !report.governance.codeownersPath) {
+    findings.push({
+      id: 'docs.codeowners.missing',
+      title: 'No CODEOWNERS file detected',
+      severity: 'info',
+      recommendation: 'Add a CODEOWNERS file (repo root, .github/, or docs/) so PRs route to the right reviewer automatically.',
+    })
+  }
+
+  if (!report.governance.pullRequestTemplatePath) {
+    findings.push({
+      id: 'docs.pull-request-template.missing',
+      title: 'No pull-request template detected',
+      severity: 'info',
+      recommendation: 'Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks).',
     })
   }
 
@@ -349,6 +402,21 @@ export const buildFindings = (
       severity: safetySeverity[signal.category],
       path: 'package.json',
       recommendation: `${signal.notes[0]} Document whether agents may run "${signal.script}", and gate it behind explicit review if it is unsafe.`,
+    })
+  }
+
+  // Capability surfaces the risk-tier classifier flagged as blast-radius
+  // `high` (arbitrary-command hooks, MCP server configs, plugin manifests —
+  // see detectCapabilitySurfaces). Informational: presence is not itself a
+  // problem, but an agent (or reviewer) should know which surfaces actually
+  // widen what the agent can do, not just that "a capability surface exists".
+  for (const surface of report.capabilities.filter(surface => surface.riskTier === 'high')) {
+    findings.push({
+      id: `safety.capability.high-risk:${surface.path}`,
+      title: `High blast-radius agent capability surface: ${surface.kind}`,
+      severity: 'info',
+      path: surface.path,
+      recommendation: `${surface.notes[0]} Review what this ${surface.tool} ${surface.kind} surface actually grants access to, and route it through an approval workflow before trusting it.`,
     })
   }
 

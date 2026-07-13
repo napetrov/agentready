@@ -1,14 +1,19 @@
 import { z } from 'zod'
 import type {
+  CapabilitySurfaceEvidence,
   DesignStateSummary,
   DocumentSurfaceEvidence,
   CiEvidence,
   CommandEvidence,
+  CommandReferenceEvidence,
+  GovernanceEvidence,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
+  PortfolioReport,
   RepositoryEvidence,
   ReadinessDiffReport,
+  ReadinessDimensionScore,
   ReadinessFinding,
 } from './types'
 
@@ -35,6 +40,7 @@ export const commandEcosystemSchema = z.enum([
   'autotools',
 ])
 export const capabilityKindSchema = z.enum(['mcp', 'skill', 'hook', 'plugin', 'lsp'])
+export const capabilityRiskTierSchema = z.enum(['low', 'medium', 'high'])
 export const safetyCategorySchema = z.enum(['install-hook', 'destructive', 'network-exec', 'deploy'])
 export const evidenceConfidenceSchema = z.enum(['low', 'medium', 'high'])
 export const evidenceSourceKindSchema = z.enum(['file', 'manifest', 'workflow', 'config', 'inference'])
@@ -61,6 +67,35 @@ export const architectureBoundaryRoleSchema = z.enum([
   'generated',
   'unknown',
 ])
+export const readinessRuleCategorySchema = z.enum(['docs', 'commands', 'ci', 'instructions', 'files', 'safety'])
+
+export const readinessDimensionScoreSchema = z.strictObject({
+  category: readinessRuleCategorySchema,
+  score: z.number().int().min(0).max(100),
+  findingCount: z.number().int().min(0),
+  bySeverity: z.strictObject({
+    info: z.number().int().min(0),
+    warning: z.number().int().min(0),
+    error: z.number().int().min(0),
+  }),
+})
+
+const DIMENSION_CATEGORY_COUNT = readinessRuleCategorySchema.options.length
+
+/**
+ * One entry per `readinessRuleCategorySchema` value. `.length` alone rejects
+ * the `dimensions: []` case; combined with the size-6 uniqueness check below,
+ * an array of exactly 6 distinct categories drawn from a 6-value enum is
+ * necessarily a full, non-duplicated set, so a single refine covers both
+ * "missing a category" and "reports one twice".
+ */
+export const readinessDimensionScoreListSchema = z
+  .array(readinessDimensionScoreSchema)
+  .length(DIMENSION_CATEGORY_COUNT)
+  .refine(dimensions => new Set(dimensions.map(dimension => dimension.category)).size === DIMENSION_CATEGORY_COUNT, {
+    error: `dimensions must include exactly one entry for each category (${readinessRuleCategorySchema.options.join(', ')})`,
+  })
+
 export const designStateCategorySchema = z.enum([
   'documentation-evidence',
   'architecture-boundary',
@@ -125,10 +160,25 @@ export const commandEvidenceSchema = z.strictObject({
   packageManager: packageManagerSchema.optional(),
   ecosystems: z.array(commandEcosystemSchema),
   scripts: z.array(z.string()),
+  makeTargets: z.array(z.string()),
   hasBuild: z.boolean(),
   hasTest: z.boolean(),
   hasLint: z.boolean(),
   hasTypeCheck: z.boolean(),
+})
+
+export const commandReferenceKindSchema = z.enum(['npm-script', 'make-target', 'package-manager-mismatch'])
+
+export const commandReferenceEvidenceSchema = z.strictObject({
+  path: z.string(),
+  reference: z.string(),
+  kind: commandReferenceKindSchema,
+  detail: z.string(),
+})
+
+export const governanceEvidenceSchema = z.strictObject({
+  codeownersPath: z.string().optional(),
+  pullRequestTemplatePath: z.string().optional(),
 })
 
 export const ciCommandKindSchema = z.enum(['install', 'lint', 'typecheck', 'test', 'build'])
@@ -161,6 +211,7 @@ export const capabilitySurfaceSchema = z.strictObject({
   path: z.string(),
   tool: z.string(),
   notes: z.array(z.string()),
+  riskTier: capabilityRiskTierSchema,
 })
 
 export const safetySignalSchema = z.strictObject({
@@ -374,15 +425,18 @@ export const localReadinessReportSchema = z.strictObject({
     environment: z.array(z.string()),
   }),
   commands: commandEvidenceSchema,
+  commandReferences: z.array(commandReferenceEvidenceSchema),
+  governance: governanceEvidenceSchema,
   ci: ciEvidenceSchema,
   instructions: z.array(instructionSurfaceSchema),
   capabilities: z.array(capabilitySurfaceSchema),
   safetySignals: z.array(safetySignalSchema),
   repositoryEvidence: repositoryEvidenceSchema,
   designState: designStateSummarySchema,
+  dimensions: readinessDimensionScoreListSchema,
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
-    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState'])),
+    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState', 'dimensions'])),
   }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),
@@ -407,6 +461,49 @@ export const readinessDiffReportSchema = z.strictObject({
   regressions: z.array(readinessFindingSchema),
 })
 
+const severityCountsSchema = z.strictObject({
+  info: z.number().int().min(0),
+  warning: z.number().int().min(0),
+  error: z.number().int().min(0),
+})
+
+// Same 0-100 contract as `readinessDimensionScoreSchema.score` — every
+// portfolio score field is derived from the same `calculateScore` output.
+const readinessScoreSchema = z.number().int().min(0).max(100)
+
+export const portfolioRepoResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({
+    path: z.string(),
+    ok: z.literal(true),
+    score: readinessScoreSchema,
+    findingCount: z.number().int().min(0),
+    bySeverity: severityCountsSchema,
+    topFindings: z.array(readinessFindingSchema),
+  }),
+  z.strictObject({
+    path: z.string(),
+    ok: z.literal(false),
+    error: z.string(),
+  }),
+])
+
+export const portfolioSummarySchema = z.strictObject({
+  repoCount: z.number().int().min(0),
+  scannedCount: z.number().int().min(0),
+  scanErrorCount: z.number().int().min(0),
+  averageScore: readinessScoreSchema.nullable(),
+  minScore: readinessScoreSchema.nullable(),
+  maxScore: readinessScoreSchema.nullable(),
+  totalFindings: z.number().int().min(0),
+  bySeverity: severityCountsSchema,
+})
+
+export const portfolioReportSchema = z.strictObject({
+  generatedAt: z.string(),
+  repos: z.array(portfolioRepoResultSchema),
+  summary: portfolioSummarySchema,
+})
+
 // User-facing config. Every field is optional; the loader merges the result
 // over `defaultConfig`. Custom messages keep validation errors readable.
 export const localReadinessConfigSchema = z
@@ -429,21 +526,29 @@ const assertSchemaDriftGuards = (..._guards: true[]): void => {}
 const _finding: Exact<z.infer<typeof readinessFindingSchema>, ReadinessFinding> = true
 const _file: Exact<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile> = true
 const _commands: Exact<z.infer<typeof commandEvidenceSchema>, CommandEvidence> = true
+const _commandReference: Exact<z.infer<typeof commandReferenceEvidenceSchema>, CommandReferenceEvidence> = true
+const _governance: Exact<z.infer<typeof governanceEvidenceSchema>, GovernanceEvidence> = true
+const _capabilitySurface: Exact<z.infer<typeof capabilitySurfaceSchema>, CapabilitySurfaceEvidence> = true
 const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
 const _documentSurface: Exact<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence> = true
 const _repositoryEvidence: Exact<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence> = true
 const _designState: Exact<z.infer<typeof designStateSummarySchema>, DesignStateSummary> = true
+const _dimensionScore: Exact<z.infer<typeof readinessDimensionScoreSchema>, ReadinessDimensionScore> = true
 const _report: Exact<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport> = true
 const _diff: Exact<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport> = true
+const _portfolio: Exact<z.infer<typeof portfolioReportSchema>, PortfolioReport> = true
 const _config: Exact<z.infer<typeof localReadinessConfigSchema>, Partial<LocalReadinessConfig>> = true
 assertSchemaDriftGuards(
   _finding,
   _file,
   _commands,
+  _commandReference,
+  _governance,
   _ci,
   _documentSurface,
   _repositoryEvidence,
   _designState,
+  _dimensionScore,
   _report,
   _diff,
   _config,

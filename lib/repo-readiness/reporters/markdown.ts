@@ -1,4 +1,11 @@
-import type { CiEvidence, DesignStateInsight, LocalReadinessReport, ReadinessDiffReport, ReadinessFinding } from '../core/types'
+import type {
+  CiEvidence,
+  DesignStateInsight,
+  LocalReadinessReport,
+  ReadinessDiffReport,
+  ReadinessDimensionScore,
+  ReadinessFinding,
+} from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
 
 // Summarizes which verification commands CI actually runs, parsed from the
@@ -56,6 +63,19 @@ const markdownDocumentRoles = (report: LocalReadinessReport): string[] => {
   ]
 }
 
+const markdownDimensions = (dimensions: ReadinessDimensionScore[] | undefined): string[] => {
+  if (!dimensions || dimensions.length === 0) return []
+  return [
+    '',
+    '### Dimension scores',
+    ...dimensions.map(dimension => {
+      const { info, warning, error } = dimension.bySeverity
+      const detail = dimension.findingCount === 0 ? 'no findings' : `${error} error, ${warning} warning, ${info} info`
+      return `- ${dimension.category}: **${dimension.score}/100** (${detail})`
+    }),
+  ]
+}
+
 const markdownInsights = (title: string, insights: DesignStateInsight[]): string[] => {
   if (insights.length === 0) return []
   return [
@@ -69,14 +89,17 @@ const markdownInsights = (title: string, insights: DesignStateInsight[]): string
 }
 
 export function formatScanMarkdown(report: LocalReadinessReport): string {
+  const highRiskCapabilities = report.capabilities.filter(surface => surface.riskTier === 'high').length
+  const highRiskDetail = highRiskCapabilities > 0 ? ` (${highRiskCapabilities} high-risk)` : ''
   return [
     '## AgentReady scan',
     '',
     `Score: **${report.summary.score}/100**`,
     `Files: ${report.summary.totalFiles} total, ${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs`,
-    `Capabilities: ${report.capabilities.length}; safety signals: ${report.safetySignals.length}`,
+    `Capabilities: ${report.capabilities.length}${highRiskDetail}; safety signals: ${report.safetySignals.length}`,
     ciCoverageLine(report.ci),
     `Findings: ${report.findings.length}`,
+    ...markdownDimensions(report.dimensions),
     ...markdownTopology(report),
     ...markdownDocumentRoles(report),
     ...markdownInsights('Design-state strengths', report.designState?.strengths ?? []),

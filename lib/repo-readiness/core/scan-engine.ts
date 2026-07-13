@@ -1,11 +1,14 @@
 import { statSync } from 'fs'
 import path from 'path'
 import { buildFindings } from '../checks/built-in'
+import { calculateDimensionScores } from '../checks/catalog'
 import { detectCapabilitySurfaces } from '../detectors/capability-surfaces'
 import { detectCiWorkflows } from '../detectors/ci-workflows'
+import { detectCommandReferences } from '../detectors/command-references'
 import { detectCommandSurfaces } from '../detectors/command-surfaces'
 import { detectDocs } from '../detectors/docs'
 import { walkFiles } from '../detectors/file-inventory'
+import { detectGovernance } from '../detectors/governance'
 import { buildDesignState, detectRepositoryEvidence } from '../detectors/repository-evidence'
 import { detectSafetySignals } from '../detectors/safety-signals'
 import {
@@ -52,14 +55,42 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     sizeBytes: file.sizeBytes,
   }))
 
+  const docs = detectDocs(filePaths)
+  const commands = detectCommandSurfaces(absoluteRoot, filePaths)
+  const instructions = detectInstructionSurfaces(instructionInput)
+  // Command references are checked in root-level README(s)/CONTRIBUTING and
+  // root-scope instruction files only — the `commands` evidence only carries
+  // root command surfaces (root package.json/Makefile), so a nested/
+  // package-scoped doc's own valid commands would otherwise be misattributed
+  // as stale against the root's. A doc directly under `.github/` (one path
+  // segment, e.g. `.github/CONTRIBUTING.md`) is root-equivalent — a
+  // GitHub-recognized location alongside the root file — but `.github/`
+  // itself can contain deeper, genuinely nested components (e.g. a local
+  // composite action under `.github/actions/foo/README.md` with its own
+  // package.json scripts), which must NOT be treated as root-scoped any more
+  // than `packages/foo/README.md` would be. Instruction files use their own
+  // `scope` classification instead of a path check: `detectInstructionSurfaces`
+  // already marks always-loaded files like `.claude/CLAUDE.md` and
+  // `.github/copilot-instructions.md` as `scope: 'root'` regardless of path
+  // depth, while genuinely nested memory files (`packages/foo/CLAUDE.md`) get
+  // `path-specific` — exactly the root/nested distinction this check needs.
+  const isRootScopedDocPath = (repoPath: string): boolean => !repoPath.includes('/') || /^\.github\/[^/]+$/.test(repoPath)
+  const commandReferenceDocPaths = [
+    ...docs.readme.filter(isRootScopedDocPath),
+    ...docs.contributing.filter(isRootScopedDocPath),
+    ...instructions.filter(surface => surface.scope === 'root').map(surface => surface.path),
+  ]
+
   const partialReport = {
     root: absoluteRoot,
     generatedAt: (options.now ?? new Date()).toISOString(),
-    docs: detectDocs(filePaths),
-    commands: detectCommandSurfaces(absoluteRoot, filePaths),
+    docs,
+    commands,
+    commandReferences: detectCommandReferences(absoluteRoot, commandReferenceDocPaths, commands, filePaths),
+    governance: detectGovernance(filePaths),
     ci: detectCiWorkflows(absoluteRoot, filePaths),
-    instructions: detectInstructionSurfaces(instructionInput),
-    capabilities: detectCapabilitySurfaces(filePaths),
+    instructions,
+    capabilities: detectCapabilitySurfaces(absoluteRoot, filePaths),
     safetySignals: detectSafetySignals(absoluteRoot, filePaths),
     files,
   }
@@ -90,15 +121,40 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     },
     repositoryEvidence,
     designState,
+    dimensions: calculateDimensionScores(findings),
     reportContract: {
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState'],
+      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions'],
     },
     findings,
   }
 }
 
 const findingKey = (finding: ReadinessFinding): string => `${finding.id}|${finding.path ?? ''}`
+
+const isGateable = (finding: ReadinessFinding): boolean =>
+  finding.severity === 'error' || finding.severity === 'warning'
+
+/**
+ * Findings that make a diff "worse": new findings at warning/error, plus
+ * findings that persist at the same id+path but whose severity worsened
+ * (e.g. a large binary asset (info) replaced by a same-path large text/source
+ * file (warning), which shares the `files.large:<path>` id). Exported so the
+ * gate can recompute this against policy-adjusted findings instead of raw
+ * ones — the diff report itself always reflects raw, unadjusted evidence.
+ */
+export const computeRegressions = (
+  baseFindings: ReadinessFinding[],
+  headFindings: ReadinessFinding[],
+): ReadinessFinding[] => {
+  const baseFindingsByKey = new Map(baseFindings.map(finding => [findingKey(finding), finding]))
+  const newFindings = headFindings.filter(finding => !baseFindingsByKey.has(findingKey(finding)))
+  const escalatedFindings = headFindings.filter(finding => {
+    const base = baseFindingsByKey.get(findingKey(finding))
+    return base !== undefined && isGateable(finding) && SEVERITY_RANK[finding.severity] > SEVERITY_RANK[base.severity]
+  })
+  return [...newFindings.filter(isGateable), ...escalatedFindings]
+}
 
 export function diffLocalReadiness(root: string, options: DiffOptions): ReadinessDiffReport {
   const generatedAt = (options.now ?? new Date()).toISOString()
@@ -119,18 +175,7 @@ export function diffLocalReadiness(root: string, options: DiffOptions): Readines
   const headFindingsByKey = new Map(headReport.findings.map(finding => [findingKey(finding), finding]))
   const newFindings = headReport.findings.filter(finding => !baseFindingsByKey.has(findingKey(finding)))
   const resolvedFindings = baseReport.findings.filter(finding => !headFindingsByKey.has(findingKey(finding)))
-  const isGateable = (finding: ReadinessFinding): boolean =>
-    finding.severity === 'error' || finding.severity === 'warning'
-  // A finding that persists at the same id+path but whose severity worsens is a
-  // regression even though it is neither new nor resolved — e.g. a large binary
-  // asset (info) replaced by a same-path large text/source file (warning), which
-  // shares the `files.large:<path>` id. Without this, `--fail-on-regression`
-  // would miss the escalation.
-  const escalatedFindings = headReport.findings.filter(finding => {
-    const base = baseFindingsByKey.get(findingKey(finding))
-    return base !== undefined && isGateable(finding) && SEVERITY_RANK[finding.severity] > SEVERITY_RANK[base.severity]
-  })
-  const regressions = [...newFindings.filter(isGateable), ...escalatedFindings]
+  const regressions = computeRegressions(baseReport.findings, headReport.findings)
 
   return {
     base: options.base,
