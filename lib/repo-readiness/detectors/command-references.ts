@@ -1,18 +1,28 @@
-import { existsSync, readFileSync } from 'fs'
+import { closeSync, existsSync, openSync, readSync } from 'fs'
 import path from 'path'
 import type { CommandEvidence, CommandReferenceEvidence, PackageManager } from '../core/types'
 
 const MAX_DOCUMENT_BYTES_SCANNED = 200_000
 
+// Reads at most MAX_DOCUMENT_BYTES_SCANNED bytes at the I/O layer, rather than
+// reading (and UTF-8 decoding) the whole file before truncating — a
+// mislabeled huge file (e.g. a binary asset with a .md extension) should
+// never force a full read into memory just to scan for command references.
 const readText = (root: string, repoPath: string): string | undefined => {
   const absolutePath = path.join(root, repoPath)
   if (!existsSync(absolutePath)) {
     return undefined
   }
+  let fd: number | undefined
   try {
-    return readFileSync(absolutePath, 'utf8').slice(0, MAX_DOCUMENT_BYTES_SCANNED)
+    fd = openSync(absolutePath, 'r')
+    const buffer = Buffer.alloc(MAX_DOCUMENT_BYTES_SCANNED)
+    const bytesRead = readSync(fd, buffer, 0, MAX_DOCUMENT_BYTES_SCANNED, 0)
+    return buffer.toString('utf8', 0, bytesRead)
   } catch {
     return undefined
+  } finally {
+    if (fd !== undefined) closeSync(fd)
   }
 }
 

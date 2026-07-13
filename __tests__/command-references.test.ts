@@ -171,6 +171,16 @@ describe('detectCommandReferences (units)', () => {
     const doc = write('AGENTS.md', 'Run `npm run buld`.')
     expect(detect([doc, doc], baseCommands)).toHaveLength(1)
   })
+
+  it('never scans past the 200KB document cap, enforced at the read layer', () => {
+    // A reference placed after the cap is truncated away entirely and never
+    // flagged; one placed before it is still found. Proves the cap applies to
+    // the actual bytes read, not just a post-decode string slice.
+    const padding = 'x'.repeat(200_000)
+    const doc = write('AGENTS.md', `Run \`npm run buld\`.\n${padding}\nRun \`npm run alsobuld\`.`)
+    const evidence = detect([doc], baseCommands)
+    expect(evidence.map(item => item.reference)).toEqual(['npm run buld'])
+  })
 })
 
 describe('command reference findings (integration)', () => {

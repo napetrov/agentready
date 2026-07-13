@@ -128,6 +128,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `analyze: true`) left the saved markdown file looking like a plain
   deterministic report — misleading for anyone who uploads or inspects that
   artifact directly, and giving no clue why a policy gate failed.
+- Command-reference document reads (`README`/instruction files) are now
+  capped at 200KB at the I/O layer via `openSync`/`readSync`, instead of
+  reading (and UTF-8 decoding) the whole file before truncating the decoded
+  string. A mislabeled huge file (e.g. a binary asset with a `.md` extension)
+  no longer forces a full read into memory just to scan for command
+  references.
 
 ## [0.2.0] - 2026-06-08
 
