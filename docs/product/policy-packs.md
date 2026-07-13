@@ -129,6 +129,8 @@ type PolicyResult = {
     to: "info" | "warning" | "error";
     reason: string;
   }>;
+  adjustedFindings: unknown[]; // findings with policy-adjusted severities
+  effectiveScore: number; // calculateScore() re-run over adjustedFindings
 };
 ```
 
