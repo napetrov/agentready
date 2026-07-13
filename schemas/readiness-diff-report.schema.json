@@ -1678,7 +1678,63 @@
               "bySeverity"
             ],
             "additionalProperties": false
-          }
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "docs"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "commands"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "ci"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "instructions"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "files"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "safety"
+                  }
+                }
+              }
+            }
+          ]
         },
         "reportContract": {
           "type": "object",
@@ -3475,7 +3531,63 @@
               "bySeverity"
             ],
             "additionalProperties": false
-          }
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "docs"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "commands"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "ci"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "instructions"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "files"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "category": {
+                    "const": "safety"
+                  }
+                }
+              }
+            }
+          ]
         },
         "reportContract": {
           "type": "object",

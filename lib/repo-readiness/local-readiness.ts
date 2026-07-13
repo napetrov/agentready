@@ -101,6 +101,8 @@ export {
   localReadinessConfigSchema,
   localReadinessReportSchema,
   readinessDiffReportSchema,
+  readinessDimensionScoreListSchema,
+  readinessRuleCategorySchema,
 } from './core/schemas'
 
 export { formatDiffSummary, formatScanSummary } from './reporters/console'

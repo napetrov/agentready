@@ -18,7 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   line, with severity counts) and markdown (`### Dimension scores`) reporters.
   The schema requires exactly one entry per category (rejecting an empty or
   duplicated `dimensions` array) and constrains `score` to 0-100 and the
-  finding counts to non-negative integers.
+  finding counts to non-negative integers. The uniqueness constraint is
+  enforced in the published JSON Schemas too, not just the runtime Zod
+  validator: draft-7 has no `minContains`/`maxContains`, so
+  `bin/agentready-emit-schemas.ts` uses a `contains`-per-category `allOf`
+  which, combined with the array's fixed length, forces each category to
+  appear exactly once by pigeonhole — so schema-based CI/editor validation
+  rejects the same malformed reports the scanner's own runtime check does.
 
 ## [0.2.0] - 2026-06-08
 
