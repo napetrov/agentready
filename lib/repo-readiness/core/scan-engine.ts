@@ -57,16 +57,22 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
   const docs = detectDocs(filePaths)
   const commands = detectCommandSurfaces(absoluteRoot, filePaths)
   const instructions = detectInstructionSurfaces(instructionInput)
-  // Command references are checked in README(s) and instruction files — the
-  // surfaces an agent actually reads for "how do I validate my change".
-  const commandReferenceDocPaths = [...docs.readme, ...instructions.map(surface => surface.path)]
+  // Command references are checked in root-level README(s) and instruction
+  // files only — the `commands` evidence only carries root command surfaces
+  // (root package.json/Makefile), so a nested/package-scoped doc's own valid
+  // commands would otherwise be misattributed as stale against the root's.
+  const isRootPath = (repoPath: string): boolean => !repoPath.includes('/')
+  const commandReferenceDocPaths = [
+    ...docs.readme.filter(isRootPath),
+    ...instructions.filter(surface => isRootPath(surface.path)).map(surface => surface.path),
+  ]
 
   const partialReport = {
     root: absoluteRoot,
     generatedAt: (options.now ?? new Date()).toISOString(),
     docs,
     commands,
-    commandReferences: detectCommandReferences(absoluteRoot, commandReferenceDocPaths, commands),
+    commandReferences: detectCommandReferences(absoluteRoot, commandReferenceDocPaths, commands, filePaths),
     ci: detectCiWorkflows(absoluteRoot, filePaths),
     instructions,
     capabilities: detectCapabilitySurfaces(filePaths),

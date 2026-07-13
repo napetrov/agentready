@@ -18,6 +18,13 @@ const readText = (root: string, repoPath: string): string | undefined => {
 
 const PACKAGE_MANAGER_BINARIES: Record<string, PackageManager> = { npm: 'npm', yarn: 'yarn', pnpm: 'pnpm', bun: 'bun' }
 
+// `commands.packageManager` defaults to `npm` for any repo with a bare
+// package.json and no lockfile at all (see detectPackageManager in
+// command-surfaces.ts) — a reasonable default for reporting, but not a real
+// signal to contradict documented `pnpm install`/`yarn install` guidance
+// against. Only gate the mismatch check on an actual lockfile.
+const LOCKFILE_NAMES = new Set(['pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'package-lock.json'])
+
 // Explicit `<pm> run <script>` is unambiguous: every supported package manager
 // routes it straight to package.json scripts, so any target that is not a
 // known script is a real mismatch. Bare `<pm> <verb>` forms (`npm build`,
@@ -38,19 +45,24 @@ const MAKE_TARGET_PATTERN = /\bmake\s+([A-Za-z0-9_.-]+)/g
  * repository's detected command surfaces: an `npm run <script>` (or
  * yarn/pnpm/bun equivalent) whose script does not exist, a `make <target>`
  * whose target does not exist, or an explicit package-manager mention that
- * disagrees with the manager the repo's lockfile implies. Deterministic
- * text-pattern matching, not command execution.
+ * disagrees with the manager an actual lockfile implies. Deterministic
+ * text-pattern matching, not command execution. `docPaths` should be
+ * root-level docs only — `commands` only carries root command surfaces
+ * (root package.json/Makefile), so checking a nested/package-scoped doc
+ * against it would misattribute that package's own valid commands as stale.
  */
 export const detectCommandReferences = (
   root: string,
   docPaths: string[],
   commands: CommandEvidence,
+  filePaths: string[],
 ): CommandReferenceEvidence[] => {
   const evidence: CommandReferenceEvidence[] = []
   const isNode = commands.ecosystems.includes('node')
   const isMake = commands.ecosystems.includes('make')
   const scripts = new Set(commands.scripts)
   const makeTargets = new Set(commands.makeTargets)
+  const hasLockfile = filePaths.some(filePath => LOCKFILE_NAMES.has(filePath))
 
   for (const docPath of [...new Set(docPaths)]) {
     const text = readText(root, docPath)
@@ -95,7 +107,7 @@ export const detectCommandReferences = (
       }
     }
 
-    if (commands.packageManager) {
+    if (commands.packageManager && hasLockfile) {
       for (const match of text.matchAll(INSTALL_PATTERN)) {
         const [reference, binary] = match
         const mentioned = PACKAGE_MANAGER_BINARIES[binary.toLowerCase()]

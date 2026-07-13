@@ -30,9 +30,14 @@ describe('detectCommandReferences (units)', () => {
     return rel
   }
 
+  // Most cases don't care about lockfile presence; the default `filePaths`
+  // has none, and the package-manager-mismatch tests pass their own.
+  const detect = (docPaths: string[], commands: CommandEvidence, filePaths: string[] = []) =>
+    detectCommandReferences(root, docPaths, commands, filePaths)
+
   it('flags an npm run reference to a script that does not exist', () => {
     const doc = write('AGENTS.md', 'Run `npm run buld` before committing.')
-    const evidence = detectCommandReferences(root, [doc], baseCommands)
+    const evidence = detect([doc], baseCommands)
     expect(evidence).toEqual([
       { path: doc, reference: 'npm run buld', kind: 'npm-script', detail: 'No "buld" script in package.json.' },
     ])
@@ -40,12 +45,12 @@ describe('detectCommandReferences (units)', () => {
 
   it('does not flag an npm run reference to a script that exists', () => {
     const doc = write('AGENTS.md', 'Run `npm run build` and `npm run test` before committing.')
-    expect(detectCommandReferences(root, [doc], baseCommands)).toEqual([])
+    expect(detect([doc], baseCommands)).toEqual([])
   })
 
   it('flags bare "npm test"/"npm start" only when the script is missing', () => {
     const doc = write('AGENTS.md', 'Run `npm test`, then `npm start`.')
-    const evidence = detectCommandReferences(root, [doc], baseCommands)
+    const evidence = detect([doc], baseCommands)
     expect(evidence).toEqual([
       { path: doc, reference: 'npm start', kind: 'npm-script', detail: 'No "start" script in package.json.' },
     ])
@@ -53,34 +58,34 @@ describe('detectCommandReferences (units)', () => {
 
   it('does not check npm/yarn/pnpm/bun references when the repo is not a Node project', () => {
     const doc = write('AGENTS.md', 'Run `npm run buld`.')
-    const evidence = detectCommandReferences(root, [doc], { ...baseCommands, ecosystems: [] })
-    expect(evidence).toEqual([])
+    expect(detect([doc], { ...baseCommands, ecosystems: [] })).toEqual([])
   })
 
   it('flags a yarn/pnpm/bun run reference the same way as npm', () => {
     const doc = write('AGENTS.md', 'Run `yarn run buld`, `pnpm run buld`, and `bun run buld`.')
-    const evidence = detectCommandReferences(root, [doc], baseCommands)
+    const evidence = detect([doc], baseCommands)
     expect(evidence.map(item => item.reference)).toEqual(['bun run buld', 'pnpm run buld', 'yarn run buld'])
   })
 
   it('flags a make target reference that does not exist, only for Make repos', () => {
     const doc = write('AGENTS.md', 'Run `make check` before committing.')
     const makeCommands: CommandEvidence = { ...baseCommands, ecosystems: ['make'], makeTargets: ['build', 'test'] }
-    expect(detectCommandReferences(root, [doc], makeCommands)).toEqual([
+    expect(detect([doc], makeCommands)).toEqual([
       { path: doc, reference: 'make check', kind: 'make-target', detail: 'No "check" target in the Makefile.' },
     ])
-    expect(detectCommandReferences(root, [doc], { ...baseCommands, ecosystems: [] })).toEqual([])
+    expect(detect([doc], { ...baseCommands, ecosystems: [] })).toEqual([])
   })
 
   it('does not flag a make target reference that exists', () => {
     const doc = write('AGENTS.md', 'Run `make build` before committing.')
     const makeCommands: CommandEvidence = { ...baseCommands, ecosystems: ['make'], makeTargets: ['build', 'test'] }
-    expect(detectCommandReferences(root, [doc], makeCommands)).toEqual([])
+    expect(detect([doc], makeCommands)).toEqual([])
   })
 
-  it('flags a package-manager mismatch against the detected lockfile', () => {
+  it('flags a package-manager mismatch when an actual lockfile contradicts it', () => {
     const doc = write('AGENTS.md', 'Run `pnpm install` to set up dependencies.')
-    const evidence = detectCommandReferences(root, [doc], baseCommands) // baseCommands.packageManager is npm
+    // baseCommands.packageManager is npm; package-lock.json is a real lockfile.
+    const evidence = detect([doc], baseCommands, ['package-lock.json'])
     expect(evidence).toEqual([
       {
         path: doc,
@@ -91,24 +96,32 @@ describe('detectCommandReferences (units)', () => {
     ])
   })
 
+  it('does not flag a package-manager mismatch when there is no lockfile at all', () => {
+    // A bare package.json with no lockfile still makes detectCommandSurfaces
+    // report packageManager: 'npm' as a default, not a real signal — nothing
+    // contradicts documented pnpm/yarn instructions in an unlocked project.
+    const doc = write('AGENTS.md', 'Run `pnpm install` to set up dependencies.')
+    expect(detect([doc], baseCommands, [])).toEqual([])
+  })
+
   it('does not flag an install reference that matches the detected package manager', () => {
     const doc = write('AGENTS.md', 'Run `npm install` (or `npm ci` in CI).')
-    expect(detectCommandReferences(root, [doc], baseCommands)).toEqual([])
+    expect(detect([doc], baseCommands, ['package-lock.json'])).toEqual([])
   })
 
   it('does not check package-manager mentions when no package manager was detected', () => {
     const doc = write('AGENTS.md', 'Run `pnpm install`.')
-    expect(detectCommandReferences(root, [doc], { ...baseCommands, packageManager: undefined })).toEqual([])
+    expect(detect([doc], { ...baseCommands, packageManager: undefined }, ['package-lock.json'])).toEqual([])
   })
 
   it('skips a doc path that does not exist without throwing', () => {
-    expect(() => detectCommandReferences(root, ['missing.md'], baseCommands)).not.toThrow()
-    expect(detectCommandReferences(root, ['missing.md'], baseCommands)).toEqual([])
+    expect(() => detect(['missing.md'], baseCommands)).not.toThrow()
+    expect(detect(['missing.md'], baseCommands)).toEqual([])
   })
 
   it('de-duplicates repeated doc paths', () => {
     const doc = write('AGENTS.md', 'Run `npm run buld`.')
-    expect(detectCommandReferences(root, [doc, doc], baseCommands)).toHaveLength(1)
+    expect(detect([doc, doc], baseCommands)).toHaveLength(1)
   })
 })
 
@@ -142,6 +155,28 @@ describe('command reference findings (integration)', () => {
   it('does not emit a finding when every referenced script exists', () => {
     write('package.json', JSON.stringify({ name: 'demo', scripts: { build: 'tsc', test: 'jest' } }))
     write('AGENTS.md', 'Run `npm run build` and `npm test` before committing.')
+
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+
+    expect(report.findings.filter(f => f.id.startsWith('commands.reference.'))).toEqual([])
+  })
+
+  it('does not check a nested/package-scoped README against the root command surface', () => {
+    // Root has no "dev" script; the nested package does, and its own README
+    // correctly documents it. Checking it against the root's scripts would be
+    // a false positive.
+    write('package.json', JSON.stringify({ name: 'demo', scripts: { build: 'tsc', test: 'jest' } }))
+    write('packages/app/package.json', JSON.stringify({ name: 'app', scripts: { dev: 'vite' } }))
+    write('packages/app/README.md', 'Run `npm run dev` to start the app.')
+
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+
+    expect(report.findings.filter(f => f.id.startsWith('commands.reference.'))).toEqual([])
+  })
+
+  it('does not flag a package-manager mismatch for an unlocked package.json-only repo', () => {
+    write('package.json', JSON.stringify({ name: 'demo', scripts: { build: 'tsc', test: 'jest' } }))
+    write('AGENTS.md', 'Run `pnpm install` to set up dependencies.')
 
     const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
 
