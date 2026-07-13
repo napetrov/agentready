@@ -15,7 +15,9 @@ import {
   type FailOnSeverity,
   type LocalReadinessReport,
   type PolicyName,
+  type PolicyPack,
   type ReadinessDiffReport,
+  type ReadinessFinding,
 } from '../repo-readiness/local-readiness'
 import {
   analyzeReport,
@@ -73,6 +75,32 @@ export interface ActionResult {
   policyEffectiveScore?: number
 }
 
+interface PolicySummary {
+  effectiveScore: number
+  adjustmentsCount: number
+  summaryText: string
+}
+
+/**
+ * Shared by both scan and diff mode: applies `policy` to `report` for the
+ * effective score/adjustment summary, but counts adjustments over
+ * `adjustmentTargetFindings` — the full report in scan mode, only
+ * `newFindings` in diff mode (matching evaluateDiffGate's severity gate,
+ * which reacts to new findings, not the whole head report).
+ */
+const summarizePolicy = (
+  policy: PolicyPack,
+  report: LocalReadinessReport,
+  adjustmentTargetFindings: ReadinessFinding[],
+): PolicySummary => {
+  const policyResult = applyPolicy(report, policy)
+  return {
+    effectiveScore: policyResult.effectiveScore,
+    adjustmentsCount: adjustFindings(adjustmentTargetFindings, policy).severityAdjustments.length,
+    summaryText: formatPolicySummary(policyResult),
+  }
+}
+
 /**
  * Runs a scan or diff, writes report artifacts, and evaluates the configured
  * gates. This is intentionally free of any GitHub Actions dependency so it can
@@ -123,10 +151,10 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     scanReport = report.headReport
 
     if (policy.name !== 'default') {
-      const headPolicyResult = applyPolicy(report.headReport, policy)
-      policyEffectiveScore = headPolicyResult.effectiveScore
-      policyAdjustmentsCount = adjustFindings(report.newFindings, policy).severityAdjustments.length
-      summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${formatPolicySummary(headPolicyResult)}`
+      const summary = summarizePolicy(policy, report.headReport, report.newFindings)
+      policyEffectiveScore = summary.effectiveScore
+      policyAdjustmentsCount = summary.adjustmentsCount
+      summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${summary.summaryText}`
     }
 
     failureReasons.push(
@@ -149,10 +177,10 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     scanReport = report
 
     if (policy.name !== 'default') {
-      const policyResult = applyPolicy(report, policy)
-      policyEffectiveScore = policyResult.effectiveScore
-      policyAdjustmentsCount = policyResult.severityAdjustments.length
-      summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${formatPolicySummary(policyResult)}`
+      const summary = summarizePolicy(policy, report, report.findings)
+      policyEffectiveScore = summary.effectiveScore
+      policyAdjustmentsCount = summary.adjustmentsCount
+      summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${summary.summaryText}`
     }
 
     failureReasons.push(
