@@ -40,6 +40,73 @@ const BARE_SCRIPT_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(test|start)\b/g
 const INSTALL_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(install|ci)\b/g
 const MAKE_TARGET_PATTERN = /\bmake\s+([A-Za-z0-9_.-]+)/g
 
+const missingScript = (docPath: string, reference: string, script: string): CommandReferenceEvidence => ({
+  path: docPath,
+  reference: reference.trim(),
+  kind: 'npm-script',
+  detail: `No "${script}" script in package.json.`,
+})
+
+const findMissingScripts = (text: string, docPath: string, scripts: Set<string>, filePaths: string[]): CommandReferenceEvidence[] => {
+  const evidence: CommandReferenceEvidence[] = []
+  for (const match of text.matchAll(RUN_SCRIPT_PATTERN)) {
+    const [reference, , script] = match
+    if (!scripts.has(script)) evidence.push(missingScript(docPath, reference, script))
+  }
+  for (const match of text.matchAll(BARE_SCRIPT_PATTERN)) {
+    const [reference, binary, script] = match
+    if (scripts.has(script)) continue
+    // Two documented, tool-native fallbacks that need no package script:
+    // Bun's test runner discovers test files on its own, and npm's own
+    // `start` falls back to `node server.js` when no "start" script exists
+    // but a root server.js does.
+    if (binary === 'bun' && script === 'test') continue
+    if (binary === 'npm' && script === 'start' && filePaths.includes('server.js')) continue
+    evidence.push(missingScript(docPath, reference, script))
+  }
+  return evidence
+}
+
+const findMissingMakeTargets = (text: string, docPath: string, makeTargets: Set<string>): CommandReferenceEvidence[] => {
+  const evidence: CommandReferenceEvidence[] = []
+  for (const match of text.matchAll(MAKE_TARGET_PATTERN)) {
+    const [reference, target] = match
+    // A hyphen-led capture is a make option (-j, -C, --always-make, ...), not
+    // a target — e.g. `make -j test` or `make -C subdir test`. Skip rather
+    // than misreport the flag as a missing target; correctly finding the real
+    // target after option/argument tokens (some flags, like -C, take a
+    // following argument that isn't a target either) needs real argument
+    // parsing this heuristic doesn't attempt.
+    if (target.startsWith('-')) continue
+    if (!makeTargets.has(target.toLowerCase())) {
+      evidence.push({
+        path: docPath,
+        reference: reference.trim(),
+        kind: 'make-target',
+        detail: `No "${target}" target in the Makefile.`,
+      })
+    }
+  }
+  return evidence
+}
+
+const findPackageManagerMismatches = (text: string, docPath: string, packageManager: PackageManager): CommandReferenceEvidence[] => {
+  const evidence: CommandReferenceEvidence[] = []
+  for (const match of text.matchAll(INSTALL_PATTERN)) {
+    const [reference, binary] = match
+    const mentioned = PACKAGE_MANAGER_BINARIES[binary.toLowerCase()]
+    if (mentioned && mentioned !== packageManager) {
+      evidence.push({
+        path: docPath,
+        reference: reference.trim(),
+        kind: 'package-manager-mismatch',
+        detail: `Repository lockfile indicates "${packageManager}", not "${mentioned}".`,
+      })
+    }
+  }
+  return evidence
+}
+
 /**
  * Scans doc/instruction text for command references that do not match the
  * repository's detected command surfaces: an `npm run <script>` (or
@@ -57,81 +124,21 @@ export const detectCommandReferences = (
   commands: CommandEvidence,
   filePaths: string[],
 ): CommandReferenceEvidence[] => {
-  const evidence: CommandReferenceEvidence[] = []
   const isNode = commands.ecosystems.includes('node')
   const isMake = commands.ecosystems.includes('make')
   const scripts = new Set(commands.scripts)
   const makeTargets = new Set(commands.makeTargets)
   const hasLockfile = filePaths.some(filePath => LOCKFILE_NAMES.has(filePath))
 
+  const evidence: CommandReferenceEvidence[] = []
   for (const docPath of [...new Set(docPaths)]) {
     const text = readText(root, docPath)
     if (text === undefined) continue
 
-    if (isNode) {
-      for (const match of text.matchAll(RUN_SCRIPT_PATTERN)) {
-        const [reference, , script] = match
-        if (!scripts.has(script)) {
-          evidence.push({
-            path: docPath,
-            reference: reference.trim(),
-            kind: 'npm-script',
-            detail: `No "${script}" script in package.json.`,
-          })
-        }
-      }
-      for (const match of text.matchAll(BARE_SCRIPT_PATTERN)) {
-        const [reference, binary, script] = match
-        if (scripts.has(script)) continue
-        // Two documented, tool-native fallbacks that need no package script:
-        // Bun's test runner discovers test files on its own, and npm's own
-        // `start` falls back to `node server.js` when no "start" script
-        // exists but a root server.js does.
-        if (binary === 'bun' && script === 'test') continue
-        if (binary === 'npm' && script === 'start' && filePaths.includes('server.js')) continue
-        evidence.push({
-          path: docPath,
-          reference: reference.trim(),
-          kind: 'npm-script',
-          detail: `No "${script}" script in package.json.`,
-        })
-      }
-    }
-
-    if (isMake) {
-      for (const match of text.matchAll(MAKE_TARGET_PATTERN)) {
-        const [reference, target] = match
-        // A hyphen-led capture is a make option (-j, -C, --always-make, ...),
-        // not a target — e.g. `make -j test` or `make -C subdir test`. Skip
-        // rather than misreport the flag as a missing target; correctly
-        // finding the real target after option/argument tokens (some flags,
-        // like -C, take a following argument that isn't a target either)
-        // needs real argument parsing this heuristic doesn't attempt.
-        if (target.startsWith('-')) continue
-        if (!makeTargets.has(target.toLowerCase())) {
-          evidence.push({
-            path: docPath,
-            reference: reference.trim(),
-            kind: 'make-target',
-            detail: `No "${target}" target in the Makefile.`,
-          })
-        }
-      }
-    }
-
+    if (isNode) evidence.push(...findMissingScripts(text, docPath, scripts, filePaths))
+    if (isMake) evidence.push(...findMissingMakeTargets(text, docPath, makeTargets))
     if (commands.packageManager && hasLockfile) {
-      for (const match of text.matchAll(INSTALL_PATTERN)) {
-        const [reference, binary] = match
-        const mentioned = PACKAGE_MANAGER_BINARIES[binary.toLowerCase()]
-        if (mentioned && mentioned !== commands.packageManager) {
-          evidence.push({
-            path: docPath,
-            reference: reference.trim(),
-            kind: 'package-manager-mismatch',
-            detail: `Repository lockfile indicates "${commands.packageManager}", not "${mentioned}".`,
-          })
-        }
-      }
+      evidence.push(...findPackageManagerMismatches(text, docPath, commands.packageManager))
     }
   }
 
