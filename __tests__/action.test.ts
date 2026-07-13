@@ -90,6 +90,13 @@ describe('runAction (scan mode)', () => {
     await expect(run({ policy: 'bogus' as never })).rejects.toThrow(/policy/)
   })
 
+  it('writes the policy summary into the markdown report artifact, not just the job summary', async () => {
+    const result = await run({ path: badFixture, failOnSeverity: 'off', policy: 'enterprise' })
+    const written = readFileSync(result.markdownReportPath, 'utf8')
+    expect(written).toBe(`${result.summaryMarkdown}\n`)
+    expect(written).toContain('Policy: enterprise')
+  })
+
   it('runs deterministic-only analyze when enabled without a provider', async () => {
     const result = await run({ path: goodFixture, analyze: true, env: {} })
     expect(result.augmentedScore).toBe(100)
@@ -98,6 +105,9 @@ describe('runAction (scan mode)', () => {
     // No provider ⇒ no insights ⇒ augmented equals deterministic; gate stays green.
     expect(result.failed).toBe(false)
     expect(result.summaryMarkdown).toContain('Augmented Analysis')
+    // Same fix as the policy summary: the augmented section must also land in
+    // the markdown artifact, not just the in-memory job-summary string.
+    expect(readFileSync(result.markdownReportPath, 'utf8')).toContain('Augmented Analysis')
   })
 
   it('gates on the augmented score when analyze-min-score is set', async () => {

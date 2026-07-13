@@ -142,7 +142,6 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     })
     writeFileSync(jsonReportPath, `${JSON.stringify(report, null, 2)}\n`)
     summaryMarkdown = formatDiffMarkdown(report)
-    writeFileSync(markdownReportPath, `${summaryMarkdown}\n`)
 
     score = report.headReport.summary.score
     findingsCount = report.newFindings.length
@@ -169,7 +168,6 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     const report: LocalReadinessReport = scanLocalReadiness(inputs.path, { configPath: inputs.configPath })
     writeFileSync(jsonReportPath, `${JSON.stringify(report, null, 2)}\n`)
     summaryMarkdown = formatScanMarkdown(report)
-    writeFileSync(markdownReportPath, `${summaryMarkdown}\n`)
 
     score = report.summary.score
     findingsCount = report.findings.length
@@ -222,6 +220,13 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
       failureReasons.push(`augmented score ${augmentedScore} is below the minimum ${inputs.analyzeMinScore}`)
     }
   }
+
+  // Written once, after every summaryMarkdown mutation above (policy summary,
+  // augmented analysis) — otherwise the markdown-report-path artifact stays
+  // raw while the job summary/PR comment (same summaryMarkdown value) carries
+  // the full picture, which is misleading for anyone who uploads or inspects
+  // that file directly.
+  writeFileSync(markdownReportPath, `${summaryMarkdown}\n`)
 
   return {
     score,

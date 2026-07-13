@@ -108,7 +108,15 @@ Features:
   per-repo `topFindings`) with no hosted service required, gated by
   `--min-score` and `--fail-on-scan-error`/`--no-fail-on-scan-error`. Schema:
   `schemas/portfolio-report.schema.json`.
-- benchmark harness and public summary for comparing score dimensions against real agent performance
+- benchmark harness and public summary for comparing score dimensions against
+  real agent performance — **delivered (scaffold only)**: `agentready:benchmark`
+  (`bin/agentready-evaluate.ts`) scans a fixed, profile-diverse 10-repo corpus
+  (`reports/evaluation/corpus.json`) and generates `reports/evaluation/README.md`
+  with the corpus table, scan commands, and finding counts by category. Real
+  coding-agent runs and human judgment of true/false positives — the actual
+  "against real agent performance" comparison — are explicitly out of scope
+  for this automated tool; the report marks those sections `TODO`. See
+  `docs/product/evaluation.md`.
 
 ## v0.3 first-impression polish
 

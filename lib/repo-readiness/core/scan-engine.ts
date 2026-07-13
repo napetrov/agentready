@@ -58,15 +58,24 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
   const docs = detectDocs(filePaths)
   const commands = detectCommandSurfaces(absoluteRoot, filePaths)
   const instructions = detectInstructionSurfaces(instructionInput)
-  // Command references are checked in root-level README(s) and instruction
-  // files only — the `commands` evidence only carries root command surfaces
-  // (root package.json/Makefile), so a nested/package-scoped doc's own valid
-  // commands would otherwise be misattributed as stale against the root's.
-  const isRootPath = (repoPath: string): boolean => !repoPath.includes('/')
+  // Command references are checked in root-level README(s)/CONTRIBUTING and
+  // root-scope instruction files only — the `commands` evidence only carries
+  // root command surfaces (root package.json/Makefile), so a nested/
+  // package-scoped doc's own valid commands would otherwise be misattributed
+  // as stale against the root's. `.github/` is a repo-level (never a
+  // package/workspace) directory, so a doc there is root-equivalent despite
+  // containing a slash — e.g. `.github/CONTRIBUTING.md`, a GitHub-recognized
+  // location alongside the root file. Instruction files use their own
+  // `scope` classification instead of a path check: `detectInstructionSurfaces`
+  // already marks always-loaded files like `.claude/CLAUDE.md` and
+  // `.github/copilot-instructions.md` as `scope: 'root'` regardless of path
+  // depth, while genuinely nested memory files (`packages/foo/CLAUDE.md`) get
+  // `path-specific` — exactly the root/nested distinction this check needs.
+  const isRootScopedDocPath = (repoPath: string): boolean => !repoPath.includes('/') || repoPath.startsWith('.github/')
   const commandReferenceDocPaths = [
-    ...docs.readme.filter(isRootPath),
-    ...docs.contributing.filter(isRootPath),
-    ...instructions.filter(surface => isRootPath(surface.path)).map(surface => surface.path),
+    ...docs.readme.filter(isRootScopedDocPath),
+    ...docs.contributing.filter(isRootScopedDocPath),
+    ...instructions.filter(surface => surface.scope === 'root').map(surface => surface.path),
   ]
 
   const partialReport = {

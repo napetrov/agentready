@@ -300,6 +300,19 @@ Verified against the current `main`/branch code before accepting:
   per-repo `topFindings`), gated by `--min-score` and
   `--fail-on-scan-error`/`--no-fail-on-scan-error`. No hosted service
   required. Schema: `schemas/portfolio-report.schema.json`. _(M)_
+- [x] **Empirical validation scaffold** (`docs/product/evaluation.md`) —
+  **delivered (scaffold only)**: `npm run agentready:benchmark`
+  (`bin/agentready-evaluate.ts`) automates the deterministic half of the
+  "Minimal public benchmark" — a fixed 10-repo, profile-diverse corpus
+  (`reports/evaluation/corpus.json`, one entry per profile from the doc,
+  including AgentReady itself scanned in place, never cloned), scans each
+  repo, and generates `reports/evaluation/README.md` with the corpus table,
+  scan commands, and finding counts by category. Giving the same bounded task
+  to real coding agents and recording their friction is explicitly NOT
+  automated — that needs an actual agent run and human judgment, so the
+  report marks the friction/decision/true-false-positive sections `TODO`
+  rather than inventing data. Completing the milestone for real is future
+  work; see `docs/product/evaluation.md`'s Status section. _(M)_
 
 ## P2 — LLM / agentic analytics layer (optional, opt-in)
 
@@ -342,7 +355,9 @@ Proposed steps where the layer can plug in (to be refined in the next PR):
   enforces a floor in CI, catching plumbing regressions (broken hallucination
   guards, dropped score folding, id drift) without calling a model; the same
   harness can score a live model in a one-off recording run. Human-agreement and
-  task-friction correlation (via the benchmark harness) remain future work. _(L)_
+  task-friction correlation (via the empirical validation scaffold above) remain
+  future work — that scaffold generates the corpus/scan half but not real agent
+  runs. _(L)_
 
 ## P2 — Companion-tool orchestration (do not reimplement)
 

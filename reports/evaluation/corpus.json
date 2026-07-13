@@ -1,0 +1,62 @@
+[
+  {
+    "name": "ky",
+    "url": "https://github.com/sindresorhus/ky.git",
+    "profile": "small Node/TypeScript package",
+    "why": "small, single-purpose TypeScript package with a documented README."
+  },
+  {
+    "name": "requests",
+    "url": "https://github.com/psf/requests.git",
+    "profile": "Python package",
+    "why": "widely used, mature pure-Python library."
+  },
+  {
+    "name": "scikit-learn",
+    "url": "https://github.com/scikit-learn/scikit-learn.git",
+    "profile": "mixed Python/C++ scientific project",
+    "why": "Python API over Cython/C++ extensions, plus a scientific-computing CI/build story."
+  },
+  {
+    "name": "googletest",
+    "url": "https://github.com/google/googletest.git",
+    "profile": "CMake or Bazel C++ project",
+    "why": "canonical CMake-based C++ project with a Bazel BUILD file too."
+  },
+  {
+    "name": "junit5",
+    "url": "https://github.com/junit-team/junit5.git",
+    "profile": "Java/Gradle or Maven project",
+    "why": "mature Gradle-based Java project."
+  },
+  {
+    "name": "express",
+    "url": "https://github.com/expressjs/express.git",
+    "profile": "mature OSS repo with good docs",
+    "why": "long-established Node project with an extensive documented history."
+  },
+  {
+    "name": "chalk",
+    "url": "https://github.com/chalk/chalk.git",
+    "profile": "repo with weak/no agent instructions",
+    "why": "small, well-tested package that (as of corpus definition) has no AGENTS.md/CLAUDE.md-style entrypoint."
+  },
+  {
+    "name": "bootstrap",
+    "url": "https://github.com/twbs/bootstrap.git",
+    "profile": "repo with large fixtures/generated files",
+    "why": "ships large compiled CSS/JS bundles and browser-test fixtures alongside source."
+  },
+  {
+    "name": "cargo",
+    "url": "https://github.com/rust-lang/cargo.git",
+    "profile": "repo with complex CI wrappers",
+    "why": "many workflow files and custom test-runner orchestration rather than a single flat CI job."
+  },
+  {
+    "name": "agentready",
+    "url": ".",
+    "profile": "AgentReady itself",
+    "why": "dogfoods the scanner against its own repository; scanned in place, never cloned."
+  }
+]

@@ -85,6 +85,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `markdown` output; `--min-score`/`--fail-on-scan-error` (default on;
   `--no-fail-on-scan-error` to disable) gate the batch. New schema:
   `schemas/portfolio-report.schema.json`. No hosted service required.
+- Empirical validation scaffold (scaffold only): `npm run agentready:benchmark`
+  (`bin/agentready-evaluate.ts`) automates the deterministic half of
+  `docs/product/evaluation.md`'s "Minimal public benchmark" — a fixed,
+  profile-diverse 10-repo corpus (`reports/evaluation/corpus.json`, including
+  AgentReady itself scanned in place), a scan of each repo, and a generated
+  `reports/evaluation/README.md` with the corpus table, scan commands, and
+  finding counts by category. Giving the same bounded task to real coding
+  agents and recording their friction is explicitly not automated — the
+  report marks those sections `TODO` rather than inventing data.
 
 ### Fixed
 - `agentready scan`/`diff --output <file>` now writes a non-default policy's
@@ -103,6 +112,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `safety.install-hook`/`safety.deploy` from info to warning) was invisible to
   `report.regressions`, which is always built from raw severities — so
   `--fail-on-regression` alone could pass a PR the policy was meant to gate.
+- Command-reference validation now checks root-*scope* instruction files
+  (e.g. `.claude/CLAUDE.md`, `.github/copilot-instructions.md` — always
+  loaded, per `detectInstructionSurfaces`'s own `scope: 'root'`
+  classification) and `.github/CONTRIBUTING.md`, instead of only slashless
+  paths. Previously these always-loaded, repo-level files were skipped
+  because their path contains a `/`, so a stale `npm run <script>` reference
+  in the primary agent instruction file could go unflagged. Genuinely
+  nested/package-scoped docs (`packages/foo/CLAUDE.md`,
+  `packages/foo/README.md`) are still excluded.
+- The GitHub Action's `markdown-report-path` artifact now includes the policy
+  summary and augmented-analysis section, matching the job summary/PR
+  comment. Previously `report.md` was written before those sections were
+  appended to `summaryMarkdown`, so a run with `policy: enterprise` (or
+  `analyze: true`) left the saved markdown file looking like a plain
+  deterministic report — misleading for anyone who uploads or inspects that
+  artifact directly, and giving no clue why a policy gate failed.
 
 ## [0.2.0] - 2026-06-08
 

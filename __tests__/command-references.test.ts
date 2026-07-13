@@ -200,6 +200,40 @@ describe('command reference findings (integration)', () => {
     expect(commandsDimension?.bySeverity.warning).toBeGreaterThanOrEqual(1)
   })
 
+  it('checks a root-scope instruction file even when its path contains a slash', () => {
+    // .claude/CLAUDE.md and .github/copilot-instructions.md are always-loaded,
+    // repo-level instruction files (scope: 'root' per detectInstructionSurfaces)
+    // despite living under a subdirectory — they must be checked the same as a
+    // slashless root file, not skipped as if they were package-scoped.
+    write('package.json', JSON.stringify({ name: 'demo', scripts: { build: 'tsc', test: 'jest' } }))
+    write('.claude/CLAUDE.md', 'Run `npm run buld` before committing.')
+    write('.github/copilot-instructions.md', 'Run `npm run buld` before committing.')
+
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const staleReferencePaths = report.findings
+      .filter(f => f.id.startsWith('commands.reference.npm-script'))
+      .map(f => f.path)
+
+    expect(staleReferencePaths).toContain('.claude/CLAUDE.md')
+    expect(staleReferencePaths).toContain('.github/copilot-instructions.md')
+  })
+
+  it('checks .github/CONTRIBUTING.md as root-equivalent, but not a nested CLAUDE.md memory file', () => {
+    write('package.json', JSON.stringify({ name: 'demo', scripts: { build: 'tsc', test: 'jest' } }))
+    write('.github/CONTRIBUTING.md', 'Run `npm run buld` before committing.')
+    // A nested CLAUDE.md (not under .claude/) is path-specific subdirectory
+    // memory, not root scope — checking it against the root's scripts would
+    // misattribute a package-scoped doc's own commands as stale.
+    write('packages/app/CLAUDE.md', 'Run `npm run dev` to start the app.')
+
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const staleReferencePaths = report.findings
+      .filter(f => f.id.startsWith('commands.reference.npm-script'))
+      .map(f => f.path)
+
+    expect(staleReferencePaths).toEqual(['.github/CONTRIBUTING.md'])
+  })
+
   it('does not emit a finding when every referenced script exists', () => {
     write('package.json', JSON.stringify({ name: 'demo', scripts: { build: 'tsc', test: 'jest' } }))
     write('AGENTS.md', 'Run `npm run build` and `npm test` before committing.')

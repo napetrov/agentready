@@ -1,0 +1,4 @@
+/artifacts/*
+!/artifacts/.gitkeep
+/work/*
+!/work/.gitkeep

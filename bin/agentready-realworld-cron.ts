@@ -74,7 +74,7 @@ const TRANSIENT_GIT_RESOURCE_ERROR = /unable to create thread|resource temporari
 const FALSE_POSITIVE_PATH_HINT = /(^|\/)(benchmarks?|data|examples?|fixtures?|golden|samples?|snapshots?|testdata|tests?)\//i
 const GENERATED_OR_VENDOR_HINT = /(^|\/)(vendor|third_party|node_modules|dist|build|target|coverage)\//i
 
-const sanitizeName = (name: string): string =>
+export const sanitizeName = (name: string): string =>
   name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-|-$/g, '') || 'repo'
 
 const timestampForPath = (date: Date): string => date.toISOString().replace(/[:.]/g, '-')
@@ -256,7 +256,7 @@ const cloneOrFetchOnce = (repo: RealWorldRepo, cloneDir: string): void => {
   gitLowResource(['clone', '--quiet', '--depth', '1', '--single-branch', repo.url, cloneDir])
 }
 
-const cloneOrFetch = (repo: RealWorldRepo, cloneDir: string): void => {
+export const cloneOrFetch = (repo: RealWorldRepo, cloneDir: string): void => {
   const errors: string[] = []
 
   for (let attempt = 1; attempt <= GIT_CLONE_MAX_ATTEMPTS; attempt += 1) {
