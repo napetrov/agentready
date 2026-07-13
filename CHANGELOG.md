@@ -65,6 +65,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only for non-trivial repos with more than 20 source files, where routing a
   review actually matters). Report field: `report.governance` (`{
   codeownersPath?, pullRequestTemplatePath? }`).
+- Capability-surface risk tiers: `CapabilitySurfaceEvidence` gained a
+  `riskTier` (`low`/`medium`/`high`) field, so `report.capabilities` no longer
+  treats an MCP config, a hook, a plugin, and a static LSP file as equally
+  "present." MCP server configs, hook scripts, plugin manifests, and a Claude
+  Code settings file that configures a non-empty `hooks` block are `high`
+  (arbitrary commands, or — for MCP — a tool set static config can't verify);
+  a settings file with no `hooks` key is `medium`; LSP/editor config and
+  skills stay `low`. New `safety.capability.high-risk` (info) finding per
+  `high`-tier surface; the `enterprise` policy pack escalates it to warning
+  (four escalations now, was three). Console/markdown reporters call out the
+  high-risk count in the capabilities line.
 
 ### Fixed
 - `commands.reference.npm-script` no longer flags workspace-qualified

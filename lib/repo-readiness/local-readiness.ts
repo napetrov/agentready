@@ -13,6 +13,7 @@ export type {
   ArchitectureBoundaryEvidence,
   ArchitectureBoundaryRole,
   CapabilityKind,
+  CapabilityRiskTier,
   CapabilitySurfaceEvidence,
   CiCommandKind,
   CiEvidence,

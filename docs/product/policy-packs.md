@@ -89,15 +89,16 @@ Delivered escalations (`lib/repo-readiness/checks/policy-packs.ts`):
   enough to gate on.
 - `safety.deploy` (info → warning): deploy/publish scripts must be visible
   enough to gate on.
+- `safety.capability.high-risk` (info → warning): capability surfaces the
+  risk-tier classifier scored `high` blast radius (MCP server configs, hook
+  scripts, configured hooks blocks, plugin manifests) must be visible enough
+  to gate on, not just listed.
 
 Remaining candidate expectations (not yet implemented):
 
 - local build/test/lint/type-check surfaces or documented exemption
 - CI runs discovered local verification surfaces
 - private/local instruction files do not leak into always-on guidance
-- capability surfaces (MCP, hooks, plugins) are visible for approval workflows
-  — see `docs/product/features.md`'s capability-risk-tiers backlog item, which
-  this pack should escalate once that detector work lands
 
 ### `ml-scientific`
 

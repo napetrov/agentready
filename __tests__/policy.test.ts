@@ -49,6 +49,17 @@ describe('ENTERPRISE_POLICY', () => {
     expect(adjustedFindings.map(f => f.severity)).toEqual(['warning', 'warning'])
   })
 
+  it('escalates a high-risk capability-surface instance to warning', () => {
+    const { adjustedFindings, severityAdjustments } = adjustFindings(
+      [finding('safety.capability.high-risk:.mcp.json', 'info')],
+      ENTERPRISE_POLICY,
+    )
+    expect(adjustedFindings[0].severity).toBe('warning')
+    expect(severityAdjustments).toEqual([
+      { findingId: 'safety.capability.high-risk:.mcp.json', from: 'info', to: 'warning', reason: expect.any(String) },
+    ])
+  })
+
   it('does not adjust findings outside its rule list', () => {
     const findings = [finding('files.large:a.bin', 'warning'), finding('docs.readme.missing', 'error')]
     const { adjustedFindings, severityAdjustments } = adjustFindings(findings, ENTERPRISE_POLICY)

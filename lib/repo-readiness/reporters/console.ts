@@ -29,11 +29,17 @@ const dimensionsLine = (report: LocalReadinessReport): string =>
     })
     .join(', ')}`
 
+const capabilitiesLine = (report: LocalReadinessReport): string => {
+  const highRisk = report.capabilities.filter(surface => surface.riskTier === 'high').length
+  const highRiskDetail = highRisk > 0 ? `, ${highRisk} high-risk` : ''
+  return `Capabilities: ${report.capabilities.length}${highRiskDetail}, safety signals: ${report.safetySignals.length}`
+}
+
 export function formatScanSummary(report: LocalReadinessReport): string {
   const lines = [
     `AgentReady score: ${report.summary.score}/100`,
     `Files: ${report.summary.totalFiles} (${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs)`,
-    `Capabilities: ${report.capabilities.length}, safety signals: ${report.safetySignals.length}`,
+    capabilitiesLine(report),
     ciCoverageLine(report.ci),
     dimensionsLine(report),
     `Findings: ${report.findings.length}`,

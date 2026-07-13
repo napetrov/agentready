@@ -48,6 +48,11 @@ const ENTERPRISE_ESCALATIONS: Escalation[] = [
     to: 'warning',
     reason: 'Enterprise governance requires deploy/publish scripts to be visible enough to gate on, not just informational.',
   },
+  {
+    ruleKey: 'safety.capability.high-risk',
+    to: 'warning',
+    reason: 'Enterprise governance requires high blast-radius capability surfaces (MCP servers, hooks, plugins) to be visible enough to gate on, not just informational.',
+  },
 ]
 
 /** Optimized for organization-wide agent rollout and governance. */

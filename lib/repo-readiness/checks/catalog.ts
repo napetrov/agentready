@@ -331,6 +331,19 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     ],
     references: [DOCS],
   },
+  'safety.capability.high-risk': {
+    id: 'safety.capability.high-risk',
+    title: 'High blast-radius agent capability surface detected',
+    category: 'safety',
+    defaultSeverity: 'info',
+    rationale:
+      'An MCP server config, hook script, configured hooks block, or plugin manifest can run arbitrary commands or grant an agent tools whose scope this scanner cannot verify statically (an MCP server\'s actual tool set is only visible over the protocol at runtime, not in its launch config). Listing every capability surface as equally "present" hides which ones actually widen what an agent can do.',
+    remediation: [
+      'Review what the MCP server, hook, or plugin actually grants access to before approving it for agent use.',
+      'Route high-risk capability surfaces through an approval workflow (e.g. the enterprise policy pack) rather than trusting presence alone.',
+    ],
+    references: [DOCS, 'https://modelcontextprotocol.io/'],
+  },
 }
 
 /** Every dimension axis, in the order reports should display them. */

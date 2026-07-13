@@ -78,7 +78,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     governance: detectGovernance(filePaths),
     ci: detectCiWorkflows(absoluteRoot, filePaths),
     instructions,
-    capabilities: detectCapabilitySurfaces(filePaths),
+    capabilities: detectCapabilitySurfaces(absoluteRoot, filePaths),
     safetySignals: detectSafetySignals(absoluteRoot, filePaths),
     files,
   }

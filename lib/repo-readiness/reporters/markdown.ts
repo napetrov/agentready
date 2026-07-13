@@ -89,12 +89,14 @@ const markdownInsights = (title: string, insights: DesignStateInsight[]): string
 }
 
 export function formatScanMarkdown(report: LocalReadinessReport): string {
+  const highRiskCapabilities = report.capabilities.filter(surface => surface.riskTier === 'high').length
+  const highRiskDetail = highRiskCapabilities > 0 ? ` (${highRiskCapabilities} high-risk)` : ''
   return [
     '## AgentReady scan',
     '',
     `Score: **${report.summary.score}/100**`,
     `Files: ${report.summary.totalFiles} total, ${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs`,
-    `Capabilities: ${report.capabilities.length}; safety signals: ${report.safetySignals.length}`,
+    `Capabilities: ${report.capabilities.length}${highRiskDetail}; safety signals: ${report.safetySignals.length}`,
     ciCoverageLine(report.ci),
     `Findings: ${report.findings.length}`,
     ...markdownDimensions(report.dimensions),

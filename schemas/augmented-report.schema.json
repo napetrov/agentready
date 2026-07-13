@@ -428,13 +428,22 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "riskTier": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
               }
             },
             "required": [
               "kind",
               "path",
               "tool",
-              "notes"
+              "notes",
+              "riskTier"
             ],
             "additionalProperties": false
           }

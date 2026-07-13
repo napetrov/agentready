@@ -49,7 +49,7 @@ agentready
     [x] command-surfaces   (Node, Make, CMake, Bazel, Go, Rust, Python)
     [x] command-references (stale npm/yarn/pnpm/bun script, Makefile target, and package-manager mentions in docs/instructions)
     [x] docs
-    [x] capability-surfaces (MCP, skills, hooks, plugins, LSP)
+    [x] capability-surfaces (MCP, skills, hooks, plugins, LSP; each classified by blast-radius risk tier)
     [x] safety-signals     (dangerous package scripts, deploy/publish)
     [x] governance         (CODEOWNERS / PR-template presence; not git-history-based ownership inference)
     [ ] risk-signals

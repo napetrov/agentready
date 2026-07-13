@@ -68,7 +68,7 @@ Features:
   build commands, with `ci.*.not-run` checks that flag commands the repo exposes
   but CI never runs
 - built-in policy packs — **delivered (partial)**: `default` (no-op) and
-  `enterprise` (three severity escalations) ship as `--policy <name>` on
+  `enterprise` (four severity escalations) ship as `--policy <name>` on
   `scan`/`diff` and a `policy` Action input; see `docs/product/policy-packs.md`.
   `oss`/`ml-scientific` and a config-file `policyOptions` shape remain candidates.
 - instruction-file overlap and contradiction checks
@@ -89,6 +89,15 @@ Features:
   whether either review-routing surface exists at a GitHub-recognized path.
   Inferring actual ownership boundaries from git history/blame remains open
   (see "git churn and risk signals" above).
+- capability-surface risk tiers — **delivered**: `detectCapabilitySurfaces` now
+  classifies every MCP/skill/hook/plugin/LSP surface by blast-radius
+  (`report.capabilities[].riskTier`, `low`/`medium`/`high`). MCP configs, hook
+  scripts, a Claude Code settings file that configures a non-empty `hooks`
+  block, and plugin manifests default to `high` (arbitrary commands, or a tool
+  set this scanner can't verify statically); LSP/editor config and skills stay
+  `low`. `safety.capability.high-risk` (info) flags each `high`-tier surface,
+  and the `enterprise` policy pack escalates it to warning — see
+  `docs/product/policy-packs.md`.
 - benchmark harness and public summary for comparing score dimensions against real agent performance
 
 ## v0.3 first-impression polish

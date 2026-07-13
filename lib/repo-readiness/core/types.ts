@@ -212,12 +212,26 @@ export interface CiEvidence {
  */
 export type CapabilityKind = 'mcp' | 'skill' | 'hook' | 'plugin' | 'lsp'
 
+/**
+ * Blast-radius classification for a capability surface: `high` can run
+ * arbitrary commands or grant an agent new tools with unknown scope (a hook
+ * script, a configured hooks block, an MCP server, a plugin manifest —
+ * plugins can themselves bundle MCP servers and hooks, and static config
+ * cannot reveal an MCP server's actual tool set); `medium` is config that
+ * *could* define a high-risk surface but does not appear to (e.g. Claude
+ * Code settings with no `hooks` key); `low` is read-only, informational, or
+ * editor/formatting config with no execution surface (an LSP config, a
+ * skill's instructions).
+ */
+export type CapabilityRiskTier = 'low' | 'medium' | 'high'
+
 export interface CapabilitySurfaceEvidence {
   kind: CapabilityKind
   path: string
   /** The tool that owns the surface (e.g. claude-code, cursor, vscode). */
   tool: string
   notes: string[]
+  riskTier: CapabilityRiskTier
 }
 
 /**

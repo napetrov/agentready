@@ -19,35 +19,97 @@ const writeRepoFile = (root: string, repoPath: string, content: string): void =>
 }
 
 describe('capability-surface detector', () => {
-  test('recognizes MCP, skill, hook, plugin, and LSP surfaces', () => {
-    const capabilities = detectCapabilitySurfaces([
-      '.mcp.json',
-      '.cursor/mcp.json',
-      '.vscode/mcp.json',
-      '.claude/skills/review/SKILL.md',
-      '.claude/settings.json',
-      '.claude/settings.local.json',
-      '.claude/hooks/pre-commit.sh',
-      '.claude-plugin/plugin.json',
-      '.claude-plugin/marketplace.json',
-      '.vscode/settings.json',
-      '.vscode/extensions.json',
-      '.editorconfig',
-      'src/index.ts',
-    ])
+  test('recognizes MCP, skill, hook, plugin, and LSP surfaces, classified by risk tier', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.mcp.json', '{}\n')
+      writeRepoFile(root, '.cursor/mcp.json', '{}\n')
+      writeRepoFile(root, '.vscode/mcp.json', '{}\n')
+      writeRepoFile(root, '.claude/skills/review/SKILL.md', '# review\n')
+      writeRepoFile(root, '.claude/settings.json', JSON.stringify({ hooks: { PreToolUse: [{ matcher: '*', hooks: [] }] } }))
+      writeRepoFile(root, '.claude/settings.local.json', JSON.stringify({ permissions: { allow: ['Bash'] } }))
+      writeRepoFile(root, '.claude/hooks/pre-commit.sh', '#!/bin/sh\n')
+      writeRepoFile(root, '.claude-plugin/plugin.json', '{}\n')
+      writeRepoFile(root, '.claude-plugin/marketplace.json', '{}\n')
+      writeRepoFile(root, '.vscode/settings.json', '{}\n')
+      writeRepoFile(root, '.vscode/extensions.json', '{}\n')
+      writeRepoFile(root, '.editorconfig', 'root = true\n')
+      writeRepoFile(root, 'src/index.ts', 'export {}\n')
 
-    const byKind = (kind: string): string[] => capabilities.filter(c => c.kind === kind).map(c => c.path)
+      const capabilities = detectCapabilitySurfaces(root, [
+        '.mcp.json',
+        '.cursor/mcp.json',
+        '.vscode/mcp.json',
+        '.claude/skills/review/SKILL.md',
+        '.claude/settings.json',
+        '.claude/settings.local.json',
+        '.claude/hooks/pre-commit.sh',
+        '.claude-plugin/plugin.json',
+        '.claude-plugin/marketplace.json',
+        '.vscode/settings.json',
+        '.vscode/extensions.json',
+        '.editorconfig',
+        'src/index.ts',
+      ])
 
-    expect(byKind('mcp')).toEqual(['.cursor/mcp.json', '.mcp.json', '.vscode/mcp.json'])
-    expect(byKind('skill')).toEqual(['.claude/skills/review/SKILL.md'])
-    expect(byKind('hook')).toEqual(['.claude/hooks/pre-commit.sh', '.claude/settings.json', '.claude/settings.local.json'])
-    expect(byKind('plugin')).toEqual(['.claude-plugin/marketplace.json', '.claude-plugin/plugin.json'])
-    expect(byKind('lsp')).toEqual(['.editorconfig', '.vscode/extensions.json', '.vscode/settings.json'])
-    expect(capabilities.every(c => typeof c.tool === 'string' && c.notes.length > 0)).toBe(true)
+      const byKind = (kind: string): string[] => capabilities.filter(c => c.kind === kind).map(c => c.path)
+      const riskOf = (repoPath: string): string | undefined => capabilities.find(c => c.path === repoPath)?.riskTier
+
+      expect(byKind('mcp')).toEqual(['.cursor/mcp.json', '.mcp.json', '.vscode/mcp.json'])
+      expect(byKind('skill')).toEqual(['.claude/skills/review/SKILL.md'])
+      expect(byKind('hook')).toEqual(['.claude/hooks/pre-commit.sh', '.claude/settings.json', '.claude/settings.local.json'])
+      expect(byKind('plugin')).toEqual(['.claude-plugin/marketplace.json', '.claude-plugin/plugin.json'])
+      expect(byKind('lsp')).toEqual(['.editorconfig', '.vscode/extensions.json', '.vscode/settings.json'])
+      expect(capabilities.every(c => typeof c.tool === 'string' && c.notes.length > 0)).toBe(true)
+
+      // High: arbitrary-command/unverifiable-tool-set surfaces.
+      expect(riskOf('.mcp.json')).toBe('high')
+      expect(riskOf('.cursor/mcp.json')).toBe('high')
+      expect(riskOf('.vscode/mcp.json')).toBe('high')
+      expect(riskOf('.claude/hooks/pre-commit.sh')).toBe('high')
+      expect(riskOf('.claude-plugin/plugin.json')).toBe('high')
+      expect(riskOf('.claude-plugin/marketplace.json')).toBe('high')
+      expect(riskOf('.claude/settings.json')).toBe('high') // configures a non-empty hooks block
+      // Medium: settings config with no hooks configured.
+      expect(riskOf('.claude/settings.local.json')).toBe('medium')
+      // Low: no execution surface.
+      expect(riskOf('.claude/skills/review/SKILL.md')).toBe('low')
+      expect(riskOf('.editorconfig')).toBe('low')
+      expect(riskOf('.vscode/settings.json')).toBe('low')
+      expect(riskOf('.vscode/extensions.json')).toBe('low')
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 
   test('ignores unrelated files', () => {
-    expect(detectCapabilitySurfaces(['README.md', 'src/index.ts', 'package.json'])).toEqual([])
+    expect(detectCapabilitySurfaces('/unused-root', ['README.md', 'src/index.ts', 'package.json'])).toEqual([])
+  })
+
+  test('classifies .claude/settings.json risk from its own content, not just its presence', () => {
+    const root = createTempRepo()
+    try {
+      const riskOf = (): string | undefined => detectCapabilitySurfaces(root, ['.claude/settings.json'])[0]?.riskTier
+
+      writeRepoFile(root, '.claude/settings.json', JSON.stringify({ permissions: { allow: ['Bash'] } }))
+      expect(riskOf()).toBe('medium')
+
+      writeRepoFile(root, '.claude/settings.json', JSON.stringify({ hooks: {} }))
+      expect(riskOf()).toBe('medium') // present but empty: no hook actually configured
+
+      writeRepoFile(root, '.claude/settings.json', JSON.stringify({ hooks: { PreToolUse: [] } }))
+      expect(riskOf()).toBe('high')
+
+      writeRepoFile(root, '.claude/settings.json', 'not valid json')
+      expect(riskOf()).toBe('medium') // unparsable: fall back rather than guess
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('falls back to medium for a settings path that does not exist on disk', () => {
+    const capabilities = detectCapabilitySurfaces(path.join(tmpdir(), 'agentready-cap-missing'), ['.claude/settings.json'])
+    expect(capabilities[0].riskTier).toBe('medium')
   })
 })
 
@@ -151,6 +213,7 @@ describe('scan integration', () => {
       const report = scanLocalReadiness(root, { now: fixedNow })
 
       expect(report.capabilities.map(c => c.path)).toContain('.mcp.json')
+      expect(report.capabilities.find(c => c.path === '.mcp.json')?.riskTier).toBe('high')
       const findingIds = report.findings.map(f => f.id)
       expect(findingIds).toContain('safety.install-hook:package.json#scripts.postinstall')
       expect(findingIds).toContain('safety.deploy:package.json#scripts.deploy')
@@ -160,6 +223,28 @@ describe('scan integration', () => {
       expect(installFinding?.severity).toBe('info')
       const destructiveFinding = report.findings.find(f => f.id === 'safety.destructive:package.json#scripts.deploy')
       expect(destructiveFinding?.severity).toBe('warning')
+
+      expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('flags a high-risk capability surface but not a low/medium-risk one', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, 'README.md', '# Demo\n')
+      writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+      writeRepoFile(root, '.mcp.json', '{}\n')
+      writeRepoFile(root, '.editorconfig', 'root = true\n')
+
+      const report = scanLocalReadiness(root, { now: fixedNow })
+      const findingIds = report.findings.map(f => f.id)
+
+      expect(findingIds).toContain('safety.capability.high-risk:.mcp.json')
+      expect(findingIds).not.toContain('safety.capability.high-risk:.editorconfig')
+      const finding = report.findings.find(f => f.id === 'safety.capability.high-risk:.mcp.json')
+      expect(finding?.severity).toBe('info')
 
       expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
     } finally {

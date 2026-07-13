@@ -405,5 +405,20 @@ export const buildFindings = (
     })
   }
 
+  // Capability surfaces the risk-tier classifier flagged as blast-radius
+  // `high` (arbitrary-command hooks, MCP server configs, plugin manifests —
+  // see detectCapabilitySurfaces). Informational: presence is not itself a
+  // problem, but an agent (or reviewer) should know which surfaces actually
+  // widen what the agent can do, not just that "a capability surface exists".
+  for (const surface of report.capabilities.filter(surface => surface.riskTier === 'high')) {
+    findings.push({
+      id: `safety.capability.high-risk:${surface.path}`,
+      title: `High blast-radius agent capability surface: ${surface.kind}`,
+      severity: 'info',
+      path: surface.path,
+      recommendation: `${surface.notes[0]} Review what this ${surface.tool} ${surface.kind} surface actually grants access to, and route it through an approval workflow before trusting it.`,
+    })
+  }
+
   return findings.sort((a, b) => a.id.localeCompare(b.id))
 }

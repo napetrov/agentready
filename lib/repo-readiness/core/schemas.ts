@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type {
+  CapabilitySurfaceEvidence,
   DesignStateSummary,
   DocumentSurfaceEvidence,
   CiEvidence,
@@ -38,6 +39,7 @@ export const commandEcosystemSchema = z.enum([
   'autotools',
 ])
 export const capabilityKindSchema = z.enum(['mcp', 'skill', 'hook', 'plugin', 'lsp'])
+export const capabilityRiskTierSchema = z.enum(['low', 'medium', 'high'])
 export const safetyCategorySchema = z.enum(['install-hook', 'destructive', 'network-exec', 'deploy'])
 export const evidenceConfidenceSchema = z.enum(['low', 'medium', 'high'])
 export const evidenceSourceKindSchema = z.enum(['file', 'manifest', 'workflow', 'config', 'inference'])
@@ -208,6 +210,7 @@ export const capabilitySurfaceSchema = z.strictObject({
   path: z.string(),
   tool: z.string(),
   notes: z.array(z.string()),
+  riskTier: capabilityRiskTierSchema,
 })
 
 export const safetySignalSchema = z.strictObject({
@@ -481,6 +484,7 @@ const _file: Exact<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile>
 const _commands: Exact<z.infer<typeof commandEvidenceSchema>, CommandEvidence> = true
 const _commandReference: Exact<z.infer<typeof commandReferenceEvidenceSchema>, CommandReferenceEvidence> = true
 const _governance: Exact<z.infer<typeof governanceEvidenceSchema>, GovernanceEvidence> = true
+const _capabilitySurface: Exact<z.infer<typeof capabilitySurfaceSchema>, CapabilitySurfaceEvidence> = true
 const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
 const _documentSurface: Exact<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence> = true
 const _repositoryEvidence: Exact<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence> = true
