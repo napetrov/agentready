@@ -157,6 +157,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `averageScore`/`minScore`/`maxScore` are now bounded to `0-100` integers in
   both the runtime Zod schema and the generated JSON Schema, matching the
   same contract already enforced on dimension scores.
+- The `.github/`-is-root-equivalent carve-out for command-reference checks
+  was too broad: it matched any path starting with `.github/`, including a
+  genuinely nested component under it (e.g. a local composite action at
+  `.github/actions/foo/README.md` with its own `package.json` scripts). Now
+  only a doc directly under `.github/` (one path segment) counts as
+  root-equivalent; deeper paths are treated the same as any other
+  package-scoped doc and excluded.
 
 ## [0.2.0] - 2026-06-08
 

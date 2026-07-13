@@ -62,16 +62,19 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
   // root-scope instruction files only — the `commands` evidence only carries
   // root command surfaces (root package.json/Makefile), so a nested/
   // package-scoped doc's own valid commands would otherwise be misattributed
-  // as stale against the root's. `.github/` is a repo-level (never a
-  // package/workspace) directory, so a doc there is root-equivalent despite
-  // containing a slash — e.g. `.github/CONTRIBUTING.md`, a GitHub-recognized
-  // location alongside the root file. Instruction files use their own
+  // as stale against the root's. A doc directly under `.github/` (one path
+  // segment, e.g. `.github/CONTRIBUTING.md`) is root-equivalent — a
+  // GitHub-recognized location alongside the root file — but `.github/`
+  // itself can contain deeper, genuinely nested components (e.g. a local
+  // composite action under `.github/actions/foo/README.md` with its own
+  // package.json scripts), which must NOT be treated as root-scoped any more
+  // than `packages/foo/README.md` would be. Instruction files use their own
   // `scope` classification instead of a path check: `detectInstructionSurfaces`
   // already marks always-loaded files like `.claude/CLAUDE.md` and
   // `.github/copilot-instructions.md` as `scope: 'root'` regardless of path
   // depth, while genuinely nested memory files (`packages/foo/CLAUDE.md`) get
   // `path-specific` — exactly the root/nested distinction this check needs.
-  const isRootScopedDocPath = (repoPath: string): boolean => !repoPath.includes('/') || repoPath.startsWith('.github/')
+  const isRootScopedDocPath = (repoPath: string): boolean => !repoPath.includes('/') || /^\.github\/[^/]+$/.test(repoPath)
   const commandReferenceDocPaths = [
     ...docs.readme.filter(isRootScopedDocPath),
     ...docs.contributing.filter(isRootScopedDocPath),

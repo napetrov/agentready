@@ -252,6 +252,20 @@ describe('command reference findings (integration)', () => {
     expect(staleReferencePaths).toEqual(['.github/CONTRIBUTING.md'])
   })
 
+  it('does not check a nested component README under .github/ (e.g. a local composite action) against the root command surface', () => {
+    // .github/ can contain genuinely nested components — a local composite
+    // action with its own package.json/scripts — not just root-equivalent
+    // docs directly under it. Its own README correctly documents its own
+    // "build" script; checking it against the root's (which lacks "build")
+    // would be a false positive.
+    write('package.json', JSON.stringify({ name: 'demo', scripts: { test: 'jest' } }))
+    write('.github/actions/foo/package.json', JSON.stringify({ name: 'foo-action', scripts: { build: 'tsc' } }))
+    write('.github/actions/foo/README.md', 'Run `npm run build` to compile this action.')
+
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    expect(report.findings.filter(f => f.id.startsWith('commands.reference.'))).toEqual([])
+  })
+
   it('does not emit a finding when every referenced script exists', () => {
     write('package.json', JSON.stringify({ name: 'demo', scripts: { build: 'tsc', test: 'jest' } }))
     write('AGENTS.md', 'Run `npm run build` and `npm test` before committing.')
