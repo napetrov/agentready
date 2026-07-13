@@ -161,7 +161,11 @@ const packageJsonScripts = (packageJson: unknown): Record<string, string> => {
 }
 
 const makefileNames = ['Makefile', 'makefile', 'GNUmakefile']
-const makeTargetPattern = /^([a-zA-Z0-9_.\-/]+)\s*:/gm
+// A rule line can list several space-separated targets sharing one prerequisite
+// list (`build test: setup`), so the capture group allows spaces and callers
+// split it on whitespace — a single-target capture would otherwise miss every
+// name in a shared rule.
+const makeTargetPattern = /^([a-zA-Z0-9_.\-/ ]+):/gm
 
 const hasCiScript = (filePaths: string[], names: string[]): boolean =>
   filePaths.some(filePath => names.some(name => new RegExp(`(^|/)${name}\\.(sh|bat|ps1)$`, 'i').test(filePath)))
@@ -179,7 +183,9 @@ const detectMake = (
   const content = readText(root, makefile) ?? ''
   const targets = new Set<string>()
   for (const match of content.matchAll(makeTargetPattern)) {
-    targets.add(match[1].toLowerCase())
+    for (const target of match[1].trim().split(/\s+/)) {
+      if (target) targets.add(target.toLowerCase())
+    }
   }
 
   const hasTarget = (...names: string[]): boolean => names.some(name => targets.has(name))

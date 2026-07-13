@@ -64,6 +64,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
   const isRootPath = (repoPath: string): boolean => !repoPath.includes('/')
   const commandReferenceDocPaths = [
     ...docs.readme.filter(isRootPath),
+    ...docs.contributing.filter(isRootPath),
     ...instructions.filter(surface => isRootPath(surface.path)).map(surface => surface.path),
   ]
 

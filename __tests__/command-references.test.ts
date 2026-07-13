@@ -56,6 +56,28 @@ describe('detectCommandReferences (units)', () => {
     ])
   })
 
+  it('does not flag bare "npm start" when a root server.js provides npm\'s documented fallback', () => {
+    const doc = write('AGENTS.md', 'Run `npm start` to launch the app.')
+    expect(detect([doc], baseCommands, [])).toEqual([
+      { path: doc, reference: 'npm start', kind: 'npm-script', detail: 'No "start" script in package.json.' },
+    ])
+    expect(detect([doc], baseCommands, ['server.js'])).toEqual([])
+  })
+
+  it('does not flag bare "bun test": Bun\'s test runner needs no package script', () => {
+    const doc = write('AGENTS.md', 'Run `bun test` before committing.')
+    const noTestScript: CommandEvidence = { ...baseCommands, scripts: ['build', 'lint'] } // no "test" script at all
+    expect(detect([doc], noTestScript)).toEqual([])
+  })
+
+  it('still flags bare "bun start" when the script is missing (the exception is test-only)', () => {
+    const doc = write('AGENTS.md', 'Run `bun start` to launch the app.')
+    const evidence = detect([doc], baseCommands)
+    expect(evidence).toEqual([
+      { path: doc, reference: 'bun start', kind: 'npm-script', detail: 'No "start" script in package.json.' },
+    ])
+  })
+
   it('does not check npm/yarn/pnpm/bun references when the repo is not a Node project', () => {
     const doc = write('AGENTS.md', 'Run `npm run buld`.')
     expect(detect([doc], { ...baseCommands, ecosystems: [] })).toEqual([])
@@ -74,6 +96,14 @@ describe('detectCommandReferences (units)', () => {
       { path: doc, reference: 'make check', kind: 'make-target', detail: 'No "check" target in the Makefile.' },
     ])
     expect(detect([doc], { ...baseCommands, ecosystems: [] })).toEqual([])
+  })
+
+  it('does not misread a make option as the target (make -j test, make -C subdir test)', () => {
+    const makeCommands: CommandEvidence = { ...baseCommands, ecosystems: ['make'], makeTargets: ['build', 'test'] }
+    const doc = write('AGENTS.md', 'Run `make -j test` or `make -C subdir test`.')
+    // Abstains entirely rather than misreport the flag (or a flag's own
+    // argument, e.g. -C's directory) as a missing target.
+    expect(detect([doc], makeCommands)).toEqual([])
   })
 
   it('does not flag a make target reference that exists', () => {

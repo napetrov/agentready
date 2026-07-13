@@ -81,21 +81,33 @@ export const detectCommandReferences = (
         }
       }
       for (const match of text.matchAll(BARE_SCRIPT_PATTERN)) {
-        const [reference, , script] = match
-        if (!scripts.has(script)) {
-          evidence.push({
-            path: docPath,
-            reference: reference.trim(),
-            kind: 'npm-script',
-            detail: `No "${script}" script in package.json.`,
-          })
-        }
+        const [reference, binary, script] = match
+        if (scripts.has(script)) continue
+        // Two documented, tool-native fallbacks that need no package script:
+        // Bun's test runner discovers test files on its own, and npm's own
+        // `start` falls back to `node server.js` when no "start" script
+        // exists but a root server.js does.
+        if (binary === 'bun' && script === 'test') continue
+        if (binary === 'npm' && script === 'start' && filePaths.includes('server.js')) continue
+        evidence.push({
+          path: docPath,
+          reference: reference.trim(),
+          kind: 'npm-script',
+          detail: `No "${script}" script in package.json.`,
+        })
       }
     }
 
     if (isMake) {
       for (const match of text.matchAll(MAKE_TARGET_PATTERN)) {
         const [reference, target] = match
+        // A hyphen-led capture is a make option (-j, -C, --always-make, ...),
+        // not a target — e.g. `make -j test` or `make -C subdir test`. Skip
+        // rather than misreport the flag as a missing target; correctly
+        // finding the real target after option/argument tokens (some flags,
+        // like -C, take a following argument that isn't a target either)
+        // needs real argument parsing this heuristic doesn't attempt.
+        if (target.startsWith('-')) continue
         if (!makeTargets.has(target.toLowerCase())) {
           evidence.push({
             path: docPath,
@@ -123,5 +135,10 @@ export const detectCommandReferences = (
     }
   }
 
-  return evidence.sort((a, b) => `${a.path}${a.reference}`.localeCompare(`${b.path}${b.reference}`))
+  // The same stale reference can legitimately appear more than once in one
+  // document's prose (e.g. mentioned in both a "CI" and a "locally" note);
+  // collapse those into a single finding instead of inflating the count.
+  const deduped = [...new Map(evidence.map(item => [`${item.path}|${item.kind}|${item.reference}`, item])).values()]
+
+  return deduped.sort((a, b) => `${a.path}${a.reference}`.localeCompare(`${b.path}${b.reference}`))
 }
