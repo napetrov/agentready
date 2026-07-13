@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import { detectCommandReferences } from '../lib/repo-readiness/detectors/command-references'
@@ -116,6 +116,17 @@ describe('detectCommandReferences (units)', () => {
     expect(detect([doc], { ...baseCommands, ecosystems: [] })).toEqual([])
   })
 
+  it('recognizes a path-like make target (docs/html) instead of truncating it at the slash', () => {
+    const doc = write('AGENTS.md', 'Run `make docs/html` to build the docs.')
+    const makeCommands: CommandEvidence = { ...baseCommands, ecosystems: ['make'], makeTargets: ['docs/html', 'test'] }
+    expect(detect([doc], makeCommands)).toEqual([])
+
+    const missingTargetCommands: CommandEvidence = { ...baseCommands, ecosystems: ['make'], makeTargets: ['test'] }
+    expect(detect([doc], missingTargetCommands)).toEqual([
+      { path: doc, reference: 'make docs/html', kind: 'make-target', detail: 'No "docs/html" target in the Makefile.' },
+    ])
+  })
+
   it('does not misread a make option as the target (make -j test, make -C subdir test)', () => {
     const makeCommands: CommandEvidence = { ...baseCommands, ecosystems: ['make'], makeTargets: ['build', 'test'] }
     const doc = write('AGENTS.md', 'Run `make -j test` or `make -C subdir test`.')
@@ -189,6 +200,19 @@ describe('detectCommandReferences (units)', () => {
     const evidence = detect([doc], baseCommands)
     expect(evidence.map(item => item.reference)).toEqual(['npm run buld'])
   })
+
+  it('never reads through a symlinked doc (its content may belong to a different, package-scoped location)', () => {
+    // A root-scope symlink (e.g. README.md -> packages/app/README.md) is kept
+    // visible by path in the file inventory but never dereferenced there;
+    // detectCommandReferences must apply the same rule, since the symlink's
+    // *content* can document a nested package's own scripts that don't exist
+    // at the root, and Node's default open() would otherwise follow it.
+    mkdirSync(path.join(root, 'packages', 'app'), { recursive: true })
+    writeFileSync(path.join(root, 'packages', 'app', 'README.md'), 'Run `npm run dev` to start the app.')
+    symlinkSync(path.join('packages', 'app', 'README.md'), path.join(root, 'README.md'))
+
+    expect(detect(['README.md'], baseCommands)).toEqual([])
+  })
 })
 
 describe('command reference findings (integration)', () => {
@@ -261,6 +285,21 @@ describe('command reference findings (integration)', () => {
     write('package.json', JSON.stringify({ name: 'demo', scripts: { test: 'jest' } }))
     write('.github/actions/foo/package.json', JSON.stringify({ name: 'foo-action', scripts: { build: 'tsc' } }))
     write('.github/actions/foo/README.md', 'Run `npm run build` to compile this action.')
+
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    expect(report.findings.filter(f => f.id.startsWith('commands.reference.'))).toEqual([])
+  })
+
+  it('does not check a root README that is a symlink to a package-scoped README', () => {
+    // The file inventory keeps a root README symlink visible by path (never
+    // dereferencing it there), so detectDocs/isRootScopedDocPath still see a
+    // slashless "README.md". Its actual content belongs to packages/app,
+    // which documents a "dev" script the root package.json lacks — checking
+    // it against the root would be a false positive.
+    write('package.json', JSON.stringify({ name: 'demo', scripts: { test: 'jest' } }))
+    write('packages/app/package.json', JSON.stringify({ name: 'app', scripts: { dev: 'vite' } }))
+    write('packages/app/README.md', 'Run `npm run dev` to start the app.')
+    symlinkSync(path.join('packages', 'app', 'README.md'), path.join(root, 'README.md'))
 
     const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
     expect(report.findings.filter(f => f.id.startsWith('commands.reference.'))).toEqual([])

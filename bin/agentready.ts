@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { writeFileSync } from 'fs'
+import path from 'path'
 import { Command, InvalidArgumentError, Option } from 'commander'
 import {
   applyPolicy,
@@ -274,7 +275,14 @@ Examples:
           throw new Error('agentready batch: no repository paths given (pass paths, and/or --root <dir>)')
         }
 
-        const report = scanPortfolio(targets, { configPath: options.config })
+        // Each target has its own root, but `--config` is one shared file the
+        // caller names relative to their own working directory (matching the
+        // documented "applied to every repo" behavior) — resolve it once here
+        // rather than passing the raw relative path through to every repo
+        // scan, where `loadExplicitConfig` would otherwise resolve it against
+        // each different target root instead.
+        const configPath = options.config ? path.resolve(process.cwd(), options.config) : undefined
+        const report = scanPortfolio(targets, { configPath })
         const validation = validatePortfolioReportContract(report)
         if (!validation.valid) {
           throw new Error(`portfolio report contract validation failed: ${validation.errors.join('; ')}`)

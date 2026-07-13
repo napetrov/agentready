@@ -164,6 +164,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only a doc directly under `.github/` (one path segment) counts as
   root-equivalent; deeper paths are treated the same as any other
   package-scoped doc and excluded.
+- Command-reference checks never read through a symlinked doc (e.g. a root
+  `README.md` symlinked to `packages/app/README.md`). Previously such a
+  symlink was still visible as a slashless, root-scope path, but reading it
+  followed the link and checked the *target's* content (which can document a
+  different package's own scripts) against the *root's* command surface — a
+  false positive. Matches the "classify a symlink by path, never dereference
+  it" invariant the file-inventory walker already applies elsewhere.
+- `commands.reference.make-target` now recognizes path-like targets
+  (`make docs/html`) instead of truncating the capture at the `/` and
+  reporting a false missing-target warning; matches how the command-surface
+  Makefile parser already preserves slash-containing target names.
+- `agentready batch --config <path>` now resolves a relative config path
+  once, against the caller's working directory, instead of passing it
+  through unchanged to every target repo (where it would be re-resolved
+  against each different repo root and typically not found).
 
 ## [0.2.0] - 2026-06-08
 

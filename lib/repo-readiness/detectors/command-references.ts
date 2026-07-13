@@ -1,4 +1,4 @@
-import { closeSync, existsSync, openSync, readSync } from 'fs'
+import { closeSync, existsSync, lstatSync, openSync, readSync } from 'fs'
 import path from 'path'
 import type { CommandEvidence, CommandReferenceEvidence, PackageManager } from '../core/types'
 
@@ -11,6 +11,21 @@ const MAX_DOCUMENT_BYTES_SCANNED = 200_000
 const readText = (root: string, repoPath: string): string | undefined => {
   const absolutePath = path.join(root, repoPath)
   if (!existsSync(absolutePath)) {
+    return undefined
+  }
+  try {
+    // A root-scope symlinked doc (e.g. README.md symlinked to
+    // packages/app/README.md — the file-inventory walker keeps these visible
+    // by path, never dereferencing them) must not be read through: its
+    // content would belong to a different, possibly package-scoped location,
+    // but `repoPath` here is the symlink's own root-scope path, so any
+    // commands it documents would be checked against the wrong command
+    // surface. Same "classify by path, never read through" invariant the
+    // file-inventory walker already applies to symlinks.
+    if (lstatSync(absolutePath).isSymbolicLink()) {
+      return undefined
+    }
+  } catch {
     return undefined
   }
   let fd: number | undefined
@@ -48,7 +63,11 @@ const RUN_SCRIPT_PATTERN = /\b(npm|yarn|pnpm|bun)\s+run\s+([A-Za-z0-9_:.-]+)/g
 // check without the "run" keyword.
 const BARE_SCRIPT_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(test|start)\b/g
 const INSTALL_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(install|ci)\b/g
-const MAKE_TARGET_PATTERN = /\bmake\s+([A-Za-z0-9_.-]+)/g
+// Includes `/`: a path-like target (`docs/html`) is valid make syntax, and
+// the command-surface Makefile parser (`makeTargetPattern` in
+// command-surfaces.ts) already preserves slash-containing target names, so
+// this capture must match the same shape or every such target looks missing.
+const MAKE_TARGET_PATTERN = /\bmake\s+([A-Za-z0-9_./-]+)/g
 // `npm run dev --workspace packages/app` (or `-w`/`--workspaces`) routes to a
 // workspace package's own scripts, not the root package.json this detector
 // checks against — a script that only exists in that workspace is a false

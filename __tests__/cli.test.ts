@@ -261,6 +261,31 @@ describe('batch command', () => {
     const result = await run(['batch'])
     expect(result.error).toBeDefined()
   })
+
+  it('resolves a relative --config against the caller\'s cwd, not each target repo root', async () => {
+    // --config is one shared file the caller names relative to their own
+    // working directory; it must not be re-resolved against every different
+    // target root (where a same-named relative file may not exist at all).
+    const cwdDir = mkdtempSync(path.join(tmpdir(), 'agentready-cli-batch-cwd-'))
+    const previousCwd = process.cwd()
+    try {
+      writeFileSync(path.join(cwdDir, 'shared.json'), JSON.stringify({ largeFileWarningBytes: 1 }))
+      process.chdir(cwdDir)
+
+      const result = await run(['batch', goodFixture, '--config', 'shared.json', '--format', 'json'])
+      const report = JSON.parse(result.stdout)
+      expect(report.summary.scanErrorCount).toBe(0)
+      const repo = report.repos[0]
+      expect(repo.ok).toBe(true)
+      // largeFileWarningBytes: 1 forces every file over 1 byte into a
+      // files.large finding — proof the shared config actually took effect,
+      // not just that the scan didn't error.
+      expect(repo.findingCount).toBeGreaterThan(0)
+    } finally {
+      process.chdir(previousCwd)
+      rmSync(cwdDir, { recursive: true, force: true })
+    }
+  })
 })
 
 describe('validate-config command', () => {
