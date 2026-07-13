@@ -1,3 +1,4 @@
+import { adjustFindings, applyPolicy, type PolicyPack } from './policy'
 import type {
   LocalReadinessReport,
   ReadinessDiffReport,
@@ -21,6 +22,12 @@ export interface GateOptions {
   failOnRegression?: boolean
   /** Fail when the (head) score drops below this minimum. */
   minScore?: number
+  /**
+   * When provided, the severity/score gates use this policy pack's
+   * adjustments instead of the raw deterministic findings/score. Raw evidence
+   * is never mutated; this only changes what the gate reacts to.
+   */
+  policy?: PolicyPack
 }
 
 export interface GateResult {
@@ -53,12 +60,16 @@ export const evaluateScanGate = (report: LocalReadinessReport, options: GateOpti
   const failOnSeverity = options.failOnSeverity ?? 'error'
   const failureReasons: string[] = []
 
-  const severityHits = countSeverityHits(report.findings, failOnSeverity)
+  const policyResult = options.policy ? applyPolicy(report, options.policy) : undefined
+  const findings = policyResult?.adjustedFindings ?? report.findings
+  const score = policyResult?.effectiveScore ?? report.summary.score
+
+  const severityHits = countSeverityHits(findings, failOnSeverity)
   if (severityHits > 0) {
     failureReasons.push(`${severityHits} finding(s) at or above "${failOnSeverity}"`)
   }
 
-  checkMinScore(report.summary.score, options.minScore, failureReasons)
+  checkMinScore(score, options.minScore, failureReasons)
 
   return { failed: failureReasons.length > 0, failureReasons }
 }
@@ -76,12 +87,14 @@ export const evaluateDiffGate = (report: ReadinessDiffReport, options: GateOptio
     failureReasons.push(`${report.regressions.length} readiness regression(s) introduced`)
   }
 
-  const severityHits = countSeverityHits(report.newFindings, failOnSeverity)
+  const newFindings = options.policy ? adjustFindings(report.newFindings, options.policy).adjustedFindings : report.newFindings
+  const severityHits = countSeverityHits(newFindings, failOnSeverity)
   if (severityHits > 0) {
     failureReasons.push(`${severityHits} new finding(s) at or above "${failOnSeverity}"`)
   }
 
-  checkMinScore(report.headReport.summary.score, options.minScore, failureReasons)
+  const score = options.policy ? applyPolicy(report.headReport, options.policy).effectiveScore : report.headReport.summary.score
+  checkMinScore(score, options.minScore, failureReasons)
 
   return { failed: failureReasons.length > 0, failureReasons }
 }

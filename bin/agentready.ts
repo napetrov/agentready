@@ -2,6 +2,7 @@
 import { writeFileSync } from 'fs'
 import { Command, InvalidArgumentError, Option } from 'commander'
 import {
+  applyPolicy,
   compactDiffReport,
   compactReport,
   diffLocalReadiness,
@@ -10,6 +11,7 @@ import {
   FAIL_ON_SEVERITIES,
   formatDiffMarkdown,
   formatDiffSummary,
+  formatPolicySummary,
   formatRuleDoc,
   formatScanMarkdown,
   formatScanSarif,
@@ -17,11 +19,14 @@ import {
   getRuleDoc,
   listRuleIds,
   loadConfig,
+  POLICY_NAMES,
+  resolvePolicyPack,
   scaffoldInit,
   scanLocalReadiness,
   validateLocalReadinessReportContract,
   validateReadinessDiffReportContract,
   type FailOnSeverity,
+  type PolicyName,
 } from '../lib/repo-readiness/local-readiness'
 import {
   analyzeReport,
@@ -46,6 +51,16 @@ interface ReportOptions {
   config?: string
   failOn?: FailOnSeverity
   minScore?: number
+  policy?: PolicyName
+}
+
+/** Resolves `--policy` (default `'default'`) and prints its own InvalidArgumentError, mirroring how `Option.choices` reports bad CLI values. */
+const resolvePolicy = (name: PolicyName | undefined) => {
+  const pack = resolvePolicyPack(name ?? 'default')
+  if (!pack) {
+    throw new InvalidArgumentError(`unknown policy "${name}"`)
+  }
+  return pack
 }
 
 /**
@@ -97,6 +112,11 @@ const withReportOptions = (command: Command): Command =>
       new Option('--fail-on <severity>', 'fail on findings at or above this severity').choices(FAIL_ON_SEVERITIES),
     )
     .option('--min-score <n>', 'fail when the score drops below n (0-100)', parseMinScore)
+    .addOption(
+      new Option('--policy <name>', 'apply a policy pack\'s severity adjustments to gating')
+        .choices(POLICY_NAMES)
+        .default('default'),
+    )
 
 /**
  * Builds the fully-wired Commander program. Exported (rather than executed at
@@ -117,6 +137,7 @@ Examples:
   agentready scan .
   agentready scan . --format sarif --output agentready.sarif
   agentready scan . --fail-on warning --min-score 80
+  agentready scan . --policy enterprise --fail-on error
   agentready diff --base origin/main --head HEAD . --fail-on-regression
   agentready validate-config .`,
     )
@@ -132,6 +153,7 @@ Examples:
     if (!validation.valid) {
       throw new Error(`scan report contract validation failed: ${validation.errors.join('; ')}`)
     }
+    const policy = resolvePolicy(options.policy)
 
     const format = resolveFormat(options)
     if (format === 'json') {
@@ -143,8 +165,14 @@ Examples:
     } else {
       emit(formatScanSummary(report), options.output)
     }
+    // Policy metadata is human-readable console noise, not part of the raw
+    // report contract, so it's only printed for non-machine-readable formats
+    // and only when a non-default policy was explicitly requested.
+    if (policy.name !== 'default' && (format === 'summary' || format === 'markdown')) {
+      console.log(formatPolicySummary(applyPolicy(report, policy)))
+    }
 
-    const gate = evaluateScanGate(report, { failOnSeverity: options.failOn, minScore: options.minScore })
+    const gate = evaluateScanGate(report, { failOnSeverity: options.failOn, minScore: options.minScore, policy })
     if (gate.failed) {
       console.error(`Readiness gate failed: ${gate.failureReasons.join('; ')}`)
       process.exitCode = 1
@@ -169,6 +197,7 @@ Examples:
     if (!validation.valid) {
       throw new Error(`diff report contract validation failed: ${validation.errors.join('; ')}`)
     }
+    const policy = resolvePolicy(options.policy)
 
     const format = resolveFormat(options)
     if (format === 'json') {
@@ -181,11 +210,18 @@ Examples:
     } else {
       emit(formatDiffSummary(report), options.output)
     }
+    // Reported against the head report, matching how --min-score already
+    // treats diff mode as "head state"; see the scan command for why this is
+    // skipped for machine-readable formats and the default policy.
+    if (policy.name !== 'default' && (format === 'summary' || format === 'markdown')) {
+      console.log(formatPolicySummary(applyPolicy(report.headReport, policy)))
+    }
 
     const gate = evaluateDiffGate(report, {
       failOnSeverity: options.failOn,
       failOnRegression: options.failOnRegression,
       minScore: options.minScore,
+      policy,
     })
     if (gate.failed) {
       console.error(`Readiness gate failed: ${gate.failureReasons.join('; ')}`)

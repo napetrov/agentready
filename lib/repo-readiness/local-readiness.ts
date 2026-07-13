@@ -88,6 +88,9 @@ export {
 } from './core/gate'
 export type { FailOnSeverity, GateOptions, GateResult } from './core/gate'
 
+export { adjustFindings, applyPolicy, POLICY_NAMES } from './core/policy'
+export type { PolicyName, PolicyPack, PolicyResult, PolicySeverityAdjustment } from './core/policy'
+
 export {
   RULE_CATALOG,
   RULE_CATEGORIES,
@@ -99,6 +102,8 @@ export {
 } from './checks/catalog'
 export type { RuleDoc } from './checks/catalog'
 
+export { DEFAULT_POLICY, ENTERPRISE_POLICY, POLICY_PACKS, resolvePolicyPack } from './checks/policy-packs'
+
 export {
   localReadinessConfigSchema,
   localReadinessReportSchema,
@@ -107,7 +112,7 @@ export {
   readinessRuleCategorySchema,
 } from './core/schemas'
 
-export { formatDiffSummary, formatScanSummary } from './reporters/console'
+export { formatDiffSummary, formatPolicySummary, formatScanSummary } from './reporters/console'
 export { formatDiffMarkdown, formatScanMarkdown } from './reporters/markdown'
 export { formatScanSarif } from './reporters/sarif'
 export type { SarifLog, SarifOptions } from './reporters/sarif'

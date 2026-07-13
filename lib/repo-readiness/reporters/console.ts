@@ -1,3 +1,4 @@
+import type { PolicyResult } from '../core/policy'
 import type { CiEvidence, LocalReadinessReport, ReadinessDiffReport } from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
 
@@ -42,6 +43,24 @@ export function formatScanSummary(report: LocalReadinessReport): string {
     lines.push(`- [${finding.severity}] ${finding.title}${finding.path ? ` (${finding.path})` : ''}`)
   }
 
+  return lines.join('\n')
+}
+
+/**
+ * Renders a policy pack's severity adjustments and effective score. Only
+ * meaningful when a non-default policy was explicitly requested; the raw
+ * `report.summary.score`/`findings` are never changed by policy.
+ */
+export function formatPolicySummary(result: PolicyResult): string {
+  if (result.severityAdjustments.length === 0) {
+    return `Policy: ${result.policy} (no severity adjustments; effective score ${result.effectiveScore}/100)`
+  }
+  const lines = [
+    `Policy: ${result.policy} (${result.severityAdjustments.length} severity adjustment(s), effective score ${result.effectiveScore}/100)`,
+  ]
+  for (const adjustment of result.severityAdjustments) {
+    lines.push(`- ${adjustment.findingId}: ${adjustment.from} -> ${adjustment.to} (${adjustment.reason})`)
+  }
   return lines.join('\n')
 }
 

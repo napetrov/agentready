@@ -38,6 +38,10 @@ inputs:
     description: 'Fail when the readiness score is below this value (0-100). Empty disables the gate.'
     required: false
     default: ''
+  policy:
+    description: 'Policy pack applying severity adjustments before gating: default (no-op) or enterprise (stricter instruction/install/deploy gates). Raw findings/score are never mutated; see docs/product/policy-packs.md.'
+    required: false
+    default: 'default'
   job-summary:
     description: 'Write the markdown report to the GitHub Actions job summary.'
     required: false
@@ -92,6 +96,10 @@ outputs:
     description: 'The LLM-augmented score (0-100), when analyze is enabled.'
   augmented-report-path:
     description: 'Path to the written augmented report, when analyze is enabled.'
+  policy-adjustments-count:
+    description: 'Number of findings whose severity the policy pack adjusted (0 for the default policy).'
+  policy-effective-score:
+    description: 'The policy-adjusted score, when a non-default policy is set. `score` is always the raw, policy-independent value.'
 
 runs:
   using: 'node24'

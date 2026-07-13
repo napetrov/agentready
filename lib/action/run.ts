@@ -1,15 +1,20 @@
 import { mkdirSync, writeFileSync } from 'fs'
 import path from 'path'
 import {
+  adjustFindings,
+  applyPolicy,
   diffLocalReadiness,
   evaluateDiffGate,
   evaluateScanGate,
   formatDiffMarkdown,
+  formatPolicySummary,
   formatScanMarkdown,
   formatScanSarif,
+  resolvePolicyPack,
   scanLocalReadiness,
   type FailOnSeverity,
   type LocalReadinessReport,
+  type PolicyName,
   type ReadinessDiffReport,
 } from '../repo-readiness/local-readiness'
 import {
@@ -31,6 +36,8 @@ export interface ActionInputs {
   failOnSeverity: FailOnSeverity
   failOnRegression: boolean
   minScore?: number
+  /** Policy pack name; defaults to 'default' (a no-op) when not set. */
+  policy?: PolicyName
   sarif: boolean
   /** Directory the report artifacts are written to. */
   outputDir: string
@@ -60,6 +67,10 @@ export interface ActionResult {
   augmentedScore?: number
   /** Path to the written augmented report, when the analytics layer ran. */
   augmentedReportPath?: string
+  /** Number of findings the policy pack adjusted the severity of (0 for the default policy). */
+  policyAdjustmentsCount: number
+  /** The policy-adjusted score, when a non-default policy ran. `score` is always the raw, policy-independent value. */
+  policyEffectiveScore?: number
 }
 
 /**
@@ -72,6 +83,10 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
   const jsonReportPath = path.join(inputs.outputDir, 'report.json')
   const markdownReportPath = path.join(inputs.outputDir, 'report.md')
   const sarifReportPath = inputs.sarif ? path.join(inputs.outputDir, 'report.sarif') : undefined
+  const policy = resolvePolicyPack(inputs.policy ?? 'default')
+  if (!policy) {
+    throw new Error(`unknown policy "${inputs.policy}"`)
+  }
 
   const failureReasons: string[] = []
   let score: number
@@ -82,6 +97,11 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
   // The deterministic scan report, captured for the optional analyze step. In
   // diff mode this is the head report.
   let scanReport: LocalReadinessReport
+  let policyAdjustmentsCount = 0
+  // score/report outputs stay the raw deterministic values, matching how
+  // augmentedScore is a separate additive output rather than overwriting
+  // score — only set when a non-default policy actually adjusted something.
+  let policyEffectiveScore: number | undefined
 
   if (inputs.mode === 'diff') {
     if (!inputs.baseRef || !inputs.headRef) {
@@ -102,11 +122,19 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     sarifSource = report.headReport
     scanReport = report.headReport
 
+    if (policy.name !== 'default') {
+      const headPolicyResult = applyPolicy(report.headReport, policy)
+      policyEffectiveScore = headPolicyResult.effectiveScore
+      policyAdjustmentsCount = adjustFindings(report.newFindings, policy).severityAdjustments.length
+      summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${formatPolicySummary(headPolicyResult)}`
+    }
+
     failureReasons.push(
       ...evaluateDiffGate(report, {
         failOnSeverity: inputs.failOnSeverity,
         failOnRegression: inputs.failOnRegression,
         minScore: inputs.minScore,
+        policy,
       }).failureReasons,
     )
   } else {
@@ -120,10 +148,18 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     sarifSource = report
     scanReport = report
 
+    if (policy.name !== 'default') {
+      const policyResult = applyPolicy(report, policy)
+      policyEffectiveScore = policyResult.effectiveScore
+      policyAdjustmentsCount = policyResult.severityAdjustments.length
+      summaryMarkdown = `${summaryMarkdown}\n\n---\n\n${formatPolicySummary(policyResult)}`
+    }
+
     failureReasons.push(
       ...evaluateScanGate(report, {
         failOnSeverity: inputs.failOnSeverity,
         minScore: inputs.minScore,
+        policy,
       }).failureReasons,
     )
   }
@@ -169,7 +205,9 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
     summaryMarkdown,
     failed: failureReasons.length > 0,
     failureReasons,
+    policyAdjustmentsCount,
     ...(augmentedScore !== undefined ? { augmentedScore } : {}),
     ...(augmentedReportPath !== undefined ? { augmentedReportPath } : {}),
+    ...(policyEffectiveScore !== undefined ? { policyEffectiveScore } : {}),
   }
 }

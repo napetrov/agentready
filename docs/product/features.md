@@ -67,7 +67,10 @@ Features:
   detector parses workflow steps and classifies install/lint/type-check/test/
   build commands, with `ci.*.not-run` checks that flag commands the repo exposes
   but CI never runs
-- built-in policy packs and repository-specific thresholds (`default`, `oss`, `enterprise`, and `ml-scientific` are candidate shapes)
+- built-in policy packs — **delivered (partial)**: `default` (no-op) and
+  `enterprise` (three severity escalations) ship as `--policy <name>` on
+  `scan`/`diff` and a `policy` Action input; see `docs/product/policy-packs.md`.
+  `oss`/`ml-scientific` and a config-file `policyOptions` shape remain candidates.
 - instruction-file overlap and contradiction checks
 - stale command reference validation — **delivered**: `commands.reference.*`
   checks flag `npm`/`yarn`/`pnpm`/`bun run <script>` (and bare `test`/`start`)

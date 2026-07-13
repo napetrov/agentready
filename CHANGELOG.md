@@ -35,7 +35,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (warning) and `commands.reference.package-manager-mismatch` (info,
   since docs can legitimately discuss more than one package manager).
   `CommandEvidence` also gained `makeTargets` (the Makefile target names,
-  already parsed internally but not previously exposed).
+  already parsed internally but not previously exposed). Multi-target Makefile
+  rules (`build test: setup`) are now parsed correctly, make-option tokens
+  (`make -j test`, `make -C dir test`) are no longer misread as targets, bare
+  `npm start` is not flagged when a root `server.js` provides npm's documented
+  fallback, bare `bun test` is never flagged since Bun's test runner needs no
+  script, `docs.contributing` is scanned alongside READMEs, and repeated
+  identical references in one document are deduped to one finding.
+- Policy packs: a typed `PolicyPack`/`PolicyResult` model
+  (`lib/repo-readiness/core/policy.ts`) applies team-specific severity
+  adjustments to gating without ever mutating raw findings or `summary.score`.
+  Ships with a no-op `default` pack and a real `enterprise` pack (three
+  escalations: `instructions.missing` warning→error,
+  `safety.install-hook`/`safety.deploy` info→warning) in
+  `lib/repo-readiness/checks/policy-packs.ts`. `--policy <name>` on `agentready
+  scan`/`diff` applies it to `--fail-on`/`--min-score` gating and prints the
+  adjustments (with reasons) for human-readable output formats; a `policy`
+  input on the GitHub Action does the same, with new `policy-adjustments-count`
+  and `policy-effective-score` outputs. See
+  [docs/product/policy-packs.md](docs/product/policy-packs.md) for the full
+  design and what's still open (`oss`/`ml-scientific` packs, a config-file
+  shape, folding `PolicyResult` into the JSON/SARIF report contract).
 
 ## [0.2.0] - 2026-06-08
 

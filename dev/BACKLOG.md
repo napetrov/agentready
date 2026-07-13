@@ -273,9 +273,15 @@ Verified against the current `main`/branch code before accepting:
   was recognized) to avoid false positives. Parsing is read-only; workflow
   correctness is still delegated to actionlint/ShellCheck rather than
   reimplemented. _(M)_
-- [ ] **Policy packs.** Keep built-in rules in TypeScript; add optional
-  policy-pack ingestion over the AgentReady JSON evidence (OPA/Conftest-style).
-  Add `@agentready/policy-default` once the package split happens. _(L)_
+- [x] **Policy packs** (`docs/product/policy-packs.md`) — **delivered**: a
+  typed `PolicyPack`/`PolicyResult` model (`core/policy.ts`), a no-op `default`
+  pack and a real `enterprise` pack (`checks/policy-packs.ts`, three severity
+  escalations), `--policy <name>` on `scan`/`diff`, and a `policy` Action input.
+  Shipped as first-class TypeScript rather than external OPA/Conftest-style
+  ingestion over JSON evidence — matches the design doc, not this bullet's
+  original OPA framing. `oss`/`ml-scientific` packs and a config-file
+  `policy`/`policyOptions` shape remain open; `@agentready/policy-default` as
+  a separate package still depends on the package-split work below. _(L)_
 - [ ] **Instruction-file overlap / contradiction checks.** _(M)_
 - [ ] **Capability-surface risk tiers.** `detectCapabilitySurfaces` already finds
   MCP configs, skills, hooks, and plugins, but treats every hit as equally

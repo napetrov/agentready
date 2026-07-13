@@ -81,6 +81,22 @@ The legacy `--json` / `--markdown` / `--sarif` flags are still accepted. Both
 `scan` and `diff` support `--fail-on <off|info|warning|error>` (default `error`)
 and `--min-score <0-100>`; the process exits non-zero when a gate trips.
 
+### Policy packs
+
+`--policy <name>` applies a team-specific severity policy to gating without
+changing the raw findings or score. `default` is a no-op; `enterprise` escalates
+missing agent instructions to `error` and install/deploy safety signals to
+`warning`, for organization-wide rollout governance:
+
+```bash
+npm run agentready -- scan . --policy enterprise --fail-on error
+```
+
+A non-default policy also prints its severity adjustments (with reasons) to
+human-readable output. See [docs/product/policy-packs.md](docs/product/policy-packs.md)
+for the design and what's still open (`oss`/`ml-scientific` packs, a config-file
+shape).
+
 ### Diff (PR readiness)
 
 `diff` compares two git refs and fails on new regressions. It uses a temporary
@@ -187,10 +203,11 @@ steps:
 ```
 
 Inputs include `path`, `mode`, `base-ref`, `head-ref`, `config`,
-`fail-on-severity`, `fail-on-regression`, `min-score`, `job-summary`,
+`fail-on-severity`, `fail-on-regression`, `min-score`, `policy`, `job-summary`,
 `pr-comment`, `pr-comment-condition`, `github-token`, `upload-sarif`, `output-dir`, `tool-version`,
 `analyze`, and `analyze-min-score`; outputs include `score`, `findings-count`,
-`regressions-count`, the report paths, and (when `analyze` is on)
+`regressions-count`, the report paths, `policy-adjustments-count`, (when
+`policy` is non-default) `policy-effective-score`, and (when `analyze` is on)
 `augmented-score`/`augmented-report-path`. See [`action.yml`](action.yml) for
 the authoritative contract.
 

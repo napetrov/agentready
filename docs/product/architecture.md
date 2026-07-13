@@ -40,7 +40,7 @@ agentready
     [x] scoring-model      (experimental severity-based score, plus a per-category dimension rollup)
     [x] config-loading
     [x] git worktree helper (safe ref scanning for diff)
-    [ ] policy-engine
+    [x] policy-engine      (PolicyPack/PolicyResult model, gate integration; see checks/policy-packs)
   detectors/
     [x] instruction-files
     [x] repo-shape / file-inventory
@@ -56,7 +56,7 @@ agentready
   checks/
     [x] built-in-rules
     [ ] configurable-rule-runner
-    [ ] policy-packs
+    [x] policy-packs       (default no-op + enterprise; oss/ml-scientific remain candidates)
   reporters/
     [x] console
     [x] json

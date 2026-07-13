@@ -98,6 +98,68 @@ describe('scan command', () => {
   })
 })
 
+describe('--policy option', () => {
+  let root: string
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-cli-policy-'))
+    writeFileSync(path.join(root, 'README.md'), '# Demo\n')
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'jest', lint: 'eslint .', build: 'tsc' } }))
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github', 'workflows', 'ci.yml'),
+      'name: CI\njobs:\n  test:\n    steps:\n      - run: npm run lint\n      - run: npm test\n      - run: npm run build\n',
+    )
+    // No AGENTS.md: instructions.missing (warning by default) is the only
+    // finding, so only the enterprise policy's escalation of it changes
+    // gating/score — CI is present so ci.workflow.missing doesn't also fire.
+  })
+  afterEach(() => rmSync(root, { recursive: true, force: true }))
+
+  it('does not affect gating or output under the default policy', async () => {
+    const withoutFlag = await run(['scan', root, '--fail-on', 'error'])
+    const withDefault = await run(['scan', root, '--fail-on', 'error', '--policy', 'default'])
+    expect(withoutFlag.exitCode).toBe(0)
+    expect(withDefault.exitCode).toBe(0)
+    expect(withDefault.stdout).not.toContain('Policy:')
+  })
+
+  it('escalates instructions.missing to error under --policy enterprise and prints the adjustment', async () => {
+    const result = await run(['scan', root, '--fail-on', 'error', '--policy', 'enterprise'])
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toMatch(/gate failed/)
+    expect(result.stdout).toContain('Policy: enterprise')
+    expect(result.stdout).toContain('instructions.missing: warning -> error')
+  })
+
+  it('rejects an unrecognized policy name', async () => {
+    const result = await run(['scan', root, '--policy', 'bogus'])
+    expect(result.error).toBeDefined() // Commander rejects an out-of-choices value
+  })
+
+  it('applies to diff mode too, gating on the head report under the policy', async () => {
+    const runGit = (args: string[]): void => {
+      execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], { cwd: root, stdio: ['ignore', 'ignore', 'pipe'] })
+    }
+    runGit(['init', '-b', 'main'])
+    runGit(['config', 'user.email', 't@e.com'])
+    runGit(['config', 'user.name', 'T'])
+    runGit(['add', '.'])
+    runGit(['commit', '-m', 'base'])
+
+    // base === head, so nothing is a *new* finding — this isolates the
+    // min-score gate's use of the policy-adjusted head score specifically.
+    // Raw score is 100 minus the instructions.missing warning penalty (93);
+    // enterprise escalates that finding to error, dropping it further (82).
+    const defaultResult = await run(['diff', root, '--base', 'HEAD', '--head', 'HEAD', '--fail-on', 'off', '--min-score', '90'])
+    const enterpriseResult = await run([
+      'diff', root, '--base', 'HEAD', '--head', 'HEAD', '--fail-on', 'off', '--min-score', '90', '--policy', 'enterprise',
+    ])
+    expect(defaultResult.exitCode).toBe(0)
+    expect(enterpriseResult.exitCode).toBe(1)
+    expect(enterpriseResult.stderr).toMatch(/score/i)
+  })
+})
+
 describe('diff command', () => {
   let root: string
   const runGit = (args: string[]): void => {
