@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-13
+
 ### Added
 - Dimension-score rollup: every scan report now includes `dimensions`, a
   per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) score
