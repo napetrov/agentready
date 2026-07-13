@@ -11,12 +11,16 @@ const ciCoverageLine = (ci: CiEvidence): string => {
   return `CI: ${ci.workflowFiles.length} workflow${plural} (${detail})`
 }
 
+const dimensionsLine = (report: LocalReadinessReport): string =>
+  `Dimensions: ${(report.dimensions ?? []).map(dimension => `${dimension.category} ${dimension.score}`).join(', ')}`
+
 export function formatScanSummary(report: LocalReadinessReport): string {
   const lines = [
     `AgentReady score: ${report.summary.score}/100`,
     `Files: ${report.summary.totalFiles} (${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs)`,
     `Capabilities: ${report.capabilities.length}, safety signals: ${report.safetySignals.length}`,
     ciCoverageLine(report.ci),
+    dimensionsLine(report),
     `Findings: ${report.findings.length}`,
   ]
 

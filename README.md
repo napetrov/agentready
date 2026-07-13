@@ -45,7 +45,7 @@ Evidence collection is separated from policy:
 
 - **Detectors** observe facts about the repository (`lib/repo-readiness/detectors/`).
 - **Checks** evaluate those facts against rules and emit findings (`lib/repo-readiness/checks/`).
-- **Scoring** converts findings into an experimental readiness score (`lib/repo-readiness/core/scoring.ts`).
+- **Scoring** converts findings into an experimental readiness score, plus a per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) dimension-score rollup so, e.g., unsafe scripts don't get averaged away by strong CI (`lib/repo-readiness/core/scoring.ts`, `lib/repo-readiness/checks/catalog.ts`).
 - **Reporters** render console, JSON, and markdown output (`lib/repo-readiness/reporters/`).
 - The **scan engine** wires these together (`lib/repo-readiness/core/scan-engine.ts`).
 

@@ -1,6 +1,7 @@
 import { statSync } from 'fs'
 import path from 'path'
 import { buildFindings } from '../checks/built-in'
+import { calculateDimensionScores } from '../checks/catalog'
 import { detectCapabilitySurfaces } from '../detectors/capability-surfaces'
 import { detectCiWorkflows } from '../detectors/ci-workflows'
 import { detectCommandSurfaces } from '../detectors/command-surfaces'
@@ -90,9 +91,10 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     },
     repositoryEvidence,
     designState,
+    dimensions: calculateDimensionScores(findings),
     reportContract: {
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState'],
+      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions'],
     },
     findings,
   }

@@ -367,11 +367,74 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "risks": [],
       "ambiguities": []
     },
+    "dimensions": [
+      {
+        "category": "docs",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "commands",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "ci",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "instructions",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "files",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "safety",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      }
+    ],
     "reportContract": {
       "schemaVersion": "local-readiness/v2",
       "experimentalFields": [
         "repositoryEvidence",
-        "designState"
+        "designState",
+        "dimensions"
       ]
     },
     "findings": []
@@ -638,11 +701,74 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "risks": [],
       "ambiguities": []
     },
+    "dimensions": [
+      {
+        "category": "docs",
+        "score": 82,
+        "findingCount": 1,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 1
+        }
+      },
+      {
+        "category": "commands",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "ci",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "instructions",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "files",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      },
+      {
+        "category": "safety",
+        "score": 100,
+        "findingCount": 0,
+        "bySeverity": {
+          "info": 0,
+          "warning": 0,
+          "error": 0
+        }
+      }
+    ],
     "reportContract": {
       "schemaVersion": "local-readiness/v2",
       "experimentalFields": [
         "repositoryEvidence",
-        "designState"
+        "designState",
+        "dimensions"
       ]
     },
     "findings": [
@@ -1004,11 +1130,74 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
       }
     ]
   },
+  "dimensions": [
+    {
+      "category": "docs",
+      "score": 82,
+      "findingCount": 1,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 1
+      }
+    },
+    {
+      "category": "commands",
+      "score": 68,
+      "findingCount": 3,
+      "bySeverity": {
+        "info": 0,
+        "warning": 2,
+        "error": 1
+      }
+    },
+    {
+      "category": "ci",
+      "score": 93,
+      "findingCount": 1,
+      "bySeverity": {
+        "info": 0,
+        "warning": 1,
+        "error": 0
+      }
+    },
+    {
+      "category": "instructions",
+      "score": 93,
+      "findingCount": 1,
+      "bySeverity": {
+        "info": 0,
+        "warning": 1,
+        "error": 0
+      }
+    },
+    {
+      "category": "files",
+      "score": 100,
+      "findingCount": 0,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 0
+      }
+    },
+    {
+      "category": "safety",
+      "score": 100,
+      "findingCount": 0,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 0
+      }
+    }
+  ],
   "reportContract": {
     "schemaVersion": "local-readiness/v2",
     "experimentalFields": [
       "repositoryEvidence",
-      "designState"
+      "designState",
+      "dimensions"
     ]
   },
   "findings": [
@@ -1057,6 +1246,7 @@ exports[`scan output snapshots bad-repo console summary 1`] = `
 Files: 2 (1 source, 0 tests, 0 docs)
 Capabilities: 0, safety signals: 0
 CI: no workflows detected
+Dimensions: docs 82, commands 68, ci 93, instructions 93, files 100, safety 100
 Findings: 6
 - [warning] No CI workflow detected
 - [warning] No lint command detected
@@ -1074,6 +1264,14 @@ Files: 2 total, 1 source, 0 tests, 0 docs
 Capabilities: 0; safety signals: 0
 CI: no workflows detected
 Findings: 6
+
+### Dimension scores
+- docs: **82/100** (1 error, 0 warning, 0 info)
+- commands: **68/100** (1 error, 2 warning, 0 info)
+- ci: **93/100** (0 error, 1 warning, 0 info)
+- instructions: **93/100** (0 error, 1 warning, 0 info)
+- files: **100/100** (no findings)
+- safety: **100/100** (no findings)
 
 ### Repository topology
 Roots: 2; languages: 1; roots without local tests: 1; roots without local docs: 1
@@ -1999,11 +2197,74 @@ exports[`scan output snapshots good-repo compact json 1`] = `
       }
     ]
   },
+  "dimensions": [
+    {
+      "category": "docs",
+      "score": 100,
+      "findingCount": 0,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 0
+      }
+    },
+    {
+      "category": "commands",
+      "score": 100,
+      "findingCount": 0,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 0
+      }
+    },
+    {
+      "category": "ci",
+      "score": 100,
+      "findingCount": 0,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 0
+      }
+    },
+    {
+      "category": "instructions",
+      "score": 100,
+      "findingCount": 0,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 0
+      }
+    },
+    {
+      "category": "files",
+      "score": 100,
+      "findingCount": 0,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 0
+      }
+    },
+    {
+      "category": "safety",
+      "score": 100,
+      "findingCount": 0,
+      "bySeverity": {
+        "info": 0,
+        "warning": 0,
+        "error": 0
+      }
+    }
+  ],
   "reportContract": {
     "schemaVersion": "local-readiness/v2",
     "experimentalFields": [
       "repositoryEvidence",
-      "designState"
+      "designState",
+      "dimensions"
     ]
   },
   "findings": []
@@ -2015,6 +2276,7 @@ exports[`scan output snapshots good-repo console summary 1`] = `
 Files: 7 (1 source, 1 tests, 3 docs)
 Capabilities: 0, safety signals: 0
 CI: 1 workflow (runs install, lint, type-check, test, build)
+Dimensions: docs 100, commands 100, ci 100, instructions 100, files 100, safety 100
 Findings: 0"
 `;
 
@@ -2026,6 +2288,14 @@ Files: 7 total, 1 source, 1 tests, 3 docs
 Capabilities: 0; safety signals: 0
 CI: 1 workflow — runs install, lint, type-check, test, build
 Findings: 0
+
+### Dimension scores
+- docs: **100/100** (no findings)
+- commands: **100/100** (no findings)
+- ci: **100/100** (no findings)
+- instructions: **100/100** (no findings)
+- files: **100/100** (no findings)
+- safety: **100/100** (no findings)
 
 ### Repository topology
 Roots: 4; languages: 1; roots without local tests: 1; roots without local docs: 1

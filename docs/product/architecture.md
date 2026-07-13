@@ -37,7 +37,7 @@ agentready
     [x] scan-engine        (scan + diff orchestration)
     [x] evidence-model     (typed report/evidence shapes)
     [x] finding-model      (findings with stable ids)
-    [x] scoring-model      (experimental severity-based score)
+    [x] scoring-model      (experimental severity-based score, plus a per-category dimension rollup)
     [x] config-loading
     [x] git worktree helper (safe ref scanning for diff)
     [ ] policy-engine
@@ -133,7 +133,7 @@ Local repository scanning, available today:
 - detect agent capability surfaces (MCP configs, skills, hooks, plugins, and code-intelligence/LSP config)
 - heuristic detection of dangerous package scripts (install hooks, destructive commands, network-piped shells, deploy/publish)
 - emit console, JSON, and markdown reports
-- produce an experimental score
+- produce an experimental score, plus a per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) dimension-score rollup so a repo with e.g. unsafe scripts but strong CI doesn't average out to look the same as the opposite profile
 - `diff` two git refs (via worktrees) and gate on regressions
 
 The v0.1 family is complete; v0.2 (automation and policy) is the next milestone.

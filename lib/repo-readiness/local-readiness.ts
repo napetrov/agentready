@@ -49,7 +49,9 @@ export type {
   RepositoryTopologyEvidence,
   RepositoryTopologyMetrics,
   ReadinessDiffReport,
+  ReadinessDimensionScore,
   ReadinessFinding,
+  ReadinessRuleCategory,
   ReadinessSeverity,
   SafetyCategory,
   SafetySignalEvidence,
@@ -86,6 +88,8 @@ export type { FailOnSeverity, GateOptions, GateResult } from './core/gate'
 
 export {
   RULE_CATALOG,
+  RULE_CATEGORIES,
+  calculateDimensionScores,
   formatRuleDoc,
   getRuleDoc,
   listRuleIds,

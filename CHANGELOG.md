@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Dimension-score rollup: every scan report now includes `dimensions`, a
+  per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) score
+  computed with the same severity-penalty model as the overall `summary.score`.
+  A repo with unsafe scripts but strong CI no longer looks identical to one with
+  the opposite profile under a single number. Exposed as
+  `calculateDimensionScores`/`RULE_CATEGORIES` from `checks/catalog.ts`, listed
+  in `reportContract.experimentalFields`, and rendered in the console (`Dimensions: ...`
+  line) and markdown (`### Dimension scores`) reporters.
+
 ## [0.2.0] - 2026-06-08
 
 ### Changed

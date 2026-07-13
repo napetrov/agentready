@@ -42,6 +42,22 @@ export interface ReadinessFinding {
   recommendation: string
 }
 
+/** The grouping every rule in the catalog is filed under; also the dimension-score axis. */
+export type ReadinessRuleCategory = 'docs' | 'commands' | 'ci' | 'instructions' | 'files' | 'safety'
+
+/**
+ * A per-category rollup of the same severity-penalty model `calculateScore`
+ * applies to the whole report, so a repo with e.g. unsafe scripts but great CI
+ * doesn't look identical to one with the opposite profile under a single
+ * number. Purely a view over `findings`; it never changes gating.
+ */
+export interface ReadinessDimensionScore {
+  category: ReadinessRuleCategory
+  score: number
+  findingCount: number
+  bySeverity: Record<ReadinessSeverity, number>
+}
+
 export type EvidenceConfidence = 'low' | 'medium' | 'high'
 
 export type EvidenceSourceKind = 'file' | 'manifest' | 'workflow' | 'config' | 'inference'
@@ -349,7 +365,7 @@ export interface LocalReadinessReportContract {
   experimentalFields: LocalReadinessExperimentalField[]
 }
 
-export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState'
+export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState' | 'dimensions'
 
 export interface LocalReadinessReport {
   root: string
@@ -379,6 +395,8 @@ export interface LocalReadinessReport {
   safetySignals: SafetySignalEvidence[]
   repositoryEvidence: RepositoryEvidence
   designState: DesignStateSummary
+  /** Per-category rollups of `summary.score`'s severity-penalty model. See `ReadinessDimensionScore`. */
+  dimensions: ReadinessDimensionScore[]
   reportContract: LocalReadinessReportContract
   findings: ReadinessFinding[]
   files: LocalReadinessFile[]

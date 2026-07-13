@@ -9,6 +9,7 @@ import type {
   LocalReadinessReport,
   RepositoryEvidence,
   ReadinessDiffReport,
+  ReadinessDimensionScore,
   ReadinessFinding,
 } from './types'
 
@@ -61,6 +62,19 @@ export const architectureBoundaryRoleSchema = z.enum([
   'generated',
   'unknown',
 ])
+export const readinessRuleCategorySchema = z.enum(['docs', 'commands', 'ci', 'instructions', 'files', 'safety'])
+
+export const readinessDimensionScoreSchema = z.strictObject({
+  category: readinessRuleCategorySchema,
+  score: z.number(),
+  findingCount: z.number(),
+  bySeverity: z.strictObject({
+    info: z.number(),
+    warning: z.number(),
+    error: z.number(),
+  }),
+})
+
 export const designStateCategorySchema = z.enum([
   'documentation-evidence',
   'architecture-boundary',
@@ -380,9 +394,10 @@ export const localReadinessReportSchema = z.strictObject({
   safetySignals: z.array(safetySignalSchema),
   repositoryEvidence: repositoryEvidenceSchema,
   designState: designStateSummarySchema,
+  dimensions: z.array(readinessDimensionScoreSchema),
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
-    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState'])),
+    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState', 'dimensions'])),
   }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),
@@ -433,6 +448,7 @@ const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
 const _documentSurface: Exact<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence> = true
 const _repositoryEvidence: Exact<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence> = true
 const _designState: Exact<z.infer<typeof designStateSummarySchema>, DesignStateSummary> = true
+const _dimensionScore: Exact<z.infer<typeof readinessDimensionScoreSchema>, ReadinessDimensionScore> = true
 const _report: Exact<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport> = true
 const _diff: Exact<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport> = true
 const _config: Exact<z.infer<typeof localReadinessConfigSchema>, Partial<LocalReadinessConfig>> = true
@@ -444,6 +460,7 @@ assertSchemaDriftGuards(
   _documentSurface,
   _repositoryEvidence,
   _designState,
+  _dimensionScore,
   _report,
   _diff,
   _config,

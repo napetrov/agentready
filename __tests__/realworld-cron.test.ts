@@ -128,9 +128,10 @@ describe('real-world cron classification', () => {
       risks: [],
       ambiguities: [],
     },
+    dimensions: [],
     reportContract: {
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState'],
+      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions'],
     },
     findings: findings.map(finding => ({
       ruleId: finding.id.split(':')[0],

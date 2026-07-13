@@ -1,4 +1,5 @@
-import type { ReadinessSeverity } from '../core/types'
+import { calculateScore } from '../core/scoring'
+import type { ReadinessDimensionScore, ReadinessFinding, ReadinessRuleCategory, ReadinessSeverity } from '../core/types'
 
 /**
  * Human-facing documentation for a single readiness rule. The deterministic
@@ -13,7 +14,7 @@ export interface RuleDoc {
   /** Short title, matching the finding title the detector emits. */
   title: string
   /** Grouping used for display and filtering. */
-  category: 'docs' | 'commands' | 'ci' | 'instructions' | 'files' | 'safety'
+  category: ReadinessRuleCategory
   /**
    * Default severity. Some `warning` rules escalate to `error` when
    * `errorOnWarnings` is set; `safety.*` severities vary by category.
@@ -267,12 +268,36 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
   },
 }
 
+/** Every dimension axis, in the order reports should display them. */
+export const RULE_CATEGORIES: ReadinessRuleCategory[] = ['docs', 'commands', 'ci', 'instructions', 'files', 'safety']
+
 /** Resolves a rule key from a rule id or an instance finding id (`rule:instance`). */
 export const ruleKeyFor = (findingOrRuleId: string): string => findingOrRuleId.split(':')[0]
 
 /** Looks up rule documentation by rule id or full finding id. */
 export const getRuleDoc = (findingOrRuleId: string): RuleDoc | undefined =>
   RULE_CATALOG[ruleKeyFor(findingOrRuleId)]
+
+/**
+ * Splits findings by the catalog category their rule is filed under and scores
+ * each group with the same penalty model as the overall score, so e.g. a
+ * repo with unsafe scripts but strong CI doesn't average out to look the same
+ * as one with the opposite profile.
+ */
+export const calculateDimensionScores = (findings: ReadinessFinding[]): ReadinessDimensionScore[] =>
+  RULE_CATEGORIES.map(category => {
+    const categoryFindings = findings.filter(finding => getRuleDoc(finding.id)?.category === category)
+    const bySeverity: Record<ReadinessSeverity, number> = { info: 0, warning: 0, error: 0 }
+    for (const finding of categoryFindings) {
+      bySeverity[finding.severity] += 1
+    }
+    return {
+      category,
+      score: calculateScore(categoryFindings),
+      findingCount: categoryFindings.length,
+      bySeverity,
+    }
+  })
 
 /** Sorted list of documented rule ids. */
 export const listRuleIds = (): string[] => Object.keys(RULE_CATALOG).sort()

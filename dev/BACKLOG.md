@@ -277,6 +277,13 @@ Verified against the current `main`/branch code before accepting:
   policy-pack ingestion over the AgentReady JSON evidence (OPA/Conftest-style).
   Add `@agentready/policy-default` once the package split happens. _(L)_
 - [ ] **Instruction-file overlap / contradiction checks.** _(M)_
+- [ ] **Capability-surface risk tiers.** `detectCapabilitySurfaces` already finds
+  MCP configs, skills, hooks, and plugins, but treats every hit as equally
+  "present." Classify each by blast radius (e.g. an MCP server with write/exec
+  tools vs. a read-only LSP config; a hook that runs arbitrary commands around
+  tool calls vs. a static settings file) so reports can flag high-risk surfaces
+  for approval workflows rather than just listing them. Feeds naturally into the
+  `enterprise` policy pack above. _(M)_
 
 ## P2 — LLM / agentic analytics layer (optional, opt-in)
 

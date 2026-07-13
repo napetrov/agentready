@@ -65,6 +65,7 @@ Features:
   detector parses workflow steps and classifies install/lint/type-check/test/
   build commands, with `ci.*.not-run` checks that flag commands the repo exposes
   but CI never runs
+- per-category dimension-score rollup (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) — **delivered**: `report.dimensions` scores each category with the same severity-penalty model as the overall score, so console/markdown output shows where a repo is weak instead of one opaque number
 - built-in policy packs and repository-specific thresholds (`default`, `oss`, `enterprise`, and `ml-scientific` are candidate shapes)
 - instruction-file overlap and contradiction checks
 - stale path and command validation
@@ -92,6 +93,10 @@ Possible later features:
 
 - hosted report viewer
 - organization-wide scan dashboard
+- local multi-repo/portfolio batch mode: scan N repositories in one CLI
+  invocation and emit an aggregated JSON/Markdown summary, without requiring a
+  hosted service — the natural entry point for platform teams rolling agents
+  out across many repos
 - public badge
 - trend tracking
 - generated starter instruction files

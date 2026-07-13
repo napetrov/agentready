@@ -1604,6 +1604,58 @@
       ],
       "additionalProperties": false
     },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "docs",
+              "commands",
+              "ci",
+              "instructions",
+              "files",
+              "safety"
+            ]
+          },
+          "score": {
+            "type": "number"
+          },
+          "findingCount": {
+            "type": "number"
+          },
+          "bySeverity": {
+            "type": "object",
+            "properties": {
+              "info": {
+                "type": "number"
+              },
+              "warning": {
+                "type": "number"
+              },
+              "error": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "info",
+              "warning",
+              "error"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "category",
+          "score",
+          "findingCount",
+          "bySeverity"
+        ],
+        "additionalProperties": false
+      }
+    },
     "reportContract": {
       "type": "object",
       "properties": {
@@ -1617,7 +1669,8 @@
             "type": "string",
             "enum": [
               "repositoryEvidence",
-              "designState"
+              "designState",
+              "dimensions"
             ]
           }
         }
@@ -1726,6 +1779,7 @@
     "safetySignals",
     "repositoryEvidence",
     "designState",
+    "dimensions",
     "reportContract",
     "findings",
     "files"
