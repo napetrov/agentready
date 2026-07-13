@@ -66,14 +66,30 @@ export const readinessRuleCategorySchema = z.enum(['docs', 'commands', 'ci', 'in
 
 export const readinessDimensionScoreSchema = z.strictObject({
   category: readinessRuleCategorySchema,
-  score: z.number(),
-  findingCount: z.number(),
+  score: z.number().int().min(0).max(100),
+  findingCount: z.number().int().min(0),
   bySeverity: z.strictObject({
-    info: z.number(),
-    warning: z.number(),
-    error: z.number(),
+    info: z.number().int().min(0),
+    warning: z.number().int().min(0),
+    error: z.number().int().min(0),
   }),
 })
+
+const DIMENSION_CATEGORY_COUNT = readinessRuleCategorySchema.options.length
+
+/**
+ * One entry per `readinessRuleCategorySchema` value. `.length` alone rejects
+ * the `dimensions: []` case; combined with the size-6 uniqueness check below,
+ * an array of exactly 6 distinct categories drawn from a 6-value enum is
+ * necessarily a full, non-duplicated set, so a single refine covers both
+ * "missing a category" and "reports one twice".
+ */
+export const readinessDimensionScoreListSchema = z
+  .array(readinessDimensionScoreSchema)
+  .length(DIMENSION_CATEGORY_COUNT)
+  .refine(dimensions => new Set(dimensions.map(dimension => dimension.category)).size === DIMENSION_CATEGORY_COUNT, {
+    error: `dimensions must include exactly one entry for each category (${readinessRuleCategorySchema.options.join(', ')})`,
+  })
 
 export const designStateCategorySchema = z.enum([
   'documentation-evidence',
@@ -394,7 +410,7 @@ export const localReadinessReportSchema = z.strictObject({
   safetySignals: z.array(safetySignalSchema),
   repositoryEvidence: repositoryEvidenceSchema,
   designState: designStateSummarySchema,
-  dimensions: z.array(readinessDimensionScoreSchema),
+  dimensions: readinessDimensionScoreListSchema,
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
     experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState', 'dimensions'])),

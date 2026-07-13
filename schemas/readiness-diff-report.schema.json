@@ -1617,6 +1617,8 @@
           "additionalProperties": false
         },
         "dimensions": {
+          "minItems": 6,
+          "maxItems": 6,
           "type": "array",
           "items": {
             "type": "object",
@@ -1633,22 +1635,32 @@
                 ]
               },
               "score": {
-                "type": "number"
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
               },
               "findingCount": {
-                "type": "number"
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
               },
               "bySeverity": {
                 "type": "object",
                 "properties": {
                   "info": {
-                    "type": "number"
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   },
                   "warning": {
-                    "type": "number"
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   },
                   "error": {
-                    "type": "number"
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -3402,6 +3414,8 @@
           "additionalProperties": false
         },
         "dimensions": {
+          "minItems": 6,
+          "maxItems": 6,
           "type": "array",
           "items": {
             "type": "object",
@@ -3418,22 +3432,32 @@
                 ]
               },
               "score": {
-                "type": "number"
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
               },
               "findingCount": {
-                "type": "number"
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
               },
               "bySeverity": {
                 "type": "object",
                 "properties": {
                   "info": {
-                    "type": "number"
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   },
                   "warning": {
-                    "type": "number"
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   },
                   "error": {
-                    "type": "number"
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [

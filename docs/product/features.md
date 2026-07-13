@@ -25,7 +25,9 @@ Delivered:
 - context-friction detection for large files and oversized always-on instruction files
 - detection of local/private instruction files
 - console, JSON, and markdown reporters
-- experimental readiness score
+- experimental readiness score, plus a per-category (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`)
+  dimension-score rollup (`report.dimensions`) using the same severity-penalty model, so console/markdown
+  output shows where a repo is weak instead of one opaque number
 - `agentready diff` between git refs with a regression gate (worktree-based, never mutates the working tree)
 - npm package metadata with a `bin` and a `dist` build for future `npx` usage; the package is not published yet
 - capability-surface detector for MCP configs, skills, hooks, plugins, and code-intelligence/LSP config
@@ -65,7 +67,6 @@ Features:
   detector parses workflow steps and classifies install/lint/type-check/test/
   build commands, with `ci.*.not-run` checks that flag commands the repo exposes
   but CI never runs
-- per-category dimension-score rollup (`docs`/`commands`/`ci`/`instructions`/`files`/`safety`) — **delivered**: `report.dimensions` scores each category with the same severity-penalty model as the overall score, so console/markdown output shows where a repo is weak instead of one opaque number
 - built-in policy packs and repository-specific thresholds (`default`, `oss`, `enterprise`, and `ml-scientific` are candidate shapes)
 - instruction-file overlap and contradiction checks
 - stale path and command validation

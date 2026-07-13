@@ -11,8 +11,22 @@ const ciCoverageLine = (ci: CiEvidence): string => {
   return `CI: ${ci.workflowFiles.length} workflow${plural} (${detail})`
 }
 
+// Omits zero-count severities so a clean dimension stays a bare `category
+// score` and only findings-bearing dimensions grow a "(N error, N warning)"
+// suffix, keeping the one-line summary scannable.
+const dimensionDetail = (bySeverity: { info: number; warning: number; error: number }): string =>
+  (['error', 'warning', 'info'] as const)
+    .filter(severity => bySeverity[severity] > 0)
+    .map(severity => `${bySeverity[severity]} ${severity}`)
+    .join(', ')
+
 const dimensionsLine = (report: LocalReadinessReport): string =>
-  `Dimensions: ${(report.dimensions ?? []).map(dimension => `${dimension.category} ${dimension.score}`).join(', ')}`
+  `Dimensions: ${(report.dimensions ?? [])
+    .map(dimension => {
+      const detail = dimensionDetail(dimension.bySeverity)
+      return `${dimension.category} ${dimension.score}${detail ? ` (${detail})` : ''}`
+    })
+    .join(', ')}`
 
 export function formatScanSummary(report: LocalReadinessReport): string {
   const lines = [

@@ -15,7 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the opposite profile under a single number. Exposed as
   `calculateDimensionScores`/`RULE_CATEGORIES` from `checks/catalog.ts`, listed
   in `reportContract.experimentalFields`, and rendered in the console (`Dimensions: ...`
-  line) and markdown (`### Dimension scores`) reporters.
+  line, with severity counts) and markdown (`### Dimension scores`) reporters.
+  The schema requires exactly one entry per category (rejecting an empty or
+  duplicated `dimensions` array) and constrains `score` to 0-100 and the
+  finding counts to non-negative integers.
 
 ## [0.2.0] - 2026-06-08
 

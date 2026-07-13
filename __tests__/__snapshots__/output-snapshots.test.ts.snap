@@ -1246,7 +1246,7 @@ exports[`scan output snapshots bad-repo console summary 1`] = `
 Files: 2 (1 source, 0 tests, 0 docs)
 Capabilities: 0, safety signals: 0
 CI: no workflows detected
-Dimensions: docs 82, commands 68, ci 93, instructions 93, files 100, safety 100
+Dimensions: docs 82 (1 error), commands 68 (1 error, 2 warning), ci 93 (1 warning), instructions 93 (1 warning), files 100, safety 100
 Findings: 6
 - [warning] No CI workflow detected
 - [warning] No lint command detected
