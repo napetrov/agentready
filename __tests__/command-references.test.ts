@@ -124,6 +124,14 @@ describe('detectCommandReferences (units)', () => {
     expect(detect([doc], makeCommands)).toEqual([])
   })
 
+  it('does not misread a make variable override as the target (make PREFIX=/usr/local install, make CFLAGS=-O2 test)', () => {
+    const makeCommands: CommandEvidence = { ...baseCommands, ecosystems: ['make'], makeTargets: ['build', 'test'] }
+    const doc = write('AGENTS.md', 'Run `make PREFIX=/usr/local install` or `make CFLAGS=-O2 test`.')
+    // Abstains entirely rather than misreport the variable name (truncated at
+    // "=", which the target character class excludes) as a missing target.
+    expect(detect([doc], makeCommands)).toEqual([])
+  })
+
   it('does not flag a make target reference that exists', () => {
     const doc = write('AGENTS.md', 'Run `make build` before committing.')
     const makeCommands: CommandEvidence = { ...baseCommands, ecosystems: ['make'], makeTargets: ['build', 'test'] }

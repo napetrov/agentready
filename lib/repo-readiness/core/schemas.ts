@@ -467,11 +467,15 @@ const severityCountsSchema = z.strictObject({
   error: z.number().int().min(0),
 })
 
+// Same 0-100 contract as `readinessDimensionScoreSchema.score` — every
+// portfolio score field is derived from the same `calculateScore` output.
+const readinessScoreSchema = z.number().int().min(0).max(100)
+
 export const portfolioRepoResultSchema = z.discriminatedUnion('ok', [
   z.strictObject({
     path: z.string(),
     ok: z.literal(true),
-    score: z.number(),
+    score: readinessScoreSchema,
     findingCount: z.number().int().min(0),
     bySeverity: severityCountsSchema,
     topFindings: z.array(readinessFindingSchema),
@@ -487,9 +491,9 @@ export const portfolioSummarySchema = z.strictObject({
   repoCount: z.number().int().min(0),
   scannedCount: z.number().int().min(0),
   scanErrorCount: z.number().int().min(0),
-  averageScore: z.number().nullable(),
-  minScore: z.number().nullable(),
-  maxScore: z.number().nullable(),
+  averageScore: readinessScoreSchema.nullable(),
+  minScore: readinessScoreSchema.nullable(),
+  maxScore: readinessScoreSchema.nullable(),
   totalFindings: z.number().int().min(0),
   bySeverity: severityCountsSchema,
 })

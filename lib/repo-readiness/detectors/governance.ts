@@ -6,7 +6,9 @@ const CODEOWNERS_PATTERN = /^(?:\.github\/|docs\/)?CODEOWNERS$/i
 // A single pull-request-template file at root/.github/docs/, or any file
 // inside a .github/PULL_REQUEST_TEMPLATE/ directory of multiple templates.
 const PR_TEMPLATE_FILE_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE(\.[^./]+)?$/i
-const PR_TEMPLATE_DIR_PATTERN = /^\.github\/PULL_REQUEST_TEMPLATE\//i
+// GitHub also accepts a PULL_REQUEST_TEMPLATE/ directory (for multiple
+// templates) directly at the repo root or under docs/, not just .github/.
+const PR_TEMPLATE_DIR_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE\//i
 
 /**
  * Detects review-routing surfaces: a CODEOWNERS file and a pull-request

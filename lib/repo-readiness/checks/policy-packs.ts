@@ -28,9 +28,10 @@ export const DEFAULT_POLICY: PolicyPack = {
 }
 
 // Candidate rule families from docs/product/policy-packs.md's `enterprise`
-// section: an explicit instruction entrypoint, and dangerous install/deploy
-// scripts called out with higher severity for approval workflows. Chosen as
-// the first slice because both already have precise, low-false-positive
+// section: an explicit instruction entrypoint, dangerous install/deploy
+// scripts, and high-risk capability surfaces (MCP servers, hooks, plugins),
+// all called out with higher severity for approval workflows. Chosen as the
+// first slice because each already has precise, low-false-positive
 // deterministic findings to escalate.
 const ENTERPRISE_ESCALATIONS: Escalation[] = [
   {
@@ -58,7 +59,7 @@ const ENTERPRISE_ESCALATIONS: Escalation[] = [
 /** Optimized for organization-wide agent rollout and governance. */
 export const ENTERPRISE_POLICY: PolicyPack = buildEscalationPack(
   'enterprise',
-  'Stricter gates for explicit agent instructions and dangerous install/deploy scripts, for organization-wide rollout governance.',
+  'Stricter gates for explicit agent instructions, dangerous install/deploy scripts, and high-risk capability surfaces, for organization-wide rollout governance.',
   ENTERPRISE_ESCALATIONS,
 )
 

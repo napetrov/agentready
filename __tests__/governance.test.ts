@@ -28,6 +28,8 @@ describe('detectGovernance (units)', () => {
     ['.github/PULL_REQUEST_TEMPLATE.md', '.github/PULL_REQUEST_TEMPLATE.md'],
     ['docs/pull_request_template.md', 'docs/pull_request_template.md'],
     ['a template inside .github/PULL_REQUEST_TEMPLATE/', '.github/PULL_REQUEST_TEMPLATE/bug.md'],
+    ['a template inside root PULL_REQUEST_TEMPLATE/', 'PULL_REQUEST_TEMPLATE/bug.md'],
+    ['a template inside docs/PULL_REQUEST_TEMPLATE/', 'docs/PULL_REQUEST_TEMPLATE/bug.md'],
   ])('finds a PR template at a GitHub-recognized location: %s', (_label, filePath) => {
     expect(detectGovernance([filePath]).pullRequestTemplatePath).toBe(filePath)
   })

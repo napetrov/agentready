@@ -34,14 +34,19 @@ export function formatPortfolioSummary(report: PortfolioReport): string {
   return lines.join('\n')
 }
 
+// repo.path/repo.error are interpolated into Markdown table cells; either can
+// contain a literal `|`, which would otherwise corrupt the row (and
+// potentially the rest of the table).
+const escapeTableCell = (value: string): string => value.replace(/\|/g, '\\|')
+
 export function formatPortfolioMarkdown(report: PortfolioReport): string {
   const { summary } = report
   const tableRows = report.repos.map(repo => {
     if (!isScanned(repo)) {
-      return `| \`${repo.path}\` | — | — | — | — | scan failed: ${repo.error} |`
+      return `| \`${escapeTableCell(repo.path)}\` | — | — | — | — | scan failed: ${escapeTableCell(repo.error)} |`
     }
     const { error, warning, info } = repo.bySeverity
-    return `| \`${repo.path}\` | ${repo.score} | ${error} | ${warning} | ${info} | |`
+    return `| \`${escapeTableCell(repo.path)}\` | ${repo.score} | ${error} | ${warning} | ${info} | |`
   })
 
   const worstFindingSections = report.repos.filter(isScanned).filter(repo => repo.topFindings.length > 0)

@@ -163,8 +163,9 @@ describe('--policy option', () => {
 
     // base === head, so nothing is a *new* finding — this isolates the
     // min-score gate's use of the policy-adjusted head score specifically.
-    // Raw score is 100 minus the instructions.missing warning penalty (93);
-    // enterprise escalates that finding to error, dropping it further (82).
+    // Raw score is 100 minus the instructions.missing warning penalty (-7) and
+    // the docs.pull-request-template.missing info penalty (-2) = 91; enterprise
+    // escalates instructions.missing to error, dropping it further to 80.
     const defaultResult = await run(['diff', root, '--base', 'HEAD', '--head', 'HEAD', '--fail-on', 'off', '--min-score', '90'])
     const enterpriseResult = await run([
       'diff', root, '--base', 'HEAD', '--head', 'HEAD', '--fail-on', 'off', '--min-score', '90', '--policy', 'enterprise',

@@ -134,6 +134,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   string. A mislabeled huge file (e.g. a binary asset with a `.md` extension)
   no longer forces a full read into memory just to scan for command
   references.
+- `commands.reference.make-target` no longer misreads a variable override
+  (`make PREFIX=/usr/local install`, `make CFLAGS=-O2 test`) as a missing
+  target — GNU make treats any `=`-containing argument as a variable
+  assignment, not a target.
+- `docs.pull-request-template.missing` no longer fires for a
+  `PULL_REQUEST_TEMPLATE/` directory at the repo root or under `docs/`
+  (GitHub recognizes both, alongside `.github/`); only the `.github/` case
+  was previously matched.
+- Capability-surface risk classification no longer treats an empty
+  matcher-group array (`{ hooks: { PreToolUse: [] } }`) as a configured hook
+  — it's as inert as an empty `hooks` object, so it's `medium` risk, not
+  `high`.
+- `agentready batch --format markdown` now escapes `|` in repo paths/error
+  messages before interpolating them into table cells, so a path or error
+  containing a pipe can no longer corrupt the rendered table.
+- The GitHub Action's diff-mode policy summary text and `policyAdjustmentsCount`
+  output could previously diverge: the rendered adjustment list covered the
+  whole head report while the count covered only new findings. Both are now
+  derived from the same finding set.
+- `portfolioRepoResultSchema.score` and `portfolioSummarySchema`'s
+  `averageScore`/`minScore`/`maxScore` are now bounded to `0-100` integers in
+  both the runtime Zod schema and the generated JSON Schema, matching the
+  same contract already enforced on dimension scores.
 
 ## [0.2.0] - 2026-06-08
 

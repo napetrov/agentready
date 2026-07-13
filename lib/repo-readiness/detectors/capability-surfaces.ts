@@ -28,7 +28,14 @@ const hookSettingsRiskTier = (root: string, repoPath: string): CapabilityRiskTie
   try {
     const settings = JSON.parse(readFileSync(absolutePath, 'utf8')) as Record<string, unknown>
     const hooks = settings.hooks
-    const hasHooks = hooks !== undefined && hooks !== null && (typeof hooks !== 'object' || Object.keys(hooks).length > 0)
+    // An event key with an empty matcher-group array (e.g. `PreToolUse: []`)
+    // configures nothing, same as an empty `hooks` object — check for at
+    // least one non-empty event, not just that the `hooks` key is present.
+    const hasHooks =
+      hooks !== undefined
+      && hooks !== null
+      && (typeof hooks !== 'object'
+        || Object.values(hooks as Record<string, unknown>).some(value => (Array.isArray(value) ? value.length > 0 : Boolean(value))))
     return hasHooks ? 'high' : 'medium'
   } catch {
     return 'medium'

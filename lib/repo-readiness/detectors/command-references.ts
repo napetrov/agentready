@@ -104,6 +104,13 @@ const findMissingMakeTargets = (text: string, docPath: string, makeTargets: Set<
     // following argument that isn't a target either) needs real argument
     // parsing this heuristic doesn't attempt.
     if (target.startsWith('-')) continue
+    // A variable override (`make PREFIX=/usr/local install`, `make CFLAGS=-O2
+    // test`) is not a target either — GNU make treats any argument containing
+    // `=` as a variable assignment. The capture group's character class
+    // already stops before `=` (it isn't a member), so this is detected by
+    // checking the character immediately following the match; same
+    // abstain-rather-than-misreport treatment as the flag case above.
+    if (text[(match.index ?? 0) + reference.length] === '=') continue
     if (!makeTargets.has(target.toLowerCase())) {
       evidence.push({
         path: docPath,

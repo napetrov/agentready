@@ -98,7 +98,10 @@ describe('capability-surface detector', () => {
       expect(riskOf()).toBe('medium') // present but empty: no hook actually configured
 
       writeRepoFile(root, '.claude/settings.json', JSON.stringify({ hooks: { PreToolUse: [] } }))
-      expect(riskOf()).toBe('high')
+      expect(riskOf()).toBe('medium') // empty matcher-group array: no hook actually configured
+
+      writeRepoFile(root, '.claude/settings.json', JSON.stringify({ hooks: { PreToolUse: [{ matcher: '*', hooks: [] }] } }))
+      expect(riskOf()).toBe('high') // non-empty matcher-group array: a real hook is configured
 
       writeRepoFile(root, '.claude/settings.json', 'not valid json')
       expect(riskOf()).toBe('medium') // unparsable: fall back rather than guess

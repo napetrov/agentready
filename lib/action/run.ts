@@ -82,22 +82,37 @@ interface PolicySummary {
 }
 
 /**
- * Shared by both scan and diff mode: applies `policy` to `report` for the
- * effective score/adjustment summary, but counts adjustments over
- * `adjustmentTargetFindings` — the full report in scan mode, only
- * `newFindings` in diff mode (matching evaluateDiffGate's severity gate,
- * which reacts to new findings, not the whole head report).
+ * Shared by both scan and diff mode: computes the effective score against the
+ * full `report`, but scopes `severityAdjustments` (and therefore both the
+ * rendered summary text and `adjustmentsCount`) to `adjustmentTargetFindings`
+ * — the full report in scan mode, only `newFindings` in diff mode. Both
+ * derive from the same set so the PR comment's adjustment list can never
+ * diverge from the `policyAdjustmentsCount` output (e.g. the comment listing
+ * adjustments across the whole head report while the count reflects only new
+ * findings). `effectiveScore` still reflects the full report/head state,
+ * matching what `evaluateDiffGate`'s min-score check actually gates on.
  */
 const summarizePolicy = (
   policy: PolicyPack,
   report: LocalReadinessReport,
   adjustmentTargetFindings: ReadinessFinding[],
 ): PolicySummary => {
-  const policyResult = applyPolicy(report, policy)
+  const { effectiveScore } = applyPolicy(report, policy)
+  const { severityAdjustments } = adjustFindings(adjustmentTargetFindings, policy)
+  const effectiveThresholds: Record<string, ReadinessFinding['severity']> = {}
+  for (const adjustment of severityAdjustments) {
+    effectiveThresholds[adjustment.findingId.split(':')[0]] = adjustment.to
+  }
   return {
-    effectiveScore: policyResult.effectiveScore,
-    adjustmentsCount: adjustFindings(adjustmentTargetFindings, policy).severityAdjustments.length,
-    summaryText: formatPolicySummary(policyResult),
+    effectiveScore,
+    adjustmentsCount: severityAdjustments.length,
+    summaryText: formatPolicySummary({
+      policy: policy.name,
+      effectiveThresholds,
+      severityAdjustments,
+      adjustedFindings: adjustmentTargetFindings,
+      effectiveScore,
+    }),
   }
 }
 
@@ -128,7 +143,8 @@ export const runAction = async (inputs: ActionInputs): Promise<ActionResult> => 
   let policyAdjustmentsCount = 0
   // score/report outputs stay the raw deterministic values, matching how
   // augmentedScore is a separate additive output rather than overwriting
-  // score — only set when a non-default policy actually adjusted something.
+  // score — set whenever a non-default policy runs, even if it made no
+  // adjustments (in which case it simply equals the raw score).
   let policyEffectiveScore: number | undefined
 
   if (inputs.mode === 'diff') {

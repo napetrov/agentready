@@ -22,7 +22,9 @@
                 "const": true
               },
               "score": {
-                "type": "number"
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
               },
               "findingCount": {
                 "type": "integer",
@@ -149,7 +151,9 @@
         "averageScore": {
           "anyOf": [
             {
-              "type": "number"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
             },
             {
               "type": "null"
@@ -159,7 +163,9 @@
         "minScore": {
           "anyOf": [
             {
-              "type": "number"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
             },
             {
               "type": "null"
@@ -169,7 +175,9 @@
         "maxScore": {
           "anyOf": [
             {
-              "type": "number"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
             },
             {
               "type": "null"
