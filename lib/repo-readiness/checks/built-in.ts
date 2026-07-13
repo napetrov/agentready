@@ -198,6 +198,30 @@ export const buildFindings = (
     })
   }
 
+  // Review-routing surfaces. Both are informational: neither blocks an agent
+  // from making a change, but their absence means a human (or the agent
+  // itself) has to guess who should review it and what evidence to include.
+  // CODEOWNERS matters most once there's more than one likely reviewer, so
+  // it's scoped to non-trivial repos the same way docs.developer.thin is; a
+  // PR template costs nothing at any repo size, so it always applies.
+  if (sourceFileCount > 20 && !report.governance.codeownersPath) {
+    findings.push({
+      id: 'docs.codeowners.missing',
+      title: 'No CODEOWNERS file detected',
+      severity: 'info',
+      recommendation: 'Add a CODEOWNERS file (repo root, .github/, or docs/) so PRs route to the right reviewer automatically.',
+    })
+  }
+
+  if (!report.governance.pullRequestTemplatePath) {
+    findings.push({
+      id: 'docs.pull-request-template.missing',
+      title: 'No pull-request template detected',
+      severity: 'info',
+      recommendation: 'Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks).',
+    })
+  }
+
   if (report.ci.workflowFiles.length === 0) {
     findings.push({
       id: 'ci.workflow.missing',

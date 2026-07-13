@@ -56,6 +56,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [docs/product/policy-packs.md](docs/product/policy-packs.md) for the full
   design and what's still open (`oss`/`ml-scientific` packs, a config-file
   shape, folding `PolicyResult` into the JSON/SARIF report contract).
+- Governance surface detection: a new `governance` detector reports whether a
+  CODEOWNERS file and a pull-request template exist at a GitHub-recognized
+  path (repo root, `.github/`, or `docs/`; presence-only — it does not infer
+  ownership boundaries from git history/blame). Emits
+  `docs.pull-request-template.missing` (info, any repo size — a PR template
+  benefits every repo, however small) and `docs.codeowners.missing` (info,
+  only for non-trivial repos with more than 20 source files, where routing a
+  review actually matters). Report field: `report.governance` (`{
+  codeownersPath?, pullRequestTemplatePath? }`).
+
+### Fixed
+- `commands.reference.npm-script` no longer flags workspace-qualified
+  references (`npm run dev --workspace packages/app`, `-w`, `--workspaces`):
+  the script may exist only in the workspace package, not the root
+  `package.json` this detector checks against.
+- `agentready diff --fail-on-regression` now recomputes regressions against
+  policy-adjusted severities when `--policy` is set, instead of only applying
+  the policy to the separate `--fail-on` new-findings check. Previously a
+  policy that escalates a *new* finding's severity (e.g. `enterprise` raising
+  `safety.install-hook`/`safety.deploy` from info to warning) was invisible to
+  `report.regressions`, which is always built from raw severities — so
+  `--fail-on-regression` alone could pass a PR the policy was meant to gate.
 
 ## [0.2.0] - 2026-06-08
 

@@ -136,6 +136,32 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     ],
     references: [DOCS],
   },
+  'docs.codeowners.missing': {
+    id: 'docs.codeowners.missing',
+    title: 'No CODEOWNERS file detected',
+    category: 'docs',
+    defaultSeverity: 'info',
+    rationale:
+      'Without CODEOWNERS, neither a human nor an agent knows who should review a change, so a PR can sit unassigned. Fires only for non-trivial repos (>20 source files), where more than one likely reviewer makes routing matter.',
+    remediation: [
+      'Add a CODEOWNERS file at the repo root, .github/, or docs/.',
+      'Map at least the main source directories to a reviewer or team.',
+    ],
+    references: [DOCS, 'https://docs.github.com/articles/about-code-owners'],
+  },
+  'docs.pull-request-template.missing': {
+    id: 'docs.pull-request-template.missing',
+    title: 'No pull-request template detected',
+    category: 'docs',
+    defaultSeverity: 'info',
+    rationale:
+      'A PR template tells an agent what evidence a reviewer expects — files changed and why, verification commands run, known skipped checks — instead of leaving it to guess.',
+    remediation: [
+      'Add .github/pull_request_template.md (or docs/, or a root pull_request_template.md).',
+      'Include a short checklist: what changed, why, and how it was verified.',
+    ],
+    references: [DOCS, 'https://docs.github.com/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository'],
+  },
   'ci.workflow.missing': {
     id: 'ci.workflow.missing',
     title: 'No CI workflow detected',

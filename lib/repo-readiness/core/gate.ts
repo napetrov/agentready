@@ -1,4 +1,5 @@
 import { adjustFindings, applyPolicy, type PolicyPack } from './policy'
+import { computeRegressions } from './scan-engine'
 import type {
   LocalReadinessReport,
   ReadinessDiffReport,
@@ -83,8 +84,22 @@ export const evaluateDiffGate = (report: ReadinessDiffReport, options: GateOptio
   const failOnSeverity = options.failOnSeverity ?? 'error'
   const failureReasons: string[] = []
 
-  if (options.failOnRegression && report.regressions.length > 0) {
-    failureReasons.push(`${report.regressions.length} readiness regression(s) introduced`)
+  if (options.failOnRegression) {
+    // `report.regressions` is always computed from raw, unadjusted findings.
+    // Under a policy that escalates severity (e.g. `enterprise` promoting
+    // `safety.*` findings from info to warning), a newly introduced info
+    // finding can be gateable under the policy but invisible to the raw
+    // regression set — recompute against policy-adjusted findings so
+    // `--fail-on-regression` sees what the policy actually gates on.
+    const regressions = options.policy
+      ? computeRegressions(
+          adjustFindings(report.baseReport.findings, options.policy).adjustedFindings,
+          adjustFindings(report.headReport.findings, options.policy).adjustedFindings,
+        )
+      : report.regressions
+    if (regressions.length > 0) {
+      failureReasons.push(`${regressions.length} readiness regression(s) introduced`)
+    }
   }
 
   const newFindings = options.policy ? adjustFindings(report.newFindings, options.policy).adjustedFindings : report.newFindings

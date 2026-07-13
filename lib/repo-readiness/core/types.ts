@@ -136,6 +136,19 @@ export interface CommandReferenceEvidence {
   detail: string
 }
 
+/**
+ * Review-routing surfaces: whether the repo tells a reviewer (human or agent)
+ * who owns a change and what evidence a PR description should contain. Both
+ * are presence checks (does the file exist, at a path GitHub recognizes), not
+ * an inference of actual ownership boundaries from git history.
+ */
+export interface GovernanceEvidence {
+  /** Path to CODEOWNERS, if found at a GitHub-recognized location (root, .github/, or docs/). */
+  codeownersPath?: string
+  /** Path to a pull-request template, if found at a GitHub-recognized location (root, .github/, or docs/; single file or .github/PULL_REQUEST_TEMPLATE/). */
+  pullRequestTemplatePath?: string
+}
+
 /** A class of verification command an agent can run to validate its work. */
 export type CiCommandKind = 'install' | 'lint' | 'typecheck' | 'test' | 'build'
 
@@ -416,6 +429,7 @@ export interface LocalReadinessReport {
   }
   commands: CommandEvidence
   commandReferences: CommandReferenceEvidence[]
+  governance: GovernanceEvidence
   ci: CiEvidence
   instructions: InstructionSurfaceEvidence[]
   capabilities: CapabilitySurfaceEvidence[]

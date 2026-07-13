@@ -5,6 +5,7 @@ import type {
   CiEvidence,
   CommandEvidence,
   CommandReferenceEvidence,
+  GovernanceEvidence,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
@@ -170,6 +171,11 @@ export const commandReferenceEvidenceSchema = z.strictObject({
   reference: z.string(),
   kind: commandReferenceKindSchema,
   detail: z.string(),
+})
+
+export const governanceEvidenceSchema = z.strictObject({
+  codeownersPath: z.string().optional(),
+  pullRequestTemplatePath: z.string().optional(),
 })
 
 export const ciCommandKindSchema = z.enum(['install', 'lint', 'typecheck', 'test', 'build'])
@@ -416,6 +422,7 @@ export const localReadinessReportSchema = z.strictObject({
   }),
   commands: commandEvidenceSchema,
   commandReferences: z.array(commandReferenceEvidenceSchema),
+  governance: governanceEvidenceSchema,
   ci: ciEvidenceSchema,
   instructions: z.array(instructionSurfaceSchema),
   capabilities: z.array(capabilitySurfaceSchema),
@@ -473,6 +480,7 @@ const _finding: Exact<z.infer<typeof readinessFindingSchema>, ReadinessFinding> 
 const _file: Exact<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile> = true
 const _commands: Exact<z.infer<typeof commandEvidenceSchema>, CommandEvidence> = true
 const _commandReference: Exact<z.infer<typeof commandReferenceEvidenceSchema>, CommandReferenceEvidence> = true
+const _governance: Exact<z.infer<typeof governanceEvidenceSchema>, GovernanceEvidence> = true
 const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
 const _documentSurface: Exact<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence> = true
 const _repositoryEvidence: Exact<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence> = true
@@ -486,6 +494,7 @@ assertSchemaDriftGuards(
   _file,
   _commands,
   _commandReference,
+  _governance,
   _ci,
   _documentSurface,
   _repositoryEvidence,

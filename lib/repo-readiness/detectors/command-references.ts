@@ -39,6 +39,19 @@ const RUN_SCRIPT_PATTERN = /\b(npm|yarn|pnpm|bun)\s+run\s+([A-Za-z0-9_:.-]+)/g
 const BARE_SCRIPT_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(test|start)\b/g
 const INSTALL_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(install|ci)\b/g
 const MAKE_TARGET_PATTERN = /\bmake\s+([A-Za-z0-9_.-]+)/g
+// `npm run dev --workspace packages/app` (or `-w`/`--workspaces`) routes to a
+// workspace package's own scripts, not the root package.json this detector
+// checks against — a script that only exists in that workspace is a false
+// positive, not a stale reference. Only the same line is checked: the flag
+// qualifies the command it appears on, not the whole document.
+const WORKSPACE_FLAG_PATTERN = /(?:^|\s)(?:-w|--workspaces|--workspace)\b/
+
+const isWorkspaceQualified = (text: string, matchIndex: number, matchLength: number): boolean => {
+  const lineStart = text.lastIndexOf('\n', matchIndex) + 1
+  const lineEndIndex = text.indexOf('\n', matchIndex + matchLength)
+  const lineEnd = lineEndIndex === -1 ? text.length : lineEndIndex
+  return WORKSPACE_FLAG_PATTERN.test(text.slice(lineStart, lineEnd))
+}
 
 const missingScript = (docPath: string, reference: string, script: string): CommandReferenceEvidence => ({
   path: docPath,
@@ -51,7 +64,9 @@ const findMissingScripts = (text: string, docPath: string, scripts: Set<string>,
   const evidence: CommandReferenceEvidence[] = []
   for (const match of text.matchAll(RUN_SCRIPT_PATTERN)) {
     const [reference, , script] = match
-    if (!scripts.has(script)) evidence.push(missingScript(docPath, reference, script))
+    if (scripts.has(script)) continue
+    if (isWorkspaceQualified(text, match.index ?? 0, reference.length)) continue
+    evidence.push(missingScript(docPath, reference, script))
   }
   for (const match of text.matchAll(BARE_SCRIPT_PATTERN)) {
     const [reference, binary, script] = match
@@ -62,6 +77,7 @@ const findMissingScripts = (text: string, docPath: string, scripts: Set<string>,
     // but a root server.js does.
     if (binary === 'bun' && script === 'test') continue
     if (binary === 'npm' && script === 'start' && filePaths.includes('server.js')) continue
+    if (isWorkspaceQualified(text, match.index ?? 0, reference.length)) continue
     evidence.push(missingScript(docPath, reference, script))
   }
   return evidence

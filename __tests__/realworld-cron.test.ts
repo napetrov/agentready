@@ -90,6 +90,7 @@ describe('real-world cron classification', () => {
       hasTypeCheck: false,
     },
     commandReferences: [],
+    governance: {},
     ci: {
       workflowFiles: [],
       workflows: [],

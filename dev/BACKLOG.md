@@ -116,9 +116,9 @@ Known dogfood regression matrix:
 - [ ] **v0.3 issue drafts / milestone.** Keep ready-to-open issue drafts in
   `docs/roadmap/v0.3-issue-drafts.md` until they are mirrored into GitHub
   Issues. _(S)_
-- [ ] **Policy-pack design.** Add the policy-pack story to docs before
-  implementation: no-op `default`, then a meaningful `enterprise` or
-  `ml-scientific` pack that adjusts severity without mutating raw evidence. _(M)_
+- [x] **Policy-pack design.** Delivered; see the "Policy packs" bullet under
+  "P2 — Semantic CI & policy" below for the shipped shape (`default` +
+  `enterprise`, severity adjustment without mutating raw evidence).
 - [ ] **Evaluation story.** Publish a small benchmark plan that compares
   AgentReady findings against real coding-agent friction across a mixed repo
   corpus. Keep raw artifacts outside the tracked repo. _(M)_

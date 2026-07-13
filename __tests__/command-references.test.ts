@@ -48,6 +48,24 @@ describe('detectCommandReferences (units)', () => {
     expect(detect([doc], baseCommands)).toEqual([])
   })
 
+  it.each([
+    ['--workspace', 'npm run dev --workspace packages/app'],
+    ['--workspace=', 'npm run dev --workspace=packages/app'],
+    ['-w', 'npm run dev -w packages/app'],
+    ['--workspaces', 'npm run dev --workspaces'],
+  ])('does not flag a workspace-qualified npm run reference (%s)', (_label, line) => {
+    const doc = write('AGENTS.md', `Run \`${line}\` from the repo root.`)
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('still flags an unqualified npm run reference on a different line from a workspace flag', () => {
+    const doc = write('AGENTS.md', 'Run `npm run dev --workspace packages/app`.\nAlso run `npm run buld`.')
+    const evidence = detect([doc], baseCommands)
+    expect(evidence).toEqual([
+      { path: doc, reference: 'npm run buld', kind: 'npm-script', detail: 'No "buld" script in package.json.' },
+    ])
+  })
+
   it('flags bare "npm test"/"npm start" only when the script is missing', () => {
     const doc = write('AGENTS.md', 'Run `npm test`, then `npm start`.')
     const evidence = detect([doc], baseCommands)

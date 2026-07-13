@@ -83,7 +83,12 @@ Features:
 - import graph and boundary checks
 - git churn and risk signals
 - language/framework policy packs (Java/.NET, broader Python tooling)
-- CODEOWNERS and PR-template analysis
+- CODEOWNERS and PR-template analysis — **delivered (presence-only)**:
+  `docs.codeowners.missing` (info, non-trivial repos only, >20 source files)
+  and `docs.pull-request-template.missing` (info, any repo size) detect
+  whether either review-routing surface exists at a GitHub-recognized path.
+  Inferring actual ownership boundaries from git history/blame remains open
+  (see "git churn and risk signals" above).
 - benchmark harness and public summary for comparing score dimensions against real agent performance
 
 ## v0.3 first-impression polish

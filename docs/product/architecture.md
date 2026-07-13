@@ -51,7 +51,7 @@ agentready
     [x] docs
     [x] capability-surfaces (MCP, skills, hooks, plugins, LSP)
     [x] safety-signals     (dangerous package scripts, deploy/publish)
-    [ ] ownership
+    [x] governance         (CODEOWNERS / PR-template presence; not git-history-based ownership inference)
     [ ] risk-signals
   checks/
     [x] built-in-rules

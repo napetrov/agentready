@@ -8,6 +8,7 @@ import { detectCommandReferences } from '../detectors/command-references'
 import { detectCommandSurfaces } from '../detectors/command-surfaces'
 import { detectDocs } from '../detectors/docs'
 import { walkFiles } from '../detectors/file-inventory'
+import { detectGovernance } from '../detectors/governance'
 import { buildDesignState, detectRepositoryEvidence } from '../detectors/repository-evidence'
 import { detectSafetySignals } from '../detectors/safety-signals'
 import {
@@ -74,6 +75,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     docs,
     commands,
     commandReferences: detectCommandReferences(absoluteRoot, commandReferenceDocPaths, commands, filePaths),
+    governance: detectGovernance(filePaths),
     ci: detectCiWorkflows(absoluteRoot, filePaths),
     instructions,
     capabilities: detectCapabilitySurfaces(filePaths),
@@ -118,6 +120,30 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
 
 const findingKey = (finding: ReadinessFinding): string => `${finding.id}|${finding.path ?? ''}`
 
+const isGateable = (finding: ReadinessFinding): boolean =>
+  finding.severity === 'error' || finding.severity === 'warning'
+
+/**
+ * Findings that make a diff "worse": new findings at warning/error, plus
+ * findings that persist at the same id+path but whose severity worsened
+ * (e.g. a large binary asset (info) replaced by a same-path large text/source
+ * file (warning), which shares the `files.large:<path>` id). Exported so the
+ * gate can recompute this against policy-adjusted findings instead of raw
+ * ones — the diff report itself always reflects raw, unadjusted evidence.
+ */
+export const computeRegressions = (
+  baseFindings: ReadinessFinding[],
+  headFindings: ReadinessFinding[],
+): ReadinessFinding[] => {
+  const baseFindingsByKey = new Map(baseFindings.map(finding => [findingKey(finding), finding]))
+  const newFindings = headFindings.filter(finding => !baseFindingsByKey.has(findingKey(finding)))
+  const escalatedFindings = headFindings.filter(finding => {
+    const base = baseFindingsByKey.get(findingKey(finding))
+    return base !== undefined && isGateable(finding) && SEVERITY_RANK[finding.severity] > SEVERITY_RANK[base.severity]
+  })
+  return [...newFindings.filter(isGateable), ...escalatedFindings]
+}
+
 export function diffLocalReadiness(root: string, options: DiffOptions): ReadinessDiffReport {
   const generatedAt = (options.now ?? new Date()).toISOString()
   // Worktrees contain only committed (tracked) files; git never ignores tracked
@@ -137,18 +163,7 @@ export function diffLocalReadiness(root: string, options: DiffOptions): Readines
   const headFindingsByKey = new Map(headReport.findings.map(finding => [findingKey(finding), finding]))
   const newFindings = headReport.findings.filter(finding => !baseFindingsByKey.has(findingKey(finding)))
   const resolvedFindings = baseReport.findings.filter(finding => !headFindingsByKey.has(findingKey(finding)))
-  const isGateable = (finding: ReadinessFinding): boolean =>
-    finding.severity === 'error' || finding.severity === 'warning'
-  // A finding that persists at the same id+path but whose severity worsens is a
-  // regression even though it is neither new nor resolved — e.g. a large binary
-  // asset (info) replaced by a same-path large text/source file (warning), which
-  // shares the `files.large:<path>` id. Without this, `--fail-on-regression`
-  // would miss the escalation.
-  const escalatedFindings = headReport.findings.filter(finding => {
-    const base = baseFindingsByKey.get(findingKey(finding))
-    return base !== undefined && isGateable(finding) && SEVERITY_RANK[finding.severity] > SEVERITY_RANK[base.severity]
-  })
-  const regressions = [...newFindings.filter(isGateable), ...escalatedFindings]
+  const regressions = computeRegressions(baseReport.findings, headReport.findings)
 
   return {
     base: options.base,

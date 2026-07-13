@@ -4,6 +4,7 @@ import {
   meetsThreshold,
   scanLocalReadiness,
   type LocalReadinessReport,
+  type PolicyPack,
   type ReadinessDiffReport,
   type ReadinessFinding,
 } from '../lib/repo-readiness/local-readiness'
@@ -94,5 +95,27 @@ describe('evaluateDiffGate', () => {
   it('gates on the head score against min-score', () => {
     const report = diffReport({ headReport: { summary: { score: 50 } } as LocalReadinessReport })
     expect(evaluateDiffGate(report, { minScore: 80 }).failed).toBe(true)
+  })
+
+  it('recomputes regressions against policy-adjusted severities, not the raw regression set', () => {
+    // A new info-severity finding is invisible to the raw `regressions` field
+    // (only warning/error are gateable), but a policy that escalates it to
+    // warning must still be able to fail --fail-on-regression.
+    const newInfoFinding = finding('info')
+    const escalatingPolicy: PolicyPack = {
+      name: 'enterprise',
+      description: 'test policy',
+      adjust: f => (f.id === newInfoFinding.id ? { to: 'warning', reason: 'test escalation' } : undefined),
+    }
+    const report = diffReport({
+      baseReport: { findings: [] } as unknown as LocalReadinessReport,
+      headReport: { findings: [newInfoFinding], summary: { score: 100 } } as LocalReadinessReport,
+      regressions: [],
+    })
+
+    expect(evaluateDiffGate(report, { failOnSeverity: 'off', failOnRegression: true }).failed).toBe(false)
+    const gate = evaluateDiffGate(report, { failOnSeverity: 'off', failOnRegression: true, policy: escalatingPolicy })
+    expect(gate.failed).toBe(true)
+    expect(gate.failureReasons.join(' ')).toMatch(/regression\(s\) introduced/)
   })
 })

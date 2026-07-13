@@ -205,6 +205,18 @@
             "additionalProperties": false
           }
         },
+        "governance": {
+          "type": "object",
+          "properties": {
+            "codeownersPath": {
+              "type": "string"
+            },
+            "pullRequestTemplatePath": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
         "ci": {
           "type": "object",
           "properties": {
@@ -1893,6 +1905,7 @@
         "docs",
         "commands",
         "commandReferences",
+        "governance",
         "ci",
         "instructions",
         "capabilities",
@@ -2098,6 +2111,18 @@
             "additionalProperties": false
           }
         },
+        "governance": {
+          "type": "object",
+          "properties": {
+            "codeownersPath": {
+              "type": "string"
+            },
+            "pullRequestTemplatePath": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
         "ci": {
           "type": "object",
           "properties": {
@@ -3786,6 +3811,7 @@
         "docs",
         "commands",
         "commandReferences",
+        "governance",
         "ci",
         "instructions",
         "capabilities",

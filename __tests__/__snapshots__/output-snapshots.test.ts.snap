@@ -84,6 +84,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "hasTypeCheck": false
     },
     "commandReferences": [],
+    "governance": {},
     "ci": {
       "workflowFiles": [
         ".github/workflows/ci.yml"
@@ -126,7 +127,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "capabilities": [],
     "safetySignals": [],
     "summary": {
-      "score": 100,
+      "score": 98,
       "totalFiles": 4,
       "totalBytes": 75,
       "sourceFiles": 0,
@@ -372,10 +373,10 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "dimensions": [
       {
         "category": "docs",
-        "score": 100,
-        "findingCount": 0,
+        "score": 98,
+        "findingCount": 1,
         "bySeverity": {
-          "info": 0,
+          "info": 1,
           "warning": 0,
           "error": 0
         }
@@ -439,7 +440,14 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "dimensions"
       ]
     },
-    "findings": []
+    "findings": [
+      {
+        "id": "docs.pull-request-template.missing",
+        "title": "No pull-request template detected",
+        "severity": "info",
+        "recommendation": "Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks)."
+      }
+    ]
   },
   "headReport": {
     "root": "<WORKTREE>",
@@ -466,6 +474,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "hasTypeCheck": false
     },
     "commandReferences": [],
+    "governance": {},
     "ci": {
       "workflowFiles": [
         ".github/workflows/ci.yml"
@@ -508,7 +517,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "capabilities": [],
     "safetySignals": [],
     "summary": {
-      "score": 82,
+      "score": 80,
       "totalFiles": 3,
       "totalBytes": 68,
       "sourceFiles": 0,
@@ -708,10 +717,10 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "dimensions": [
       {
         "category": "docs",
-        "score": 82,
-        "findingCount": 1,
+        "score": 80,
+        "findingCount": 2,
         "bySeverity": {
-          "info": 0,
+          "info": 1,
           "warning": 0,
           "error": 1
         }
@@ -776,6 +785,12 @@ exports[`diff output snapshots summary and markdown for a regression between two
       ]
     },
     "findings": [
+      {
+        "id": "docs.pull-request-template.missing",
+        "title": "No pull-request template detected",
+        "severity": "info",
+        "recommendation": "Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks)."
+      },
       {
         "id": "docs.readme.missing",
         "title": "Repository has no README",
@@ -861,6 +876,7 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
     "hasTypeCheck": false
   },
   "commandReferences": [],
+  "governance": {},
   "ci": {
     "workflowFiles": [],
     "workflows": [],
@@ -875,7 +891,7 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
   "capabilities": [],
   "safetySignals": [],
   "summary": {
-    "score": 36,
+    "score": 34,
     "totalFiles": 2,
     "totalBytes": 77,
     "sourceFiles": 1,
@@ -1139,10 +1155,10 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
   "dimensions": [
     {
       "category": "docs",
-      "score": 82,
-      "findingCount": 1,
+      "score": 80,
+      "findingCount": 2,
       "bySeverity": {
-        "info": 0,
+        "info": 1,
         "warning": 0,
         "error": 1
       }
@@ -1232,6 +1248,12 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
       "recommendation": "Expose a type-check command and run it in CI."
     },
     {
+      "id": "docs.pull-request-template.missing",
+      "title": "No pull-request template detected",
+      "severity": "info",
+      "recommendation": "Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks)."
+    },
+    {
       "id": "docs.readme.missing",
       "title": "Repository has no README",
       "severity": "error",
@@ -1248,16 +1270,17 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
 `;
 
 exports[`scan output snapshots bad-repo console summary 1`] = `
-"AgentReady score: 36/100
+"AgentReady score: 34/100
 Files: 2 (1 source, 0 tests, 0 docs)
 Capabilities: 0, safety signals: 0
 CI: no workflows detected
-Dimensions: docs 82 (1 error), commands 68 (1 error, 2 warning), ci 93 (1 warning), instructions 93 (1 warning), files 100, safety 100
-Findings: 6
+Dimensions: docs 80 (1 error, 1 info), commands 68 (1 error, 2 warning), ci 93 (1 warning), instructions 93 (1 warning), files 100, safety 100
+Findings: 7
 - [warning] No CI workflow detected
 - [warning] No lint command detected
 - [error] No test command detected
 - [warning] TypeScript repository has no type-check command
+- [info] No pull-request template detected
 - [error] Repository has no README
 - [warning] No agent instruction surface detected"
 `;
@@ -1265,14 +1288,14 @@ Findings: 6
 exports[`scan output snapshots bad-repo markdown 1`] = `
 "## AgentReady scan
 
-Score: **36/100**
+Score: **34/100**
 Files: 2 total, 1 source, 0 tests, 0 docs
 Capabilities: 0; safety signals: 0
 CI: no workflows detected
-Findings: 6
+Findings: 7
 
 ### Dimension scores
-- docs: **82/100** (1 error, 0 warning, 0 info)
+- docs: **80/100** (1 error, 0 warning, 1 info)
 - commands: **68/100** (1 error, 2 warning, 0 info)
 - ci: **93/100** (0 error, 1 warning, 0 info)
 - instructions: **93/100** (0 error, 1 warning, 0 info)
@@ -1298,6 +1321,7 @@ Roots: 2; languages: 1; roots without local tests: 1; roots without local docs: 
 - **WARNING**: No lint command detected. Expose a lint command so agents can catch style and static analysis regressions before review.
 - **ERROR**: No test command detected. Expose a stable test command in package scripts or documented project tooling.
 - **WARNING**: TypeScript repository has no type-check command. Expose a type-check command and run it in CI.
+- **INFO**: No pull-request template detected. Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks).
 - **ERROR**: Repository has no README. Add a root README with purpose, setup, validation commands, and common agent entrypoints.
 - **WARNING**: No agent instruction surface detected. Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands."
 `;
@@ -1354,6 +1378,16 @@ exports[`scan output snapshots bad-repo sarif 1`] = `
               }
             },
             {
+              "id": "docs.pull-request-template.missing",
+              "name": "docs.pull-request-template.missing",
+              "shortDescription": {
+                "text": "No pull-request template detected"
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
               "id": "docs.readme.missing",
               "name": "docs.readme.missing",
               "shortDescription": {
@@ -1403,6 +1437,13 @@ exports[`scan output snapshots bad-repo sarif 1`] = `
           "level": "warning",
           "message": {
             "text": "TypeScript repository has no type-check command. Expose a type-check command and run it in CI."
+          }
+        },
+        {
+          "ruleId": "docs.pull-request-template.missing",
+          "level": "note",
+          "message": {
+            "text": "No pull-request template detected. Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks)."
           }
         },
         {
@@ -1457,6 +1498,9 @@ exports[`scan output snapshots good-repo compact json 1`] = `
     "hasTypeCheck": true
   },
   "commandReferences": [],
+  "governance": {
+    "pullRequestTemplatePath": ".github/pull_request_template.md"
+  },
   "ci": {
     "workflowFiles": [
       ".github/workflows/ci.yml"
@@ -1518,11 +1562,11 @@ exports[`scan output snapshots good-repo compact json 1`] = `
   "safetySignals": [],
   "summary": {
     "score": 100,
-    "totalFiles": 7,
-    "totalBytes": 913,
+    "totalFiles": 8,
+    "totalBytes": 1045,
     "sourceFiles": 1,
     "testFiles": 1,
-    "documentationFiles": 3,
+    "documentationFiles": 4,
     "largeFiles": 0,
     "binaryFiles": 0,
     "generatedFiles": 0,
@@ -1572,10 +1616,16 @@ exports[`scan output snapshots good-repo compact json 1`] = `
         ],
         "sourceFiles": 0,
         "testFiles": 0,
-        "documentationFiles": 2,
+        "documentationFiles": 3,
         "generatedFiles": 0,
         "confidence": "high",
         "sources": [
+          {
+            "detector": "repository-evidence",
+            "kind": "inference",
+            "path": ".github/pull_request_template.md",
+            "note": "conventional path"
+          },
           {
             "detector": "repository-evidence",
             "kind": "inference",
@@ -1690,6 +1740,30 @@ exports[`scan output snapshots good-repo compact json 1`] = `
       }
     ],
     "documentSurfaces": [
+      {
+        "id": "document-surface:.github/pull_request_template.md",
+        "kind": "document-surface",
+        "path": ".github/pull_request_template.md",
+        "paths": [
+          ".github/pull_request_template.md"
+        ],
+        "title": "What changed and why",
+        "headings": [
+          "What changed and why",
+          "Verification",
+          "Known skipped checks"
+        ],
+        "linkedPaths": [],
+        "commandBlocks": [],
+        "roleClaims": [],
+        "sources": [
+          {
+            "detector": "repository-evidence",
+            "kind": "file",
+            "path": ".github/pull_request_template.md"
+          }
+        ]
+      },
       {
         "id": "document-surface:AGENTS.md",
         "kind": "document-surface",
@@ -2281,7 +2355,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
 
 exports[`scan output snapshots good-repo console summary 1`] = `
 "AgentReady score: 100/100
-Files: 7 (1 source, 1 tests, 3 docs)
+Files: 8 (1 source, 1 tests, 4 docs)
 Capabilities: 0, safety signals: 0
 CI: 1 workflow (runs install, lint, type-check, test, build)
 Dimensions: docs 100, commands 100, ci 100, instructions 100, files 100, safety 100
@@ -2292,7 +2366,7 @@ exports[`scan output snapshots good-repo markdown 1`] = `
 "## AgentReady scan
 
 Score: **100/100**
-Files: 7 total, 1 source, 1 tests, 3 docs
+Files: 8 total, 1 source, 1 tests, 4 docs
 Capabilities: 0; safety signals: 0
 CI: 1 workflow — runs install, lint, type-check, test, build
 Findings: 0
@@ -2308,7 +2382,7 @@ Findings: 0
 ### Repository topology
 Roots: 4; languages: 1; roots without local tests: 1; roots without local docs: 1
 - \`__tests__\`: test, TypeScript, 0 source, 1 tests, 0 docs
-- \`.\`: package, TypeScript, 0 source, 0 tests, 2 docs
+- \`.\`: package, TypeScript, 0 source, 0 tests, 3 docs
 - \`docs\`: docs, 0 source, 0 tests, 1 docs
 - \`src\`: unknown, TypeScript, 1 source, 0 tests, 0 docs
 

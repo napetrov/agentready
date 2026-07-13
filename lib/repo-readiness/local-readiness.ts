@@ -40,6 +40,7 @@ export type {
   EvidenceSource,
   EvidenceSourceKind,
   GeneratedPressureEvidence,
+  GovernanceEvidence,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
