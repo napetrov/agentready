@@ -4,15 +4,29 @@ import path from 'path'
 import ignore from 'ignore'
 import type { GovernanceEvidence } from '../core/types'
 
-// GitHub recognizes CODEOWNERS at the repo root, .github/, or docs/ (in that
-// precedence order, though we only need "does one exist" here).
-const CODEOWNERS_PATTERN = /^(?:\.github\/|docs\/)?CODEOWNERS$/i
+// GitHub recognizes CODEOWNERS at the repo root, .github/, or docs/, and
+// honors exactly one of them by that precedence order when more than one
+// exists. Kept as separate per-tier patterns (rather than one combined
+// pattern) so `resolveByPrecedence` can pick the root file over `.github/`
+// over `docs/` regardless of `filePaths`' own sort order — `codeownersPath`
+// now also feeds `detectCodeownersCoverageGaps` below, which reads and
+// parses that specific file's patterns, so picking the wrong tier means
+// checking coverage against a file GitHub itself would not actually use.
+const CODEOWNERS_PATTERNS_BY_PRECEDENCE = [/^CODEOWNERS$/i, /^\.github\/CODEOWNERS$/i, /^docs\/CODEOWNERS$/i]
 // A single pull-request-template file at root/.github/docs/, or any file
 // inside a .github/PULL_REQUEST_TEMPLATE/ directory of multiple templates.
 const PR_TEMPLATE_FILE_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE(\.[^./]+)?$/i
 // GitHub also accepts a PULL_REQUEST_TEMPLATE/ directory (for multiple
 // templates) directly at the repo root or under docs/, not just .github/.
 const PR_TEMPLATE_DIR_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE\//i
+
+const resolveByPrecedence = (filePaths: string[], patternsByPrecedence: RegExp[]): string | undefined => {
+  for (const pattern of patternsByPrecedence) {
+    const match = filePaths.find(filePath => pattern.test(filePath))
+    if (match) return match
+  }
+  return undefined
+}
 
 /**
  * Detects review-routing surfaces: a CODEOWNERS file and a pull-request
@@ -22,7 +36,7 @@ const PR_TEMPLATE_DIR_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE\//
  * opt-in-by-presence-of-CODEOWNERS) git-history-derived signal.
  */
 export const detectGovernance = (filePaths: string[]): GovernanceEvidence => ({
-  codeownersPath: filePaths.find(filePath => CODEOWNERS_PATTERN.test(filePath)),
+  codeownersPath: resolveByPrecedence(filePaths, CODEOWNERS_PATTERNS_BY_PRECEDENCE),
   pullRequestTemplatePath: filePaths.find(
     filePath => PR_TEMPLATE_FILE_PATTERN.test(filePath) || PR_TEMPLATE_DIR_PATTERN.test(filePath),
   ),

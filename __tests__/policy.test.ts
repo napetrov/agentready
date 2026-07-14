@@ -124,6 +124,20 @@ describe('ML_SCIENTIFIC_POLICY', () => {
     expect(adjustedFindings[0].severity).toBe('info')
     expect(severityAdjustments).toEqual([])
   })
+
+  it('leaves an error-level files.large finding gateable (not a recognized fixture/binary, over the error threshold)', () => {
+    // The documented spec (docs/product/policy-packs.md) is "files.large
+    // (warning -> info)" -- an error-level instance is already an
+    // unrecognized, non-fixture, non-binary large source file, which is not
+    // the "routine sample data" case this pack's rationale is about, and
+    // --fail-on error should still catch it for this domain too.
+    const { adjustedFindings, severityAdjustments } = adjustFindings(
+      [finding('files.large:huge-source.py', 'error')],
+      ML_SCIENTIFIC_POLICY,
+    )
+    expect(adjustedFindings[0].severity).toBe('error')
+    expect(severityAdjustments).toEqual([])
+  })
 })
 
 describe('resolvePolicyPack', () => {

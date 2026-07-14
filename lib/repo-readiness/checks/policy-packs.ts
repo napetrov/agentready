@@ -6,6 +6,15 @@ interface Escalation {
   ruleKey: string
   to: ReadinessSeverity
   reason: string
+  /**
+   * Restricts the adjustment to findings currently at this severity, for a
+   * rule whose deterministic severity already varies by instance (e.g.
+   * `files.large` is `info`/`warning`/`error` depending on size and whether
+   * it looks like an intentional fixture — see `built-in.ts`). Omitted for
+   * rules that only ever fire at one severity, where every instance should
+   * move.
+   */
+  from?: ReadinessSeverity
 }
 
 const buildEscalationPack = (name: PolicyName, description: string, escalations: Escalation[]): PolicyPack => {
@@ -15,7 +24,9 @@ const buildEscalationPack = (name: PolicyName, description: string, escalations:
     description,
     adjust: finding => {
       const escalation = byRuleKey.get(ruleKeyFor(finding.id))
-      return escalation ? { to: escalation.to, reason: escalation.reason } : undefined
+      if (!escalation) return undefined
+      if (escalation.from !== undefined && escalation.from !== finding.severity) return undefined
+      return { to: escalation.to, reason: escalation.reason }
     },
   }
 }
@@ -109,6 +120,13 @@ const ML_SCIENTIFIC_DEESCALATIONS: Escalation[] = [
   {
     ruleKey: 'files.large',
     to: 'info',
+    // Restricted to warning-level instances (see `Escalation.from`): a
+    // `files.large` finding above `largeFileErrorBytes` is already an
+    // unrecognized, non-fixture, non-binary large *source/text* file (see
+    // `built-in.ts`'s severity derivation) -- exactly the case this pack's
+    // rationale is not about, and one `--fail-on error` should still catch
+    // even for this domain.
+    from: 'warning',
     reason: 'Research/scientific repositories routinely check in sample datasets and fixtures outside the paths the core scanner already recognizes as intentional; treating every large file as equally risky is noisy for this domain.',
   },
   {

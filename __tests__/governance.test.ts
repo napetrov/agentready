@@ -38,6 +38,20 @@ describe('detectGovernance (units)', () => {
     expect(detectGovernance(['src/CODEOWNERS', 'CODEOWNERS.md']).codeownersPath).toBeUndefined()
   })
 
+  it('prefers the root CODEOWNERS over .github/ and docs/ when multiple exist, regardless of input order', () => {
+    // GitHub honors exactly one CODEOWNERS by root > .github/ > docs/
+    // precedence. ".github/CODEOWNERS" sorts before "CODEOWNERS"
+    // lexicographically, so this also guards against silently picking
+    // whatever happens to sort first in the walker's file list.
+    expect(
+      detectGovernance(['.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS']).codeownersPath,
+    ).toBe('CODEOWNERS')
+  })
+
+  it('prefers .github/CODEOWNERS over docs/CODEOWNERS when no root file exists', () => {
+    expect(detectGovernance(['docs/CODEOWNERS', '.github/CODEOWNERS']).codeownersPath).toBe('.github/CODEOWNERS')
+  })
+
   it.each([
     ['root pull_request_template.md', 'pull_request_template.md'],
     ['.github/pull_request_template.md', '.github/pull_request_template.md'],
