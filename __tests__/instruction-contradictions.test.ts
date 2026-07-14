@@ -109,6 +109,32 @@ describe('detectInstructionContradictions (units)', () => {
       },
     ])
   })
+
+  it('flags a legacy always-active rule file against a root file sharing its ecosystem', () => {
+    // .cursorrules is scope: 'legacy' (not 'root'), but it's activation:
+    // 'always' and shares the "cursor" ecosystem with root AGENTS.md -- a
+    // Cursor user genuinely sees both loaded at once, so a mismatch here is
+    // exactly as real as a root/root one.
+    const a = write('AGENTS.md', 'Install with `npm install`, then run `npm test`.')
+    const b = write('.cursorrules', 'Install with `pnpm install`, then run `pnpm test`.')
+    const agentsMd: InstructionSurfaceEvidence = {
+      ...rootScopeAlways(a),
+      ecosystems: ['codex', 'github-copilot', 'cursor', 'windsurf', 'cline', 'generic-agent'],
+    }
+    const cursorrules: InstructionSurfaceEvidence = {
+      ...rootScopeAlways(b),
+      ecosystems: ['cursor', 'cline'],
+      scope: 'legacy',
+      legacy: true,
+    }
+    expect(detectInstructionContradictions(root, [agentsMd, cursorrules])).toEqual([
+      {
+        kind: 'package-manager',
+        paths: ['.cursorrules', 'AGENTS.md'],
+        detail: '".cursorrules" references pnpm, but "AGENTS.md" references npm.',
+      },
+    ])
+  })
 })
 
 describe('instructions.contradiction finding (integration)', () => {

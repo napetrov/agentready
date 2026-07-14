@@ -54,28 +54,33 @@ const mentionedPackageManagers = (text: string): Set<PackageManager> => {
 }
 
 /**
- * Finds structurally-detectable contradictions between root-scope,
- * always-active instruction files (`AGENTS.md`, `CLAUDE.md`,
- * `.github/copilot-instructions.md`, `GEMINI.md`, …) — the ones an agent
- * loads into context at the same time, so a conflict between them is
- * something an agent will actually hit. "At the same time" means both
- * root-scope/always-active *and* sharing at least one ecosystem — e.g. root
- * `AGENTS.md` (codex, github-copilot, cursor, …) and `.claude/CLAUDE.md`
- * (claude-code only) are both root/always but no single agent ecosystem
- * loads both, so comparing them would flag a "contradiction" no agent could
- * ever be confused by. Currently checks one high-precision signal: two
- * files that each exclusively reference a *different* single package
- * manager. A file that mentions more than one package manager is plausibly
- * discussing multiple supported managers on purpose and is not compared, to
- * keep false positives low — this mirrors why
- * `commands.reference.package-manager-mismatch` stays a soft, informational
- * signal rather than an unambiguous one.
+ * Finds structurally-detectable contradictions between unconditionally-loaded
+ * instruction files (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`,
+ * `GEMINI.md`, legacy always-on rule files like `.cursorrules`, …) — the ones
+ * an agent loads into context at the same time, so a conflict between them is
+ * something an agent will actually hit. "At the same time" means
+ * `activation === 'always'` at whole-repo scope (`root` for current entrypoints,
+ * `legacy` for superseded-but-still-honored ones like `.cursorrules`/
+ * `.windsurfrules`/`.clinerules` — a tool that still reads its legacy file
+ * loads it just as unconditionally as a root one) *and* sharing at least one
+ * ecosystem — e.g. root `AGENTS.md` (codex, github-copilot, cursor, …) and
+ * `.claude/CLAUDE.md` (claude-code only) both qualify on scope/activation but
+ * share no ecosystem, so no single agent ecosystem loads both and comparing
+ * them would flag a "contradiction" no agent could ever be confused by.
+ * Currently checks one high-precision signal: two files that each
+ * exclusively reference a *different* single package manager. A file that
+ * mentions more than one package manager is plausibly discussing multiple
+ * supported managers on purpose and is not compared, to keep false positives
+ * low — this mirrors why `commands.reference.package-manager-mismatch` stays
+ * a soft, informational signal rather than an unambiguous one.
  */
 export const detectInstructionContradictions = (
   root: string,
   instructions: InstructionSurfaceEvidence[],
 ): InstructionContradictionEvidence[] => {
-  const candidates = instructions.filter(surface => surface.scope === 'root' && surface.activation === 'always')
+  const candidates = instructions.filter(
+    surface => (surface.scope === 'root' || surface.scope === 'legacy') && surface.activation === 'always',
+  )
 
   const singleManagerByPath = new Map<string, PackageManager>()
   const ecosystemsByPath = new Map<string, Set<InstructionEcosystem>>()
