@@ -75,6 +75,40 @@ describe('detectInstructionContradictions (units)', () => {
     const b = write('CLAUDE.md', 'Prefer explicit error handling.')
     expect(detectInstructionContradictions(root, [rootScopeAlways(a), rootScopeAlways(b)])).toEqual([])
   })
+
+  it('does not flag two root/always-active files with no overlapping ecosystem', () => {
+    // Real ecosystems from instruction-surface-detector.ts: root AGENTS.md is
+    // codex/github-copilot/cursor/windsurf/cline/generic-agent; .claude/CLAUDE.md
+    // is claude-code only. No single agent loads both, so a "mismatch" between
+    // them is not something any agent would actually hit.
+    const a = write('AGENTS.md', 'Install with `npm install`, then run `npm test`.')
+    const b = write('.claude/CLAUDE.md', 'Install with `pnpm install`, then run `pnpm test`.')
+    const agentsMd: InstructionSurfaceEvidence = {
+      ...rootScopeAlways(a),
+      ecosystems: ['codex', 'github-copilot', 'cursor', 'windsurf', 'cline', 'generic-agent'],
+    }
+    const claudeMd: InstructionSurfaceEvidence = { ...rootScopeAlways(b), ecosystems: ['claude-code'] }
+    expect(detectInstructionContradictions(root, [agentsMd, claudeMd])).toEqual([])
+  })
+
+  it('still flags root, always-active files that share at least one ecosystem', () => {
+    // Root AGENTS.md and root CLAUDE.md both list github-copilot, so GitHub
+    // Copilot CLI genuinely loads both at once -- the contradiction is real.
+    const a = write('AGENTS.md', 'Install with `npm install`, then run `npm test`.')
+    const b = write('CLAUDE.md', 'Install with `pnpm install`, then run `pnpm test`.')
+    const agentsMd: InstructionSurfaceEvidence = {
+      ...rootScopeAlways(a),
+      ecosystems: ['codex', 'github-copilot', 'cursor', 'windsurf', 'cline', 'generic-agent'],
+    }
+    const claudeMd: InstructionSurfaceEvidence = { ...rootScopeAlways(b), ecosystems: ['claude-code', 'github-copilot'] }
+    expect(detectInstructionContradictions(root, [agentsMd, claudeMd])).toEqual([
+      {
+        kind: 'package-manager',
+        paths: ['AGENTS.md', 'CLAUDE.md'],
+        detail: '"AGENTS.md" references npm, but "CLAUDE.md" references pnpm.',
+      },
+    ])
+  })
 })
 
 describe('instructions.contradiction finding (integration)', () => {

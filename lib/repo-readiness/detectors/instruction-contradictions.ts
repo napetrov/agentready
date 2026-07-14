@@ -1,7 +1,7 @@
 import { closeSync, existsSync, lstatSync, openSync, readSync } from 'fs'
 import path from 'path'
 import type { InstructionContradictionEvidence, PackageManager } from '../core/types'
-import type { InstructionSurfaceEvidence } from '../instruction-surface-detector'
+import type { InstructionEcosystem, InstructionSurfaceEvidence } from '../instruction-surface-detector'
 
 const MAX_DOCUMENT_BYTES_SCANNED = 200_000
 
@@ -58,11 +58,16 @@ const mentionedPackageManagers = (text: string): Set<PackageManager> => {
  * always-active instruction files (`AGENTS.md`, `CLAUDE.md`,
  * `.github/copilot-instructions.md`, `GEMINI.md`, …) — the ones an agent
  * loads into context at the same time, so a conflict between them is
- * something an agent will actually hit. Currently checks one high-precision
- * signal: two files that each exclusively reference a *different* single
- * package manager. A file that mentions more than one package manager is
- * plausibly discussing multiple supported managers on purpose and is not
- * compared, to keep false positives low — this mirrors why
+ * something an agent will actually hit. "At the same time" means both
+ * root-scope/always-active *and* sharing at least one ecosystem — e.g. root
+ * `AGENTS.md` (codex, github-copilot, cursor, …) and `.claude/CLAUDE.md`
+ * (claude-code only) are both root/always but no single agent ecosystem
+ * loads both, so comparing them would flag a "contradiction" no agent could
+ * ever be confused by. Currently checks one high-precision signal: two
+ * files that each exclusively reference a *different* single package
+ * manager. A file that mentions more than one package manager is plausibly
+ * discussing multiple supported managers on purpose and is not compared, to
+ * keep false positives low — this mirrors why
  * `commands.reference.package-manager-mismatch` stays a soft, informational
  * signal rather than an unambiguous one.
  */
@@ -73,13 +78,25 @@ export const detectInstructionContradictions = (
   const candidates = instructions.filter(surface => surface.scope === 'root' && surface.activation === 'always')
 
   const singleManagerByPath = new Map<string, PackageManager>()
+  const ecosystemsByPath = new Map<string, Set<InstructionEcosystem>>()
   for (const surface of candidates) {
+    ecosystemsByPath.set(surface.path, new Set(surface.ecosystems))
     const text = readText(root, surface.path)
     if (text === undefined) continue
     const managers = mentionedPackageManagers(text)
     if (managers.size === 1) {
       singleManagerByPath.set(surface.path, [...managers][0])
     }
+  }
+
+  const sharesEcosystem = (pathA: string, pathB: string): boolean => {
+    const ecosystemsA = ecosystemsByPath.get(pathA)
+    const ecosystemsB = ecosystemsByPath.get(pathB)
+    if (!ecosystemsA || !ecosystemsB) return false
+    for (const ecosystem of ecosystemsA) {
+      if (ecosystemsB.has(ecosystem)) return true
+    }
+    return false
   }
 
   const paths = [...singleManagerByPath.keys()].sort()
@@ -90,7 +107,7 @@ export const detectInstructionContradictions = (
       const pathB = paths[j]
       const managerA = singleManagerByPath.get(pathA)
       const managerB = singleManagerByPath.get(pathB)
-      if (managerA && managerB && managerA !== managerB) {
+      if (managerA && managerB && managerA !== managerB && sharesEcosystem(pathA, pathB)) {
         evidence.push({
           kind: 'package-manager',
           paths: [pathA, pathB],
