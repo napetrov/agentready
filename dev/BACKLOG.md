@@ -135,12 +135,15 @@ Known dogfood regression matrix:
   see "Instruction-file overlap / contradiction checks" below; the rest
   (stale paths, duplicate/overlapping prose guidance) remains open. _(M/L)_
 - [x] **Scientific/ML policy pack** — delivered (partial): `ml-scientific`
-  (`lib/repo-readiness/checks/policy-packs.ts`) de-escalates `files.large`
-  and `commands.lint.missing` to `info`, covering the "intentionally keep
-  sample datasets" and "heavy CI orchestration" expectations from
-  `docs/product/policy-packs.md`. Generated-bindings/vendored-code context
-  boundaries remain open (no dedicated deterministic finding to attach a
-  policy adjustment to yet). _(L)_
+  (`lib/repo-readiness/checks/policy-packs.ts`) de-escalates warning-level
+  `files.large` findings and `commands.lint.missing` to `info`, covering the
+  "intentionally keep sample datasets" and "heavy CI orchestration"
+  expectations from `docs/product/policy-packs.md`. An error-level
+  `files.large` finding (an unrecognized, non-fixture, non-binary large file
+  over `largeFileErrorBytes`) is deliberately left alone -- not the "routine
+  sample data" case this pack is about, and still gateable under `--fail-on
+  error`. Generated-bindings/vendored-code context boundaries remain open (no
+  dedicated deterministic finding to attach a policy adjustment to yet). _(L)_
 - [x] **Minimal git-history ownership signal.** `detectCodeownersCoverageGaps`
   (`lib/repo-readiness/detectors/governance.ts`) flags top-level directories
   with sustained recent commit activity (local git history only, bounded to

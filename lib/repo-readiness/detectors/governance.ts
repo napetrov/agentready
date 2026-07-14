@@ -90,6 +90,8 @@ const readBounded = (absolutePath: string, maxBytes: number): string | undefined
 // of file paths touched by one commit — grouped, not flattened, so a
 // bulk-rename/import commit that touches many files in one directory counts
 // as the single commit it is, not one "hit" per file.
+const GIT_LOG_TIMEOUT_MS = 10_000
+
 const recentlyChangedFilesByCommit = (root: string): string[][] => {
   try {
     const output = execFileSync(
@@ -99,7 +101,13 @@ const recentlyChangedFilesByCommit = (root: string): string[][] => {
         `--pretty=format:${COMMIT_DELIMITER}%H`,
         '-n', String(RECENT_COMMIT_LOOKBACK), '--', '.',
       ],
-      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+      // `-n` bounds the commit *count* returned, not how long git spends
+      // walking history to find them (e.g. many merge commits to skip past
+      // to reach `RECENT_COMMIT_LOOKBACK` non-merge ones, or a slow/network
+      // filesystem) -- a timeout keeps this best-effort signal from blocking
+      // the whole scan on a pathological repo; a timed-out child throws,
+      // which the catch below already treats like "git unavailable".
+      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: GIT_LOG_TIMEOUT_MS },
     )
     return output
       .split(COMMIT_DELIMITER)
