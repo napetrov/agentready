@@ -231,12 +231,18 @@ export const buildFindings = (
     })
   }
 
-  if (report.governance.uncoveredActiveDirectories && report.governance.uncoveredActiveDirectories.length > 0) {
+  // One finding per directory (id suffix + path), not one aggregate finding
+  // listing all of them -- diff/regression matching keys on id+path
+  // (see scan-engine.ts's findingKey), so a single constant-id finding would
+  // make base ["src"] and head ["src", "docs"] compare equal and hide the
+  // newly-uncovered "docs" directory from newFindings/resolvedFindings.
+  for (const directory of report.governance.uncoveredActiveDirectories ?? []) {
     findings.push({
-      id: 'docs.codeowners.coverage-gap',
-      title: 'CODEOWNERS does not appear to cover actively-changed directories',
+      id: `docs.codeowners.coverage-gap:${directory}`,
+      title: 'CODEOWNERS does not appear to cover an actively-changed directory',
       severity: 'info',
-      recommendation: `Add CODEOWNERS coverage for: ${report.governance.uncoveredActiveDirectories.join(', ')}. These directories saw sustained recent commit activity (from local git history) but no matching CODEOWNERS pattern, so PRs touching them may route to no reviewer.`,
+      path: directory,
+      recommendation: `Add CODEOWNERS coverage for "${directory}". This directory saw sustained recent commit activity (from local git history) but no matching CODEOWNERS pattern, so PRs touching it may route to no reviewer.`,
     })
   }
 

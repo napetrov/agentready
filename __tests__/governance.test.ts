@@ -241,9 +241,10 @@ describe('docs.codeowners.coverage-gap finding (integration)', () => {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
     const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
-    const finding = report.findings.find(f => f.id === 'docs.codeowners.coverage-gap')
+    const finding = report.findings.find(f => f.id === 'docs.codeowners.coverage-gap:src')
     expect(finding).toBeDefined()
     expect(finding?.severity).toBe('info')
+    expect(finding?.path).toBe('src')
     expect(report.governance.uncoveredActiveDirectories).toEqual(['src'])
   })
 
@@ -255,7 +256,26 @@ describe('docs.codeowners.coverage-gap finding (integration)', () => {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
     const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
-    expect(report.findings.map(f => f.id)).not.toContain('docs.codeowners.coverage-gap')
+    expect(report.findings.map(f => f.id)).not.toContain('docs.codeowners.coverage-gap:src')
     expect(report.governance.uncoveredActiveDirectories).toBeUndefined()
+  })
+
+  it('emits one finding per uncovered directory, distinguishable by path in a diff', () => {
+    // Regression for the diff-fidelity bug: findingKey is id+path, so a
+    // single constant-id aggregate finding would make base ["src"] and head
+    // ["src", "docs"] compare equal, hiding the newly-uncovered directory.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/vendor/ @vendor-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+      commitFile(`docs/page-${i}.md`, `# page ${i}\n`)
+    }
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const gapFindings = report.findings.filter(f => f.id.startsWith('docs.codeowners.coverage-gap:'))
+    expect(gapFindings.map(f => f.id).sort()).toEqual([
+      'docs.codeowners.coverage-gap:docs',
+      'docs.codeowners.coverage-gap:src',
+    ])
+    expect(gapFindings.map(f => f.path).sort()).toEqual(['docs', 'src'])
   })
 })
