@@ -178,6 +178,40 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     }
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
   })
+
+  it('does not count a single bulk commit touching many files as sustained activity', () => {
+    // One commit adding 5 files under src/ produces 5 --name-only path lines,
+    // but only one distinct commit -- below the MIN_DIRECTORY_COMMITS floor.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/docs/ @doc-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      write(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    runGit(root, ['add', 'src'])
+    runGit(root, ['commit', '-m', 'bulk import'])
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+  })
+
+  it('recognizes a file-glob CODEOWNERS pattern as covering the files it actually matches', () => {
+    // "*.ts @team" matches file paths, not the bare "src/" directory name --
+    // the directory must not be flagged just because a directory-shaped check
+    // against the pattern would miss it.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '*.ts @ts-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+  })
+
+  it('still flags a directory whose file-glob-covered pattern does not match its actual files', () => {
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '*.py @py-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toEqual(['src'])
+  })
 })
 
 describe('docs.codeowners.coverage-gap finding (integration)', () => {

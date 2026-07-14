@@ -91,10 +91,39 @@ const dimensionCategoryOverride = (ctx: { zodSchema: unknown; jsonSchema: Record
   }))
 }
 
+// draft-07 tuple validation is `items: [schema1, schema2, ...]` with no
+// implied length bound — an array with fewer or extra elements still passes
+// unless `minItems`/`maxItems` are set explicitly. `z.toJSONSchema` does not
+// add them for a fixed-length (non-rest) Zod tuple, so every such tuple gets
+// them here rather than as a one-off patch on a single field.
+const isFixedLengthTupleSchema = (
+  candidate: unknown,
+): candidate is { def: { type: 'tuple'; items: unknown[]; rest: null } } => (
+  typeof candidate === 'object'
+  && candidate !== null
+  && 'def' in candidate
+  && typeof (candidate as { def?: unknown }).def === 'object'
+  && (candidate as { def: { type?: unknown } }).def !== null
+  && (candidate as { def: { type?: unknown } }).def.type === 'tuple'
+  && (candidate as { def: { rest?: unknown } }).def.rest === null
+)
+
+const tupleLengthOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }): void => {
+  if (!isFixedLengthTupleSchema(ctx.zodSchema)) return
+  const length = ctx.zodSchema.def.items.length
+  ctx.jsonSchema.minItems = length
+  ctx.jsonSchema.maxItems = length
+}
+
+const combinedOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }): void => {
+  dimensionCategoryOverride(ctx)
+  tupleLengthOverride(ctx)
+}
+
 const render = (entry: SchemaEntry): string => {
   const jsonSchema = z.toJSONSchema(entry.schema, {
     target: 'draft-7',
-    override: dimensionCategoryOverride,
+    override: combinedOverride,
   }) as Record<string, unknown>
   const document = {
     $id: `${baseId}/v${version}/${entry.id}.schema.json`,

@@ -200,16 +200,18 @@ export const buildFindings = (
 
   // Instruction files an agent loads into context together (root-scope,
   // always-active) that disagree on something as concrete as which package
-  // manager to use. Informational: this is a text heuristic, not proof the
-  // agent will actually get it wrong, but it is a real, findable contradiction
-  // — see `docs/product/policy-packs.md`'s deterministic-vs-LLM split for why
+  // manager to use. Warning: this is a text heuristic, not proof the agent
+  // will actually get it wrong, but it is a real, findable contradiction —
+  // see `docs/product/policy-packs.md`'s deterministic-vs-LLM split for why
   // this stays a narrow structural check rather than general contradiction
-  // detection (that lives in the optional LLM analyze layer).
+  // detection (that lives in the optional LLM analyze layer). Uses
+  // `warningSeverity` (not a bare `'warning'` literal) so `errorOnWarnings`
+  // escalates it consistently with every other warning-level rule here.
   for (const contradiction of report.instructionContradictions) {
     findings.push({
       id: `instructions.contradiction.${contradiction.kind}:${contradiction.paths.join(':')}`,
       title: 'Agent instruction files disagree with each other',
-      severity: 'warning',
+      severity: warningSeverity,
       recommendation: `${contradiction.detail} An agent loading both files at once has no way to tell which one is authoritative — reconcile them or scope one to a specific context.`,
     })
   }

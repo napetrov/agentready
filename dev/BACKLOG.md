@@ -132,7 +132,7 @@ Known dogfood regression matrix:
   starting instruction-quality analyzer; connect its output to docs and dogfood
   examples without making core scanning depend on a model. One deterministic
   slice of "contradictions" (cross-file package-manager mismatch) shipped —
-  see "Instruction-file overlap / contradiction checks" above; the rest
+  see "Instruction-file overlap / contradiction checks" below; the rest
   (stale paths, duplicate/overlapping prose guidance) remains open. _(M/L)_
 - [x] **Scientific/ML policy pack** — delivered (partial): `ml-scientific`
   (`lib/repo-readiness/checks/policy-packs.ts`) de-escalates `files.large`

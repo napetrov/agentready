@@ -115,4 +115,16 @@ describe('instructions.contradiction finding (integration)', () => {
     expect(report.instructionContradictions).toEqual([])
     expect(report.findings.some(f => f.id.startsWith('instructions.contradiction'))).toBe(false)
   })
+
+  it('escalates to error under errorOnWarnings, like every other warning-level rule', () => {
+    write('README.md', '# demo\n')
+    write('AGENTS.md', 'Install with `npm install`.\n')
+    write('CLAUDE.md', 'Install with `pnpm install`.\n')
+    const report = scanLocalReadiness(root, {
+      now: new Date('2026-05-30T00:00:00.000Z'),
+      config: { errorOnWarnings: true },
+    })
+    const finding = report.findings.find(f => f.id.startsWith('instructions.contradiction.package-manager'))
+    expect(finding?.severity).toBe('error')
+  })
 })
