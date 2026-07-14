@@ -44,11 +44,33 @@ const PACKAGE_MANAGER_BINARIES: Record<string, PackageManager> = { npm: 'npm', y
 // is exactly as trustworthy a signal here as it is there.
 const PACKAGE_MANAGER_MENTION_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(?:install\b|ci\b|run\s+[A-Za-z0-9_:.-]+|test\b|start\b)/g
 
+// A mention like "Never run npm install" is a *prohibition*, not the file
+// choosing npm — counting it the same as "Use npm install" would flag two
+// files as disagreeing when they may both actually prefer the same manager
+// (one just also warns off another). Checked against the current clause only
+// (back to the nearest sentence/clause boundary, not a fixed character
+// count) — a fixed-width lookback would misfire on "Don't run npm install;
+// use pnpm install instead.", where a wide-enough window reaches back across
+// the ";" and wrongly suppresses the real "use pnpm" endorsement too.
+const CLAUSE_BOUNDARY_PATTERN = /[.;,!?\n]/g
+const NEGATION_CUE_PATTERN = /\b(never|don'?t|do\s+not|doesn'?t|does\s+not|avoid|shouldn'?t|should\s+not|won'?t|will\s+not|stop\s+using|no\s+longer)\b/i
+
+const clauseStartBefore = (text: string, index: number): number => {
+  let start = 0
+  for (const boundary of text.slice(0, index).matchAll(CLAUSE_BOUNDARY_PATTERN)) {
+    if (boundary.index !== undefined) start = boundary.index + 1
+  }
+  return start
+}
+
 const mentionedPackageManagers = (text: string): Set<PackageManager> => {
   const managers = new Set<PackageManager>()
   for (const match of text.matchAll(PACKAGE_MANAGER_MENTION_PATTERN)) {
     const manager = PACKAGE_MANAGER_BINARIES[match[1].toLowerCase()]
-    if (manager) managers.add(manager)
+    if (!manager || match.index === undefined) continue
+    const precedingContext = text.slice(clauseStartBefore(text, match.index), match.index)
+    if (NEGATION_CUE_PATTERN.test(precedingContext)) continue
+    managers.add(manager)
   }
   return managers
 }

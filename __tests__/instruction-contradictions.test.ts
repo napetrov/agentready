@@ -76,6 +76,30 @@ describe('detectInstructionContradictions (units)', () => {
     expect(detectInstructionContradictions(root, [rootScopeAlways(a), rootScopeAlways(b)])).toEqual([])
   })
 
+  it('does not treat a prohibited package manager as the file choosing it', () => {
+    // "Never run npm install" is a prohibition, not AGENTS.md endorsing npm --
+    // both files can genuinely agree on pnpm even though "npm" appears here.
+    const a = write('AGENTS.md', 'Never run npm install here; use pnpm install instead.')
+    const b = write('CLAUDE.md', 'Use pnpm install to set up the project.')
+    expect(detectInstructionContradictions(root, [rootScopeAlways(a), rootScopeAlways(b)])).toEqual([])
+  })
+
+  it('still flags a real mismatch when one file prohibits the other file\'s chosen manager', () => {
+    // AGENTS.md only ever mentions npm positively; CLAUDE.md prohibits npm
+    // and endorses pnpm -- a real disagreement (npm vs. pnpm) survives the
+    // negation filter, which only suppresses the negated mention itself.
+    const a = write('AGENTS.md', 'Install with `npm install`, then run `npm test`.')
+    const b = write('CLAUDE.md', "Don't run npm install; use pnpm install instead.")
+    const evidence = detectInstructionContradictions(root, [rootScopeAlways(a), rootScopeAlways(b)])
+    expect(evidence).toEqual([
+      {
+        kind: 'package-manager',
+        paths: ['AGENTS.md', 'CLAUDE.md'],
+        detail: '"AGENTS.md" references npm, but "CLAUDE.md" references pnpm.',
+      },
+    ])
+  })
+
   it('does not flag two root/always-active files with no overlapping ecosystem', () => {
     // Real ecosystems from instruction-surface-detector.ts: root AGENTS.md is
     // codex/github-copilot/cursor/windsurf/cline/generic-agent; .claude/CLAUDE.md

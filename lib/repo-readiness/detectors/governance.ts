@@ -122,16 +122,24 @@ const recentlyChangedFilesByCommit = (root: string): string[][] => {
  * directory ownership) without attempting full CODEOWNERS path-rule
  * semantics. A directory counts as "active" once `MIN_DIRECTORY_COMMITS`
  * distinct commits touch it (not `MIN_DIRECTORY_COMMITS` file-change lines,
- * which a single bulk commit could produce on its own), and counts as
- * "covered" once any file actually changed in it matches a CODEOWNERS
- * pattern (reusing the `ignore` package's gitignore-style matching against
- * real file paths, not a synthetic directory placeholder — a common pattern
- * like `*.ts @team` matches files, not bare directory names, so matching
- * against `"src/"` would wrongly call every such directory uncovered).
- * Runs only when a CODEOWNERS file exists — the common case has nothing to
- * check coverage against, so it never pays the `git log` cost.
+ * which a single bulk commit could produce on its own), counts as "covered"
+ * once any file actually changed in it matches a CODEOWNERS pattern (reusing
+ * the `ignore` package's gitignore-style matching against real file paths,
+ * not a synthetic directory placeholder — a common pattern like `*.ts @team`
+ * matches files, not bare directory names, so matching against `"src/"`
+ * would wrongly call every such directory uncovered), and is reported only
+ * if it still appears in `scannedFilePaths` (the same ignore-filtered
+ * inventory every other detector sees) — git history alone can't tell a
+ * directory the scan intentionally excludes (`ignorePaths`, `.gitignore`)
+ * or one that has since been deleted from a directory genuinely still owned
+ * by nobody. Runs only when a CODEOWNERS file exists — the common case has
+ * nothing to check coverage against, so it never pays the `git log` cost.
  */
-export const detectCodeownersCoverageGaps = (root: string, codeownersPath: string | undefined): string[] | undefined => {
+export const detectCodeownersCoverageGaps = (
+  root: string,
+  codeownersPath: string | undefined,
+  scannedFilePaths: string[],
+): string[] | undefined => {
   if (!codeownersPath) return undefined
   const codeownersText = readBounded(path.join(root, codeownersPath), MAX_CODEOWNERS_BYTES)
   if (codeownersText === undefined) return undefined
@@ -166,8 +174,14 @@ export const detectCodeownersCoverageGaps = (root: string, codeownersPath: strin
   const isCovered = (directory: string): boolean =>
     [...(filesByDirectory.get(directory) ?? [])].some(filePath => matcher.ignores(filePath))
 
+  const scannedDirectories = new Set(
+    scannedFilePaths.map(topLevelDirectory).filter((directory): directory is string => directory !== undefined),
+  )
+
   const uncoveredActiveDirectories = [...commitCountsByDirectory.entries()]
-    .filter(([directory, count]) => count >= MIN_DIRECTORY_COMMITS && !isCovered(directory))
+    .filter(
+      ([directory, count]) => scannedDirectories.has(directory) && count >= MIN_DIRECTORY_COMMITS && !isCovered(directory),
+    )
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, MAX_REPORTED_DIRECTORIES)
     .map(([directory]) => directory)

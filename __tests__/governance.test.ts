@@ -146,15 +146,17 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     runGit(root, ['commit', '-m', `add ${rel}`])
   }
 
+  const srcFilePaths = (count: number): string[] => Array.from({ length: count }, (_, i) => `src/file-${i}.ts`)
+
   it('is undefined when there is no CODEOWNERS path', () => {
     initGitRepo(root)
     commitFile('README.md', '# demo\n')
-    expect(detectCodeownersCoverageGaps(root, undefined)).toBeUndefined()
+    expect(detectCodeownersCoverageGaps(root, undefined, ['README.md'])).toBeUndefined()
   })
 
   it('is undefined when the scan target is not a git repository', () => {
     write('CODEOWNERS', '/docs/ @doc-owner\n')
-    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS'])).toBeUndefined()
   })
 
   it('flags a top-level directory with sustained recent activity that CODEOWNERS does not cover', () => {
@@ -163,7 +165,7 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     for (let i = 0; i < 5; i += 1) {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
-    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toEqual(['src'])
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
   })
 
   it('does not flag a directory CODEOWNERS already covers', () => {
@@ -172,7 +174,7 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     for (let i = 0; i < 5; i += 1) {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
-    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
   it('does not flag a directory below the sustained-activity threshold', () => {
@@ -181,7 +183,7 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     for (let i = 0; i < 4; i += 1) {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
-    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(4)])).toBeUndefined()
   })
 
   it('a wildcard CODEOWNERS pattern covers every directory', () => {
@@ -190,7 +192,7 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     for (let i = 0; i < 5; i += 1) {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
-    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
   it('does not count a single bulk commit touching many files as sustained activity', () => {
@@ -203,7 +205,7 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     }
     runGit(root, ['add', 'src'])
     runGit(root, ['commit', '-m', 'bulk import'])
-    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
   it('recognizes a file-glob CODEOWNERS pattern as covering the files it actually matches', () => {
@@ -215,7 +217,7 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     for (let i = 0; i < 5; i += 1) {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
-    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
   it('still flags a directory whose file-glob-covered pattern does not match its actual files', () => {
@@ -224,7 +226,20 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     for (let i = 0; i < 5; i += 1) {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
-    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toEqual(['src'])
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
+  })
+
+  it('does not flag a directory absent from the current scan inventory (ignored or since deleted)', () => {
+    // Git history alone can't distinguish "excluded by ignorePaths/.gitignore"
+    // from "deleted from the working tree since" -- both mean the directory
+    // is outside what the rest of the scan actually looks at, so neither
+    // should surface a coverage-gap finding for it.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/docs/ @doc-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS'])).toBeUndefined()
   })
 })
 

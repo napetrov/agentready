@@ -83,7 +83,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
   ]
 
   const governance = detectGovernance(filePaths)
-  const uncoveredActiveDirectories = detectCodeownersCoverageGaps(absoluteRoot, governance.codeownersPath)
+  const uncoveredActiveDirectories = detectCodeownersCoverageGaps(absoluteRoot, governance.codeownersPath, filePaths)
 
   const partialReport = {
     root: absoluteRoot,
