@@ -198,6 +198,22 @@ export const buildFindings = (
     })
   }
 
+  // Instruction files an agent loads into context together (root-scope,
+  // always-active) that disagree on something as concrete as which package
+  // manager to use. Informational: this is a text heuristic, not proof the
+  // agent will actually get it wrong, but it is a real, findable contradiction
+  // — see `docs/product/policy-packs.md`'s deterministic-vs-LLM split for why
+  // this stays a narrow structural check rather than general contradiction
+  // detection (that lives in the optional LLM analyze layer).
+  for (const contradiction of report.instructionContradictions) {
+    findings.push({
+      id: `instructions.contradiction.${contradiction.kind}:${contradiction.paths.join(':')}`,
+      title: 'Agent instruction files disagree with each other',
+      severity: 'warning',
+      recommendation: `${contradiction.detail} An agent loading both files at once has no way to tell which one is authoritative — reconcile them or scope one to a specific context.`,
+    })
+  }
+
   // Review-routing surfaces. Both are informational: neither blocks an agent
   // from making a change, but their absence means a human (or the agent
   // itself) has to guess who should review it and what evidence to include.
@@ -210,6 +226,15 @@ export const buildFindings = (
       title: 'No CODEOWNERS file detected',
       severity: 'info',
       recommendation: 'Add a CODEOWNERS file (repo root, .github/, or docs/) so PRs route to the right reviewer automatically.',
+    })
+  }
+
+  if (report.governance.uncoveredActiveDirectories && report.governance.uncoveredActiveDirectories.length > 0) {
+    findings.push({
+      id: 'docs.codeowners.coverage-gap',
+      title: 'CODEOWNERS does not appear to cover actively-changed directories',
+      severity: 'info',
+      recommendation: `Add CODEOWNERS coverage for: ${report.governance.uncoveredActiveDirectories.join(', ')}. These directories saw sustained recent commit activity (from local git history) but no matching CODEOWNERS pattern, so PRs touching them may route to no reviewer.`,
     })
   }
 

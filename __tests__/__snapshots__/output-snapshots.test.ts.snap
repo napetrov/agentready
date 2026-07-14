@@ -84,6 +84,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "hasTypeCheck": false
     },
     "commandReferences": [],
+    "instructionContradictions": [],
     "governance": {},
     "ci": {
       "workflowFiles": [
@@ -474,6 +475,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "hasTypeCheck": false
     },
     "commandReferences": [],
+    "instructionContradictions": [],
     "governance": {},
     "ci": {
       "workflowFiles": [
@@ -876,6 +878,7 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
     "hasTypeCheck": false
   },
   "commandReferences": [],
+  "instructionContradictions": [],
   "governance": {},
   "ci": {
     "workflowFiles": [],
@@ -1498,6 +1501,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
     "hasTypeCheck": true
   },
   "commandReferences": [],
+  "instructionContradictions": [],
   "governance": {
     "pullRequestTemplatePath": ".github/pull_request_template.md"
   },

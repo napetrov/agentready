@@ -130,11 +130,35 @@ Known dogfood regression matrix:
   actionable commands, scoped ownership, contradictions, stale paths, and
   duplicate/overlapping guidance. The optional analyze layer already has a
   starting instruction-quality analyzer; connect its output to docs and dogfood
-  examples without making core scanning depend on a model. _(M/L)_
-- [ ] **Scientific/ML policy pack.** Capture expectations for repositories that
-  intentionally keep sample datasets, notebooks, generated bindings, or heavy CI
-  orchestration. Keep the core scanner descriptive; use policy/config to tune
-  severity. _(L)_
+  examples without making core scanning depend on a model. One deterministic
+  slice of "contradictions" (cross-file package-manager mismatch) shipped —
+  see "Instruction-file overlap / contradiction checks" above; the rest
+  (stale paths, duplicate/overlapping prose guidance) remains open. _(M/L)_
+- [x] **Scientific/ML policy pack** — delivered (partial): `ml-scientific`
+  (`lib/repo-readiness/checks/policy-packs.ts`) de-escalates `files.large`
+  and `commands.lint.missing` to `info`, covering the "intentionally keep
+  sample datasets" and "heavy CI orchestration" expectations from
+  `docs/product/policy-packs.md`. Generated-bindings/vendored-code context
+  boundaries remain open (no dedicated deterministic finding to attach a
+  policy adjustment to yet). _(L)_
+- [x] **Minimal git-history ownership signal.** `detectCodeownersCoverageGaps`
+  (`lib/repo-readiness/detectors/governance.ts`) flags top-level directories
+  with sustained recent commit activity (local git history only, bounded to
+  the most recent commits, no network calls) that no CODEOWNERS pattern
+  appears to cover, as `docs.codeowners.coverage-gap` (info). Deliberately
+  narrow: top-level-directory granularity via the `ignore` package's
+  gitignore-style matching, not full per-file blame-based ownership
+  inference or CODEOWNERS-entry suggestion — those remain open under "git
+  churn and risk signals" above and need their own design pass. _(S)_
+- **GitHub-org-API-integrated batch scanning: explicitly not planned.**
+  `batch`'s "no hosted service required" design (delivered above) is
+  deliberate, not an interim state: auto-discovering/cloning an org's repos
+  would require AgentReady itself to make network calls and hold a GitHub
+  credential, breaking the no-external-service guarantee every other command
+  relies on. The supported path is cloning an org's repos with an existing
+  tool (`gh repo list <org> --clone`, a CI job, …) and pointing `batch --root`
+  at the result — see the README's "Batch (portfolio) scans" section and
+  `docs/product/features.md`'s "Non-Goals For The Core".
 
 ## Feedback triage
 
@@ -279,10 +303,19 @@ Verified against the current `main`/branch code before accepting:
   escalations), `--policy <name>` on `scan`/`diff`, and a `policy` Action input.
   Shipped as first-class TypeScript rather than external OPA/Conftest-style
   ingestion over JSON evidence — matches the design doc, not this bullet's
-  original OPA framing. `oss`/`ml-scientific` packs and a config-file
-  `policy`/`policyOptions` shape remain open; `@agentready/policy-default` as
-  a separate package still depends on the package-split work below. _(L)_
-- [ ] **Instruction-file overlap / contradiction checks.** _(M)_
+  original OPA framing. `oss` and `ml-scientific` packs are now delivered too
+  (see `docs/product/policy-packs.md`); a config-file `policy`/`policyOptions`
+  shape remains open, and `@agentready/policy-default` as a separate package
+  still depends on the package-split work below. _(L)_
+- [x] **Instruction-file overlap / contradiction checks** — delivered (one
+  signal): `detectInstructionContradictions`
+  (`lib/repo-readiness/detectors/instruction-contradictions.ts`) flags
+  root-scope, always-active instruction files that each exclusively reference
+  a different single package manager, as
+  `instructions.contradiction.package-manager` (warning). Broader semantic
+  contradiction detection stays in the optional LLM analyze layer
+  (`lib/analyze/analyzers/contradiction.ts`), matching the
+  deterministic-core/LLM-layer split this backlog already commits to. _(M)_
 - [x] **Capability-surface risk tiers** — delivered: `CapabilitySurfaceEvidence`
   gained a `riskTier` (`low`/`medium`/`high`) field. MCP configs, hook scripts,
   plugin manifests, and a Claude Code settings file that configures a

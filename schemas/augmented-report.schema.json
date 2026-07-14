@@ -196,6 +196,40 @@
             "additionalProperties": false
           }
         },
+        "instructionContradictions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "package-manager"
+                ]
+              },
+              "paths": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "paths",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        },
         "governance": {
           "type": "object",
           "properties": {
@@ -204,6 +238,12 @@
             },
             "pullRequestTemplatePath": {
               "type": "string"
+            },
+            "uncoveredActiveDirectories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false
@@ -1905,6 +1945,7 @@
         "docs",
         "commands",
         "commandReferences",
+        "instructionContradictions",
         "governance",
         "ci",
         "instructions",

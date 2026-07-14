@@ -67,11 +67,22 @@ Features:
   detector parses workflow steps and classifies install/lint/type-check/test/
   build commands, with `ci.*.not-run` checks that flag commands the repo exposes
   but CI never runs
-- built-in policy packs — **delivered (partial)**: `default` (no-op) and
-  `enterprise` (four severity escalations) ship as `--policy <name>` on
-  `scan`/`diff` and a `policy` Action input; see `docs/product/policy-packs.md`.
-  `oss`/`ml-scientific` and a config-file `policyOptions` shape remain candidates.
-- instruction-file overlap and contradiction checks
+- built-in policy packs — **delivered**: `default` (no-op), `enterprise` (four
+  severity escalations), `oss` (four escalations on stale command references
+  and contribution-onboarding gaps), and `ml-scientific` (two de-escalations
+  on large-fixture and unified-lint-command gates) ship as `--policy <name>`
+  on `scan`/`diff` and a `policy` Action input; see
+  `docs/product/policy-packs.md`. A config-file `policyOptions` shape (tuning
+  thresholds without a CLI flag on every invocation) remains a candidate.
+- instruction-file overlap and contradiction checks — **delivered (one
+  signal)**: `detectInstructionContradictions` flags root-scope,
+  always-active instruction files (the ones an agent loads into context
+  together) that each exclusively reference a different single package
+  manager, as `instructions.contradiction.package-manager` (warning). Broader
+  semantic contradiction detection (conflicting prose, not just conflicting
+  package-manager commands) stays in the optional LLM analyze layer
+  (`lib/analyze/analyzers/contradiction.ts`) rather than the deterministic
+  core, matching the deterministic/LLM split documented above.
 - stale command reference validation — **delivered**: `commands.reference.*`
   checks flag `npm`/`yarn`/`pnpm`/`bun run <script>` (and bare `test`/`start`)
   references in READMEs/instruction files whose script doesn't exist, `make
@@ -83,12 +94,19 @@ Features:
 - import graph and boundary checks
 - git churn and risk signals
 - language/framework policy packs (Java/.NET, broader Python tooling)
-- CODEOWNERS and PR-template analysis — **delivered (presence-only)**:
-  `docs.codeowners.missing` (info, non-trivial repos only, >20 source files)
-  and `docs.pull-request-template.missing` (info, any repo size) detect
-  whether either review-routing surface exists at a GitHub-recognized path.
-  Inferring actual ownership boundaries from git history/blame remains open
-  (see "git churn and risk signals" above).
+- CODEOWNERS and PR-template analysis — **delivered (presence, plus a narrow
+  git-history coverage signal)**: `docs.codeowners.missing` (info,
+  non-trivial repos only, >20 source files) and
+  `docs.pull-request-template.missing` (info, any repo size) detect whether
+  either review-routing surface exists at a GitHub-recognized path.
+  `docs.codeowners.coverage-gap` (info) additionally flags top-level
+  directories with sustained recent commit activity — from local git history
+  only, bounded to the most recent commits, no network calls — that no
+  CODEOWNERS pattern appears to cover (`detectCodeownersCoverageGaps` in
+  `governance.ts`, approximating CODEOWNERS' gitignore-style patterns via the
+  `ignore` package rather than its full path-rule semantics). Full
+  per-file/blame-based ownership inference remains open (see "git churn and
+  risk signals" above).
 - capability-surface risk tiers — **delivered**: `detectCapabilitySurfaces` now
   classifies every MCP/skill/hook/plugin/LSP surface by blast-radius
   (`report.capabilities[].riskTier`, `low`/`medium`/`high`). MCP configs, hook
@@ -150,3 +168,22 @@ The core scanner should not assume:
 - one instruction file is universally canonical
 - test coverage alone predicts agent success
 - executing repository commands is always safe
+
+Also explicitly out of scope, by design rather than by omission:
+
+- **GitHub-org-API-integrated batch scanning** (auto-discovering and cloning
+  every repo in an org). `batch` (see the "local multi-repo/portfolio batch
+  mode" entry above) stays local-only on purpose: reaching out to the GitHub
+  API to enumerate/clone repos would mean AgentReady itself makes network
+  calls and holds a GitHub credential, which breaks the no-external-service
+  guarantee every other command relies on. The supported path is cloning an
+  org's repos with an existing tool (`gh repo list <org> --clone`, a CI job,
+  …) and pointing `batch --root` at the resulting directory.
+- **Git-history-based ownership inference beyond CODEOWERS-coverage
+  gaps.** `governance.ts`'s `detectCodeownersCoverageGaps` (the
+  `docs.codeowners.coverage-gap` finding) covers the narrow, well-scoped case
+  — top-level directories with sustained recent commit activity that no
+  CODEOWNERS pattern matches, from local git history only. Full ownership
+  inference (per-file blame-based ownership, suggesting new CODEOWNERS
+  entries, cross-referencing PR review history) remains open under "git churn
+  and risk signals" below and needs its own design pass before it's built.

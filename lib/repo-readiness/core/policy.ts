@@ -7,9 +7,9 @@ import type { LocalReadinessReport, ReadinessFinding, ReadinessSeverity } from '
  * dependency on the checks layer; see that file for what each pack adjusts
  * and why.
  */
-export type PolicyName = 'default' | 'enterprise'
+export type PolicyName = 'default' | 'enterprise' | 'oss' | 'ml-scientific'
 
-export const POLICY_NAMES: PolicyName[] = ['default', 'enterprise']
+export const POLICY_NAMES: PolicyName[] = ['default', 'enterprise', 'oss', 'ml-scientific']
 
 /**
  * A team- or domain-specific severity policy over the same deterministic

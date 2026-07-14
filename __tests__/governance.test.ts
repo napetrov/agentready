@@ -1,8 +1,24 @@
+import { execFileSync } from 'child_process'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
-import { detectGovernance } from '../lib/repo-readiness/detectors/governance'
+import { detectCodeownersCoverageGaps, detectGovernance } from '../lib/repo-readiness/detectors/governance'
 import { scanLocalReadiness } from '../lib/repo-readiness/local-readiness'
+
+const runGit = (root: string, args: string[]): void => {
+  // Disable commit signing so isolated fixture repositories can commit without
+  // the host's global signing configuration.
+  execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], {
+    cwd: root,
+    stdio: ['ignore', 'ignore', 'pipe'],
+  })
+}
+
+const initGitRepo = (root: string): void => {
+  runGit(root, ['init', '--initial-branch=main'])
+  runGit(root, ['config', 'user.email', 'agentready@example.com'])
+  runGit(root, ['config', 'user.name', 'AgentReady Test'])
+}
 
 describe('detectGovernance (units)', () => {
   it('finds nothing in a repo with neither surface', () => {
@@ -94,5 +110,118 @@ describe('governance findings (integration)', () => {
     expect(ids).not.toContain('docs.codeowners.missing')
     expect(ids).not.toContain('docs.pull-request-template.missing')
     expect(report.governance).toEqual({ codeownersPath: 'CODEOWNERS', pullRequestTemplatePath: '.github/pull_request_template.md' })
+  })
+})
+
+describe('detectCodeownersCoverageGaps (units)', () => {
+  let root: string
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-ownership-'))
+  })
+  afterEach(() => rmSync(root, { recursive: true, force: true }))
+
+  const write = (rel: string, content: string): void => {
+    const abs = path.join(root, rel)
+    mkdirSync(path.dirname(abs), { recursive: true })
+    writeFileSync(abs, content)
+  }
+
+  const commitFile = (rel: string, content: string): void => {
+    write(rel, content)
+    runGit(root, ['add', rel])
+    runGit(root, ['commit', '-m', `add ${rel}`])
+  }
+
+  it('is undefined when there is no CODEOWNERS path', () => {
+    initGitRepo(root)
+    commitFile('README.md', '# demo\n')
+    expect(detectCodeownersCoverageGaps(root, undefined)).toBeUndefined()
+  })
+
+  it('is undefined when the scan target is not a git repository', () => {
+    write('CODEOWNERS', '/docs/ @doc-owner\n')
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+  })
+
+  it('flags a top-level directory with sustained recent activity that CODEOWNERS does not cover', () => {
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/docs/ @doc-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toEqual(['src'])
+  })
+
+  it('does not flag a directory CODEOWNERS already covers', () => {
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/src/ @src-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+  })
+
+  it('does not flag a directory below the sustained-activity threshold', () => {
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/docs/ @doc-owner\n')
+    for (let i = 0; i < 4; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+  })
+
+  it('a wildcard CODEOWNERS pattern covers every directory', () => {
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '* @everyone\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS')).toBeUndefined()
+  })
+})
+
+describe('docs.codeowners.coverage-gap finding (integration)', () => {
+  let root: string
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-ownership-int-'))
+  })
+  afterEach(() => rmSync(root, { recursive: true, force: true }))
+
+  const write = (rel: string, content: string): void => {
+    const abs = path.join(root, rel)
+    mkdirSync(path.dirname(abs), { recursive: true })
+    writeFileSync(abs, content)
+  }
+
+  const commitFile = (rel: string, content: string): void => {
+    write(rel, content)
+    runGit(root, ['add', rel])
+    runGit(root, ['commit', '-m', `add ${rel}`])
+  }
+
+  it('emits an info finding when CODEOWNERS misses an actively-changed directory', () => {
+    initGitRepo(root)
+    commitFile('README.md', '# demo\n')
+    commitFile('CODEOWNERS', '/docs/ @doc-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const finding = report.findings.find(f => f.id === 'docs.codeowners.coverage-gap')
+    expect(finding).toBeDefined()
+    expect(finding?.severity).toBe('info')
+    expect(report.governance.uncoveredActiveDirectories).toEqual(['src'])
+  })
+
+  it('emits no coverage-gap finding when CODEOWNERS covers the active directory', () => {
+    initGitRepo(root)
+    commitFile('README.md', '# demo\n')
+    commitFile('CODEOWNERS', '/src/ @src-owner\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    expect(report.findings.map(f => f.id)).not.toContain('docs.codeowners.coverage-gap')
+    expect(report.governance.uncoveredActiveDirectories).toBeUndefined()
   })
 })
