@@ -135,7 +135,7 @@ describe('real-world cron classification', () => {
     dimensions: [],
     reportContract: {
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions'],
+      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'],
     },
     findings: findings.map(finding => ({
       ruleId: finding.id.split(':')[0],

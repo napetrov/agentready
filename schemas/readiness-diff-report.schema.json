@@ -1852,7 +1852,8 @@
                 "enum": [
                   "repositoryEvidence",
                   "designState",
-                  "dimensions"
+                  "dimensions",
+                  "instructionContradictions"
                 ]
               }
             }
@@ -3810,7 +3811,8 @@
                 "enum": [
                   "repositoryEvidence",
                   "designState",
-                  "dimensions"
+                  "dimensions",
+                  "instructionContradictions"
                 ]
               }
             }

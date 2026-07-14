@@ -129,7 +129,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     dimensions: calculateDimensionScores(findings),
     reportContract: {
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions'],
+      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'],
     },
     findings,
   }

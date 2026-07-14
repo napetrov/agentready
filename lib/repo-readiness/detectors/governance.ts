@@ -19,6 +19,10 @@ const PR_TEMPLATE_FILE_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE(\
 // GitHub also accepts a PULL_REQUEST_TEMPLATE/ directory (for multiple
 // templates) directly at the repo root or under docs/, not just .github/.
 const PR_TEMPLATE_DIR_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE\//i
+// A plausible GitHub CODEOWNERS owner token: @user, @org/team, or an email —
+// used to reject placeholder second tokens (e.g. "/src/ TODO") that aren't
+// actually owners; see `detectCodeownersCoverageGaps` below.
+const CODEOWNERS_OWNER_TOKEN_PATTERN = /^(@[\w.-]+(\/[\w.-]+)?|[^\s@]+@[^\s@]+)$/
 
 const resolveByPrecedence = (filePaths: string[], patternsByPrecedence: RegExp[]): string | undefined => {
   for (const pattern of patternsByPrecedence) {
@@ -159,18 +163,21 @@ export const detectCodeownersCoverageGaps = (
   if (contentLines.length === 0) return undefined
 
   // A CODEOWNERS line is a pattern followed by one or more owners -- GitHub
-  // treats a pattern with no owner token as invalid and assigns no owner to
-  // matching files, so treating it as coverage here would be exactly
-  // backwards (reporting a directory as owned when GitHub itself would not).
-  // Deliberately not folded into the `contentLines.length === 0` guard above:
-  // a file that is entirely such invalid lines still has real content, and
-  // the correct signal is "nothing here validly covers anything" (every
-  // active directory reported as uncovered via the now-empty `patterns`
-  // matching nothing), not silently skipping the check as if the file were
-  // blank.
+  // treats a pattern with no *valid* owner token as invalid and assigns no
+  // owner to matching files, so treating it as coverage here would be
+  // exactly backwards (reporting a directory as owned when GitHub itself
+  // would not). A placeholder like "/src/ TODO" has a second token but it
+  // isn't a real owner, so requiring only *some* second token isn't enough --
+  // require one that actually looks like a GitHub owner (@user, @org/team,
+  // or an email). Deliberately not folded into the `contentLines.length ===
+  // 0` guard above: a file that is entirely such invalid lines still has
+  // real content, and the correct signal is "nothing here validly covers
+  // anything" (every active directory reported as uncovered via the
+  // now-empty `patterns` matching nothing), not silently skipping the check
+  // as if the file were blank.
   const patterns = contentLines
     .map(line => line.split(/\s+/))
-    .filter(tokens => tokens.length >= 2)
+    .filter(tokens => tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
     .map(tokens => tokens[0])
 
   const matcher = ignore().add(patterns)

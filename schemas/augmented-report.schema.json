@@ -1843,7 +1843,8 @@
                 "enum": [
                   "repositoryEvidence",
                   "designState",
-                  "dimensions"
+                  "dimensions",
+                  "instructionContradictions"
                 ]
               }
             }

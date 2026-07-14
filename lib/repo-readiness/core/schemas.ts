@@ -447,7 +447,7 @@ export const localReadinessReportSchema = z.strictObject({
   dimensions: readinessDimensionScoreListSchema,
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
-    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState', 'dimensions'])),
+    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'])),
   }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),

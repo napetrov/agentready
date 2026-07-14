@@ -449,7 +449,7 @@ export interface LocalReadinessReportContract {
   experimentalFields: LocalReadinessExperimentalField[]
 }
 
-export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState' | 'dimensions'
+export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState' | 'dimensions' | 'instructionContradictions'
 
 export interface LocalReadinessReport {
   root: string

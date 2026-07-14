@@ -438,7 +438,8 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "experimentalFields": [
         "repositoryEvidence",
         "designState",
-        "dimensions"
+        "dimensions",
+        "instructionContradictions"
       ]
     },
     "findings": [
@@ -783,7 +784,8 @@ exports[`diff output snapshots summary and markdown for a regression between two
       "experimentalFields": [
         "repositoryEvidence",
         "designState",
-        "dimensions"
+        "dimensions",
+        "instructionContradictions"
       ]
     },
     "findings": [
@@ -1222,7 +1224,8 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
     "experimentalFields": [
       "repositoryEvidence",
       "designState",
-      "dimensions"
+      "dimensions",
+      "instructionContradictions"
     ]
   },
   "findings": [
@@ -2350,7 +2353,8 @@ exports[`scan output snapshots good-repo compact json 1`] = `
     "experimentalFields": [
       "repositoryEvidence",
       "designState",
-      "dimensions"
+      "dimensions",
+      "instructionContradictions"
     ]
   },
   "findings": []
