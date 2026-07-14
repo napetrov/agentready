@@ -1,5 +1,5 @@
 {
-  "$id": "https://napetrov.github.io/agentready/schemas/v0.2.0/readiness-diff-report.schema.json",
+  "$id": "https://napetrov.github.io/agentready/schemas/v0.3.0/readiness-diff-report.schema.json",
   "title": "AgentReady diff report",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
