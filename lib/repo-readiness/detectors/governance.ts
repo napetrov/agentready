@@ -144,12 +144,26 @@ export const detectCodeownersCoverageGaps = (
   const codeownersText = readBounded(path.join(root, codeownersPath), MAX_CODEOWNERS_BYTES)
   if (codeownersText === undefined) return undefined
 
-  const patterns = codeownersText
+  const contentLines = codeownersText
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0 && !line.startsWith('#'))
-    .map(line => line.split(/\s+/)[0])
-  if (patterns.length === 0) return undefined
+  if (contentLines.length === 0) return undefined
+
+  // A CODEOWNERS line is a pattern followed by one or more owners -- GitHub
+  // treats a pattern with no owner token as invalid and assigns no owner to
+  // matching files, so treating it as coverage here would be exactly
+  // backwards (reporting a directory as owned when GitHub itself would not).
+  // Deliberately not folded into the `contentLines.length === 0` guard above:
+  // a file that is entirely such invalid lines still has real content, and
+  // the correct signal is "nothing here validly covers anything" (every
+  // active directory reported as uncovered via the now-empty `patterns`
+  // matching nothing), not silently skipping the check as if the file were
+  // blank.
+  const patterns = contentLines
+    .map(line => line.split(/\s+/))
+    .filter(tokens => tokens.length >= 2)
+    .map(tokens => tokens[0])
 
   const matcher = ignore().add(patterns)
   const commits = recentlyChangedFilesByCommit(root)

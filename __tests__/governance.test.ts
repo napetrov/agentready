@@ -177,6 +177,18 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
+  it('flags a directory whose only matching CODEOWNERS line has no owner', () => {
+    // "/src/" with no trailing @owner is an invalid GitHub CODEOWNERS rule --
+    // GitHub assigns no owner to matching files, so it must not count as
+    // coverage just because the pattern itself would match.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/src/\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
+  })
+
   it('does not flag a directory below the sustained-activity threshold', () => {
     initGitRepo(root)
     commitFile('CODEOWNERS', '/docs/ @doc-owner\n')
