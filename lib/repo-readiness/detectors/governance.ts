@@ -179,10 +179,17 @@ export const detectCodeownersCoverageGaps = (
   // which would otherwise be a worse blind spot than having no CODEOWNERS
   // at all, since `detectGovernance` already found this path and so
   // `docs.codeowners.missing` won't fire either.
+  // GitHub's CODEOWNERS syntax supports inline (trailing) comments, not just
+  // whole-line ones -- e.g. "*.js @js-owner # inline comment" is documented
+  // syntax. Stripping from the first "#" handles both in one pass (a
+  // whole-line comment strips to "", filtered out below); done before owner
+  // parsing so an @mention inside explanatory comment text (e.g. "/apps/
+  // github # intentionally unowned; parent is @octocat") is never
+  // mistaken for a real owner token.
   const contentLines = codeownersText
     .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0 && !line.startsWith('#'))
+    .map(line => line.split('#')[0].trim())
+    .filter(line => line.length > 0)
 
   // A CODEOWNERS line is a pattern optionally followed by owner tokens.
   // GitHub applies these with "last matching pattern wins" -- including a

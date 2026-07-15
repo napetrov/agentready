@@ -83,6 +83,54 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-15 (oss/ml-scientific policy packs, instruction contradictions, CODEOWNERS coverage gaps)
+- **DELIVERED `oss` AND `ml-scientific` POLICY PACKS**: implemented per the
+  existing spec in `docs/product/policy-packs.md`, following `enterprise`'s
+  escalation model (`lib/repo-readiness/checks/policy-packs.ts`). `oss`
+  escalates stale command references and contribution-onboarding gaps;
+  `ml-scientific` de-escalates warning-level `files.large` and
+  `commands.lint.missing` to `info` (error-level `files.large` stays
+  gateable — see `Escalation.from`).
+- **ADDED DETERMINISTIC INSTRUCTION-FILE CONTRADICTION DETECTION**:
+  `detectInstructionContradictions` (`lib/repo-readiness/detectors/
+  instruction-contradictions.ts`) flags root/legacy always-active
+  instruction files that each exclusively reference a different single
+  package manager, as `instructions.contradiction.package-manager`
+  (warning). Scoped to files sharing an instruction-surface ecosystem (no
+  false positive between e.g. `AGENTS.md` and `.claude/CLAUDE.md`, which no
+  single agent loads together) and negation-aware (a prohibition like
+  "never run npm install" isn't treated as endorsing npm).
+- **ADDED CODEOWNERS COVERAGE-GAP DETECTION**: `detectCodeownersCoverageGaps`
+  (`lib/repo-readiness/detectors/governance.ts`) flags top-level directories
+  with sustained recent commit activity (local git history only, bounded,
+  no network calls) that no CODEOWNERS pattern covers, as
+  `docs.codeowners.coverage-gap` (info, one finding per directory for diff
+  fidelity). Went through many rounds of automated-review hardening on this
+  PR: per-commit (not per-file-line) activity counting; per-file (not
+  per-directory-placeholder) pattern matching; symlink-safe bounded reads up
+  to GitHub's real 3 MiB CODEOWNERS limit (oversized files fall through to
+  "no effective rules", matching GitHub's real all-or-nothing load
+  behavior); `.github/` > root > `docs/` file precedence (matches GitHub's
+  documented search order); ignore-filtered scan-inventory awareness;
+  ownerless-line and inline-comment-aware owner-token validation; explicit
+  last-match-wins semantics (replacing a single combined `ignore()` matcher,
+  which can't correctly model a later ownerless pattern overriding an
+  earlier broader owned one — verified against GitHub's own documented
+  example) instead of relying on gitignore-style negation, which CODEOWNERS
+  doesn't support as input syntax and which has its own re-inclusion
+  limitations `ignore()` doesn't work around.
+- **DOCUMENTED THE GITHUB-ORG-API BATCH SCANNING NON-GOAL**: `batch --root`
+  stays local-only by design (README, `docs/product/features.md`'s
+  Non-Goals section, `dev/BACKLOG.md`) — auto-discovering/cloning an org's
+  repos would require AgentReady itself to hold a GitHub credential and make
+  network calls, breaking the no-external-service guarantee every other
+  command relies on.
+- **README DISCOVERABILITY PASS**: added a "Design guarantees" section and
+  expanded "Evaluation / benchmarks" so four already-shipped trust
+  properties (MCP host-delegated analyze, versioned JSON Schema contracts,
+  worktree-isolated `diff`, the offline LLM-layer eval harness) are easy to
+  find.
+
 ### 2026-06-08 (fuzz corpus fixture false positive)
 - **DOWNGRADED FUZZ CORPUS SEED FILES**: Extensionless files under test corpus
   directories, such as Envoy compressor fuzz seeds, are treated as intentional

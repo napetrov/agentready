@@ -255,6 +255,19 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', scannedFilePaths)).toEqual(['apps'])
   })
 
+  it('does not mistake an @mention inside an inline comment for a real owner', () => {
+    // GitHub's CODEOWNERS syntax supports inline comments ("*.js @owner #
+    // comment" is documented syntax) -- an @mention appearing only in the
+    // comment explaining an ownerless override must not count as an owner.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/apps/ @octocat\n/apps/github # intentionally unowned; parent is @octocat\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`apps/github/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    const scannedFilePaths = ['CODEOWNERS', ...Array.from({ length: 5 }, (_, i) => `apps/github/file-${i}.ts`)]
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', scannedFilePaths)).toEqual(['apps'])
+  })
+
   it('still covers a sibling subtree the ownerless override does not apply to', () => {
     initGitRepo(root)
     commitFile('CODEOWNERS', '/apps/ @octocat\n/apps/github\n')
