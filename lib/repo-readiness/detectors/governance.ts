@@ -12,7 +12,10 @@ import type { GovernanceEvidence } from '../core/types'
 // feeds `detectCodeownersCoverageGaps` below, which reads and parses that
 // specific file's patterns, so picking the wrong tier means checking
 // coverage against a file GitHub itself would not actually use.
-const CODEOWNERS_PATTERNS_BY_PRECEDENCE = [/^\.github\/CODEOWNERS$/i, /^CODEOWNERS$/i, /^docs\/CODEOWNERS$/i]
+// GitHub's file lookup is backed by git, which is case-sensitive -- a file
+// named "codeowners" or "Codeowners" is not recognized as CODEOWNERS at all,
+// so these patterns must not use "/i".
+const CODEOWNERS_PATTERNS_BY_PRECEDENCE = [/^\.github\/CODEOWNERS$/, /^CODEOWNERS$/, /^docs\/CODEOWNERS$/]
 // A single pull-request-template file at root/.github/docs/, or any file
 // inside a .github/PULL_REQUEST_TEMPLATE/ directory of multiple templates.
 const PR_TEMPLATE_FILE_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE(\.[^./]+)?$/i
@@ -221,12 +224,17 @@ export const detectCodeownersCoverageGaps = (
   // pattern like "/src/[ab].ts" must be dropped here too, or a repo relying
   // on it would be reported as covered when GitHub itself requests no
   // review.
+  //
+  // GitHub evaluates CODEOWNERS patterns against its case-sensitive backing
+  // filesystem, but the `ignore` package defaults to `ignorecase: true` --
+  // left as the default, a pattern like "/Src/" would wrongly match
+  // "src/file.ts" here even though GitHub would not consider it covered.
   const orderedPatterns = contentLines
     .map(line => line.split(/\s+/))
     .filter(tokens => !tokens[0].startsWith('!') && !/[[\]]/.test(tokens[0]))
     .filter(tokens => tokens.length === 1 || tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
     .map(tokens => ({
-      matcher: ignore().add(tokens[0]),
+      matcher: ignore({ ignorecase: false }).add(tokens[0]),
       hasOwner: tokens.length > 1,
     }))
 
@@ -241,11 +249,22 @@ export const detectCodeownersCoverageGaps = (
   const commits = recentlyChangedFilesByCommit(root)
   if (commits.length === 0) return undefined
 
+  // Filtered to the current scan inventory (ignore-aware, no longer-existing
+  // paths already excluded by `walkFiles`) *before* counting activity or
+  // testing coverage -- per file, not just per top-level directory. Otherwise
+  // a directory whose only recent commits touched files the scan itself
+  // ignores (or has since deleted) both looks "active" from those files'
+  // commit count and gets tested for coverage against exactly those excluded
+  // paths, which can wrongly miss a
+  // real file-level owner that only covers the files the scan does track.
+  const scannedFilePathSet = new Set(scannedFilePaths)
+
   const commitCountsByDirectory = new Map<string, number>()
   const filesByDirectory = new Map<string, Set<string>>()
   for (const filesInCommit of commits) {
     const directoriesInCommit = new Set<string>()
     for (const filePath of filesInCommit) {
+      if (!scannedFilePathSet.has(filePath)) continue
       const directory = topLevelDirectory(filePath)
       if (!directory) continue
       directoriesInCommit.add(directory)
@@ -260,14 +279,9 @@ export const detectCodeownersCoverageGaps = (
   const isCovered = (directory: string): boolean =>
     [...(filesByDirectory.get(directory) ?? [])].some(filePath => isFileCovered(filePath))
 
-  const scannedDirectories = new Set(
-    scannedFilePaths.map(topLevelDirectory).filter((directory): directory is string => directory !== undefined),
-  )
-
   const uncoveredActiveDirectories = [...commitCountsByDirectory.entries()]
-    .filter(
-      ([directory, count]) => scannedDirectories.has(directory) && count >= MIN_DIRECTORY_COMMITS && !isCovered(directory),
-    )
+    .filter(([, count]) => count >= MIN_DIRECTORY_COMMITS)
+    .filter(([directory]) => !isCovered(directory))
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, MAX_REPORTED_DIRECTORIES)
     .map(([directory]) => directory)

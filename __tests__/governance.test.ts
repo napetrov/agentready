@@ -29,13 +29,16 @@ describe('detectGovernance (units)', () => {
     ['CODEOWNERS', 'CODEOWNERS'],
     ['.github/CODEOWNERS', '.github/CODEOWNERS'],
     ['docs/CODEOWNERS', 'docs/CODEOWNERS'],
-    ['codeowners (case-insensitive)', 'CodeOwners'],
   ])('finds CODEOWNERS at a GitHub-recognized location: %s', (_label, filePath) => {
     expect(detectGovernance([filePath]).codeownersPath).toBe(filePath)
   })
 
   it('does not treat a nested/unrecognized CODEOWNERS-like path as a match', () => {
     expect(detectGovernance(['src/CODEOWNERS', 'CODEOWNERS.md']).codeownersPath).toBeUndefined()
+  })
+
+  it('does not recognize an incorrectly-cased "CodeOwners" as CODEOWNERS (GitHub\'s file lookup is case-sensitive)', () => {
+    expect(detectGovernance(['CodeOwners']).codeownersPath).toBeUndefined()
   })
 
   it('prefers .github/CODEOWNERS over root and docs/ when multiple exist, regardless of input order', () => {
@@ -221,6 +224,18 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
+  it('does not let a differently-cased CODEOWNERS pattern cover a directory (GitHub matches case-sensitively)', () => {
+    // GitHub evaluates CODEOWNERS patterns against its case-sensitive backing
+    // filesystem, but the `ignore` package defaults to case-insensitive
+    // matching -- "/Src/ @team" must not be treated as covering "src/*.ts".
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/Src/ @team\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
+  })
+
   it('covers a directory whose CODEOWNERS line uses an email owner', () => {
     initGitRepo(root)
     commitFile('CODEOWNERS', '/src/ owner@example.com\n')
@@ -397,6 +412,24 @@ describe('detectCodeownersCoverageGaps (units)', () => {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS'])).toBeUndefined()
+  })
+
+  it('ignores recent commits to files outside the scan inventory when counting activity and testing coverage, even within an otherwise-scanned directory', () => {
+    // A directory can have some files the scan tracks (e.g. src/index.ts)
+    // and others it doesn't (e.g. ignored generated files) -- filtering must
+    // happen per file, not just per top-level directory. If the *only*
+    // recent commits touched the ignored files, "src" must not be counted as
+    // active at all; testing coverage against those ignored files' paths
+    // (which a file-level owner may not match) would otherwise produce a
+    // false coverage-gap for a directory a real owner does cover.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/src/*.ts @team\n')
+    commitFile('src/index.ts', 'export const x = 1\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/generated/file-${i}.pb.ts`, `export const x${i} = ${i}\n`)
+    }
+    const scannedFilePaths = ['CODEOWNERS', 'src/index.ts']
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', scannedFilePaths)).toBeUndefined()
   })
 })
 

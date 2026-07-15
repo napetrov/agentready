@@ -51,8 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and cloning every repo in an org) is intentionally out of scope: it would
   require AgentReady itself to hold a GitHub credential and make network
   calls, breaking the no-external-service guarantee every other command
-  relies on. Local `batch --root` plus an existing clone tool
-  (`gh repo list <org> --clone`) is the supported path.
+  relies on. Local `batch --root` plus an existing clone tool (e.g.
+  `gh repo list` piped into `gh repo clone`) is the supported path.
 
 ## [0.3.0] - 2026-07-13
 

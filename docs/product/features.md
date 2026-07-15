@@ -177,8 +177,9 @@ Also explicitly out of scope, by design rather than by omission:
   API to enumerate/clone repos would mean AgentReady itself makes network
   calls and holds a GitHub credential, which breaks the no-external-service
   guarantee every other command relies on. The supported path is cloning an
-  org's repos with an existing tool (`gh repo list <org> --clone`, a CI job,
-  …) and pointing `batch --root` at the resulting directory.
+  org's repos with an existing tool (`gh repo list` piped into
+  `gh repo clone`, a CI job, …) and pointing `batch --root` at the resulting
+  directory.
 - **Git-history-based ownership inference beyond CODEOWNERS-coverage
   gaps.** `governance.ts`'s `detectCodeownersCoverageGaps` (the
   `docs.codeowners.coverage-gap` finding) covers the narrow, well-scoped case

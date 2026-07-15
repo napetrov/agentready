@@ -159,8 +159,8 @@ Known dogfood regression matrix:
   would require AgentReady itself to make network calls and hold a GitHub
   credential, breaking the no-external-service guarantee every other command
   relies on. The supported path is cloning an org's repos with an existing
-  tool (`gh repo list <org> --clone`, a CI job, …) and pointing `batch --root`
-  at the result — see the README's "Batch (portfolio) scans" section and
+  tool (`gh repo list` piped into `gh repo clone`, a CI job, …) and pointing
+  `batch --root` at the result — see the README's "Batch (portfolio) scans" section and
   `docs/product/features.md`'s "Non-Goals For The Core".
 
 ## Feedback triage

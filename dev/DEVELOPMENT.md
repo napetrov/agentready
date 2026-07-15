@@ -145,6 +145,12 @@ detection (Gradle/Maven, .NET, additional Python tooling).
   properties (MCP host-delegated analyze, versioned JSON Schema contracts,
   worktree-isolated `diff`, the offline LLM-layer eval harness) are easy to
   find.
+- **Verification** (re-run after every fix round in this entry):
+  `npm run type-check`, `npm run lint`, `npm run test:coverage` (all suites
+  green, 80% coverage gate met — 625 tests as of the last round), `npm run
+  build`, `npm run agentready:schemas -- --check`, `npm run build:action`,
+  `npm run agentready:action-smoke` (passed). `npm run agentready:eval` was
+  not re-run since no change in this entry touches the LLM analyze layer.
 
 ### 2026-06-08 (fuzz corpus fixture false positive)
 - **DOWNGRADED FUZZ CORPUS SEED FILES**: Extensionless files under test corpus
