@@ -38,14 +38,20 @@ describe('detectGovernance (units)', () => {
     expect(detectGovernance(['src/CODEOWNERS', 'CODEOWNERS.md']).codeownersPath).toBeUndefined()
   })
 
-  it('prefers the root CODEOWNERS over .github/ and docs/ when multiple exist, regardless of input order', () => {
-    // GitHub honors exactly one CODEOWNERS by root > .github/ > docs/
-    // precedence. ".github/CODEOWNERS" sorts before "CODEOWNERS"
-    // lexicographically, so this also guards against silently picking
-    // whatever happens to sort first in the walker's file list.
+  it('prefers .github/CODEOWNERS over root and docs/ when multiple exist, regardless of input order', () => {
+    // GitHub honors exactly one CODEOWNERS by .github/ > root > docs/
+    // precedence (github.com/en/repositories/managing-your-repositorys-
+    // settings-and-features/customizing-your-repository/about-code-owners).
+    // ".github/CODEOWNERS" also sorts before "CODEOWNERS" lexicographically,
+    // so this partially coincides with -- but must not be confused for --
+    // just picking whatever happens to sort first in the walker's file list.
     expect(
       detectGovernance(['.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS']).codeownersPath,
-    ).toBe('CODEOWNERS')
+    ).toBe('.github/CODEOWNERS')
+  })
+
+  it('prefers the root CODEOWNERS over docs/ when no .github/ file exists', () => {
+    expect(detectGovernance(['docs/CODEOWNERS', 'CODEOWNERS']).codeownersPath).toBe('CODEOWNERS')
   })
 
   it('prefers .github/CODEOWNERS over docs/CODEOWNERS when no root file exists', () => {
@@ -220,6 +226,43 @@ describe('detectCodeownersCoverageGaps (units)', () => {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
+  })
+
+  it('treats a CODEOWNERS file over the real GitHub size limit as having no effective rules', () => {
+    // GitHub does not partially load an oversized CODEOWNERS -- it is not
+    // loaded at all, so a covering rule anywhere in an over-the-limit file
+    // (even near the top) must not count as coverage.
+    initGitRepo(root)
+    const padding = `# padding\n`.repeat(350_000) // ~3.5MB, over the 3 MiB limit
+    commitFile('CODEOWNERS', `/src/ @src-owner\n${padding}`)
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
+  })
+
+  it('honors a later ownerless pattern that carves an unowned subtree out of a broader owned pattern', () => {
+    // GitHub's own CODEOWNERS docs give exactly this example: "/apps/
+    // @octocat" followed by a bare "/apps/github" line leaves that
+    // subdirectory without a code owner, overriding the broader pattern
+    // above it via "last matching pattern wins" -- not a no-op.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/apps/ @octocat\n/apps/github\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`apps/github/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    const scannedFilePaths = ['CODEOWNERS', ...Array.from({ length: 5 }, (_, i) => `apps/github/file-${i}.ts`)]
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', scannedFilePaths)).toEqual(['apps'])
+  })
+
+  it('still covers a sibling subtree the ownerless override does not apply to', () => {
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/apps/ @octocat\n/apps/github\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`apps/other/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    const scannedFilePaths = ['CODEOWNERS', ...Array.from({ length: 5 }, (_, i) => `apps/other/file-${i}.ts`)]
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', scannedFilePaths)).toBeUndefined()
   })
 
   it('does not let an unsupported "!" negation pattern un-cover a directory a broader pattern still owns', () => {

@@ -4,15 +4,15 @@ import path from 'path'
 import ignore from 'ignore'
 import type { GovernanceEvidence } from '../core/types'
 
-// GitHub recognizes CODEOWNERS at the repo root, .github/, or docs/, and
-// honors exactly one of them by that precedence order when more than one
-// exists. Kept as separate per-tier patterns (rather than one combined
-// pattern) so `resolveByPrecedence` can pick the root file over `.github/`
-// over `docs/` regardless of `filePaths`' own sort order — `codeownersPath`
-// now also feeds `detectCodeownersCoverageGaps` below, which reads and
-// parses that specific file's patterns, so picking the wrong tier means
-// checking coverage against a file GitHub itself would not actually use.
-const CODEOWNERS_PATTERNS_BY_PRECEDENCE = [/^CODEOWNERS$/i, /^\.github\/CODEOWNERS$/i, /^docs\/CODEOWNERS$/i]
+// GitHub recognizes CODEOWNERS at .github/, the repo root, or docs/ (in that
+// order -- .github/ first, not root), and honors exactly one of them when
+// more than one exists. Kept as separate per-tier patterns (rather than one
+// combined pattern) so `resolveByPrecedence` can pick the right tier
+// regardless of `filePaths`' own sort order — `codeownersPath` now also
+// feeds `detectCodeownersCoverageGaps` below, which reads and parses that
+// specific file's patterns, so picking the wrong tier means checking
+// coverage against a file GitHub itself would not actually use.
+const CODEOWNERS_PATTERNS_BY_PRECEDENCE = [/^\.github\/CODEOWNERS$/i, /^CODEOWNERS$/i, /^docs\/CODEOWNERS$/i]
 // A single pull-request-template file at root/.github/docs/, or any file
 // inside a .github/PULL_REQUEST_TEMPLATE/ directory of multiple templates.
 const PR_TEMPLATE_FILE_PATTERN = /^(?:\.github\/|docs\/)?PULL_REQUEST_TEMPLATE(\.[^./]+)?$/i
@@ -68,15 +68,23 @@ const topLevelDirectory = (filePath: string): string | undefined => {
 
 // Same bounded, symlink-averse read as `instruction-contradictions.ts`'s
 // `readText` — a CODEOWNERS path that is a symlink pointing outside the repo
-// root must never be followed and read in full, and the read itself must
-// never load more than `maxBytes` into memory before any truncation.
+// root must never be followed and read in full. Reuses the same `lstatSync`
+// call to also check size: GitHub does not load a CODEOWNERS file over its
+// documented size limit *at all* (no partial parsing, no owners requested
+// for anything), so an oversized file must not be read as a truncated
+// prefix and have whatever rules happened to fit applied -- it returns ''
+// (not `undefined`; the caller already treats an empty/comment-only file as
+// "no effective rules", which is exactly GitHub's real behavior here too).
 const readBounded = (absolutePath: string, maxBytes: number): string | undefined => {
   if (!existsSync(absolutePath)) return undefined
+  let stats
   try {
-    if (lstatSync(absolutePath).isSymbolicLink()) return undefined
+    stats = lstatSync(absolutePath)
   } catch {
     return undefined
   }
+  if (stats.isSymbolicLink()) return undefined
+  if (stats.size > maxBytes) return ''
   let fd: number | undefined
   try {
     fd = openSync(absolutePath, 'r')
@@ -162,43 +170,54 @@ export const detectCodeownersCoverageGaps = (
   if (codeownersText === undefined) return undefined
 
   // A CODEOWNERS file that exists but has no effective rules (blank,
-  // comment-only, or -- see below -- entirely invalid lines) is not treated
-  // as "nothing to check": GitHub would request no code owner for anything
-  // in that case, so this deliberately does *not* early-return here. It
-  // instead falls through with an empty `patterns` array (below), so every
-  // active directory correctly surfaces as uncovered rather than the check
-  // being silently skipped -- which would otherwise be a worse blind spot
-  // than having no CODEOWNERS at all, since `detectGovernance` already found
-  // this path and so `docs.codeowners.missing` won't fire either.
+  // comment-only, oversized -- see `readBounded` -- or entirely ownerless
+  // lines) is not treated as "nothing to check": GitHub would request no
+  // code owner for anything in that case, so this deliberately does *not*
+  // early-return here. It instead falls through with an empty
+  // `orderedPatterns` array (below), so every active directory correctly
+  // surfaces as uncovered rather than the check being silently skipped --
+  // which would otherwise be a worse blind spot than having no CODEOWNERS
+  // at all, since `detectGovernance` already found this path and so
+  // `docs.codeowners.missing` won't fire either.
   const contentLines = codeownersText
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0 && !line.startsWith('#'))
 
-  // A CODEOWNERS line is a pattern followed by one or more owners -- GitHub
-  // treats a pattern with no *valid* owner token as invalid and assigns no
-  // owner to matching files, so treating it as coverage here would be
-  // exactly backwards (reporting a directory as owned when GitHub itself
-  // would not). A placeholder like "/src/ TODO" has a second token but it
-  // isn't a real owner, so requiring only *some* second token isn't enough --
-  // require one that actually looks like a GitHub owner (@user, @org/team,
-  // or an email); a file that is entirely such invalid lines correctly ends
-  // up with the same empty `patterns` as a blank file (see above). Also
-  // drops any pattern starting with "!":
-  // unlike .gitignore, GitHub's CODEOWNERS syntax does not support "!"
-  // negation -- such a pattern never actually matches, so a broader earlier
-  // pattern (e.g. "*") remains the last, and only, effectively-matching one.
-  // `ignore()` doesn't know that and *does* implement gitignore negation, so
-  // feeding it "!src/**" unfiltered can re-exclude paths a broader pattern
-  // still covers under GitHub's real (non-negating) semantics, wrongly
-  // reporting a directory as uncovered.
-  const patterns = contentLines
+  // A CODEOWNERS line is a pattern optionally followed by owner tokens.
+  // GitHub applies these with "last matching pattern wins" -- including a
+  // *later* pattern with no valid owner deliberately un-assigning ownership
+  // for a carved-out subtree (GitHub's own docs give exactly this example:
+  // "/apps/ @octocat" then a bare "/apps/github" leaves that subdirectory
+  // unowned; a placeholder like "/src/ TODO" behaves the same way, since
+  // "TODO" isn't a real owner shape). A single combined `ignore()` matcher
+  // can't replicate this: gitignore negation (the natural tool for
+  // "override an earlier pattern") cannot re-include a path whose parent
+  // directory an earlier pattern already excluded, which breaks on exactly
+  // this common directory-anchored case. So each valid pattern (still
+  // dropping any starting with "!" -- GitHub's CODEOWNERS syntax, unlike
+  // .gitignore, does not support "!" negation, so such a pattern never
+  // actually matches) gets its own single-pattern matcher and an
+  // `hasOwner` flag, tested against a file in file order below, with the
+  // *last* matching one deciding coverage -- a direct, reliable
+  // implementation of "last match wins" that doesn't depend on `ignore()`'s
+  // own override semantics.
+  const orderedPatterns = contentLines
     .map(line => line.split(/\s+/))
     .filter(tokens => !tokens[0].startsWith('!'))
-    .filter(tokens => tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
-    .map(tokens => tokens[0])
+    .map(tokens => ({
+      matcher: ignore().add(tokens[0]),
+      hasOwner: tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)),
+    }))
 
-  const matcher = ignore().add(patterns)
+  const isFileCovered = (filePath: string): boolean => {
+    let covered = false
+    for (const { matcher, hasOwner } of orderedPatterns) {
+      if (matcher.ignores(filePath)) covered = hasOwner
+    }
+    return covered
+  }
+
   const commits = recentlyChangedFilesByCommit(root)
   if (commits.length === 0) return undefined
 
@@ -219,7 +238,7 @@ export const detectCodeownersCoverageGaps = (
   }
 
   const isCovered = (directory: string): boolean =>
-    [...(filesByDirectory.get(directory) ?? [])].some(filePath => matcher.ignores(filePath))
+    [...(filesByDirectory.get(directory) ?? [])].some(filePath => isFileCovered(filePath))
 
   const scannedDirectories = new Set(
     scannedFilePaths.map(topLevelDirectory).filter((directory): directory is string => directory !== undefined),
