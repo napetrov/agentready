@@ -154,8 +154,9 @@ disk rather than a GitHub organization directly. Auto-discovering and cloning
 every repo in an org would mean AgentReady itself makes network calls and
 holds a GitHub credential, breaking the no-external-service guarantee every
 other command relies on. Clone (or `git clone --depth 1`) the org's repos
-yourself — a CI job, `gh repo list <org> --json name -q '.[].name' | xargs -I{} gh repo clone <org>/{}`,
-or an existing script all work — into one directory and point `--root` at it.
+yourself — a CI job, `gh repo list <org> --limit 1000 --json name -q '.[].name' | xargs -I{} gh repo clone <org>/{}`
+(`--limit` matters: `gh repo list` defaults to 30 results), or an existing
+script all work — into one directory and point `--root` at it.
 
 ### Explain a finding
 
