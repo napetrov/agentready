@@ -49,7 +49,12 @@ export const detectGovernance = (filePaths: string[]): GovernanceEvidence => ({
 const RECENT_COMMIT_LOOKBACK = 200
 const MIN_DIRECTORY_COMMITS = 5
 const MAX_REPORTED_DIRECTORIES = 10
-const MAX_CODEOWNERS_BYTES = 200_000
+// GitHub documents a 3 MiB CODEOWNERS size limit (rules past that point are
+// simply not honored by GitHub itself, so a 3 MiB bound here matches what
+// GitHub actually reads) -- unlike per-candidate instruction-file reads
+// elsewhere in this package, this detector only ever reads one file, so
+// there is no aggregate-memory reason to bound it tighter than that.
+const MAX_CODEOWNERS_BYTES = 3 * 1024 * 1024
 // A control character that cannot appear in a commit hash or a file path,
 // used to delimit commits in `git log` output so per-commit file lists can be
 // grouped reliably (a blank-line heuristic breaks on the interaction between
@@ -156,11 +161,19 @@ export const detectCodeownersCoverageGaps = (
   const codeownersText = readBounded(path.join(root, codeownersPath), MAX_CODEOWNERS_BYTES)
   if (codeownersText === undefined) return undefined
 
+  // A CODEOWNERS file that exists but has no effective rules (blank,
+  // comment-only, or -- see below -- entirely invalid lines) is not treated
+  // as "nothing to check": GitHub would request no code owner for anything
+  // in that case, so this deliberately does *not* early-return here. It
+  // instead falls through with an empty `patterns` array (below), so every
+  // active directory correctly surfaces as uncovered rather than the check
+  // being silently skipped -- which would otherwise be a worse blind spot
+  // than having no CODEOWNERS at all, since `detectGovernance` already found
+  // this path and so `docs.codeowners.missing` won't fire either.
   const contentLines = codeownersText
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0 && !line.startsWith('#'))
-  if (contentLines.length === 0) return undefined
 
   // A CODEOWNERS line is a pattern followed by one or more owners -- GitHub
   // treats a pattern with no *valid* owner token as invalid and assigns no
@@ -169,12 +182,9 @@ export const detectCodeownersCoverageGaps = (
   // would not). A placeholder like "/src/ TODO" has a second token but it
   // isn't a real owner, so requiring only *some* second token isn't enough --
   // require one that actually looks like a GitHub owner (@user, @org/team,
-  // or an email). Deliberately not folded into the `contentLines.length ===
-  // 0` guard above: a file that is entirely such invalid lines still has
-  // real content, and the correct signal is "nothing here validly covers
-  // anything" (every active directory reported as uncovered via the
-  // now-empty `patterns` matching nothing), not silently skipping the check
-  // as if the file were blank. Also drops any pattern starting with "!":
+  // or an email); a file that is entirely such invalid lines correctly ends
+  // up with the same empty `patterns` as a blank file (see above). Also
+  // drops any pattern starting with "!":
   // unlike .gitignore, GitHub's CODEOWNERS syntax does not support "!"
   // negation -- such a pattern never actually matches, so a broader earlier
   // pattern (e.g. "*") remains the last, and only, effectively-matching one.

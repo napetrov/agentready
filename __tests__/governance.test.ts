@@ -210,6 +210,18 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
+  it('reads a CODEOWNERS file past the old 200KB cutoff, up to GitHub\'s real ~3MiB limit', () => {
+    // GitHub documents a 3 MiB CODEOWNERS size limit, not 200KB -- a large
+    // monorepo's real covering rule must not be silently truncated away.
+    initGitRepo(root)
+    const padding = `# padding\n`.repeat(25_000) // ~250KB, past the old 200KB cap
+    commitFile('CODEOWNERS', `${padding}/src/ @src-owner\n`)
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
+  })
+
   it('does not let an unsupported "!" negation pattern un-cover a directory a broader pattern still owns', () => {
     // GitHub's CODEOWNERS syntax has no "!" negation (unlike .gitignore,
     // which the `ignore` package implements) -- a "*.ts @team" followed by
@@ -223,6 +235,19 @@ describe('detectCodeownersCoverageGaps (units)', () => {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
+  })
+
+  it('flags active directories when CODEOWNERS is comment-only (no effective rules)', () => {
+    // A blank/comment-only CODEOWNERS still exists (so docs.codeowners.missing
+    // won't fire), but GitHub requests no code owner for anything -- this must
+    // not be treated as "nothing to check" either, or a placeholder CODEOWNERS
+    // file produces zero findings, a worse blind spot than no file at all.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '# TODO: fill this in\n\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
   })
 
   it('does not flag a directory below the sustained-activity threshold', () => {
