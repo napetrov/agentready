@@ -84,6 +84,15 @@ describe('detectInstructionContradictions (units)', () => {
     expect(detectInstructionContradictions(root, [rootScopeAlways(a), rootScopeAlways(b)])).toEqual([])
   })
 
+  it('does not treat a bare "not" contrast as the file choosing the negated manager', () => {
+    // "Use pnpm, not npm install" is a contrast, not two files disagreeing --
+    // "not" alone (without "do"/"does"/"should"/"will" in front of it) must
+    // still suppress the negated mention.
+    const a = write('AGENTS.md', 'Use pnpm, not npm install.')
+    const b = write('CLAUDE.md', 'Use pnpm install to set up the project.')
+    expect(detectInstructionContradictions(root, [rootScopeAlways(a), rootScopeAlways(b)])).toEqual([])
+  })
+
   it('still flags a real mismatch when one file prohibits the other file\'s chosen manager', () => {
     // AGENTS.md only ever mentions npm positively; CLAUDE.md prohibits npm
     // and endorses pnpm -- a real disagreement (npm vs. pnpm) survives the

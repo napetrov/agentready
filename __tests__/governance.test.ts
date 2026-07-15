@@ -197,14 +197,28 @@ describe('detectCodeownersCoverageGaps (units)', () => {
 
   it('flags a directory whose only matching CODEOWNERS line has a placeholder second token instead of a real owner', () => {
     // A second token that isn't a real owner (no "@user"/"@org/team"/email
-    // shape) is just as invalid to GitHub as no second token at all --
-    // "/src/ TODO" must not count as coverage either.
+    // shape) makes the whole line invalid syntax GitHub skips -- it is not a
+    // valid ownerless override, but with no other pattern matching this
+    // directory, the net effect is the same: uncovered.
     initGitRepo(root)
     commitFile('CODEOWNERS', '/src/ TODO\n')
     for (let i = 0; i < 5; i += 1) {
       commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
     }
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
+  })
+
+  it('leaves a broader owned pattern in effect when a later line has an invalid placeholder instead of a real or no owner', () => {
+    // Unlike a truly ownerless line ("/apps/github" with zero tokens after
+    // the pattern), "/src/ TODO" is invalid CODEOWNERS syntax -- GitHub skips
+    // the whole line rather than treating it as an intentional override, so
+    // the broader "* @team" rule above it still covers src.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '* @team\n/src/ TODO\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
   it('covers a directory whose CODEOWNERS line uses an email owner', () => {

@@ -193,22 +193,27 @@ export const detectCodeownersCoverageGaps = (
 
   // A CODEOWNERS line is a pattern optionally followed by owner tokens.
   // GitHub applies these with "last matching pattern wins" -- including a
-  // *later* pattern with no valid owner deliberately un-assigning ownership
-  // for a carved-out subtree (GitHub's own docs give exactly this example:
-  // "/apps/ @octocat" then a bare "/apps/github" leaves that subdirectory
-  // unowned; a placeholder like "/src/ TODO" behaves the same way, since
-  // "TODO" isn't a real owner shape). A single combined `ignore()` matcher
-  // can't replicate this: gitignore negation (the natural tool for
-  // "override an earlier pattern") cannot re-include a path whose parent
-  // directory an earlier pattern already excluded, which breaks on exactly
-  // this common directory-anchored case. So each valid pattern (still
-  // dropping any starting with "!" -- GitHub's CODEOWNERS syntax, unlike
-  // .gitignore, does not support "!" negation, so such a pattern never
-  // actually matches) gets its own single-pattern matcher and an
-  // `hasOwner` flag, tested against a file in file order below, with the
-  // *last* matching one deciding coverage -- a direct, reliable
-  // implementation of "last match wins" that doesn't depend on `ignore()`'s
-  // own override semantics.
+  // *later* pattern with no owner tokens at all deliberately un-assigning
+  // ownership for a carved-out subtree (GitHub's own docs give exactly this
+  // example: "/apps/ @octocat" then a bare "/apps/github" leaves that
+  // subdirectory unowned). A single combined `ignore()` matcher can't
+  // replicate this: gitignore negation (the natural tool for "override an
+  // earlier pattern") cannot re-include a path whose parent directory an
+  // earlier pattern already excluded, which breaks on exactly this common
+  // directory-anchored case. So each valid pattern (still dropping any
+  // starting with "!" -- GitHub's CODEOWNERS syntax, unlike .gitignore, does
+  // not support "!" negation, so such a pattern never actually matches) gets
+  // its own single-pattern matcher and an `hasOwner` flag, tested against a
+  // file in file order below, with the *last* matching one deciding
+  // coverage -- a direct, reliable implementation of "last match wins" that
+  // doesn't depend on `ignore()`'s own override semantics.
+  //
+  // A pattern followed by a token that *looks* like an attempted owner but
+  // isn't a real one (e.g. "/src/ TODO") is different from a bare pattern
+  // with no tokens at all: GitHub treats it as invalid syntax and skips the
+  // whole line, leaving whatever earlier pattern matched still in effect --
+  // it is not a valid ownerless override. Only a pattern with zero tokens
+  // after it is a real (intentional) ownerless override.
   //
   // GitHub also documents "[ ]" character ranges as unsupported CODEOWNERS
   // syntax (unlike .gitignore) and skips the whole line when it appears; the
@@ -219,9 +224,10 @@ export const detectCodeownersCoverageGaps = (
   const orderedPatterns = contentLines
     .map(line => line.split(/\s+/))
     .filter(tokens => !tokens[0].startsWith('!') && !/[[\]]/.test(tokens[0]))
+    .filter(tokens => tokens.length === 1 || tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
     .map(tokens => ({
       matcher: ignore().add(tokens[0]),
-      hasOwner: tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)),
+      hasOwner: tokens.length > 1,
     }))
 
   const isFileCovered = (filePath: string): boolean => {

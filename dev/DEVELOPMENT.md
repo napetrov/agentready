@@ -126,6 +126,14 @@ detection (Gradle/Maven, .NET, additional Python tooling).
   an `errorOnWarnings`-promoted `commands.lint.missing` finding is now left
   gateable under `--fail-on error` instead of the `ml-scientific` pack
   silently undoing that strict-mode escalation.
+- **FIXED TWO MORE CODEOWNERS/INSTRUCTION-CONTRADICTION EDGE CASES**: a
+  CODEOWNERS line with an invalid placeholder owner (e.g. `/src/ TODO`) is
+  now distinguished from a truly ownerless line (zero tokens after the
+  pattern) — GitHub skips the invalid line entirely rather than treating it
+  as an intentional override, so a broader owned pattern above it stays in
+  effect. The package-manager negation-cue regex in
+  `instruction-contradictions.ts` also now catches bare "not" (e.g. "Use
+  pnpm, not npm install"), not just "do/does/should/will not".
 - **DOCUMENTED THE GITHUB-ORG-API BATCH SCANNING NON-GOAL**: `batch --root`
   stays local-only by design (README, `docs/product/features.md`'s
   Non-Goals section, `dev/BACKLOG.md`) — auto-discovering/cloning an org's
