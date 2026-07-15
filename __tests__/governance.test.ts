@@ -224,6 +224,18 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
+  it('flags a directory whose only matching CODEOWNERS line mixes a real owner with an invalid placeholder token', () => {
+    // GitHub skips a line as invalid syntax as a whole -- "/src/ @team TODO"
+    // does not apply "@team" just because one of the two trailing tokens is
+    // a valid owner shape; every trailing token must be a plausible owner.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/src/ @team TODO\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
+  })
+
   it('does not let a differently-cased CODEOWNERS pattern cover a directory (GitHub matches case-sensitively)', () => {
     // GitHub evaluates CODEOWNERS patterns against its case-sensitive backing
     // filesystem, but the `ignore` package defaults to case-insensitive

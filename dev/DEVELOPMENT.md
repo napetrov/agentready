@@ -145,9 +145,32 @@ detection (Gradle/Maven, .NET, additional Python tooling).
   properties (MCP host-delegated analyze, versioned JSON Schema contracts,
   worktree-isolated `diff`, the offline LLM-layer eval harness) are easy to
   find.
+- **ENFORCED CASE-SENSITIVE CODEOWNERS MATCHING**: GitHub's file lookup and
+  pattern evaluation are backed by git (case-sensitive), but both
+  `CODEOWNERS_PATTERNS_BY_PRECEDENCE` (used `/i`) and the per-pattern
+  `ignore()` matcher (defaults to `ignorecase: true`) were case-insensitive —
+  a `codeowners`/`CodeOwners` filename or a `/Src/` pattern would wrongly be
+  recognized/match. Fixed both (`governance.ts`); also required *every*
+  trailing token on a CODEOWNERS line to be a plausible owner, not just one
+  (`/src/ @team TODO` is invalid syntax GitHub skips as a whole, same as
+  `/src/ TODO`).
+- **FILTERED DIRECTORY ACTIVITY THROUGH THE SCAN INVENTORY PER FILE**:
+  `detectCodeownersCoverageGaps` previously filtered ignored/deleted paths
+  out only at the top-level-directory granularity; a directory with scanned
+  files elsewhere but whose only *recent commits* touched ignored files could
+  still be wrongly flagged. Now filtered per file before counting activity or
+  testing coverage.
+- **CAUGHT TWO MORE PACKAGE-MANAGER CONTRAST PHRASES**: the
+  `instruction-contradictions.ts` negation-cue regex now also recognizes
+  "instead of" and "rather than" (e.g. "Use pnpm instead of npm install"),
+  not just "not"/"never"/etc.
+- **FIXED THE INVALID `gh repo list <org> --clone` EXAMPLE**: that flag
+  doesn't exist; replaced with `gh repo list` piped into `gh repo clone`
+  across README, CHANGELOG, `dev/BACKLOG.md`, and
+  `docs/product/features.md`.
 - **Verification** (re-run after every fix round in this entry):
   `npm run type-check`, `npm run lint`, `npm run test:coverage` (all suites
-  green, 80% coverage gate met — 625 tests as of the last round), `npm run
+  green, 80% coverage gate met — 628 tests as of the last round), `npm run
   build`, `npm run agentready:schemas -- --check`, `npm run build:action`,
   `npm run agentready:action-smoke` (passed). `npm run agentready:eval` was
   not re-run since no change in this entry touches the LLM analyze layer.

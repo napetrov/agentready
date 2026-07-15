@@ -53,7 +53,8 @@ const PACKAGE_MANAGER_MENTION_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(?:install\b|ci
 // use pnpm install instead.", where a wide-enough window reaches back across
 // the ";" and wrongly suppresses the real "use pnpm" endorsement too.
 const CLAUSE_BOUNDARY_PATTERN = /[.;,!?\n]/g
-const NEGATION_CUE_PATTERN = /\b(never|don'?t|doesn'?t|not|avoid|shouldn'?t|won'?t|stop\s+using|no\s+longer)\b/i
+const NEGATION_CUE_PATTERN =
+  /\b(never|don'?t|doesn'?t|not|avoid|shouldn'?t|won'?t|stop\s+using|no\s+longer|instead\s+of|rather\s+than)\b/i
 
 const clauseStartBefore = (text: string, index: number): number => {
   let start = 0

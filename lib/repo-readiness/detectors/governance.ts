@@ -229,10 +229,16 @@ export const detectCodeownersCoverageGaps = (
   // filesystem, but the `ignore` package defaults to `ignorecase: true` --
   // left as the default, a pattern like "/Src/" would wrongly match
   // "src/file.ts" here even though GitHub would not consider it covered.
+  // GitHub also skips the whole line if *any* token after the pattern isn't
+  // a valid owner (see the source cited above: "If any line in your
+  // CODEOWNERS file contains invalid syntax, that line will be skipped") --
+  // a line like "/src/ @user1 TODO" is invalid syntax as a whole, so
+  // `@user1` is not applied either; every trailing token must be a plausible
+  // owner, not just one of them.
   const orderedPatterns = contentLines
     .map(line => line.split(/\s+/))
     .filter(tokens => !tokens[0].startsWith('!') && !/[[\]]/.test(tokens[0]))
-    .filter(tokens => tokens.length === 1 || tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
+    .filter(tokens => tokens.length === 1 || tokens.slice(1).every(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
     .map(tokens => ({
       matcher: ignore({ ignorecase: false }).add(tokens[0]),
       hasOwner: tokens.length > 1,
