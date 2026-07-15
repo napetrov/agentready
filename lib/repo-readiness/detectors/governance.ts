@@ -209,9 +209,16 @@ export const detectCodeownersCoverageGaps = (
   // *last* matching one deciding coverage -- a direct, reliable
   // implementation of "last match wins" that doesn't depend on `ignore()`'s
   // own override semantics.
+  //
+  // GitHub also documents "[ ]" character ranges as unsupported CODEOWNERS
+  // syntax (unlike .gitignore) and skips the whole line when it appears; the
+  // underlying `ignore()` matcher *does* support character ranges, so a
+  // pattern like "/src/[ab].ts" must be dropped here too, or a repo relying
+  // on it would be reported as covered when GitHub itself requests no
+  // review.
   const orderedPatterns = contentLines
     .map(line => line.split(/\s+/))
-    .filter(tokens => !tokens[0].startsWith('!'))
+    .filter(tokens => !tokens[0].startsWith('!') && !/[[\]]/.test(tokens[0]))
     .map(tokens => ({
       matcher: ignore().add(tokens[0]),
       hasOwner: tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)),

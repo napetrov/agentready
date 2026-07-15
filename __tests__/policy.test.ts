@@ -138,6 +138,18 @@ describe('ML_SCIENTIFIC_POLICY', () => {
     expect(adjustedFindings[0].severity).toBe('error')
     expect(severityAdjustments).toEqual([])
   })
+
+  it('leaves an error-level commands.lint.missing finding gateable (errorOnWarnings strict-mode promotion, not routine)', () => {
+    // errorOnWarnings promotes this finding to 'error' as an explicit
+    // strict-mode policy choice; this pack should not silently undo that by
+    // de-escalating it back down to 'info'.
+    const { adjustedFindings, severityAdjustments } = adjustFindings(
+      [finding('commands.lint.missing', 'error')],
+      ML_SCIENTIFIC_POLICY,
+    )
+    expect(adjustedFindings[0].severity).toBe('error')
+    expect(severityAdjustments).toEqual([])
+  })
 })
 
 describe('resolvePolicyPack', () => {

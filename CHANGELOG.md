@@ -15,8 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `make-target`: warning→error) and contribution-onboarding gaps
   (`docs.developer.thin`, `docs.pull-request-template.missing`: info→warning).
   `ml-scientific` de-escalates warning-level `files.large` and
-  `commands.lint.missing` to info (an error-level `files.large` finding stays
-  gateable under `--fail-on error`). See
+  `commands.lint.missing` to info (an error-level instance of either finding,
+  including one promoted by `errorOnWarnings`, stays gateable under
+  `--fail-on error`). See
   [docs/product/policy-packs.md](docs/product/policy-packs.md).
 - Deterministic instruction-file contradiction detection: `detectInstructionContradictions`
   (`lib/repo-readiness/detectors/instruction-contradictions.ts`) flags

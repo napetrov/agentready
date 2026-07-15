@@ -118,7 +118,14 @@ detection (Gradle/Maven, .NET, additional Python tooling).
   earlier broader owned one — verified against GitHub's own documented
   example) instead of relying on gitignore-style negation, which CODEOWNERS
   doesn't support as input syntax and which has its own re-inclusion
-  limitations `ignore()` doesn't work around.
+  limitations `ignore()` doesn't work around; skips `[ ]` character-range
+  patterns too (unsupported CODEOWNERS syntax GitHub also skips the whole
+  line for, but which `ignore()` would otherwise match literally).
+- **RESTRICTED THE `commands.lint.missing` DE-ESCALATION TO WARNING-LEVEL
+  FINDINGS**: matches the existing `files.large` guard (`Escalation.from`) —
+  an `errorOnWarnings`-promoted `commands.lint.missing` finding is now left
+  gateable under `--fail-on error` instead of the `ml-scientific` pack
+  silently undoing that strict-mode escalation.
 - **DOCUMENTED THE GITHUB-ORG-API BATCH SCANNING NON-GOAL**: `batch --root`
   stays local-only by design (README, `docs/product/features.md`'s
   Non-Goals section, `dev/BACKLOG.md`) — auto-discovering/cloning an org's

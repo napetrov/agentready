@@ -293,6 +293,20 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
+  it('does not let an unsupported "[ ]" character-range pattern mark a directory covered', () => {
+    // GitHub documents "[ ]" character ranges as unsupported CODEOWNERS
+    // syntax (unlike .gitignore, which the `ignore` package implements) and
+    // skips the whole line -- so "/src/[ab].ts" never actually assigns an
+    // owner and src stays uncovered. Feeding it to `ignore()` unfiltered
+    // would match src/a.ts via the range and wrongly report src as covered.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '/src/[ab].ts @team\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toEqual(['src'])
+  })
+
   it('flags active directories when CODEOWNERS is comment-only (no effective rules)', () => {
     // A blank/comment-only CODEOWNERS still exists (so docs.codeowners.missing
     // won't fire), but GitHub requests no code owner for anything -- this must

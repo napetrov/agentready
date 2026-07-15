@@ -132,6 +132,11 @@ const ML_SCIENTIFIC_DEESCALATIONS: Escalation[] = [
   {
     ruleKey: 'commands.lint.missing',
     to: 'info',
+    // Restricted to warning-level instances (see `Escalation.from`): once
+    // `errorOnWarnings` promotes this finding to `error`, that reflects an
+    // explicit strict-mode policy choice this pack should not silently
+    // override.
+    from: 'warning',
     reason: 'A single unified lint command is uncommon across hybrid Python/C++/notebook toolchains, where linting is typically per-language and orchestrated through CI rather than one local command.',
   },
 ]
