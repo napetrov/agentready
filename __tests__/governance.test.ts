@@ -210,6 +210,21 @@ describe('detectCodeownersCoverageGaps (units)', () => {
     expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
   })
 
+  it('does not let an unsupported "!" negation pattern un-cover a directory a broader pattern still owns', () => {
+    // GitHub's CODEOWNERS syntax has no "!" negation (unlike .gitignore,
+    // which the `ignore` package implements) -- a "*.ts @team" followed by
+    // "!src/*.ts @other" line means GitHub still treats "*.ts" as the last
+    // effectively-matching pattern for src/*.ts (the negation line matches
+    // nothing), so src stays covered. Feeding "!src/*.ts" to `ignore()`
+    // unfiltered would re-exclude it and wrongly flag src as uncovered.
+    initGitRepo(root)
+    commitFile('CODEOWNERS', '*.ts @team\n!src/*.ts @other\n')
+    for (let i = 0; i < 5; i += 1) {
+      commitFile(`src/file-${i}.ts`, `export const x${i} = ${i}\n`)
+    }
+    expect(detectCodeownersCoverageGaps(root, 'CODEOWNERS', ['CODEOWNERS', ...srcFilePaths(5)])).toBeUndefined()
+  })
+
   it('does not flag a directory below the sustained-activity threshold', () => {
     initGitRepo(root)
     commitFile('CODEOWNERS', '/docs/ @doc-owner\n')

@@ -174,9 +174,17 @@ export const detectCodeownersCoverageGaps = (
   // real content, and the correct signal is "nothing here validly covers
   // anything" (every active directory reported as uncovered via the
   // now-empty `patterns` matching nothing), not silently skipping the check
-  // as if the file were blank.
+  // as if the file were blank. Also drops any pattern starting with "!":
+  // unlike .gitignore, GitHub's CODEOWNERS syntax does not support "!"
+  // negation -- such a pattern never actually matches, so a broader earlier
+  // pattern (e.g. "*") remains the last, and only, effectively-matching one.
+  // `ignore()` doesn't know that and *does* implement gitignore negation, so
+  // feeding it "!src/**" unfiltered can re-exclude paths a broader pattern
+  // still covers under GitHub's real (non-negating) semantics, wrongly
+  // reporting a directory as uncovered.
   const patterns = contentLines
     .map(line => line.split(/\s+/))
+    .filter(tokens => !tokens[0].startsWith('!'))
     .filter(tokens => tokens.slice(1).some(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
     .map(tokens => tokens[0])
 
