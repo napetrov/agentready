@@ -42,6 +42,8 @@ export type {
   EvidenceSourceKind,
   GeneratedPressureEvidence,
   GovernanceEvidence,
+  InstructionContradictionEvidence,
+  InstructionContradictionKind,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
@@ -112,7 +114,7 @@ export {
 } from './checks/catalog'
 export type { RuleDoc } from './checks/catalog'
 
-export { DEFAULT_POLICY, ENTERPRISE_POLICY, POLICY_PACKS, resolvePolicyPack } from './checks/policy-packs'
+export { DEFAULT_POLICY, ENTERPRISE_POLICY, ML_SCIENTIFIC_POLICY, OSS_POLICY, POLICY_PACKS, resolvePolicyPack } from './checks/policy-packs'
 
 export {
   localReadinessConfigSchema,

@@ -39,7 +39,7 @@ inputs:
     required: false
     default: ''
   policy:
-    description: 'Policy pack applying severity adjustments before gating: default (no-op) or enterprise (stricter instruction/install/deploy gates). Raw findings/score are never mutated; see docs/product/policy-packs.md.'
+    description: 'Policy pack applying severity adjustments before gating: default (no-op), enterprise (stricter instruction/install/deploy gates), oss (stricter contribution-onboarding gates), or ml-scientific (relaxed large-fixture/lint gates). Raw findings/score are never mutated; see docs/product/policy-packs.md.'
     required: false
     default: 'default'
   job-summary:

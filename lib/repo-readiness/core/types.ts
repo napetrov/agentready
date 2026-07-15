@@ -136,17 +136,48 @@ export interface CommandReferenceEvidence {
   detail: string
 }
 
+/** A kind of structurally-detectable contradiction between agent instruction files. */
+export type InstructionContradictionKind = 'package-manager'
+
+/**
+ * A contradiction between two root-scope, always-active instruction files —
+ * ones an agent loads into context together, so a conflict between them is a
+ * real contradiction it will hit, not two separately-scoped docs that never
+ * coexist. Deterministic text-pattern matching only (reusing the same
+ * unambiguous command-mention patterns as `CommandReferenceEvidence`); this
+ * intentionally does not attempt semantic/NLP contradiction detection — that
+ * lives in the optional LLM analyze layer instead.
+ */
+export interface InstructionContradictionEvidence {
+  kind: InstructionContradictionKind
+  /** The two instruction file paths that disagree. */
+  paths: [string, string]
+  /** Human-readable explanation of the contradiction. */
+  detail: string
+}
+
 /**
  * Review-routing surfaces: whether the repo tells a reviewer (human or agent)
- * who owns a change and what evidence a PR description should contain. Both
- * are presence checks (does the file exist, at a path GitHub recognizes), not
- * an inference of actual ownership boundaries from git history.
+ * who owns a change and what evidence a PR description should contain. The
+ * two path fields are presence checks (does the file exist, at a path GitHub
+ * recognizes). `uncoveredActiveDirectories` is the one field derived from
+ * local git history rather than presence alone — see its own doc comment.
  */
 export interface GovernanceEvidence {
   /** Path to CODEOWNERS, if found at a GitHub-recognized location (root, .github/, or docs/). */
   codeownersPath?: string
   /** Path to a pull-request template, if found at a GitHub-recognized location (root, .github/, or docs/; single file or .github/PULL_REQUEST_TEMPLATE/). */
   pullRequestTemplatePath?: string
+  /**
+   * Top-level directories with sustained recent commit activity (from local
+   * git history only, bounded to the most recent commits — no network calls)
+   * that no CODEOWNERS pattern appears to cover. A best-effort approximation
+   * of CODEOWNERS' gitignore-style pattern matching against top-level
+   * directories, not a full implementation of CODEOWNERS' path-rule
+   * semantics. Present only when CODEOWNERS exists, the scan target is a git
+   * repository, and at least one uncovered directory was found.
+   */
+  uncoveredActiveDirectories?: string[]
 }
 
 /** A class of verification command an agent can run to validate its work. */
@@ -418,7 +449,7 @@ export interface LocalReadinessReportContract {
   experimentalFields: LocalReadinessExperimentalField[]
 }
 
-export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState' | 'dimensions'
+export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState' | 'dimensions' | 'instructionContradictions'
 
 export interface LocalReadinessReport {
   root: string
@@ -443,6 +474,7 @@ export interface LocalReadinessReport {
   }
   commands: CommandEvidence
   commandReferences: CommandReferenceEvidence[]
+  instructionContradictions: InstructionContradictionEvidence[]
   governance: GovernanceEvidence
   ci: CiEvidence
   instructions: InstructionSurfaceEvidence[]

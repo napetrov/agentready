@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `oss` and `ml-scientific` policy packs (`lib/repo-readiness/checks/policy-packs.ts`),
+  joining `default` and `enterprise` as the four built-in `--policy <name>`
+  choices on `scan`/`diff` and the GitHub Action's `policy` input. `oss`
+  escalates stale command references (`commands.reference.npm-script`/
+  `make-target`: warning→error) and contribution-onboarding gaps
+  (`docs.developer.thin`, `docs.pull-request-template.missing`: info→warning).
+  `ml-scientific` de-escalates warning-level `files.large` and
+  `commands.lint.missing` to info (an error-level instance of either finding,
+  including one promoted by `errorOnWarnings`, stays gateable under
+  `--fail-on error`). See
+  [docs/product/policy-packs.md](docs/product/policy-packs.md).
+- Deterministic instruction-file contradiction detection: `detectInstructionContradictions`
+  (`lib/repo-readiness/detectors/instruction-contradictions.ts`) flags
+  root-scope or legacy always-active instruction files (the ones an agent
+  loads into context together — `AGENTS.md`, `CLAUDE.md`,
+  `.github/copilot-instructions.md`, `GEMINI.md`, `.cursorrules`, …) that
+  each exclusively reference a different single package manager, as
+  `instructions.contradiction.package-manager` (warning). Compares only
+  files sharing an instruction-surface ecosystem and ignores negated
+  mentions (e.g. "never run npm install").
+- CODEOWNERS coverage-gap detection: `detectCodeownersCoverageGaps`
+  (`lib/repo-readiness/detectors/governance.ts`) flags top-level directories
+  with sustained recent commit activity (local git history only, bounded to
+  the most recent commits, no network calls) that no CODEOWNERS pattern
+  covers, as `docs.codeowners.coverage-gap` (info, one finding per directory).
+  `GovernanceEvidence` gained `uncoveredActiveDirectories`, and
+  `codeownersPath` now resolves GitHub's actual `.github/` > root > `docs/`
+  file precedence.
+- README "Design guarantees" section and an expanded "Evaluation /
+  benchmarks" section, surfacing four already-shipped trust properties
+  (MCP host-delegated `analyze`, versioned JSON Schema contracts,
+  worktree-isolated `diff`, the offline LLM-layer eval harness).
+
+### Changed
+- `LocalReadinessReport` gained a new required `instructionContradictions`
+  field, listed in `reportContract.experimentalFields` alongside
+  `repositoryEvidence`/`designState`/`dimensions` (schema version stays
+  `local-readiness/v2`; consumers that validate against a pinned older copy
+  of the JSON Schema should expect this field).
+- Documented that GitHub-org-API-integrated batch scanning (auto-discovering
+  and cloning every repo in an org) is intentionally out of scope: it would
+  require AgentReady itself to hold a GitHub credential and make network
+  calls, breaking the no-external-service guarantee every other command
+  relies on. Local `batch --root` plus an existing clone tool (e.g.
+  `gh repo list` piped into `gh repo clone`) is the supported path.
+
 ## [0.3.0] - 2026-07-13
 
 ### Added

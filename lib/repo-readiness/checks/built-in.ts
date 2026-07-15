@@ -198,6 +198,24 @@ export const buildFindings = (
     })
   }
 
+  // Instruction files an agent loads into context together (root-scope,
+  // always-active) that disagree on something as concrete as which package
+  // manager to use. Warning: this is a text heuristic, not proof the agent
+  // will actually get it wrong, but it is a real, findable contradiction —
+  // see `docs/product/policy-packs.md`'s deterministic-vs-LLM split for why
+  // this stays a narrow structural check rather than general contradiction
+  // detection (that lives in the optional LLM analyze layer). Uses
+  // `warningSeverity` (not a bare `'warning'` literal) so `errorOnWarnings`
+  // escalates it consistently with every other warning-level rule here.
+  for (const contradiction of report.instructionContradictions) {
+    findings.push({
+      id: `instructions.contradiction.${contradiction.kind}:${contradiction.paths.join(':')}`,
+      title: 'Agent instruction files disagree with each other',
+      severity: warningSeverity,
+      recommendation: `${contradiction.detail} An agent loading both files at once has no way to tell which one is authoritative — reconcile them or scope one to a specific context.`,
+    })
+  }
+
   // Review-routing surfaces. Both are informational: neither blocks an agent
   // from making a change, but their absence means a human (or the agent
   // itself) has to guess who should review it and what evidence to include.
@@ -210,6 +228,21 @@ export const buildFindings = (
       title: 'No CODEOWNERS file detected',
       severity: 'info',
       recommendation: 'Add a CODEOWNERS file (repo root, .github/, or docs/) so PRs route to the right reviewer automatically.',
+    })
+  }
+
+  // One finding per directory (id suffix + path), not one aggregate finding
+  // listing all of them -- diff/regression matching keys on id+path
+  // (see scan-engine.ts's findingKey), so a single constant-id finding would
+  // make base ["src"] and head ["src", "docs"] compare equal and hide the
+  // newly-uncovered "docs" directory from newFindings/resolvedFindings.
+  for (const directory of report.governance.uncoveredActiveDirectories ?? []) {
+    findings.push({
+      id: `docs.codeowners.coverage-gap:${directory}`,
+      title: 'CODEOWNERS does not appear to cover an actively-changed directory',
+      severity: 'info',
+      path: directory,
+      recommendation: `Add CODEOWNERS coverage for "${directory}". This directory saw sustained recent commit activity (from local git history) but no matching CODEOWNERS pattern, so PRs touching it may route to no reviewer.`,
     })
   }
 

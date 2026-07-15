@@ -136,6 +136,19 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     ],
     references: [DOCS],
   },
+  'instructions.contradiction.package-manager': {
+    id: 'instructions.contradiction.package-manager',
+    title: 'Agent instruction files disagree with each other',
+    category: 'instructions',
+    defaultSeverity: 'warning',
+    rationale:
+      'Root-scope, always-active instruction files (AGENTS.md, CLAUDE.md, .github/copilot-instructions.md, GEMINI.md, …) are loaded into an agent\'s context together. When two of them each exclusively reference a different package manager, an agent has no way to tell which is authoritative and may install with the wrong one, creating a second, conflicting lockfile.',
+    remediation: [
+      'Reconcile the instruction files on one canonical package manager, or scope one file to a specific context (e.g. a nested AGENTS.md for a subdirectory that genuinely uses a different tool).',
+      'If both package managers are genuinely supported (e.g. a mixed workspace), say so explicitly in both files.',
+    ],
+    references: [DOCS, AGENTS_MD],
+  },
   'docs.codeowners.missing': {
     id: 'docs.codeowners.missing',
     title: 'No CODEOWNERS file detected',
@@ -161,6 +174,19 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Include a short checklist: what changed, why, and how it was verified.',
     ],
     references: [DOCS, 'https://docs.github.com/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository'],
+  },
+  'docs.codeowners.coverage-gap': {
+    id: 'docs.codeowners.coverage-gap',
+    title: 'CODEOWNERS does not appear to cover actively-changed directories',
+    category: 'docs',
+    defaultSeverity: 'info',
+    rationale:
+      'A CODEOWNERS file that exists but does not match where changes actually happen is nearly as unhelpful as no CODEOWNERS at all: PRs touching those directories still route to no reviewer. Computed from local git history only (the most recent commits touching the scanned root), approximating CODEOWNERS\' gitignore-style patterns against top-level directories rather than its full path-rule semantics — a directory listed here is a hint to double-check coverage, not a guaranteed gap.',
+    remediation: [
+      'Add a CODEOWNERS pattern covering the listed directories, or confirm an existing broader pattern (e.g. "*") is intentional.',
+      'If a directory is intentionally unowned (e.g. generated output, vendored code), consider a comment in CODEOWNERS explaining why.',
+    ],
+    references: [DOCS, 'https://docs.github.com/articles/about-code-owners'],
   },
   'ci.workflow.missing': {
     id: 'ci.workflow.missing',

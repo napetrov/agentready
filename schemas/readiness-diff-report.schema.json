@@ -205,6 +205,42 @@
             "additionalProperties": false
           }
         },
+        "instructionContradictions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "package-manager"
+                ]
+              },
+              "paths": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "paths",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        },
         "governance": {
           "type": "object",
           "properties": {
@@ -213,6 +249,12 @@
             },
             "pullRequestTemplatePath": {
               "type": "string"
+            },
+            "uncoveredActiveDirectories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false
@@ -1810,7 +1852,8 @@
                 "enum": [
                   "repositoryEvidence",
                   "designState",
-                  "dimensions"
+                  "dimensions",
+                  "instructionContradictions"
                 ]
               }
             }
@@ -1914,6 +1957,7 @@
         "docs",
         "commands",
         "commandReferences",
+        "instructionContradictions",
         "governance",
         "ci",
         "instructions",
@@ -2120,6 +2164,42 @@
             "additionalProperties": false
           }
         },
+        "instructionContradictions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "package-manager"
+                ]
+              },
+              "paths": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "paths",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        },
         "governance": {
           "type": "object",
           "properties": {
@@ -2128,6 +2208,12 @@
             },
             "pullRequestTemplatePath": {
               "type": "string"
+            },
+            "uncoveredActiveDirectories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false
@@ -3725,7 +3811,8 @@
                 "enum": [
                   "repositoryEvidence",
                   "designState",
-                  "dimensions"
+                  "dimensions",
+                  "instructionContradictions"
                 ]
               }
             }
@@ -3829,6 +3916,7 @@
         "docs",
         "commands",
         "commandReferences",
+        "instructionContradictions",
         "governance",
         "ci",
         "instructions",

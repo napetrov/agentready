@@ -8,7 +8,8 @@ import { detectCommandReferences } from '../detectors/command-references'
 import { detectCommandSurfaces } from '../detectors/command-surfaces'
 import { detectDocs } from '../detectors/docs'
 import { walkFiles } from '../detectors/file-inventory'
-import { detectGovernance } from '../detectors/governance'
+import { detectCodeownersCoverageGaps, detectGovernance } from '../detectors/governance'
+import { detectInstructionContradictions } from '../detectors/instruction-contradictions'
 import { buildDesignState, detectRepositoryEvidence } from '../detectors/repository-evidence'
 import { detectSafetySignals } from '../detectors/safety-signals'
 import {
@@ -81,13 +82,17 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     ...instructions.filter(surface => surface.scope === 'root').map(surface => surface.path),
   ]
 
+  const governance = detectGovernance(filePaths)
+  const uncoveredActiveDirectories = detectCodeownersCoverageGaps(absoluteRoot, governance.codeownersPath, filePaths)
+
   const partialReport = {
     root: absoluteRoot,
     generatedAt: (options.now ?? new Date()).toISOString(),
     docs,
     commands,
     commandReferences: detectCommandReferences(absoluteRoot, commandReferenceDocPaths, commands, filePaths),
-    governance: detectGovernance(filePaths),
+    instructionContradictions: detectInstructionContradictions(absoluteRoot, instructions),
+    governance: uncoveredActiveDirectories ? { ...governance, uncoveredActiveDirectories } : governance,
     ci: detectCiWorkflows(absoluteRoot, filePaths),
     instructions,
     capabilities: detectCapabilitySurfaces(absoluteRoot, filePaths),
@@ -124,7 +129,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     dimensions: calculateDimensionScores(findings),
     reportContract: {
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions'],
+      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'],
     },
     findings,
   }

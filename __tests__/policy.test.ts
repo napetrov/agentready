@@ -4,6 +4,8 @@ import path from 'path'
 import {
   DEFAULT_POLICY,
   ENTERPRISE_POLICY,
+  ML_SCIENTIFIC_POLICY,
+  OSS_POLICY,
   POLICY_NAMES,
   POLICY_PACKS,
   adjustFindings,
@@ -71,6 +73,82 @@ describe('ENTERPRISE_POLICY', () => {
     const { adjustedFindings, severityAdjustments } = adjustFindings([finding('instructions.missing', 'error')], ENTERPRISE_POLICY)
     expect(adjustedFindings[0].severity).toBe('error')
     expect(severityAdjustments).toEqual([]) // "to" already equals current severity, so no-op
+  })
+})
+
+describe('OSS_POLICY', () => {
+  it('escalates the two stale command-reference kinds to error', () => {
+    const findings = [
+      finding('commands.reference.npm-script:AGENTS.md:npm run buld', 'warning'),
+      finding('commands.reference.make-target:AGENTS.md:make tets', 'warning'),
+    ]
+    const { adjustedFindings } = adjustFindings(findings, OSS_POLICY)
+    expect(adjustedFindings.map(f => f.severity)).toEqual(['error', 'error'])
+  })
+
+  it('escalates docs.developer.thin and a missing PR template to warning', () => {
+    const findings = [finding('docs.developer.thin', 'info'), finding('docs.pull-request-template.missing', 'info')]
+    const { adjustedFindings, severityAdjustments } = adjustFindings(findings, OSS_POLICY)
+    expect(adjustedFindings.map(f => f.severity)).toEqual(['warning', 'warning'])
+    expect(severityAdjustments).toHaveLength(2)
+  })
+
+  it('does not adjust findings outside its rule list', () => {
+    const findings = [finding('instructions.missing', 'warning'), finding('files.large:a.bin', 'warning')]
+    const { adjustedFindings, severityAdjustments } = adjustFindings(findings, OSS_POLICY)
+    expect(adjustedFindings).toEqual(findings)
+    expect(severityAdjustments).toEqual([])
+  })
+})
+
+describe('ML_SCIENTIFIC_POLICY', () => {
+  it('de-escalates files.large and commands.lint.missing to info', () => {
+    const findings = [finding('files.large:data/sample.csv', 'warning'), finding('commands.lint.missing', 'warning')]
+    const { adjustedFindings, severityAdjustments } = adjustFindings(findings, ML_SCIENTIFIC_POLICY)
+    expect(adjustedFindings.map(f => f.severity)).toEqual(['info', 'info'])
+    expect(severityAdjustments).toEqual([
+      { findingId: 'files.large:data/sample.csv', from: 'warning', to: 'info', reason: expect.any(String) },
+      { findingId: 'commands.lint.missing', from: 'warning', to: 'info', reason: expect.any(String) },
+    ])
+  })
+
+  it('does not adjust findings outside its rule list', () => {
+    const findings = [finding('instructions.missing', 'warning'), finding('docs.readme.missing', 'error')]
+    const { adjustedFindings, severityAdjustments } = adjustFindings(findings, ML_SCIENTIFIC_POLICY)
+    expect(adjustedFindings).toEqual(findings)
+    expect(severityAdjustments).toEqual([])
+  })
+
+  it('leaves an already-info finding unchanged (no-op, not a spurious adjustment)', () => {
+    const { adjustedFindings, severityAdjustments } = adjustFindings([finding('files.large:a.bin', 'info')], ML_SCIENTIFIC_POLICY)
+    expect(adjustedFindings[0].severity).toBe('info')
+    expect(severityAdjustments).toEqual([])
+  })
+
+  it('leaves an error-level files.large finding gateable (not a recognized fixture/binary, over the error threshold)', () => {
+    // The documented spec (docs/product/policy-packs.md) is "files.large
+    // (warning -> info)" -- an error-level instance is already an
+    // unrecognized, non-fixture, non-binary large source file, which is not
+    // the "routine sample data" case this pack's rationale is about, and
+    // --fail-on error should still catch it for this domain too.
+    const { adjustedFindings, severityAdjustments } = adjustFindings(
+      [finding('files.large:huge-source.py', 'error')],
+      ML_SCIENTIFIC_POLICY,
+    )
+    expect(adjustedFindings[0].severity).toBe('error')
+    expect(severityAdjustments).toEqual([])
+  })
+
+  it('leaves an error-level commands.lint.missing finding gateable (errorOnWarnings strict-mode promotion, not routine)', () => {
+    // errorOnWarnings promotes this finding to 'error' as an explicit
+    // strict-mode policy choice; this pack should not silently undo that by
+    // de-escalating it back down to 'info'.
+    const { adjustedFindings, severityAdjustments } = adjustFindings(
+      [finding('commands.lint.missing', 'error')],
+      ML_SCIENTIFIC_POLICY,
+    )
+    expect(adjustedFindings[0].severity).toBe('error')
+    expect(severityAdjustments).toEqual([])
   })
 })
 

@@ -7,6 +7,7 @@ import type {
   CommandEvidence,
   CommandReferenceEvidence,
   GovernanceEvidence,
+  InstructionContradictionEvidence,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
@@ -179,6 +180,15 @@ export const commandReferenceEvidenceSchema = z.strictObject({
 export const governanceEvidenceSchema = z.strictObject({
   codeownersPath: z.string().optional(),
   pullRequestTemplatePath: z.string().optional(),
+  uncoveredActiveDirectories: z.array(z.string()).optional(),
+})
+
+export const instructionContradictionKindSchema = z.enum(['package-manager'])
+
+export const instructionContradictionEvidenceSchema = z.strictObject({
+  kind: instructionContradictionKindSchema,
+  paths: z.tuple([z.string(), z.string()]),
+  detail: z.string(),
 })
 
 export const ciCommandKindSchema = z.enum(['install', 'lint', 'typecheck', 'test', 'build'])
@@ -426,6 +436,7 @@ export const localReadinessReportSchema = z.strictObject({
   }),
   commands: commandEvidenceSchema,
   commandReferences: z.array(commandReferenceEvidenceSchema),
+  instructionContradictions: z.array(instructionContradictionEvidenceSchema),
   governance: governanceEvidenceSchema,
   ci: ciEvidenceSchema,
   instructions: z.array(instructionSurfaceSchema),
@@ -436,7 +447,7 @@ export const localReadinessReportSchema = z.strictObject({
   dimensions: readinessDimensionScoreListSchema,
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
-    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState', 'dimensions'])),
+    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'])),
   }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),
@@ -527,6 +538,7 @@ const _finding: Exact<z.infer<typeof readinessFindingSchema>, ReadinessFinding> 
 const _file: Exact<z.infer<typeof localReadinessFileSchema>, LocalReadinessFile> = true
 const _commands: Exact<z.infer<typeof commandEvidenceSchema>, CommandEvidence> = true
 const _commandReference: Exact<z.infer<typeof commandReferenceEvidenceSchema>, CommandReferenceEvidence> = true
+const _instructionContradiction: Exact<z.infer<typeof instructionContradictionEvidenceSchema>, InstructionContradictionEvidence> = true
 const _governance: Exact<z.infer<typeof governanceEvidenceSchema>, GovernanceEvidence> = true
 const _capabilitySurface: Exact<z.infer<typeof capabilitySurfaceSchema>, CapabilitySurfaceEvidence> = true
 const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
@@ -543,6 +555,7 @@ assertSchemaDriftGuards(
   _file,
   _commands,
   _commandReference,
+  _instructionContradiction,
   _governance,
   _ci,
   _documentSurface,

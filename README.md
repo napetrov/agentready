@@ -51,6 +51,26 @@ Evidence collection is separated from policy:
 
 See [docs/product/architecture.md](docs/product/architecture.md) for the full model, [docs/product/positioning.md](docs/product/positioning.md) for the product boundary, and [docs/roadmap/v0.3-issue-drafts.md](docs/roadmap/v0.3-issue-drafts.md) for the next milestone issue drafts.
 
+### Design guarantees
+
+Four properties back the trust model this scanner asks you to rely on:
+
+- **Local-first and non-networked.** No external service is contacted and the
+  scanned repository's own scripts are never executed (see "What It Scans"
+  above). The optional LLM analyze layer is the one exception, and it is
+  off unless explicitly configured.
+- **The optional LLM layer can run without AgentReady ever holding a
+  credential.** If you run AgentReady from inside an agent host (Claude Code,
+  Cursor, …), the bundled MCP server lets that host's own model do the
+  reasoning over stdio — see "Use your agent's own model" under Analyze below.
+- **`diff` never mutates your working tree.** It scans each ref through a
+  temporary, isolated `git worktree` and works even with uncommitted changes —
+  see "Diff (PR readiness)" below.
+- **Config and report shapes are versioned, published contracts**, not
+  incidental JSON: JSON Schema is generated from the same Zod schemas the
+  scanner validates against, exported via the package's `./schemas/*` subpath,
+  and drift-checked in CI — see "Configuration" below.
+
 ## Install And Run
 
 Prerequisites: Node.js 24+ for the current development branch.
@@ -84,18 +104,24 @@ and `--min-score <0-100>`; the process exits non-zero when a gate trips.
 ### Policy packs
 
 `--policy <name>` applies a team-specific severity policy to gating without
-changing the raw findings or score. `default` is a no-op; `enterprise` escalates
-missing agent instructions to `error` and install/deploy safety signals to
-`warning`, for organization-wide rollout governance:
+changing the raw findings or score. Four packs ship today: `default` (a no-op),
+`enterprise` (escalates missing agent instructions and install/deploy/high-risk
+capability safety signals for organization-wide rollout governance), `oss`
+(escalates stale command references and contribution-onboarding gaps for
+repos that rely on external contributors), and `ml-scientific` (relaxes
+large-fixture and unified-lint-command gates for research/scientific-computing
+repos, where both are routine rather than neglect):
 
 ```bash
 npm run agentready -- scan . --policy enterprise --fail-on error
+npm run agentready -- scan . --policy oss --fail-on error
+npm run agentready -- scan . --policy ml-scientific --fail-on error
 ```
 
 A non-default policy also prints its severity adjustments (with reasons) to
 human-readable output. See [docs/product/policy-packs.md](docs/product/policy-packs.md)
-for the design and what's still open (`oss`/`ml-scientific` packs, a config-file
-shape).
+for the design and what's still open (a config-file `policyOptions` shape for
+tuning thresholds without a CLI flag on every invocation).
 
 ### Diff (PR readiness)
 
@@ -122,6 +148,15 @@ npm run agentready -- batch --root ~/repos --min-score 70   # gate on any repo b
 One repo failing to scan never aborts the batch; it's reported per-repo
 instead. `--fail-on-scan-error` (default on; pass `--no-fail-on-scan-error`
 to disable) and `--min-score` gate the exit code.
+
+`batch` is deliberately local-only: it scans repositories already present on
+disk rather than a GitHub organization directly. Auto-discovering and cloning
+every repo in an org would mean AgentReady itself makes network calls and
+holds a GitHub credential, breaking the no-external-service guarantee every
+other command relies on. Clone (or `git clone --depth 1`) the org's repos
+yourself — a CI job, `gh repo list <org> --limit 1000 --json name -q '.[].name' | xargs -I{} gh repo clone <org>/{}`
+(`--limit` matters: `gh repo list` defaults to 30 results), or an existing
+script all work — into one directory and point `--root` at it.
 
 ### Explain a finding
 
@@ -295,13 +330,28 @@ The deterministic gates run first and are unaffected; augmented-score gating is
 opt-in via `analyze-min-score`. Without a provider, `analyze` runs
 deterministic-only.
 
-### Policy direction
-
-Policy packs are planned for v0.3 so the core scanner can stay broad and descriptive while teams tune severity for OSS, enterprise rollout, or scientific/ML repositories. See [docs/product/policy-packs.md](docs/product/policy-packs.md).
-
 ### Evaluation / benchmarks
 
-AgentReady should earn trust by comparing readiness findings against real agent friction. The initial benchmark plan is in [docs/product/evaluation.md](docs/product/evaluation.md).
+AgentReady should earn trust by comparing readiness findings against real agent
+friction, not just by existing. Two separate evaluation efforts back that up:
+
+- **The optional LLM analyze layer has its own offline eval harness.**
+  `npm run agentready:eval` (`bin/agentready-eval.ts`) runs the real analyzer
+  pipeline over a labeled gold corpus of canned model responses and reports
+  precision/recall/F1, a confusion matrix, and confidence calibration — no live
+  model call required. `analyze-corpus.test.ts` enforces a floor in CI, so a
+  regression in hallucination guards, score folding, or id drift fails the
+  build before it ships. The same harness can score a live model in a one-off
+  recording run.
+- **The deterministic core is dogfooded against real repositories.** Every
+  release is rescanned against a small corpus of real OSS/scientific
+  repositories (see `dev/REAL-REPO-EVAL.md` and the "Post-dogfood hardening
+  plan" in `dev/BACKLOG.md`) to catch false positives before they reach users —
+  this drove concrete detector fixes (e.g. a Python `Copyright` comment no
+  longer implies `pyright` type-check coverage). The public benchmark plan
+  comparing readiness findings against real agent task friction is in
+  [docs/product/evaluation.md](docs/product/evaluation.md); `npm run
+  agentready:benchmark` automates the scan half of that corpus today.
 
 ### Configuration
 

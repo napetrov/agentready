@@ -74,7 +74,7 @@ describe('local readiness', () => {
     expect(report.instructions.map(surface => surface.path)).toContain('AGENTS.md')
     expect(report.reportContract).toEqual({
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions'],
+      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'],
     })
     expect(report.repositoryEvidence?.documentSurfaces).toEqual(expect.arrayContaining([
       expect.objectContaining({

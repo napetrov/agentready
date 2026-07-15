@@ -83,6 +83,98 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-15 (oss/ml-scientific policy packs, instruction contradictions, CODEOWNERS coverage gaps)
+- **DELIVERED `oss` AND `ml-scientific` POLICY PACKS**: implemented per the
+  existing spec in `docs/product/policy-packs.md`, following `enterprise`'s
+  escalation model (`lib/repo-readiness/checks/policy-packs.ts`). `oss`
+  escalates stale command references and contribution-onboarding gaps;
+  `ml-scientific` de-escalates warning-level `files.large` and
+  `commands.lint.missing` to `info` (error-level `files.large` stays
+  gateable — see `Escalation.from`).
+- **ADDED DETERMINISTIC INSTRUCTION-FILE CONTRADICTION DETECTION**:
+  `detectInstructionContradictions` (`lib/repo-readiness/detectors/
+  instruction-contradictions.ts`) flags root/legacy always-active
+  instruction files that each exclusively reference a different single
+  package manager, as `instructions.contradiction.package-manager`
+  (warning). Scoped to files sharing an instruction-surface ecosystem (no
+  false positive between e.g. `AGENTS.md` and `.claude/CLAUDE.md`, which no
+  single agent loads together) and negation-aware (a prohibition like
+  "never run npm install" isn't treated as endorsing npm).
+- **ADDED CODEOWNERS COVERAGE-GAP DETECTION**: `detectCodeownersCoverageGaps`
+  (`lib/repo-readiness/detectors/governance.ts`) flags top-level directories
+  with sustained recent commit activity (local git history only, bounded,
+  no network calls) that no CODEOWNERS pattern covers, as
+  `docs.codeowners.coverage-gap` (info, one finding per directory for diff
+  fidelity). Went through many rounds of automated-review hardening on this
+  PR: per-commit (not per-file-line) activity counting; per-file (not
+  per-directory-placeholder) pattern matching; symlink-safe bounded reads up
+  to GitHub's real 3 MiB CODEOWNERS limit (oversized files fall through to
+  "no effective rules", matching GitHub's real all-or-nothing load
+  behavior); `.github/` > root > `docs/` file precedence (matches GitHub's
+  documented search order); ignore-filtered scan-inventory awareness;
+  ownerless-line and inline-comment-aware owner-token validation; explicit
+  last-match-wins semantics (replacing a single combined `ignore()` matcher,
+  which can't correctly model a later ownerless pattern overriding an
+  earlier broader owned one — verified against GitHub's own documented
+  example) instead of relying on gitignore-style negation, which CODEOWNERS
+  doesn't support as input syntax and which has its own re-inclusion
+  limitations `ignore()` doesn't work around; skips `[ ]` character-range
+  patterns too (unsupported CODEOWNERS syntax GitHub also skips the whole
+  line for, but which `ignore()` would otherwise match literally).
+- **RESTRICTED THE `commands.lint.missing` DE-ESCALATION TO WARNING-LEVEL
+  FINDINGS**: matches the existing `files.large` guard (`Escalation.from`) —
+  an `errorOnWarnings`-promoted `commands.lint.missing` finding is now left
+  gateable under `--fail-on error` instead of the `ml-scientific` pack
+  silently undoing that strict-mode escalation.
+- **FIXED TWO MORE CODEOWNERS/INSTRUCTION-CONTRADICTION EDGE CASES**: a
+  CODEOWNERS line with an invalid placeholder owner (e.g. `/src/ TODO`) is
+  now distinguished from a truly ownerless line (zero tokens after the
+  pattern) — GitHub skips the invalid line entirely rather than treating it
+  as an intentional override, so a broader owned pattern above it stays in
+  effect. The package-manager negation-cue regex in
+  `instruction-contradictions.ts` also now catches bare "not" (e.g. "Use
+  pnpm, not npm install"), not just "do/does/should/will not".
+- **DOCUMENTED THE GITHUB-ORG-API BATCH SCANNING NON-GOAL**: `batch --root`
+  stays local-only by design (README, `docs/product/features.md`'s
+  Non-Goals section, `dev/BACKLOG.md`) — auto-discovering/cloning an org's
+  repos would require AgentReady itself to hold a GitHub credential and make
+  network calls, breaking the no-external-service guarantee every other
+  command relies on.
+- **README DISCOVERABILITY PASS**: added a "Design guarantees" section and
+  expanded "Evaluation / benchmarks" so four already-shipped trust
+  properties (MCP host-delegated analyze, versioned JSON Schema contracts,
+  worktree-isolated `diff`, the offline LLM-layer eval harness) are easy to
+  find.
+- **ENFORCED CASE-SENSITIVE CODEOWNERS MATCHING**: GitHub's file lookup and
+  pattern evaluation are backed by git (case-sensitive), but both
+  `CODEOWNERS_PATTERNS_BY_PRECEDENCE` (used `/i`) and the per-pattern
+  `ignore()` matcher (defaults to `ignorecase: true`) were case-insensitive —
+  a `codeowners`/`CodeOwners` filename or a `/Src/` pattern would wrongly be
+  recognized/match. Fixed both (`governance.ts`); also required *every*
+  trailing token on a CODEOWNERS line to be a plausible owner, not just one
+  (`/src/ @team TODO` is invalid syntax GitHub skips as a whole, same as
+  `/src/ TODO`).
+- **FILTERED DIRECTORY ACTIVITY THROUGH THE SCAN INVENTORY PER FILE**:
+  `detectCodeownersCoverageGaps` previously filtered ignored/deleted paths
+  out only at the top-level-directory granularity; a directory with scanned
+  files elsewhere but whose only *recent commits* touched ignored files could
+  still be wrongly flagged. Now filtered per file before counting activity or
+  testing coverage.
+- **CAUGHT TWO MORE PACKAGE-MANAGER CONTRAST PHRASES**: the
+  `instruction-contradictions.ts` negation-cue regex now also recognizes
+  "instead of" and "rather than" (e.g. "Use pnpm instead of npm install"),
+  not just "not"/"never"/etc.
+- **FIXED THE INVALID `gh repo list <org> --clone` EXAMPLE**: that flag
+  doesn't exist; replaced with `gh repo list` piped into `gh repo clone`
+  across README, CHANGELOG, `dev/BACKLOG.md`, and
+  `docs/product/features.md`.
+- **Verification** (re-run after every fix round in this entry):
+  `npm run type-check`, `npm run lint`, `npm run test:coverage` (all suites
+  green, 80% coverage gate met — 628 tests as of the last round), `npm run
+  build`, `npm run agentready:schemas -- --check`, `npm run build:action`,
+  `npm run agentready:action-smoke` (passed). `npm run agentready:eval` was
+  not re-run since no change in this entry touches the LLM analyze layer.
+
 ### 2026-06-08 (fuzz corpus fixture false positive)
 - **DOWNGRADED FUZZ CORPUS SEED FILES**: Extensionless files under test corpus
   directories, such as Envoy compressor fuzz seeds, are treated as intentional

@@ -49,15 +49,16 @@ agentready
     [x] ci-workflows
     [x] command-surfaces   (Node, Make, CMake, Bazel, Go, Rust, Python)
     [x] command-references (stale npm/yarn/pnpm/bun script, Makefile target, and package-manager mentions in docs/instructions)
+    [x] instruction-contradictions (root-scope, always-active instruction files that reference different package managers)
     [x] docs
     [x] capability-surfaces (MCP, skills, hooks, plugins, LSP; each classified by blast-radius risk tier)
     [x] safety-signals     (dangerous package scripts, deploy/publish)
-    [x] governance         (CODEOWNERS / PR-template presence; not git-history-based ownership inference)
+    [x] governance         (CODEOWNERS / PR-template presence, plus a narrow git-history CODEOWNERS-coverage-gap signal; not full blame-based ownership inference)
     [ ] risk-signals
   checks/
     [x] built-in-rules
     [ ] configurable-rule-runner
-    [x] policy-packs       (default no-op + enterprise; oss/ml-scientific remain candidates)
+    [x] policy-packs       (default no-op + enterprise + oss + ml-scientific)
   reporters/
     [x] console
     [x] json
