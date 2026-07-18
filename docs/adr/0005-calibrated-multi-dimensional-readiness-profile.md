@@ -480,6 +480,21 @@ Secondary score: 74/100 (experimental, uncalibrated)
   (b), keeping the fields internal until stable — was rejected because the
   profile's explainability goal wants per-finding confidence/scope *visible* so a
   reader can see why a finding was weighted; hiding them defeats that.
+- **The marker must travel with the findings, in every report shape.**
+  `ReadinessFinding` is serialized in more than the scan report: the diff report
+  emits `newFindings`/`resolvedFindings`/`regressions` and the portfolio report
+  emits `repos[].topFindings` (`lib/repo-readiness/core/types.ts`), and neither
+  `ReadinessDiffReport` nor `PortfolioReport` carries a `reportContract` today.
+  So the rule is: **any report shape that serializes findings carrying
+  `confidence`/`scope` must advertise them the same way** — add an
+  `experimentalFindingFields` advertisement to `ReadinessDiffReport` and
+  `PortfolioReport` (via a `reportContract`, or a standalone field), *or* strip
+  those experimental keys from findings before serializing them in that shape.
+  What is not allowed is emitting `findings[].confidence`/`scope` in `agentready
+  diff`/`batch --format json` output with no adjacent marker — that would break
+  the "never emitted unadvertised" invariant. This ADR requires the advertisement
+  path for the diff report (whose regression reasoning benefits from confidence)
+  and leaves strip-vs-advertise to the implementer for the portfolio summary.
 - **`ScoreWeights` is not a schema field.** It is an internal parameter of
   `calculateScore` (and a future policy-pack input), not part of
   `LocalReadinessReport`, `reportContract.experimentalFields`, or the config
@@ -557,9 +572,12 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
 - Assert the updated **strict** report and finding schemas *accept* the new
   optional keys and still *reject* genuinely unknown keys, so
   `__tests__/schemas.test.ts` passes rather than tripping on the additions.
-- Assert that when a report emits `findings[].confidence`/`scope`,
-  `reportContract.experimentalFindingFields` advertises those keys, so the
-  nested experimental fields are never emitted without their opt-in marker.
+- Assert that when **any** report shape emits findings carrying
+  `confidence`/`scope` — scan `findings`, diff
+  `newFindings`/`resolvedFindings`/`regressions`, portfolio `topFindings` — that
+  shape either advertises the keys via `experimentalFindingFields` or strips
+  them, so the nested experimental fields are never emitted without an adjacent
+  opt-in marker in `agentready scan`/`diff`/`batch --format json`.
 - Assert `calculateScore` still takes only the frozen `DEFAULT_WEIGHTS` from any
   shipped policy pack (no pack supplies a weight table until the policy-plane
   ADR adds `PolicyPack.weights`), so every current pack affects the score
