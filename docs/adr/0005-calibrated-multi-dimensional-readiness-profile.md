@@ -185,10 +185,12 @@ share a verdict scale.
   contradicted the `readinessProfile.readiness === autonomyEnvelope` invariant
   below.
 - **Risk is a tier** and **reuses the existing `CapabilityRiskTier`
-  (`low | medium | high`)** verbatim, plus `unknown` for the locally-unverifiable
-  case, so a repo with only `medium`-risk surfaces (the value the detector emits
-  for settings files that *could* define hooks but don't appear to) is
-  represented faithfully rather than coerced to `low`/`high`.
+  (`low | medium | high`)** verbatim, plus `unknown` for the narrow case a tier
+  cannot be assigned at all (defined below — **not** the same as unverifiable
+  tool *scope*, which is deliberately `high`), so a repo with only `medium`-risk
+  surfaces (the value the detector emits for settings files that *could* define
+  hooks but don't appear to) is represented faithfully rather than coerced to
+  `low`/`high`.
 
 ```ts
 /** CapabilityRiskTier is the existing 'low' | 'medium' | 'high' from types.ts. */
@@ -243,13 +245,26 @@ ADR, item 10); this ADR only requires that the reference be stable and derivable
 **No capability surfaces is a verified `low`, not `unknown`.** When
 `detectCapabilitySurfaces` returns `[]` (a common, locally-verified "nothing
 exposed" case), the risk axis is `{ verdict: 'low', confidence: 'high',
-evidenceRefs: [], explanation: 'no capability surfaces detected' }`. This is
-distinct from `unknown`, which is reserved for what the local scan genuinely
-*cannot* determine (e.g. a config that references an MCP server whose real tool
-set is not knowable offline). Empty `evidenceRefs` here is correct — the
-confirmed *absence* of surfaces is the evidence, carried in `explanation` — so a
-no-capability repo is never mislabeled `unknown` and never needs a fabricated
-reference.
+evidenceRefs: [], explanation: 'no capability surfaces detected' }`. Empty
+`evidenceRefs` here is correct — the confirmed *absence* of surfaces is the
+evidence, carried in `explanation` — so a no-capability repo is never mislabeled
+`unknown` and never needs a fabricated reference.
+
+**Unknown tool scope is `high`, never `unknown`.** An `.mcp.json` (or any MCP
+config) must **keep** its `high` verdict in the profile. The detector already
+rates every MCP config `riskTier: 'high'` *because* the server's real tool set
+is only visible over the protocol at runtime, not in its launch config
+(`lib/repo-readiness/detectors/capability-surfaces.ts`), and `buildFindings`
+emits `safety.capability.high-risk` for it. Unverifiable *scope* is precisely
+why the surface is high blast-radius — it is **not** an `unknown` verdict.
+Downgrading such a repo to `unknown` in the new headline profile would be a
+regression against the current signal, so `unknown` is reserved **only** for a
+surface the scan cannot even assign a tier to — which, today, does not happen for
+statically path-detected surfaces (every one gets a deterministic blast-radius
+tier, and absence is verified `low`). `unknown` is therefore a forward-looking
+slot for future modes that *start but cannot complete* an assessment (e.g. the
+opt-in sandboxed MCP inspection in item 9, or a platform enricher), not for any
+config AgentReady detects statically.
 
 ```ts
 export interface CoverageReport {
@@ -561,6 +576,10 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
   absence `explanation`, and is **not** reported as `unknown`; assert a
   `medium`/`low` verdict backed by real surfaces populates `evidenceRefs` with
   derivable `capability:<path>:<kind>` keys.
+- Assert a repo with an `.mcp.json` (or other MCP config) keeps `risk.verdict`
+  `high` in the profile — never `unknown` — matching the detector's existing
+  `riskTier: 'high'` and its `safety.capability.high-risk` finding, so the new
+  headline profile does not regress the current high-blast-radius signal.
 - Assert `coverage.ratio` rises when more applicable surfaces are assessed and
   is unaffected by inapplicable surfaces (legibility is not penalized).
 - Assert `coverage.ratio` is `1` (never `NaN`/`Infinity`/`null`) when
