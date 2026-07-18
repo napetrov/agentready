@@ -91,9 +91,10 @@ describe('DEFAULT_WEIGHTS', () => {
     expect(Object.isFrozen(DEFAULT_WEIGHTS.severity)).toBe(true)
     expect(Object.isFrozen(DEFAULT_WEIGHTS.confidence)).toBe(true)
     expect(Object.isFrozen(DEFAULT_WEIGHTS.scope)).toBe(true)
+    // Runtime mutation of the frozen object throws in strict mode (ts-jest
+    // compiles modules as strict), so the shared default cannot be changed.
     expect(() => {
-      // @ts-expect-error intentional mutation attempt on a frozen object
-      DEFAULT_WEIGHTS.severity.error = 1
+      ;(DEFAULT_WEIGHTS.severity as Record<string, number>).error = 1
     }).toThrow()
     expect(DEFAULT_WEIGHTS.severity.error).toBe(18)
   })
