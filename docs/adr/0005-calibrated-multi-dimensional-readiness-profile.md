@@ -112,26 +112,35 @@ Four concrete rules follow from this decision:
 
 ### New evidence inputs on findings (additive, optional)
 
-`ReadinessFinding` already carries `confidence` in the candidate model. Add an
-explicit, optional operational scope so scoring can distinguish a root-level
-break from a leaf-directory nit:
+The **shipped** `ReadinessFinding` (`lib/repo-readiness/core/types.ts`) carries
+only `id`, `title`, `severity`, `path?`, and `recommendation`. It has **no
+`confidence` field** — confidence lives on evidence claims (`EvidenceClaim`,
+`EvidenceConfidence`) and only appears on the *aspirational* candidate `Finding`
+model in `docs/product/architecture.md`, not on the real type. So both fields
+scoring needs are **new, optional, additive** fields on `ReadinessFinding`;
+neither is "already present":
 
 ```ts
 export type FindingScope = 'root' | 'package' | 'path' | 'advisory'
 
 export interface ReadinessFinding {
-  // ...existing fields...
-  confidence: EvidenceConfidence   // already present; scoring must now read it
-  scope?: FindingScope             // new, optional; defaults to 'package'
+  // existing fields unchanged: id, title, severity, path?, recommendation
+  confidence?: EvidenceConfidence  // NEW, optional; defaults to 'high'
+  scope?: FindingScope             // NEW, optional; defaults to 'package'
 }
 ```
 
-- `scope` is **optional** and derived deterministically by each rule (a
-  root-scope instruction contradiction is `root`; a large file under
-  `examples/` is `path`). Absent `scope` defaults to `package` so no existing
-  rule changes behavior on day one.
-- No new detector is required; scope is a property of where the evidence lives,
-  which detectors already know.
+- Both fields are **optional**. `confidence` propagates the confidence of the
+  evidence a rule fired on (rules that fire on high-confidence facts may omit
+  it); `scope` is derived deterministically by each rule (a root-scope
+  instruction contradiction is `root`; a large file under `examples/` is
+  `path`).
+- **Compatibility:** because both are optional and default to the neutral values
+  (`confidence` → `high`, `scope` → `package`) that make every weight multiplier
+  `1`, adding them changes no existing finding's behavior and no existing score.
+  Rules opt in by populating them.
+- No new detector is required; both are properties of evidence detectors already
+  hold (its confidence, and where it lives).
 
 ### The readiness profile structure
 
@@ -273,8 +282,11 @@ Secondary score: 74/100 (experimental, uncalibrated)
 - **Score:** unchanged by default (`DEFAULT_WEIGHTS` reproduces current output).
   Existing `--fail-on`, diff-regression, and Action `minimum-score` gates keep
   working with identical numbers.
-- **Schema:** `readinessProfile`, `scope`, and `ScoreWeights` are **additive**.
-  `readinessProfile` is registered as a new
+- **Schema:** the new `ReadinessFinding.confidence` and
+  `ReadinessFinding.scope` fields (both optional), `readinessProfile`, and
+  `ScoreWeights` are all **additive**. The two optional finding fields default
+  to neutral values and so leave every existing finding's shape and score
+  unchanged; `readinessProfile` is registered as a new
   `LocalReadinessExperimentalField` alongside `dimensions` and
   `autonomyEnvelope`; `schemaVersion` stays `local-readiness/v2` because nothing
   existing changes shape or meaning.
