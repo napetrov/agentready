@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'fs'
+import { closeSync, existsSync, lstatSync, openSync, readFileSync, readSync } from 'fs'
 import path from 'path'
 import type { HookExecutionRiskEvidence, SafetyCategory, SafetySignalEvidence } from '../core/types'
 
@@ -159,6 +159,35 @@ export const detectSafetySignals = (root: string, filePaths: string[]): SafetySi
 // name* and *command text*, not just whether the file configures some hook.
 const HOOK_SETTINGS_PATHS = ['.claude/settings.json', '.claude/settings.local.json']
 
+const MAX_HOOK_SETTINGS_BYTES = 1_000_000
+
+// Same bounded, symlink-averse read as `command-references.ts`'s `readText`/
+// `governance.ts`'s `readBounded` -- a settings file is untrusted repository
+// content like any other, so an oversized or symlinked one must not be read
+// into memory in full before the JSON.parse (which would itself throw on a
+// truncated read, but only after paying for it). 1MB is generous headroom
+// over any real Claude Code settings file while still bounding the worst
+// case.
+const readBoundedSettings = (absolutePath: string): string | undefined => {
+  if (!existsSync(absolutePath)) return undefined
+  try {
+    if (lstatSync(absolutePath).isSymbolicLink()) return undefined
+  } catch {
+    return undefined
+  }
+  let fd: number | undefined
+  try {
+    fd = openSync(absolutePath, 'r')
+    const buffer = Buffer.alloc(MAX_HOOK_SETTINGS_BYTES)
+    const bytesRead = readSync(fd, buffer, 0, MAX_HOOK_SETTINGS_BYTES, 0)
+    return buffer.toString('utf8', 0, bytesRead)
+  } catch {
+    return undefined
+  } finally {
+    if (fd !== undefined) closeSync(fd)
+  }
+}
+
 // Event names that fire without any explicit user action within the session
 // -- session lifecycle events, not ones triggered by the user actively
 // prompting or the agent actively calling a tool. `SessionStart` is the
@@ -172,23 +201,56 @@ const AUTOMATIC_HOOK_EVENTS = new Set(['SessionStart', 'SessionEnd', 'PreCompact
 // scripts) rather than every command a hook might run -- that is the specific
 // mechanism by which a hook can execute code the checked-out branch controls
 // (preinstall/postinstall/prepare scripts), not a general "this hook runs
-// some command" signal `safety.capability.high-risk` already covers. Also
-// matches npm/pnpm/bun's documented `i` alias for `install` (yarn has no such
-// alias) -- a hook author is at least as likely to write the short form as
-// the long one. Not exhaustive of every npm typo-tolerant install alias
-// (`in`, `ins`, `inst`, ...); `i` is the one actually in common use.
-const HOOK_INSTALL_COMMAND_PATTERN = /\b(?:npm|yarn|pnpm|bun)\s+(?:install|ci)\b|\b(?:npm|pnpm|bun)\s+i\b/i
+// some command" signal `safety.capability.high-risk` already covers. `install`
+// applies to all four managers; `ci` is a real install command only for npm
+// and pnpm (https://pnpm.io/cli/ci) -- `yarn ci`/`bun ci` are not recognized
+// install forms and would instead run (or fail to find) a script literally
+// named "ci", not install dependencies. Also matches npm/pnpm/bun's
+// documented `i` alias for `install` (yarn has no such alias) -- a hook
+// author is at least as likely to write the short form as the long one. Not
+// exhaustive of every npm typo-tolerant install alias (`in`, `ins`, `inst`,
+// ...); `i` is the one actually in common use.
+const HOOK_INSTALL_COMMAND_PATTERN = /\b(?:npm|yarn|pnpm|bun)\s+install\b|\b(?:npm|pnpm)\s+ci\b|\b(?:npm|pnpm|bun)\s+i\b/i
 
 // npm/yarn/pnpm/bun all document the same `--ignore-scripts` flag, and it
 // does what the name says: it skips exactly the lifecycle scripts
 // (preinstall/postinstall/prepare) that make this composite risk real. An
 // install command that explicitly disables them is not the branch-controlled
-// code-execution risk this detector exists to catch. The negative lookahead
-// excludes an explicit `=false`/`=0` negation (e.g. `--ignore-scripts=false`,
-// which npm resolves to *not* ignoring scripts) -- without it, negating the
-// flag would still read as "scripts are ignored" and wrongly suppress a real
-// risk.
-const IGNORE_SCRIPTS_FLAG_PATTERN = /--ignore-scripts\b(?!=(?:false|0)\b)/
+// code-execution risk this detector exists to catch. Matches (and captures)
+// every documented negation form -- `--no-ignore-scripts` (npm's standard
+// `--no-<flag>` boolean negation), `--ignore-scripts=false`/`=0`, and the
+// space-separated `--ignore-scripts false`/`0` -- so any of them correctly
+// reads as "scripts are NOT ignored" (a real risk, not suppressed) rather
+// than only trusting the bare/`=true` forms.
+const IGNORE_SCRIPTS_FLAG_PATTERN = /--(no-)?ignore-scripts\b(?:[= ]+(true|false|1|0)\b)?/i
+
+/**
+ * Whether `command` explicitly disables install lifecycle scripts (skipping
+ * preinstall/postinstall/prepare), given a `--ignore-scripts` flag in any of
+ * its documented forms. An explicit value (`=false`, ` false`, `=0`, ` 0`)
+ * always wins over a `--no-` prefix -- that combination isn't real npm usage,
+ * but if it appears, trusting the explicit value is the safer read.
+ */
+const commandIgnoresLifecycleScripts = (command: string): boolean => {
+  const match = command.match(IGNORE_SCRIPTS_FLAG_PATTERN)
+  if (!match) return false
+  const explicitValue = match[2]?.toLowerCase()
+  if (explicitValue !== undefined) return explicitValue === 'true' || explicitValue === '1'
+  return !match[1]
+}
+
+// A hook command is shell text, not a single invocation -- `npm install
+// --ignore-scripts && pnpm install` chains two independent commands, and
+// evaluating install-pattern/--ignore-scripts matching against the whole
+// string would let the first (safe) install's flag be misread as covering
+// the second (unsafe) one, or vice versa. Split on the standard sequential
+// shell separators (&&, ||, ;, newline -- deliberately not `|`, which pipes
+// data between commands rather than sequencing independent ones) and
+// evaluate each segment on its own.
+const COMMAND_CHAIN_SPLIT_PATTERN = /&&|\|\||;|\n/
+
+const splitCommandChain = (command: string): string[] =>
+  command.split(COMMAND_CHAIN_SPLIT_PATTERN).map(segment => segment.trim()).filter(segment => segment.length > 0)
 
 interface HookCommandEntry {
   event: string
@@ -229,17 +291,26 @@ const extractHookCommands = (hooksConfig: unknown): HookCommandEntry[] => {
  * hook event that fires automatically, with no explicit user action, whose
  * command invokes a package-manager install/lifecycle command. `filePaths` is
  * the ignore-aware scan inventory, so a settings file excluded from the scan
- * reports nothing here either.
+ * reports nothing here either. Each shell-chained command segment (see
+ * `splitCommandChain`) is evaluated independently, so `npm install
+ * --ignore-scripts && pnpm install` still reports the second, unsuppressed
+ * install. Deduplicated by (path, event, matched segment) -- two matcher
+ * groups that happen to configure the identical command must not double-
+ * count the same risk as two findings.
  */
 export const detectHookExecutionRisks = (root: string, filePaths: string[]): HookExecutionRiskEvidence[] => {
   const evidence: HookExecutionRiskEvidence[] = []
+  const seen = new Set<string>()
 
   for (const settingsPath of HOOK_SETTINGS_PATHS) {
     if (!filePaths.includes(settingsPath)) continue
 
+    const settingsText = readBoundedSettings(path.join(root, settingsPath))
+    if (settingsText === undefined) continue
+
     let settings: unknown
     try {
-      settings = JSON.parse(readFileSync(path.join(root, settingsPath), 'utf8'))
+      settings = JSON.parse(settingsText)
     } catch {
       continue
     }
@@ -247,9 +318,14 @@ export const detectHookExecutionRisks = (root: string, filePaths: string[]): Hoo
     const hooksConfig = (settings as { hooks?: unknown } | null)?.hooks
     for (const { event, command } of extractHookCommands(hooksConfig)) {
       if (!AUTOMATIC_HOOK_EVENTS.has(event)) continue
-      if (!HOOK_INSTALL_COMMAND_PATTERN.test(command)) continue
-      if (IGNORE_SCRIPTS_FLAG_PATTERN.test(command)) continue
-      evidence.push({ path: settingsPath, event, command })
+      for (const segment of splitCommandChain(command)) {
+        if (!HOOK_INSTALL_COMMAND_PATTERN.test(segment)) continue
+        if (commandIgnoresLifecycleScripts(segment)) continue
+        const key = `${settingsPath} ${event} ${segment}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        evidence.push({ path: settingsPath, event, command: segment })
+      }
     }
   }
 

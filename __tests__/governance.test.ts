@@ -534,13 +534,33 @@ describe('detectProtectedPathCoverage (units)', () => {
     writeFileSync(abs, content)
   }
 
-  it('is undefined when there is no CODEOWNERS path', () => {
-    expect(detectProtectedPathCoverage(root, undefined, ['.github/workflows/ci.yml'])).toBeUndefined()
+  it('flags a protected path as an uncovered gap when there is no CODEOWNERS file at all', () => {
+    // The worst case (zero ownership anywhere) must still be reported, not
+    // silently skipped -- especially since docs.codeowners.missing only
+    // fires for non-trivial (>20 source file) repos, so a small repo with
+    // just a workflow file and no CODEOWNERS would otherwise get no
+    // governance signal about it at all.
+    const result = detectProtectedPathCoverage(root, undefined, ['.github/workflows/ci.yml'])
+    expect(result).toEqual([{ pattern: '.github/**', covered: false, owners: [], singleOwnerRisk: false }])
+  })
+
+  it('is undefined when there is no CODEOWNERS file and no protected path matches a scanned file', () => {
+    expect(detectProtectedPathCoverage(root, undefined, ['src/index.ts'])).toBeUndefined()
   })
 
   it('is undefined when no protected-path glob matches a scanned file', () => {
     write('CODEOWNERS', '* @someone\n')
     expect(detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', 'src/index.ts'])).toBeUndefined()
+  })
+
+  it('reports a gap when only some files under a protected pattern are covered (one owned file must not mask an uncovered sibling)', () => {
+    write('CODEOWNERS', '/.github/workflows/ @platform\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', [
+      'CODEOWNERS',
+      '.github/workflows/ci.yml',
+      '.github/dependabot.yml',
+    ])
+    expect(result).toEqual([{ pattern: '.github/**', covered: false, owners: [], singleOwnerRisk: false }])
   })
 
   it('flags a protected path with no CODEOWNERS coverage at all', () => {
@@ -619,6 +639,18 @@ describe('governance protected-path findings (integration)', () => {
     const riskFinding = report.findings.find(f => f.id === 'governance.codeowners.single-owner-risk:.claude/**')
     expect(riskFinding).toMatchObject({ severity: 'info', path: '.claude/**' })
     expect(riskFinding?.recommendation).toContain('@solo-owner')
+  })
+
+  it('emits a protected-path-gap finding for a trivially-sized repo with no CODEOWNERS at all', () => {
+    // docs.codeowners.missing only fires for non-trivial (>20 source file)
+    // repos, so this small repo would otherwise get no governance signal
+    // about its uncovered .github/ workflow at all.
+    write('README.md', '# demo\n')
+    write('.github/workflows/deploy.yml', 'name: deploy\n')
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const ids = report.findings.map(f => f.id)
+    expect(ids).not.toContain('docs.codeowners.missing')
+    expect(ids).toContain('governance.codeowners.protected-path-gap:.github/**')
   })
 
   it('emits neither finding when a protected path is team-owned', () => {

@@ -206,12 +206,47 @@ describe('hook-execution-risk detector', () => {
     try {
       writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'pnpm install --frozen-lockfile && pnpm prisma generate'))
       const risks = detectHookExecutionRisks(root, ['.claude/settings.json'])
+      // Only the install segment is reported -- "pnpm prisma generate" is a
+      // separate chained command that doesn't match the install pattern.
       expect(risks).toEqual([
         {
           path: '.claude/settings.json',
           event: 'SessionStart',
-          command: 'pnpm install --frozen-lockfile && pnpm prisma generate',
+          command: 'pnpm install --frozen-lockfile',
         },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('evaluates each chained command segment independently: a safe first install does not mask an unsafe second one', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm install --ignore-scripts && pnpm install'))
+      const risks = detectHookExecutionRisks(root, ['.claude/settings.json'])
+      expect(risks).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'pnpm install' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('deduplicates identical (path, event, command) evidence from separate matcher groups', () => {
+    const root = createTempRepo()
+    try {
+      const settings = JSON.stringify({
+        hooks: {
+          SessionStart: [
+            { matcher: '', hooks: [{ type: 'command', command: 'npm install' }] },
+            { matcher: '', hooks: [{ type: 'command', command: 'npm install' }] },
+          ],
+        },
+      })
+      writeRepoFile(root, '.claude/settings.json', settings)
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm install' },
       ])
     } finally {
       rmSync(root, { recursive: true, force: true })

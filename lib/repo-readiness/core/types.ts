@@ -189,9 +189,9 @@ export interface InstructionContradictionEvidence {
 export interface ProtectedPathCoverageEvidence {
   /** The protected-path glob that matched at least one file the scan tracks. */
   pattern: string
-  /** Whether any matched file has a CODEOWNERS owner. */
+  /** Whether *every* file the scan tracks under this pattern has a CODEOWNERS owner — one owned file cannot mask an uncovered sibling. */
   covered: boolean
-  /** Distinct owner tokens found across matched, covered files (sorted), when `covered`. */
+  /** Distinct owner tokens found across matched files (sorted); empty unless `covered`, since a partial owner list for an uncovered path would be misleading. */
   owners: string[]
   /**
    * `covered` by exactly one non-team owner token, with no documented backup.

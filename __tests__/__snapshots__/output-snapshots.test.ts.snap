@@ -85,7 +85,22 @@ exports[`diff output snapshots summary and markdown for a regression between two
     },
     "commandReferences": [],
     "instructionContradictions": [],
-    "governance": {},
+    "governance": {
+      "protectedPathCoverage": [
+        {
+          "pattern": ".github/**",
+          "covered": false,
+          "owners": [],
+          "singleOwnerRisk": false
+        },
+        {
+          "pattern": "AGENTS.md",
+          "covered": false,
+          "owners": [],
+          "singleOwnerRisk": false
+        }
+      ]
+    },
     "ci": {
       "workflowFiles": [
         ".github/workflows/ci.yml"
@@ -129,7 +144,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "safetySignals": [],
     "hookExecutionRisks": [],
     "summary": {
-      "score": 98,
+      "score": 94,
       "totalFiles": 4,
       "totalBytes": 75,
       "sourceFiles": 0,
@@ -375,10 +390,10 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "dimensions": [
       {
         "category": "docs",
-        "score": 98,
-        "findingCount": 1,
+        "score": 94,
+        "findingCount": 3,
         "bySeverity": {
-          "info": 1,
+          "info": 3,
           "warning": 0,
           "error": 0
         }
@@ -493,6 +508,20 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "title": "No pull-request template detected",
         "severity": "info",
         "recommendation": "Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks)."
+      },
+      {
+        "id": "governance.codeowners.protected-path-gap:.github/**",
+        "title": "CODEOWNERS does not cover a structurally high-risk path",
+        "severity": "info",
+        "path": ".github/**",
+        "recommendation": "Add a CODEOWNERS pattern covering \\".github/**\\" — this path is treated as high-risk (agent/CI config, auth, migrations, deploy, ...) regardless of how often it changes."
+      },
+      {
+        "id": "governance.codeowners.protected-path-gap:AGENTS.md",
+        "title": "CODEOWNERS does not cover a structurally high-risk path",
+        "severity": "info",
+        "path": "AGENTS.md",
+        "recommendation": "Add a CODEOWNERS pattern covering \\"AGENTS.md\\" — this path is treated as high-risk (agent/CI config, auth, migrations, deploy, ...) regardless of how often it changes."
       }
     ]
   },
@@ -522,7 +551,22 @@ exports[`diff output snapshots summary and markdown for a regression between two
     },
     "commandReferences": [],
     "instructionContradictions": [],
-    "governance": {},
+    "governance": {
+      "protectedPathCoverage": [
+        {
+          "pattern": ".github/**",
+          "covered": false,
+          "owners": [],
+          "singleOwnerRisk": false
+        },
+        {
+          "pattern": "AGENTS.md",
+          "covered": false,
+          "owners": [],
+          "singleOwnerRisk": false
+        }
+      ]
+    },
     "ci": {
       "workflowFiles": [
         ".github/workflows/ci.yml"
@@ -566,7 +610,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "safetySignals": [],
     "hookExecutionRisks": [],
     "summary": {
-      "score": 80,
+      "score": 76,
       "totalFiles": 3,
       "totalBytes": 68,
       "sourceFiles": 0,
@@ -766,10 +810,10 @@ exports[`diff output snapshots summary and markdown for a regression between two
     "dimensions": [
       {
         "category": "docs",
-        "score": 80,
-        "findingCount": 2,
+        "score": 76,
+        "findingCount": 4,
         "bySeverity": {
-          "info": 1,
+          "info": 3,
           "warning": 0,
           "error": 1
         }
@@ -892,6 +936,20 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "title": "Repository has no README",
         "severity": "error",
         "recommendation": "Add a root README with purpose, setup, validation commands, and common agent entrypoints."
+      },
+      {
+        "id": "governance.codeowners.protected-path-gap:.github/**",
+        "title": "CODEOWNERS does not cover a structurally high-risk path",
+        "severity": "info",
+        "path": ".github/**",
+        "recommendation": "Add a CODEOWNERS pattern covering \\".github/**\\" — this path is treated as high-risk (agent/CI config, auth, migrations, deploy, ...) regardless of how often it changes."
+      },
+      {
+        "id": "governance.codeowners.protected-path-gap:AGENTS.md",
+        "title": "CODEOWNERS does not cover a structurally high-risk path",
+        "severity": "info",
+        "path": "AGENTS.md",
+        "recommendation": "Add a CODEOWNERS pattern covering \\"AGENTS.md\\" — this path is treated as high-risk (agent/CI config, auth, migrations, deploy, ...) regardless of how often it changes."
       }
     ]
   },
@@ -1675,7 +1733,26 @@ exports[`scan output snapshots good-repo compact json 1`] = `
   "commandReferences": [],
   "instructionContradictions": [],
   "governance": {
-    "pullRequestTemplatePath": ".github/pull_request_template.md"
+    "codeownersPath": "CODEOWNERS",
+    "pullRequestTemplatePath": ".github/pull_request_template.md",
+    "protectedPathCoverage": [
+      {
+        "pattern": ".github/**",
+        "covered": true,
+        "owners": [
+          "@napetrov/maintainers"
+        ],
+        "singleOwnerRisk": false
+      },
+      {
+        "pattern": "AGENTS.md",
+        "covered": true,
+        "owners": [
+          "@napetrov/maintainers"
+        ],
+        "singleOwnerRisk": false
+      }
+    ]
   },
   "ci": {
     "workflowFiles": [
@@ -1739,8 +1816,8 @@ exports[`scan output snapshots good-repo compact json 1`] = `
   "hookExecutionRisks": [],
   "summary": {
     "score": 100,
-    "totalFiles": 8,
-    "totalBytes": 1045,
+    "totalFiles": 9,
+    "totalBytes": 1069,
     "sourceFiles": 1,
     "testFiles": 1,
     "documentationFiles": 4,
@@ -2577,7 +2654,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
 
 exports[`scan output snapshots good-repo console summary 1`] = `
 "AgentReady score: 100/100
-Files: 8 (1 source, 1 tests, 4 docs)
+Files: 9 (1 source, 1 tests, 4 docs)
 Capabilities: 0, safety signals: 0
 CI: 1 workflow (runs install, lint, type-check, test, build)
 Dimensions: docs 100, commands 100, ci 100, instructions 100, files 100, safety 100
@@ -2589,7 +2666,7 @@ exports[`scan output snapshots good-repo markdown 1`] = `
 "## AgentReady scan
 
 Score: **100/100**
-Files: 8 total, 1 source, 1 tests, 4 docs
+Files: 9 total, 1 source, 1 tests, 4 docs
 Capabilities: 0; safety signals: 0
 CI: 1 workflow — runs install, lint, type-check, test, build
 Findings: 0

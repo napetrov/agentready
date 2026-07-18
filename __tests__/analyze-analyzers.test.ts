@@ -142,7 +142,10 @@ describe('falsePositiveAnalyzer.run', () => {
   })
 
   it('returns [] when there are no path-bearing findings to triage', async () => {
-    root = makeInstructionRepo({ 'AGENTS.md': 'Run npm test.\n' })
+    // CODEOWNERS covers AGENTS.md so governance.codeowners.protected-path-gap
+    // (which carries a `path`) doesn't also fire and break the "no
+    // path-bearing findings" premise this test is isolating.
+    root = makeInstructionRepo({ 'AGENTS.md': 'Run npm test.\n', CODEOWNERS: '* @napetrov/maintainers\n' })
     const report = scanLocalReadiness(root)
     const seen: LlmRequest[] = []
     expect(await falsePositiveAnalyzer.run({ root, report, runner: stubRunner({ assessments: [] }, { seen }) })).toEqual([])

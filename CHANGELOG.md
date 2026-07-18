@@ -65,8 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`reports/evaluation/calibration/napetrov-AIReady.json`), the "human/agent
   judgment" half of the evaluation loop in
   [docs/product/evaluation.md](docs/product/evaluation.md#feedback-classification):
-  every reviewed finding is classified as `true_positive`, `false_negative`,
-  `severity_mismatch`, `policy_mismatch`, or `not_observable_locally`, tagged
+  every reviewed finding is classified as `true_positive`, `false_positive`,
+  `false_negative`, `severity_mismatch`, `policy_mismatch`, or
+  `not_observable_locally`, tagged
   with the agent-workflow stage(s) it affects, and marked with whether an
   AgentReady maintainer independently re-verified it. AIReady is a
   high-readiness repository (extensive agent instructions, sophisticated CI, a

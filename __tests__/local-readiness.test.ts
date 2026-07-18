@@ -47,6 +47,7 @@ describe('local readiness', () => {
     writeRepoFile(root, 'docs/ARCHITECTURE.md', '# Architecture\n')
     writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
     writeRepoFile(root, '.github/pull_request_template.md', '## What changed\n')
+    writeRepoFile(root, 'CODEOWNERS', '* @napetrov/maintainers\n')
     writeRepoFile(root, 'src/index.ts', 'export const value = 1\n')
     writeRepoFile(root, '__tests__/index.test.ts', 'test("value", () => expect(1).toBe(1))\n')
     writeRepoFile(root, 'package.json', JSON.stringify({

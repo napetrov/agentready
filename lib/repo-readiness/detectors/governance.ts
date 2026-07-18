@@ -212,16 +212,28 @@ export const DEFAULT_PROTECTED_PATHS: string[] = [
 /**
  * Checks a fixed set of structurally high-risk paths (see
  * `DEFAULT_PROTECTED_PATHS`) against CODEOWNERS, independent of recent commit
- * activity. For each protected glob that matches at least one file the scan
- * actually tracks, this aggregates ownership across every matched-and-covered
- * file: no matched file covered means a gap; every matched-and-covered file
- * sharing the same single non-team owner token means a single-owner risk
- * (that person is the entire review surface for this path, with no
- * documented backup); anything else (a team owner, a wildcard, or more than
- * one distinct owner) is treated as adequately covered. This is a repo-level
- * signal, not a per-file scanner -- a protected path with both a
- * well-covered subtree and an uncovered one still reports as covered here,
- * since the aggregate found at least one real, non-single owner.
+ * activity. `covered` requires *every* file the scan tracks under a matched
+ * protected glob to have an effective CODEOWNERS owner -- a single owned
+ * file must not mask a genuinely uncovered sibling under the same glob (e.g.
+ * `.github/workflows/*.yml @platform` covering CI but leaving
+ * `.github/dependabot.yml` unowned still leaves `.github/**` a real gap).
+ * When (and only when) every matched file is covered, `singleOwnerRisk` is
+ * true if they all share the same single non-team owner token (that person
+ * is the entire review surface for this path, with no documented backup);
+ * `owners` is likewise only populated when `covered` is true, since a
+ * partial owner list for an uncovered path would be misleading.
+ *
+ * Runs even when `codeownersPath` is `undefined` (no CODEOWNERS file at
+ * all), treating that as zero effective patterns -- every protected glob
+ * that matches a tracked file reports as an uncovered gap. Deliberately NOT
+ * folded into "nothing to check" the way `detectCodeownersCoverageGaps`
+ * treats a missing CODEOWNERS: `docs.codeowners.missing` only fires for
+ * non-trivial repos (>20 source files), so a small repo with e.g. only a
+ * `.github/workflows/deploy.yml` and no CODEOWNERS would otherwise get no
+ * governance signal at all about that specific high-risk, uncovered path.
+ * Only a CODEOWNERS file that exists but can't safely be read (a symlink,
+ * per `readBounded`) still aborts the whole check -- that is a "can't
+ * verify" case, not a "verified there is no owner" one.
  */
 export const detectProtectedPathCoverage = (
   root: string,
@@ -229,15 +241,17 @@ export const detectProtectedPathCoverage = (
   scannedFilePaths: string[],
   protectedPaths: string[] = DEFAULT_PROTECTED_PATHS,
 ): ProtectedPathCoverageEvidence[] | undefined => {
-  if (!codeownersPath) return undefined
-  const codeownersText = readBounded(path.join(root, codeownersPath), MAX_CODEOWNERS_BYTES)
-  if (codeownersText === undefined) return undefined
+  let patterns: CodeownersPattern[] = []
+  if (codeownersPath) {
+    const codeownersText = readBounded(path.join(root, codeownersPath), MAX_CODEOWNERS_BYTES)
+    if (codeownersText === undefined) return undefined
 
-  const contentLines = codeownersText
-    .split('\n')
-    .map(line => line.split('#')[0].trim())
-    .filter(line => line.length > 0)
-  const patterns = parseCodeownersPatterns(contentLines)
+    const contentLines = codeownersText
+      .split('\n')
+      .map(line => line.split('#')[0].trim())
+      .filter(line => line.length > 0)
+    patterns = parseCodeownersPatterns(contentLines)
+  }
 
   const results: ProtectedPathCoverageEvidence[] = []
   for (const protectedPath of protectedPaths) {
@@ -245,11 +259,13 @@ export const detectProtectedPathCoverage = (
     const matchedFiles = scannedFilePaths.filter(filePath => matcher.ignores(filePath))
     if (matchedFiles.length === 0) continue
 
+    const covered = matchedFiles.every(filePath => isFileCoveredBy(patterns, filePath))
     const owners = new Set<string>()
-    for (const filePath of matchedFiles) {
-      for (const owner of ownersForFile(patterns, filePath)) owners.add(owner)
+    if (covered) {
+      for (const filePath of matchedFiles) {
+        for (const owner of ownersForFile(patterns, filePath)) owners.add(owner)
+      }
     }
-    const covered = owners.size > 0
     const singleOwnerRisk = covered && owners.size === 1 && isIndividualOwnerToken([...owners][0])
 
     results.push({
