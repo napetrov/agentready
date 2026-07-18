@@ -1,7 +1,9 @@
 import path from 'path'
 import {
+  AGENT_STAGES,
   RULE_CATALOG,
   RULE_CATEGORIES,
+  calculateAutonomyEnvelope,
   calculateDimensionScores,
   formatRuleDoc,
   getRuleDoc,
@@ -26,6 +28,15 @@ describe('rule catalog', () => {
       expect(doc.title.length).toBeGreaterThan(0)
       expect(doc.rationale.length).toBeGreaterThan(0)
       expect(doc.remediation.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('tags every rule with at least one valid agent-workflow stage', () => {
+    for (const doc of Object.values(RULE_CATALOG)) {
+      expect(doc.affectedStages.length).toBeGreaterThan(0)
+      for (const stage of doc.affectedStages) {
+        expect(AGENT_STAGES).toContain(stage)
+      }
     }
   })
 
@@ -118,6 +129,66 @@ describe('calculateDimensionScores', () => {
         expect(dimension.score).toBeGreaterThanOrEqual(0)
         expect(dimension.score).toBeLessThanOrEqual(100)
       }
+    }
+  })
+})
+
+describe('calculateAutonomyEnvelope', () => {
+  it('returns one entry per stage, in AGENT_STAGES order, all ready with no findings', () => {
+    const envelope = calculateAutonomyEnvelope([])
+    expect(envelope.map(result => result.stage)).toEqual(AGENT_STAGES)
+    for (const result of envelope) {
+      expect(result.status).toBe('ready')
+      expect(result.findingIds).toEqual([])
+    }
+  })
+
+  it('blocks only the stages an error-severity finding actually affects', () => {
+    // docs.readme.missing affects only 'orient' (see catalog.ts).
+    const envelope = calculateAutonomyEnvelope([finding('docs.readme.missing', 'error')])
+    const byStage = new Map(envelope.map(result => [result.stage, result]))
+    expect(byStage.get('orient')).toEqual({ stage: 'orient', status: 'blocked', findingIds: ['docs.readme.missing'] })
+    for (const stage of AGENT_STAGES.filter(stage => stage !== 'orient')) {
+      expect(byStage.get(stage)?.status).toBe('ready')
+    }
+  })
+
+  it('marks a stage not_yet_ready (not blocked) when only warning findings affect it', () => {
+    // commands.lint.missing affects only 'verify'.
+    const envelope = calculateAutonomyEnvelope([finding('commands.lint.missing', 'warning')])
+    const verify = envelope.find(result => result.stage === 'verify')
+    expect(verify).toEqual({ stage: 'verify', status: 'not_yet_ready', findingIds: ['commands.lint.missing'] })
+  })
+
+  it('an info-severity finding never changes a stage away from ready', () => {
+    // safety.deploy affects only 'deploy', and can fire at info severity.
+    const envelope = calculateAutonomyEnvelope([finding('safety.deploy:package.json#scripts.release', 'info')])
+    const deploy = envelope.find(result => result.stage === 'deploy')
+    expect(deploy).toEqual({ stage: 'deploy', status: 'ready', findingIds: [] })
+  })
+
+  it('an error outranks a warning affecting the same stage', () => {
+    // Both commands.test.missing (error-capable) and commands.reference.npm-script
+    // (warning) affect 'verify'.
+    const envelope = calculateAutonomyEnvelope([
+      finding('commands.test.missing', 'error'),
+      finding('commands.reference.npm-script:AGENTS.md:npm run buld', 'warning'),
+    ])
+    const verify = envelope.find(result => result.stage === 'verify')
+    expect(verify?.status).toBe('blocked')
+    expect(verify?.findingIds).toEqual(['commands.test.missing'])
+  })
+
+  it('ignores findings whose rule id is not in the catalog rather than throwing', () => {
+    expect(() => calculateAutonomyEnvelope([finding('not.a.rule', 'error')])).not.toThrow()
+    const envelope = calculateAutonomyEnvelope([finding('not.a.rule', 'error')])
+    expect(envelope.every(result => result.status === 'ready')).toBe(true)
+  })
+
+  it('every stage has one entry, in order, on real fixtures', () => {
+    for (const fixture of [goodFixture, badFixture]) {
+      const report = scanLocalReadiness(fixture)
+      expect(report.autonomyEnvelope.map(result => result.stage)).toEqual(AGENT_STAGES)
     }
   })
 })

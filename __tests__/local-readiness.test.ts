@@ -74,7 +74,14 @@ describe('local readiness', () => {
     expect(report.instructions.map(surface => surface.path)).toContain('AGENTS.md')
     expect(report.reportContract).toEqual({
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'],
+      experimentalFields: [
+        'repositoryEvidence',
+        'designState',
+        'dimensions',
+        'instructionContradictions',
+        'hookExecutionRisks',
+        'autonomyEnvelope',
+      ],
     })
     expect(report.repositoryEvidence?.documentSurfaces).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -1375,5 +1382,39 @@ describe('CI orchestrator and architecture-doc recognition', () => {
 
     expect(finding).toBeDefined()
     expect(finding?.severity).toBe('info')
+  })
+})
+
+describe('instructions.portable-entrypoint.missing', () => {
+  let root: string
+  afterEach(() => {
+    if (root) rmSync(root, { recursive: true, force: true })
+  })
+
+  test('does not fire when AGENTS.md is present', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    expect(listFindingIds(report)).not.toContain('instructions.portable-entrypoint.missing')
+  })
+
+  test('fires at info when only a vendor-specific instruction surface exists', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    writeRepoFile(root, 'CLAUDE.md', 'Run npm test.\n')
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const finding = report.findings.find(f => f.id === 'instructions.portable-entrypoint.missing')
+    expect(finding).toMatchObject({ severity: 'info' })
+    expect(finding?.recommendation).toContain('AGENTS.md')
+  })
+
+  test('does not fire when no instruction surface exists at all (instructions.missing covers that case)', () => {
+    root = createTempRepo()
+    writeRepoFile(root, 'README.md', '# Demo\n')
+    const report = scanLocalReadiness(root, { now: fixedNow })
+    const ids = listFindingIds(report)
+    expect(ids).toContain('instructions.missing')
+    expect(ids).not.toContain('instructions.portable-entrypoint.missing')
   })
 })

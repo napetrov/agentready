@@ -10,7 +10,7 @@ import type {
 
 type EvidenceForChecks = Omit<
   LocalReadinessReport,
-  'findings' | 'summary' | 'repositoryEvidence' | 'designState' | 'dimensions' | 'reportContract'
+  'findings' | 'summary' | 'repositoryEvidence' | 'designState' | 'dimensions' | 'autonomyEnvelope' | 'reportContract'
 >
 
 // A `docs/` or `doc/` directory anywhere in the tree (matched together with the
@@ -45,6 +45,12 @@ const INTENTIONAL_DATA_EXTENSIONS = new Set([
 ])
 
 const TEXT_FIXTURE_EXTENSIONS = new Set(['.log', '.out', '.txt'])
+
+// AGENTS.md (https://agents.md/) is the closest thing to a vendor-neutral
+// instruction entrypoint multiple agent tools already recognize; kept as a
+// fixed default (not user-configurable) since the generic `policyOptions`
+// config shape sketched in docs/product/policy-packs.md has not shipped.
+const PORTABLE_INSTRUCTION_PATHS = new Set(['AGENTS.md'])
 
 const isLikelyIntentionalDataFixture = (file: LocalReadinessFile): boolean => {
   const path = file.path.toLowerCase()
@@ -182,11 +188,13 @@ export const buildFindings = (
     'npm-script': 'Instruction/README references an npm/yarn/pnpm/bun script that does not exist',
     'make-target': 'Instruction/README references a make target that does not exist',
     'package-manager-mismatch': 'Instruction/README references a different package manager than the lockfile',
+    'shortcut-script': 'Instruction/README references a package-manager shortcut for a script that does not exist',
   }
   const commandReferenceSeverity: Record<CommandReferenceKind, ReadinessSeverity> = {
     'npm-script': warningSeverity,
     'make-target': warningSeverity,
     'package-manager-mismatch': 'info',
+    'shortcut-script': warningSeverity,
   }
   for (const reference of report.commandReferences) {
     findings.push({
@@ -244,6 +252,34 @@ export const buildFindings = (
       path: directory,
       recommendation: `Add CODEOWNERS coverage for "${directory}". This directory saw sustained recent commit activity (from local git history) but no matching CODEOWNERS pattern, so PRs touching it may route to no reviewer.`,
     })
+  }
+
+  // Fixed high-risk paths (.github/**, .claude/**, AGENTS.md, auth/,
+  // migrations/, deploy/, ...) checked against CODEOWNERS regardless of
+  // recent commit activity -- unlike the git-activity-derived coverage-gap
+  // check above, a rarely touched but high-risk path (a deploy script) never
+  // accumulates the commit count that check requires. Both info by default,
+  // like the activity-derived gap check; the `enterprise` policy pack
+  // escalates them (see checks/policy-packs.ts) since routing review for
+  // these specific paths matters more for organization-wide rollout.
+  for (const coverage of report.governance.protectedPathCoverage ?? []) {
+    if (!coverage.covered) {
+      findings.push({
+        id: `governance.codeowners.protected-path-gap:${coverage.pattern}`,
+        title: 'CODEOWNERS does not cover a structurally high-risk path',
+        severity: 'info',
+        path: coverage.pattern,
+        recommendation: `Add a CODEOWNERS pattern covering "${coverage.pattern}" — this path is treated as high-risk (agent/CI config, auth, migrations, deploy, ...) regardless of how often it changes.`,
+      })
+    } else if (coverage.singleOwnerRisk) {
+      findings.push({
+        id: `governance.codeowners.single-owner-risk:${coverage.pattern}`,
+        title: 'CODEOWNERS routes a high-risk path to a single individual with no backup',
+        severity: 'info',
+        path: coverage.pattern,
+        recommendation: `"${coverage.pattern}" is owned only by ${coverage.owners[0]}. Add a team or a second owner so review of this high-risk path doesn't depend on one person's availability.`,
+      })
+    }
   }
 
   if (!report.governance.pullRequestTemplatePath) {
@@ -355,6 +391,21 @@ export const buildFindings = (
       severity: warningSeverity,
       recommendation: 'Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands.',
     })
+  } else if (!report.instructions.some(surface => PORTABLE_INSTRUCTION_PATHS.has(surface.path))) {
+    // Any recognized instruction surface is sufficient for `instructions.missing`
+    // above -- AgentReady deliberately does not assume one filename is
+    // universally canonical. This is a separate, lower-severity signal for
+    // repositories that center exclusively on a vendor-specific surface
+    // (e.g. only CLAUDE.md, no AGENTS.md): fine for a single-agent workflow,
+    // but a portability gap once more than one coding agent works in the
+    // repo. Default severity is `info`; the `enterprise` policy pack
+    // escalates it (see checks/policy-packs.ts).
+    findings.push({
+      id: 'instructions.portable-entrypoint.missing',
+      title: 'Agent instructions are not exposed through a portable entrypoint',
+      severity: 'info',
+      recommendation: `Add ${[...PORTABLE_INSTRUCTION_PATHS].join(' or ')} alongside any tool-specific instruction file so agents other than the one it targets can still find repo conventions.`,
+    })
   }
 
   for (const surface of report.instructions.filter(surface => surface.localPrivate)) {
@@ -443,6 +494,23 @@ export const buildFindings = (
   // see detectCapabilitySurfaces). Informational: presence is not itself a
   // problem, but an agent (or reviewer) should know which surfaces actually
   // widen what the agent can do, not just that "a capability surface exists".
+  // Composite risk: an agent-tool hook that fires automatically (no explicit
+  // user action) and whose command invokes a package-manager install command.
+  // Checking out an untrusted branch and starting a session on it can run
+  // that branch's own install-time lifecycle scripts before anyone reviews
+  // them -- neither `safety.install-hook` (package-script hooks only) nor
+  // `safety.capability.high-risk` (presence, not what/when a hook runs)
+  // names this specific chained risk.
+  for (const risk of report.hookExecutionRisks) {
+    findings.push({
+      id: `safety.agent-hook.executes-repository-code:${risk.path}:${risk.event}`,
+      title: 'Agent session hook automatically executes a dependency-install command',
+      severity: warningSeverity,
+      path: risk.path,
+      recommendation: `The "${risk.event}" hook in ${risk.path} runs "${risk.command}" automatically, with no explicit user action. If an agent checks out an untrusted branch, this can execute that branch's own install-time lifecycle scripts before anyone reviews it. Consider gating this behind an explicit, reviewed step instead.`,
+    })
+  }
+
   for (const surface of report.capabilities.filter(surface => surface.riskTier === 'high')) {
     findings.push({
       id: `safety.capability.high-risk:${surface.path}`,

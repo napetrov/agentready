@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import type {
+  AgentStage,
+  AutonomyStageResult,
   CapabilitySurfaceEvidence,
   DesignStateSummary,
   DocumentSurfaceEvidence,
@@ -7,11 +9,13 @@ import type {
   CommandEvidence,
   CommandReferenceEvidence,
   GovernanceEvidence,
+  HookExecutionRiskEvidence,
   InstructionContradictionEvidence,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
   PortfolioReport,
+  ProtectedPathCoverageEvidence,
   RepositoryEvidence,
   ReadinessDiffReport,
   ReadinessDimensionScore,
@@ -90,6 +94,25 @@ const DIMENSION_CATEGORY_COUNT = readinessRuleCategorySchema.options.length
  * necessarily a full, non-duplicated set, so a single refine covers both
  * "missing a category" and "reports one twice".
  */
+export const agentStageSchema = z.enum(['orient', 'bootstrap', 'navigate', 'edit', 'verify', 'review', 'merge', 'deploy'])
+export const autonomyStatusSchema = z.enum(['ready', 'not_yet_ready', 'blocked'])
+
+export const autonomyStageResultSchema = z.strictObject({
+  stage: agentStageSchema,
+  status: autonomyStatusSchema,
+  findingIds: z.array(z.string()),
+})
+
+const AGENT_STAGE_COUNT = agentStageSchema.options.length
+
+/** Same one-entry-per-enum-value shape as `readinessDimensionScoreListSchema` below, for `AGENT_STAGES` instead of `RULE_CATEGORIES`. */
+export const autonomyStageResultListSchema = z
+  .array(autonomyStageResultSchema)
+  .length(AGENT_STAGE_COUNT)
+  .refine(results => new Set(results.map(result => result.stage)).size === AGENT_STAGE_COUNT, {
+    error: `autonomyEnvelope must include exactly one entry for each stage (${agentStageSchema.options.join(', ')})`,
+  })
+
 export const readinessDimensionScoreListSchema = z
   .array(readinessDimensionScoreSchema)
   .length(DIMENSION_CATEGORY_COUNT)
@@ -168,7 +191,7 @@ export const commandEvidenceSchema = z.strictObject({
   hasTypeCheck: z.boolean(),
 })
 
-export const commandReferenceKindSchema = z.enum(['npm-script', 'make-target', 'package-manager-mismatch'])
+export const commandReferenceKindSchema = z.enum(['npm-script', 'make-target', 'package-manager-mismatch', 'shortcut-script'])
 
 export const commandReferenceEvidenceSchema = z.strictObject({
   path: z.string(),
@@ -177,10 +200,18 @@ export const commandReferenceEvidenceSchema = z.strictObject({
   detail: z.string(),
 })
 
+export const protectedPathCoverageEvidenceSchema = z.strictObject({
+  pattern: z.string(),
+  covered: z.boolean(),
+  owners: z.array(z.string()),
+  singleOwnerRisk: z.boolean(),
+})
+
 export const governanceEvidenceSchema = z.strictObject({
   codeownersPath: z.string().optional(),
   pullRequestTemplatePath: z.string().optional(),
   uncoveredActiveDirectories: z.array(z.string()).optional(),
+  protectedPathCoverage: z.array(protectedPathCoverageEvidenceSchema).optional(),
 })
 
 export const instructionContradictionKindSchema = z.enum(['package-manager'])
@@ -230,6 +261,12 @@ export const safetySignalSchema = z.strictObject({
   script: z.string(),
   command: z.string(),
   notes: z.array(z.string()),
+})
+
+export const hookExecutionRiskSchema = z.strictObject({
+  path: z.string(),
+  event: z.string(),
+  command: z.string(),
 })
 
 export const evidenceSourceSchema = z.strictObject({
@@ -442,12 +479,21 @@ export const localReadinessReportSchema = z.strictObject({
   instructions: z.array(instructionSurfaceSchema),
   capabilities: z.array(capabilitySurfaceSchema),
   safetySignals: z.array(safetySignalSchema),
+  hookExecutionRisks: z.array(hookExecutionRiskSchema),
   repositoryEvidence: repositoryEvidenceSchema,
   designState: designStateSummarySchema,
   dimensions: readinessDimensionScoreListSchema,
+  autonomyEnvelope: autonomyStageResultListSchema,
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
-    experimentalFields: z.array(z.enum(['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'])),
+    experimentalFields: z.array(z.enum([
+      'repositoryEvidence',
+      'designState',
+      'dimensions',
+      'instructionContradictions',
+      'hookExecutionRisks',
+      'autonomyEnvelope',
+    ])),
   }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),
@@ -540,12 +586,16 @@ const _commands: Exact<z.infer<typeof commandEvidenceSchema>, CommandEvidence> =
 const _commandReference: Exact<z.infer<typeof commandReferenceEvidenceSchema>, CommandReferenceEvidence> = true
 const _instructionContradiction: Exact<z.infer<typeof instructionContradictionEvidenceSchema>, InstructionContradictionEvidence> = true
 const _governance: Exact<z.infer<typeof governanceEvidenceSchema>, GovernanceEvidence> = true
+const _protectedPathCoverage: Exact<z.infer<typeof protectedPathCoverageEvidenceSchema>, ProtectedPathCoverageEvidence> = true
+const _hookExecutionRisk: Exact<z.infer<typeof hookExecutionRiskSchema>, HookExecutionRiskEvidence> = true
 const _capabilitySurface: Exact<z.infer<typeof capabilitySurfaceSchema>, CapabilitySurfaceEvidence> = true
 const _ci: Exact<z.infer<typeof ciEvidenceSchema>, CiEvidence> = true
 const _documentSurface: Exact<z.infer<typeof documentSurfaceSchema>, DocumentSurfaceEvidence> = true
 const _repositoryEvidence: Exact<z.infer<typeof repositoryEvidenceSchema>, RepositoryEvidence> = true
 const _designState: Exact<z.infer<typeof designStateSummarySchema>, DesignStateSummary> = true
 const _dimensionScore: Exact<z.infer<typeof readinessDimensionScoreSchema>, ReadinessDimensionScore> = true
+const _autonomyStageResult: Exact<z.infer<typeof autonomyStageResultSchema>, AutonomyStageResult> = true
+const _agentStage: Exact<z.infer<typeof agentStageSchema>, AgentStage> = true
 const _report: Exact<z.infer<typeof localReadinessReportSchema>, LocalReadinessReport> = true
 const _diff: Exact<z.infer<typeof readinessDiffReportSchema>, ReadinessDiffReport> = true
 const _portfolio: Exact<z.infer<typeof portfolioReportSchema>, PortfolioReport> = true
@@ -557,11 +607,15 @@ assertSchemaDriftGuards(
   _commandReference,
   _instructionContradiction,
   _governance,
+  _protectedPathCoverage,
+  _hookExecutionRisk,
   _ci,
   _documentSurface,
   _repositoryEvidence,
   _designState,
   _dimensionScore,
+  _autonomyStageResult,
+  _agentStage,
   _report,
   _diff,
   _config,

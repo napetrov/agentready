@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'fs'
 import path from 'path'
-import type { SafetyCategory, SafetySignalEvidence } from '../core/types'
+import type { HookExecutionRiskEvidence, SafetyCategory, SafetySignalEvidence } from '../core/types'
 
 // npm/yarn/pnpm lifecycle scripts that can run automatically during dependency
 // installation or git-dependency preparation, so their commands execute without
@@ -147,5 +147,97 @@ export const detectSafetySignals = (root: string, filePaths: string[]): SafetySi
 
   return signals.sort((a, b) => (
     a.category.localeCompare(b.category) || a.source.localeCompare(b.source)
+  ))
+}
+
+// Claude Code hook settings files -- the same two paths
+// `detectCapabilitySurfaces` already recognizes as `hook`-kind capability
+// surfaces (see `capability-surfaces.ts`'s `hookSettingsRiskTier`), read here
+// independently rather than shared with that detector: every detector in this
+// package owns its own I/O (see `command-references.ts`, `governance.ts`,
+// `instruction-contradictions.ts`), and this check needs the hook *event
+// name* and *command text*, not just whether the file configures some hook.
+const HOOK_SETTINGS_PATHS = ['.claude/settings.json', '.claude/settings.local.json']
+
+// Event names that fire without any explicit user action within the session
+// -- session lifecycle events, not ones triggered by the user actively
+// prompting or the agent actively calling a tool. `SessionStart` is the
+// event that matters most here: it fires the moment a session begins on
+// whatever branch is already checked out, before a user has done anything an
+// agent-checked-out-untrusted-branch scenario would require them to review.
+const AUTOMATIC_HOOK_EVENTS = new Set(['SessionStart', 'SessionEnd', 'PreCompact', 'Notification'])
+
+// Deliberately scoped to the package-manager install/lifecycle-script vector
+// (the same one `installLifecycleScripts` above targets for package.json
+// scripts) rather than every command a hook might run -- that is the specific
+// mechanism by which a hook can execute code the checked-out branch controls
+// (preinstall/postinstall/prepare scripts), not a general "this hook runs
+// some command" signal `safety.capability.high-risk` already covers.
+const HOOK_INSTALL_COMMAND_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(install|ci)\b/i
+
+interface HookCommandEntry {
+  event: string
+  command: string
+}
+
+// Claude Code hook settings shape each event key to an array of "matcher
+// groups", each carrying its own nested `hooks: [{ type, command }, ...]`
+// array. Best-effort and permissive about the exact nesting (falls back to
+// treating the group itself as a command entry when there is no nested
+// `hooks` array) rather than throwing on a shape this detector does not fully
+// recognize -- a settings file this permissive reader cannot parse simply
+// yields no entries, the same fail-open behavior `hookSettingsRiskTier` in
+// `capability-surfaces.ts` uses for the same file.
+const extractHookCommands = (hooksConfig: unknown): HookCommandEntry[] => {
+  if (typeof hooksConfig !== 'object' || hooksConfig === null) return []
+  const entries: HookCommandEntry[] = []
+  for (const [event, groups] of Object.entries(hooksConfig as Record<string, unknown>)) {
+    if (!Array.isArray(groups)) continue
+    for (const group of groups) {
+      if (typeof group !== 'object' || group === null) continue
+      const nested = (group as { hooks?: unknown }).hooks
+      const candidates = Array.isArray(nested) ? nested : [group]
+      for (const candidate of candidates) {
+        if (typeof candidate !== 'object' || candidate === null) continue
+        const command = (candidate as { command?: unknown }).command
+        if (typeof command === 'string') entries.push({ event, command })
+      }
+    }
+  }
+  return entries
+}
+
+/**
+ * Detects the composite risk neither `safety.install-hook` (package-script
+ * lifecycle hooks only) nor `safety.capability.high-risk` (presence of a
+ * hook surface, not what it runs or when) reports on its own: an agent-tool
+ * hook event that fires automatically, with no explicit user action, whose
+ * command invokes a package-manager install/lifecycle command. `filePaths` is
+ * the ignore-aware scan inventory, so a settings file excluded from the scan
+ * reports nothing here either.
+ */
+export const detectHookExecutionRisks = (root: string, filePaths: string[]): HookExecutionRiskEvidence[] => {
+  const evidence: HookExecutionRiskEvidence[] = []
+
+  for (const settingsPath of HOOK_SETTINGS_PATHS) {
+    if (!filePaths.includes(settingsPath)) continue
+
+    let settings: unknown
+    try {
+      settings = JSON.parse(readFileSync(path.join(root, settingsPath), 'utf8'))
+    } catch {
+      continue
+    }
+
+    const hooksConfig = (settings as { hooks?: unknown } | null)?.hooks
+    for (const { event, command } of extractHookCommands(hooksConfig)) {
+      if (!AUTOMATIC_HOOK_EVENTS.has(event)) continue
+      if (!HOOK_INSTALL_COMMAND_PATTERN.test(command)) continue
+      evidence.push({ path: settingsPath, event, command })
+    }
+  }
+
+  return evidence.sort((a, b) => (
+    a.path.localeCompare(b.path) || a.event.localeCompare(b.event) || a.command.localeCompare(b.command)
   ))
 }

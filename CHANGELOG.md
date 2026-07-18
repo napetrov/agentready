@@ -8,6 +8,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Implemented the full v0.4 backlog from the AIReady calibration record (see
+  [docs/roadmap/v0.4-issue-drafts.md](docs/roadmap/v0.4-issue-drafts.md) for
+  per-issue detail and deliberate scope deviations):
+  - `commands.reference.shortcut-script`: flags a code-formatted bare
+    `<manager> <word>` shortcut (e.g. `` `pnpm dev` ``) that matches neither a
+    curated per-manager built-in-verb allowlist nor an existing package.json
+    script (`lib/repo-readiness/detectors/command-references.ts`). Gated on
+    the reference appearing inside a Markdown code span (inline or fenced)
+    instead of a two-tier confidence split, to keep prose that merely
+    discusses a package manager from being misread as a command. `oss`
+    policy escalates it to `error` alongside the other stale
+    command-reference kinds.
+  - `safety.agent-hook.executes-repository-code`: the composite risk neither
+    `safety.install-hook` nor `safety.capability.high-risk` names on its own
+    — an agent-tool hook that fires automatically (`SessionStart`,
+    `SessionEnd`, `PreCompact`, `Notification`, not events tied to explicit
+    user/tool activity) whose command invokes a package-manager install
+    command (`detectHookExecutionRisks` in
+    `lib/repo-readiness/detectors/safety-signals.ts`). Default `warning`;
+    `enterprise` policy escalates to `error`.
+  - `governance.codeowners.protected-path-gap` and
+    `governance.codeowners.single-owner-risk`
+    (`detectProtectedPathCoverage` in
+    `lib/repo-readiness/detectors/governance.ts`): checks a fixed set of
+    structurally high-risk paths (`.github/**`, `.claude/**`, `AGENTS.md`,
+    `CLAUDE.md`, `**/auth/**`, `**/migrations/**`, `**/deploy/**`, ...)
+    against CODEOWNERS independent of recent commit activity, and flags a
+    path owned by exactly one individual with no team/second owner. `info`
+    by default; `enterprise` policy escalates both to `warning`.
+  - `instructions.portable-entrypoint.missing`: fires when a repository has
+    some recognized agent instruction surface but none of them is a portable
+    entrypoint (`AGENTS.md`) — `instructions.missing` correctly stays silent
+    in this case, since AgentReady still does not assume one filename is
+    universally canonical. `info` by default; `enterprise` policy escalates
+    to `warning`.
+  - Autonomy envelope: every rule in `checks/catalog.ts` is tagged with
+    `affectedStages` (new `AgentStage` type:
+    `orient`/`bootstrap`/`navigate`/`edit`/`verify`/`review`/`merge`/`deploy`).
+    `calculateAutonomyEnvelope` derives `report.autonomyEnvelope` — a
+    per-stage `ready`/`not_yet_ready`/`blocked` status from findings, added
+    to `reportContract.experimentalFields` — so a report can say "ready to
+    edit and open a PR, not yet ready to merge or deploy autonomously"
+    instead of only a single aggregate score. Rendered as an "Autonomy
+    envelope" section in `formatScanMarkdown` and a compact
+    not-ready/blocked-only line in `formatScanSummary`.
+  - "Not verified from repository contents": every default scan's
+    markdown/console output now lists a fixed set of platform-level controls
+    (`NOT_VERIFIED_EXTERNAL_CONTROLS` in
+    `lib/repo-readiness/reporters/not-verified.ts`: branch protection,
+    required status checks, required CODEOWNER review, environment approval
+    rules, production secret scopes, deployment permission boundaries) that a
+    local, non-networked scan cannot observe from repository contents alone.
 - Calibration feedback schema (`reports/evaluation/calibration/calibration-feedback.schema.json`)
   and the first calibration record
   (`reports/evaluation/calibration/napetrov-AIReady.json`), the "human/agent
@@ -65,6 +117,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `repositoryEvidence`/`designState`/`dimensions` (schema version stays
   `local-readiness/v2`; consumers that validate against a pinned older copy
   of the JSON Schema should expect this field).
+- `LocalReadinessReport` gained two more required fields, both also listed in
+  `reportContract.experimentalFields` (schema version still
+  `local-readiness/v2`): `hookExecutionRisks` (see
+  `safety.agent-hook.executes-repository-code` above) and `autonomyEnvelope`
+  (see "Autonomy envelope" above). `GovernanceEvidence` gained an optional
+  `protectedPathCoverage` field (see `governance.codeowners.protected-path-gap`/
+  `single-owner-risk` above). `CommandReferenceKind` gained `shortcut-script`.
 - Documented that GitHub-org-API-integrated batch scanning (auto-discovering
   and cloning every repo in an org) is intentionally out of scope: it would
   require AgentReady itself to hold a GitHub credential and make network

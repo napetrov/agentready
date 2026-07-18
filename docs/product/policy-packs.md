@@ -74,8 +74,9 @@ Delivered escalations (`lib/repo-readiness/checks/policy-packs.ts`):
 - `docs.developer.thin` (info → warning): external contributors have no
   teammate to ask about module boundaries or conventions, so contribution/
   architecture docs matter more than for an internal-only repo.
-- `commands.reference.npm-script` (warning → error) and
-  `commands.reference.make-target` (warning → error): a stale documented
+- `commands.reference.npm-script` (warning → error),
+  `commands.reference.make-target` (warning → error), and
+  `commands.reference.shortcut-script` (warning → error): a stale documented
   command wastes an external contributor's turn with no teammate nearby to
   correct it.
 - `docs.pull-request-template.missing` (info → warning): external
@@ -97,6 +98,9 @@ Delivered escalations (`lib/repo-readiness/checks/policy-packs.ts`):
 
 - `instructions.missing` (warning → error): explicit agent instruction entrypoint
   is required, not optional.
+- `instructions.portable-entrypoint.missing` (info → warning): conventions
+  must be discoverable through a portable entrypoint (AGENTS.md), not only a
+  single vendor-specific instruction surface.
 - `safety.install-hook` (info → warning): install-time hooks must be visible
   enough to gate on.
 - `safety.deploy` (info → warning): deploy/publish scripts must be visible
@@ -105,6 +109,15 @@ Delivered escalations (`lib/repo-readiness/checks/policy-packs.ts`):
   risk-tier classifier scored `high` blast radius (MCP server configs, hook
   scripts, configured hooks blocks, plugin manifests) must be visible enough
   to gate on, not just listed.
+- `safety.agent-hook.executes-repository-code` (warning → error): an
+  automatic agent-tool hook (e.g. Claude Code's `SessionStart`) that can
+  execute an untrusted branch's own install-time lifecycle scripts is a
+  blocking risk, not one to notice after the fact.
+- `governance.codeowners.protected-path-gap` (info → warning) and
+  `governance.codeowners.single-owner-risk` (info → warning): review routing
+  for structurally high-risk paths (agent/CI config, auth, migrations,
+  deploy/infra) must be visible enough to gate on, with a documented backup
+  reviewer, independent of how often those paths change.
 
 Remaining candidate expectations (not yet implemented):
 

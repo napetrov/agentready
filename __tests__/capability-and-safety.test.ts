@@ -3,6 +3,7 @@ import { tmpdir } from 'os'
 import path from 'path'
 import {
   detectCapabilitySurfaces,
+  detectHookExecutionRisks,
   detectSafetySignals,
   scanLocalReadiness,
   validateLocalReadinessReportContract,
@@ -196,6 +197,91 @@ describe('safety-signal detector', () => {
   })
 })
 
+const claudeSettingsWithHook = (event: string, command: string): string =>
+  JSON.stringify({ hooks: { [event]: [{ matcher: '', hooks: [{ type: 'command', command }] }] } })
+
+describe('hook-execution-risk detector', () => {
+  test('flags a SessionStart hook that runs a package-manager install command', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'pnpm install --frozen-lockfile && pnpm prisma generate'))
+      const risks = detectHookExecutionRisks(root, ['.claude/settings.json'])
+      expect(risks).toEqual([
+        {
+          path: '.claude/settings.json',
+          event: 'SessionStart',
+          command: 'pnpm install --frozen-lockfile && pnpm prisma generate',
+        },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('also checks .claude/settings.local.json', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.local.json', claudeSettingsWithHook('SessionStart', 'npm ci'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.local.json'])).toEqual([
+        { path: '.claude/settings.local.json', event: 'SessionStart', command: 'npm ci' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag a hook that requires explicit user invocation (e.g. PreToolUse)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('PreToolUse', 'pnpm install'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag an automatic hook whose command is not an install/lifecycle command', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'echo "session started"'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('returns nothing when the settings file is absent from the filtered inventory', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'pnpm install'))
+      expect(detectHookExecutionRisks(root, ['README.md'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not throw on an unparsable settings file', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', '{ not valid json')
+      expect(() => detectHookExecutionRisks(root, ['.claude/settings.json'])).not.toThrow()
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('returns nothing when there are no hooks configured', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', JSON.stringify({ permissions: {} }))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('scan integration', () => {
   test('surfaces capabilities and safety findings in the full report', () => {
     const root = createTempRepo()
@@ -226,6 +312,24 @@ describe('scan integration', () => {
       expect(installFinding?.severity).toBe('info')
       const destructiveFinding = report.findings.find(f => f.id === 'safety.destructive:package.json#scripts.deploy')
       expect(destructiveFinding?.severity).toBe('warning')
+
+      expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('surfaces the composite agent-hook finding when a SessionStart hook runs an install command', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, 'README.md', '# Demo\n')
+      writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'pnpm install --frozen-lockfile'))
+
+      const report = scanLocalReadiness(root, { now: fixedNow })
+      const finding = report.findings.find(f => f.id === 'safety.agent-hook.executes-repository-code:.claude/settings.json:SessionStart')
+      expect(finding).toMatchObject({ severity: 'warning', path: '.claude/settings.json' })
+      expect(finding?.recommendation).toContain('pnpm install --frozen-lockfile')
 
       expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
     } finally {

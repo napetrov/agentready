@@ -1,17 +1,17 @@
 import { statSync } from 'fs'
 import path from 'path'
 import { buildFindings } from '../checks/built-in'
-import { calculateDimensionScores } from '../checks/catalog'
+import { calculateAutonomyEnvelope, calculateDimensionScores } from '../checks/catalog'
 import { detectCapabilitySurfaces } from '../detectors/capability-surfaces'
 import { detectCiWorkflows } from '../detectors/ci-workflows'
 import { detectCommandReferences } from '../detectors/command-references'
 import { detectCommandSurfaces } from '../detectors/command-surfaces'
 import { detectDocs } from '../detectors/docs'
 import { walkFiles } from '../detectors/file-inventory'
-import { detectCodeownersCoverageGaps, detectGovernance } from '../detectors/governance'
+import { detectCodeownersCoverageGaps, detectGovernance, detectProtectedPathCoverage } from '../detectors/governance'
 import { detectInstructionContradictions } from '../detectors/instruction-contradictions'
 import { buildDesignState, detectRepositoryEvidence } from '../detectors/repository-evidence'
-import { detectSafetySignals } from '../detectors/safety-signals'
+import { detectHookExecutionRisks, detectSafetySignals } from '../detectors/safety-signals'
 import {
   detectInstructionSurfaces,
   type RepositoryFileReference,
@@ -84,6 +84,7 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
 
   const governance = detectGovernance(filePaths)
   const uncoveredActiveDirectories = detectCodeownersCoverageGaps(absoluteRoot, governance.codeownersPath, filePaths)
+  const protectedPathCoverage = detectProtectedPathCoverage(absoluteRoot, governance.codeownersPath, filePaths)
 
   const partialReport = {
     root: absoluteRoot,
@@ -92,11 +93,16 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     commands,
     commandReferences: detectCommandReferences(absoluteRoot, commandReferenceDocPaths, commands, filePaths),
     instructionContradictions: detectInstructionContradictions(absoluteRoot, instructions),
-    governance: uncoveredActiveDirectories ? { ...governance, uncoveredActiveDirectories } : governance,
+    governance: {
+      ...governance,
+      ...(uncoveredActiveDirectories ? { uncoveredActiveDirectories } : {}),
+      ...(protectedPathCoverage ? { protectedPathCoverage } : {}),
+    },
     ci: detectCiWorkflows(absoluteRoot, filePaths),
     instructions,
     capabilities: detectCapabilitySurfaces(absoluteRoot, filePaths),
     safetySignals: detectSafetySignals(absoluteRoot, filePaths),
+    hookExecutionRisks: detectHookExecutionRisks(absoluteRoot, filePaths),
     files,
   }
 
@@ -127,9 +133,17 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
     repositoryEvidence,
     designState,
     dimensions: calculateDimensionScores(findings),
+    autonomyEnvelope: calculateAutonomyEnvelope(findings),
     reportContract: {
       schemaVersion: 'local-readiness/v2',
-      experimentalFields: ['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'],
+      experimentalFields: [
+        'repositoryEvidence',
+        'designState',
+        'dimensions',
+        'instructionContradictions',
+        'hookExecutionRisks',
+        'autonomyEnvelope',
+      ],
     },
     findings,
   }

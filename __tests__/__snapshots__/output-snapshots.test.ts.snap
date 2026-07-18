@@ -127,6 +127,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
     ],
     "capabilities": [],
     "safetySignals": [],
+    "hookExecutionRisks": [],
     "summary": {
       "score": 98,
       "totalFiles": 4,
@@ -433,13 +434,57 @@ exports[`diff output snapshots summary and markdown for a regression between two
         }
       }
     ],
+    "autonomyEnvelope": [
+      {
+        "stage": "orient",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "bootstrap",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "navigate",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "edit",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "verify",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "review",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "merge",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "deploy",
+        "status": "ready",
+        "findingIds": []
+      }
+    ],
     "reportContract": {
       "schemaVersion": "local-readiness/v2",
       "experimentalFields": [
         "repositoryEvidence",
         "designState",
         "dimensions",
-        "instructionContradictions"
+        "instructionContradictions",
+        "hookExecutionRisks",
+        "autonomyEnvelope"
       ]
     },
     "findings": [
@@ -519,6 +564,7 @@ exports[`diff output snapshots summary and markdown for a regression between two
     ],
     "capabilities": [],
     "safetySignals": [],
+    "hookExecutionRisks": [],
     "summary": {
       "score": 80,
       "totalFiles": 3,
@@ -779,13 +825,59 @@ exports[`diff output snapshots summary and markdown for a regression between two
         }
       }
     ],
+    "autonomyEnvelope": [
+      {
+        "stage": "orient",
+        "status": "blocked",
+        "findingIds": [
+          "docs.readme.missing"
+        ]
+      },
+      {
+        "stage": "bootstrap",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "navigate",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "edit",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "verify",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "review",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "merge",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "deploy",
+        "status": "ready",
+        "findingIds": []
+      }
+    ],
     "reportContract": {
       "schemaVersion": "local-readiness/v2",
       "experimentalFields": [
         "repositoryEvidence",
         "designState",
         "dimensions",
-        "instructionContradictions"
+        "instructionContradictions",
+        "hookExecutionRisks",
+        "autonomyEnvelope"
       ]
     },
     "findings": [
@@ -895,6 +987,7 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
   "instructions": [],
   "capabilities": [],
   "safetySignals": [],
+  "hookExecutionRisks": [],
   "summary": {
     "score": 34,
     "totalFiles": 2,
@@ -1219,13 +1312,67 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
       }
     }
   ],
+  "autonomyEnvelope": [
+    {
+      "stage": "orient",
+      "status": "blocked",
+      "findingIds": [
+        "docs.readme.missing"
+      ]
+    },
+    {
+      "stage": "bootstrap",
+      "status": "blocked",
+      "findingIds": [
+        "commands.test.missing"
+      ]
+    },
+    {
+      "stage": "navigate",
+      "status": "not_yet_ready",
+      "findingIds": [
+        "instructions.missing"
+      ]
+    },
+    {
+      "stage": "edit",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "verify",
+      "status": "blocked",
+      "findingIds": [
+        "commands.test.missing"
+      ]
+    },
+    {
+      "stage": "review",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "merge",
+      "status": "not_yet_ready",
+      "findingIds": [
+        "ci.workflow.missing"
+      ]
+    },
+    {
+      "stage": "deploy",
+      "status": "ready",
+      "findingIds": []
+    }
+  ],
   "reportContract": {
     "schemaVersion": "local-readiness/v2",
     "experimentalFields": [
       "repositoryEvidence",
       "designState",
       "dimensions",
-      "instructionContradictions"
+      "instructionContradictions",
+      "hookExecutionRisks",
+      "autonomyEnvelope"
     ]
   },
   "findings": [
@@ -1281,6 +1428,7 @@ Files: 2 (1 source, 0 tests, 0 docs)
 Capabilities: 0, safety signals: 0
 CI: no workflows detected
 Dimensions: docs 80 (1 error, 1 info), commands 68 (1 error, 2 warning), ci 93 (1 warning), instructions 93 (1 warning), files 100, safety 100
+Autonomy: orient (blocked), bootstrap (blocked), navigate (not yet ready), verify (blocked), merge (not yet ready)
 Findings: 7
 - [warning] No CI workflow detected
 - [warning] No lint command detected
@@ -1288,7 +1436,8 @@ Findings: 7
 - [warning] TypeScript repository has no type-check command
 - [info] No pull-request template detected
 - [error] Repository has no README
-- [warning] No agent instruction surface detected"
+- [warning] No agent instruction surface detected
+Not verified from repository contents: Default-branch protection, Required status checks, Required CODEOWNER review, Environment approval rules, Production secret scopes, Deployment permission boundaries"
 `;
 
 exports[`scan output snapshots bad-repo markdown 1`] = `
@@ -1307,6 +1456,17 @@ Findings: 7
 - instructions: **93/100** (0 error, 1 warning, 0 info)
 - files: **100/100** (no findings)
 - safety: **100/100** (no findings)
+
+### Autonomy envelope
+What level of agent autonomy this repository is ready for, derived from findings (not a separate score):
+- orient: ⛔ blocked — docs.readme.missing
+- bootstrap: ⛔ blocked — commands.test.missing
+- navigate: ⚠️ not yet ready — instructions.missing
+- edit: ✅ ready
+- verify: ⛔ blocked — commands.test.missing
+- review: ✅ ready
+- merge: ⚠️ not yet ready — ci.workflow.missing
+- deploy: ✅ ready
 
 ### Repository topology
 Roots: 2; languages: 1; roots without local tests: 1; roots without local docs: 1
@@ -1329,7 +1489,16 @@ Roots: 2; languages: 1; roots without local tests: 1; roots without local docs: 
 - **WARNING**: TypeScript repository has no type-check command. Expose a type-check command and run it in CI.
 - **INFO**: No pull-request template detected. Add a pull-request template (.github/pull_request_template.md) describing the evidence a PR description should include (files changed and why, verification commands run, known skipped checks).
 - **ERROR**: Repository has no README. Add a root README with purpose, setup, validation commands, and common agent entrypoints.
-- **WARNING**: No agent instruction surface detected. Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands."
+- **WARNING**: No agent instruction surface detected. Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands.
+
+### Not verified from repository contents
+AgentReady scans repository contents only, with no network calls — these platform-level controls cannot be confirmed or denied from a local scan:
+- Default-branch protection
+- Required status checks
+- Required CODEOWNER review
+- Environment approval rules
+- Production secret scopes
+- Deployment permission boundaries"
 `;
 
 exports[`scan output snapshots bad-repo sarif 1`] = `
@@ -1567,6 +1736,7 @@ exports[`scan output snapshots good-repo compact json 1`] = `
   ],
   "capabilities": [],
   "safetySignals": [],
+  "hookExecutionRisks": [],
   "summary": {
     "score": 100,
     "totalFiles": 8,
@@ -2348,13 +2518,57 @@ exports[`scan output snapshots good-repo compact json 1`] = `
       }
     }
   ],
+  "autonomyEnvelope": [
+    {
+      "stage": "orient",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "bootstrap",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "navigate",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "edit",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "verify",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "review",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "merge",
+      "status": "ready",
+      "findingIds": []
+    },
+    {
+      "stage": "deploy",
+      "status": "ready",
+      "findingIds": []
+    }
+  ],
   "reportContract": {
     "schemaVersion": "local-readiness/v2",
     "experimentalFields": [
       "repositoryEvidence",
       "designState",
       "dimensions",
-      "instructionContradictions"
+      "instructionContradictions",
+      "hookExecutionRisks",
+      "autonomyEnvelope"
     ]
   },
   "findings": []
@@ -2367,7 +2581,8 @@ Files: 8 (1 source, 1 tests, 4 docs)
 Capabilities: 0, safety signals: 0
 CI: 1 workflow (runs install, lint, type-check, test, build)
 Dimensions: docs 100, commands 100, ci 100, instructions 100, files 100, safety 100
-Findings: 0"
+Findings: 0
+Not verified from repository contents: Default-branch protection, Required status checks, Required CODEOWNER review, Environment approval rules, Production secret scopes, Deployment permission boundaries"
 `;
 
 exports[`scan output snapshots good-repo markdown 1`] = `
@@ -2386,6 +2601,17 @@ Findings: 0
 - instructions: **100/100** (no findings)
 - files: **100/100** (no findings)
 - safety: **100/100** (no findings)
+
+### Autonomy envelope
+What level of agent autonomy this repository is ready for, derived from findings (not a separate score):
+- orient: ✅ ready
+- bootstrap: ✅ ready
+- navigate: ✅ ready
+- edit: ✅ ready
+- verify: ✅ ready
+- review: ✅ ready
+- merge: ✅ ready
+- deploy: ✅ ready
 
 ### Repository topology
 Roots: 4; languages: 1; roots without local tests: 1; roots without local docs: 1
@@ -2410,7 +2636,16 @@ Roots: 4; languages: 1; roots without local tests: 1; roots without local docs: 
 - **INFO** documentation-evidence: 1 source root(s) have no path-local document role evidence. Paths: \`src\`.
 
 ### Findings
-No findings."
+No findings.
+
+### Not verified from repository contents
+AgentReady scans repository contents only, with no network calls — these platform-level controls cannot be confirmed or denied from a local scan:
+- Default-branch protection
+- Required status checks
+- Required CODEOWNER review
+- Environment approval rules
+- Production secret scopes
+- Deployment permission boundaries"
 `;
 
 exports[`scan output snapshots good-repo sarif 1`] = `

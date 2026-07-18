@@ -51,7 +51,12 @@ not scanner output.
   ownership, and unverifiable branch-protection state — the gap this record
   exists to close. See
   [docs/roadmap/v0.4-issue-drafts.md](../../../docs/roadmap/v0.4-issue-drafts.md)
-  for the backlog items it motivates.
+  for the backlog items it motivates — all seven are now delivered (see the
+  `[Unreleased]` section of [CHANGELOG.md](../../../CHANGELOG.md)). The
+  record itself is left as originally reported: it is the input the backlog
+  was built from, not a live tracker, and every finding's
+  `verificationStatus` still reflects that no maintainer independently
+  re-scanned `napetrov/AIReady` against it.
 
 ## Adding a record
 
