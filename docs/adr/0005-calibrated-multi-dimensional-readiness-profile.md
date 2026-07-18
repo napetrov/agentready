@@ -281,13 +281,21 @@ export type CoverageSurfaceKind =
   | 'ci-workflows'           // report.ci
   | 'capability-surfaces'    // report.capabilities
   | 'governance'             // report.governance
-  | 'documentation-roles'    // report.docs
+  | 'documentation-roles'    // report.repositoryEvidence.documentSurfaces[].roleClaims
   | 'repository-topology'    // report.repositoryEvidence.topology
 ```
 
 - A kind is **applicable** when the repo has ≥1 instance of it (e.g. any
   recognized command ecosystem makes `command-ecosystems` applicable). Absence
   makes the kind *not applicable* — it never counts against coverage.
+- `documentation-roles` sources from `repositoryEvidence.documentSurfaces[]
+  .roleClaims`, **not** the legacy four-bucket `report.docs`
+  (`readme`/`contributing`/`architecture`/`environment`) projection. Per ADR
+  0002 (classify roles, not fixed filenames), role evidence includes ADRs,
+  runbooks, API references, and agent-instruction files that `report.docs` never
+  captures; sourcing coverage from the narrow projection would mark those as not
+  applicable and inflate the ratio for repos that *do* have recognized role
+  evidence.
 - A kind is **assessed** when AgentReady produced a determinate evaluation for
   it (evidence + any findings), and *unassessed* when it was recognized as
   present but could not be evaluated (parse failure, an over-limit file, a
