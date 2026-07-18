@@ -190,7 +190,13 @@ export interface CoverageReport {
   applicableSurfaces: number
   /** Of those, how many it could actually assess (not blocked/unknown). */
   assessedSurfaces: number
-  /** assessedSurfaces / applicableSurfaces, 0..1; the missing denominator. */
+  /**
+   * assessedSurfaces / applicableSurfaces, always within 0..1.
+   * Invariant: when applicableSurfaces is 0 the division is undefined, so the
+   * ratio is defined as `1` — zero applicable surfaces means coverage is
+   * vacuously complete (there was nothing this scan needed to assess). The
+   * value must never be NaN, Infinity, null, or outside 0..1.
+   */
   ratio: number
   /** Applicable surfaces it could not assess, with why. */
   gaps: Array<{ surface: string; reason: string }>
@@ -214,6 +220,11 @@ only presentation text.
 Replace the hard-coded constant with an injectable weight table that *defaults
 to today's values*, and let it read confidence and scope:
 
+`ScoreWeights` is an **internal parameter of `calculateScore`**, not a
+serialized report field (see Compatibility impact). Because a policy pack can
+inject one at runtime, the contract must be defensive: the default is immutable,
+and injected weights are validated before use.
+
 ```ts
 export interface ScoreWeights {
   severity: Record<ReadinessSeverity, number>   // default { error: 18, warning: 7, info: 2 }
@@ -221,12 +232,25 @@ export interface ScoreWeights {
   scope: Record<FindingScope, number>            // default all 1
 }
 
-export const DEFAULT_WEIGHTS: ScoreWeights = /* today's behavior exactly */
+// Deep-frozen so a caller cannot mutate the shared default and silently change
+// future scores; the defaulting path passes this frozen value, never a shared
+// mutable one.
+export const DEFAULT_WEIGHTS: ScoreWeights = Object.freeze({
+  severity: Object.freeze({ error: 18, warning: 7, info: 2 }),
+  confidence: Object.freeze({ high: 1, medium: 1, low: 1 }),
+  scope: Object.freeze({ root: 1, package: 1, path: 1, advisory: 1 }),
+}) as ScoreWeights
+
+// Every severity/confidence/scope multiplier must be finite and >= 0, and the
+// maps must be complete: a missing key would yield `undefined -> NaN`, and a
+// negative weight could *raise* the score and weaken an existing gate.
+const assertValidWeights = (w: ScoreWeights): void => { /* throws on bad input */ }
 
 export const calculateScore = (
   findings: ReadinessFinding[],
   weights: ScoreWeights = DEFAULT_WEIGHTS,
 ): number => {
+  if (weights !== DEFAULT_WEIGHTS) assertValidWeights(weights)
   const penalty = findings.reduce((total, f) => {
     const base = weights.severity[f.severity]
     const c = weights.confidence[f.confidence ?? 'high']
@@ -240,7 +264,10 @@ export const calculateScore = (
 With `DEFAULT_WEIGHTS` all multipliers are `1`, so **the default score is
 byte-identical to today's**. A policy pack or a future calibrated profile can
 supply non-default multipliers (e.g. discount low-confidence findings, discount
-`advisory`-scope findings) without touching the core.
+`advisory`-scope findings) without touching the core — but only weights that
+pass `assertValidWeights` (finite, non-negative, complete), so an injected pack
+can never produce a `NaN` score or a negative penalty that inflates the score
+past an existing gate.
 
 ### Where calibrated weights come from (relationship to the benchmark)
 
@@ -292,14 +319,20 @@ Secondary score: 74/100 (experimental, uncalibrated)
 - **Score:** unchanged by default (`DEFAULT_WEIGHTS` reproduces current output).
   Existing `--fail-on`, diff-regression, and Action `minimum-score` gates keep
   working with identical numbers.
-- **Schema:** the new `ReadinessFinding.confidence` and
-  `ReadinessFinding.scope` fields (both optional), `readinessProfile`, and
-  `ScoreWeights` are all **additive**. The two optional finding fields default
-  to neutral values and so leave every existing finding's shape and score
-  unchanged; `readinessProfile` is registered as a new
-  `LocalReadinessExperimentalField` alongside `dimensions` and
-  `autonomyEnvelope`; `schemaVersion` stays `local-readiness/v2` because nothing
-  existing changes shape or meaning.
+- **Schema (serialized report fields):** the new `ReadinessFinding.confidence`
+  and `ReadinessFinding.scope` fields (both optional) and `readinessProfile` are
+  **additive**. The two optional finding fields default to neutral values and so
+  leave every existing finding's shape and score unchanged; `readinessProfile`
+  is registered as a new `LocalReadinessExperimentalField` alongside `dimensions`
+  and `autonomyEnvelope`; `schemaVersion` stays `local-readiness/v2` because
+  nothing existing changes shape or meaning.
+- **`ScoreWeights` is not a schema field.** It is an internal parameter of
+  `calculateScore` (and a future policy-pack input), not part of
+  `LocalReadinessReport`, `reportContract.experimentalFields`, or the config
+  schema — nothing serializes it. It carries no schema-version or
+  experimental-field registration obligation; its only compatibility contract is
+  that `DEFAULT_WEIGHTS` reproduces today's score exactly and that injected
+  weights are validated.
 - **Default severities:** unchanged. No rule's default severity moves in this
   ADR.
 - **Rollout phase:** target **v0.4**, sitting on the autonomy-envelope and
@@ -374,11 +407,14 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
   profile output.
 - Assert `coverage.ratio` rises when more applicable surfaces are assessed and
   is unaffected by inapplicable surfaces (legibility is not penalized).
+- Assert `coverage.ratio` is `1` (never `NaN`/`Infinity`/`null`) when
+  `applicableSurfaces` is `0`, and stays within `0..1` for all inputs.
 - Assert weighting by confidence/scope only changes the score when non-default
   weights are supplied, and that low-confidence findings can be discounted by a
   policy pack without altering the raw finding set.
+- Assert `calculateScore` rejects injected weights that are non-finite,
+  negative, or incomplete (missing severity/confidence/scope keys), and that
+  `DEFAULT_WEIGHTS` is deep-frozen so a caller cannot mutate the shared default.
 - Assert `calibrationConfidence` reports `low` while the benchmark's
   outcome columns remain `TODO`.
 - Assert deterministic output across repeated runs with a fixed clock.
-</content>
-</invoke>
