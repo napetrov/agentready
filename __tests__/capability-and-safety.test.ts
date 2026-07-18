@@ -250,6 +250,18 @@ describe('hook-execution-risk detector', () => {
     }
   })
 
+  test('flags an install command that explicitly negates --ignore-scripts (=false)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm install --ignore-scripts=false'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm install --ignore-scripts=false' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test('also checks .claude/settings.local.json', () => {
     const root = createTempRepo()
     try {

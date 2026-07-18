@@ -101,7 +101,7 @@ const isWorkspaceQualified = (text: string, matchIndex: number, matchLength: num
 // shortcut.
 const PACKAGE_MANAGER_BUILTIN_VERBS: Record<PackageManager, ReadonlySet<string>> = {
   npm: new Set([
-    'access', 'adduser', 'audit', 'bugs', 'cache', 'ci', 'completion', 'config', 'dedupe', 'deprecate',
+    'access', 'adduser', 'audit', 'bugs', 'cache', 'ci', 'completion', 'config', 'create', 'dedupe', 'deprecate',
     'diff', 'dist-tag', 'docs', 'doctor', 'edit', 'exec', 'explain', 'explore', 'find-dupes', 'fund',
     'help', 'hook', 'i', 'init', 'install', 'install-ci-test', 'install-test', 'link', 'll', 'login', 'logout',
     'ls', 'org', 'outdated', 'owner', 'pack', 'ping', 'pkg', 'prefix', 'profile', 'prune', 'publish',

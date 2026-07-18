@@ -202,6 +202,11 @@ describe('detectCommandReferences (units)', () => {
     expect(detect([doc], baseCommands)).toEqual([])
   })
 
+  it('does not flag npm\'s "create" scaffold command (e.g. `npm create vite@latest`)', () => {
+    const doc = write('README.md', 'Scaffold with `npm create vite@latest`.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
   it('does not flag Yarn Berry\'s "npm" command group (e.g. `yarn npm audit`, `yarn npm publish`)', () => {
     const doc = write('README.md', 'Run `yarn npm audit` before publishing with `yarn npm publish`.')
     expect(detect([doc], baseCommands)).toEqual([])

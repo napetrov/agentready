@@ -183,8 +183,12 @@ const HOOK_INSTALL_COMMAND_PATTERN = /\b(?:npm|yarn|pnpm|bun)\s+(?:install|ci)\b
 // does what the name says: it skips exactly the lifecycle scripts
 // (preinstall/postinstall/prepare) that make this composite risk real. An
 // install command that explicitly disables them is not the branch-controlled
-// code-execution risk this detector exists to catch.
-const IGNORE_SCRIPTS_FLAG_PATTERN = /--ignore-scripts\b/
+// code-execution risk this detector exists to catch. The negative lookahead
+// excludes an explicit `=false`/`=0` negation (e.g. `--ignore-scripts=false`,
+// which npm resolves to *not* ignoring scripts) -- without it, negating the
+// flag would still read as "scripts are ignored" and wrongly suppress a real
+// risk.
+const IGNORE_SCRIPTS_FLAG_PATTERN = /--ignore-scripts\b(?!=(?:false|0)\b)/
 
 interface HookCommandEntry {
   event: string
