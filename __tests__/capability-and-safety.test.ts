@@ -218,6 +218,28 @@ describe('hook-execution-risk detector', () => {
     }
   })
 
+  test('flags npm\'s "i" install alias, not just the full "install" word', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm i'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm i' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag yarn\'s "i" (yarn has no such install alias)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'yarn i'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test('also checks .claude/settings.local.json', () => {
     const root = createTempRepo()
     try {

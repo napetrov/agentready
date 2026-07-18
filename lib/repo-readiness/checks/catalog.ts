@@ -159,7 +159,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
     category: 'commands',
     defaultSeverity: 'warning',
     rationale:
-      'A code-formatted `<manager> <word>` shortcut (e.g. `pnpm dev`) that is neither a real package-manager built-in nor an existing package.json script sends an agent down the same dead end as `npm run buld` — it just skips the "run" keyword. AgentReady only flags this when the word matches neither a curated per-manager built-in-verb allowlist nor a real script, and the reference is shown as Markdown code (inline `` ` `` span or a fenced block), to keep prose that merely discusses a package manager (e.g. "the pnpm ecosystem") from being misread as a command.',
+      'A code-formatted `<manager> <word>` shortcut (e.g. `pnpm dev`) sends an agent down the same dead end as `npm run buld` — it just skips the "run" keyword. For yarn/pnpm/bun (which do fall back to running an arbitrary matching script without "run"), this is flagged when the word matches neither a curated per-manager built-in-verb allowlist nor a real script. npm has no such fallback at all — only test/start/stop/restart run this way — so for npm this is flagged whenever the word isn\'t one of those or a real npm CLI command, regardless of whether a matching script exists; the reference must also be shown as Markdown code (inline `` ` `` span or a fenced block), to keep prose that merely discusses a package manager (e.g. "the pnpm ecosystem") from being misread as a command.',
     remediation: [
       'Add the missing script to package.json, or fix the reference to an existing one.',
       'If the shortcut is intentionally illustrative, say so nearby.',

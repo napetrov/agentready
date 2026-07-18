@@ -172,8 +172,12 @@ const AUTOMATIC_HOOK_EVENTS = new Set(['SessionStart', 'SessionEnd', 'PreCompact
 // scripts) rather than every command a hook might run -- that is the specific
 // mechanism by which a hook can execute code the checked-out branch controls
 // (preinstall/postinstall/prepare scripts), not a general "this hook runs
-// some command" signal `safety.capability.high-risk` already covers.
-const HOOK_INSTALL_COMMAND_PATTERN = /\b(npm|yarn|pnpm|bun)\s+(install|ci)\b/i
+// some command" signal `safety.capability.high-risk` already covers. Also
+// matches npm/pnpm/bun's documented `i` alias for `install` (yarn has no such
+// alias) -- a hook author is at least as likely to write the short form as
+// the long one. Not exhaustive of every npm typo-tolerant install alias
+// (`in`, `ins`, `inst`, ...); `i` is the one actually in common use.
+const HOOK_INSTALL_COMMAND_PATTERN = /\b(?:npm|yarn|pnpm|bun)\s+(?:install|ci)\b|\b(?:npm|pnpm|bun)\s+i\b/i
 
 interface HookCommandEntry {
   event: string

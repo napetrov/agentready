@@ -101,7 +101,7 @@ const PACKAGE_MANAGER_BUILTIN_VERBS: Record<PackageManager, ReadonlySet<string>>
     'help', 'hook', 'init', 'install', 'install-ci-test', 'install-test', 'link', 'll', 'login', 'logout',
     'ls', 'org', 'outdated', 'owner', 'pack', 'ping', 'pkg', 'prefix', 'profile', 'prune', 'publish',
     'query', 'rebuild', 'repo', 'restart', 'root', 'run', 'run-script', 'sbom', 'search', 'set',
-    'set-script', 'shrinkwrap', 'star', 'stars', 'star', 'team', 'token', 'uninstall', 'unpublish',
+    'set-script', 'shrinkwrap', 'star', 'stars', 'star', 'stop', 'team', 'token', 'uninstall', 'unpublish',
     'unstar', 'update', 'version', 'view', 'whoami',
   ]),
   yarn: new Set([
@@ -157,15 +157,29 @@ const findMissingShortcuts = (text: string, docPath: string, scripts: Set<string
     if (!manager || match.index === undefined) continue
     const lowerVerb = verb.toLowerCase()
     if (SHORTCUT_EXCLUDED_VERBS.has(lowerVerb)) continue
-    if (scripts.has(verb)) continue
     if (PACKAGE_MANAGER_BUILTIN_VERBS[manager].has(lowerVerb)) continue
     if (!isWithinCodeSpan(codeRanges, match.index, reference.length)) continue
     if (isWorkspaceQualified(text, match.index, reference.length)) continue
+
+    // npm, unlike yarn/pnpm/bun, has no general "run any script by name
+    // without `run`" fallback -- only test/start/stop/restart are npm's own
+    // built-in commands that happen to run the like-named script (already
+    // excluded above via SHORTCUT_EXCLUDED_VERBS/PACKAGE_MANAGER_BUILTIN_VERBS).
+    // Any other bare `npm <word>` errors with "Unknown command" even when a
+    // matching script exists in package.json -- npm just suggests `npm run
+    // <word>` instead of running it. So for npm this is flagged regardless of
+    // `scripts.has(verb)`; for yarn/pnpm/bun (which do fall back to running
+    // an arbitrary matching script), an existing script means it resolves
+    // fine.
+    if (manager !== 'npm' && scripts.has(verb)) continue
+
     evidence.push({
       path: docPath,
       reference: reference.trim(),
       kind: 'shortcut-script',
-      detail: `"${manager} ${verb}" is not a "${manager}" built-in command and no "${verb}" script exists in package.json.`,
+      detail: manager === 'npm'
+        ? `npm has no bare-script shortcut for "${verb}" (only test/start/stop/restart run this way) -- use "npm run ${verb}" instead.`
+        : `"${manager} ${verb}" is not a "${manager}" built-in command and no "${verb}" script exists in package.json.`,
     })
   }
   return evidence

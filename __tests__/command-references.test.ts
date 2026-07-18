@@ -162,10 +162,28 @@ describe('detectCommandReferences (units)', () => {
     ])
   })
 
-  it('does not flag a shortcut when the script actually exists', () => {
+  it('does not flag a yarn/pnpm/bun shortcut when the script actually exists (they fall back to running it)', () => {
     const doc = write('README.md', 'Quick start: run `pnpm dev` to start the app.')
     const withDevScript: CommandEvidence = { ...baseCommands, scripts: [...baseCommands.scripts, 'dev'] }
     expect(detect([doc], withDevScript)).toEqual([])
+  })
+
+  it('flags an npm bare shortcut even when the script exists: npm has no bare-script fallback', () => {
+    const doc = write('README.md', 'Quick start: run `npm dev` to start the app.')
+    const withDevScript: CommandEvidence = { ...baseCommands, scripts: [...baseCommands.scripts, 'dev'] }
+    expect(detect([doc], withDevScript)).toEqual([
+      {
+        path: doc,
+        reference: 'npm dev',
+        kind: 'shortcut-script',
+        detail: 'npm has no bare-script shortcut for "dev" (only test/start/stop/restart run this way) -- use "npm run dev" instead.',
+      },
+    ])
+  })
+
+  it('does not flag npm\'s own stop/restart bare commands', () => {
+    const doc = write('README.md', 'Run `npm stop` or `npm restart` as needed.')
+    expect(detect([doc], baseCommands)).toEqual([])
   })
 
   it.each([
