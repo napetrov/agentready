@@ -148,12 +148,22 @@ Add `readinessProfile` to `LocalReadinessReport` as a new experimental field. It
 composes the *existing* `autonomyEnvelope` and `dimensions` with the two new
 axes rather than replacing them:
 
-```ts
-export type AxisVerdict = 'ready' | 'not_ready' | 'high' | 'low' | 'unknown'
+The Risk axis and the readiness axes answer different questions and must not
+share a verdict scale. Readiness is `ready | not_ready`; risk is a tier, and it
+**reuses the existing `CapabilityRiskTier` (`low | medium | high`)** verbatim so
+a repo with only `medium`-risk surfaces (the value the detector emits for
+settings files that *could* define hooks but don't appear to) is represented
+faithfully rather than coerced to `low`/`high`. Both add `unknown` for the
+locally-unverifiable case:
 
-export interface ReadinessAxis {
+```ts
+export type ReadinessVerdict = 'ready' | 'not_ready' | 'unknown'
+/** CapabilityRiskTier is the existing 'low' | 'medium' | 'high' from types.ts. */
+export type RiskVerdict = CapabilityRiskTier | 'unknown'
+
+export interface AxisAssessment<TVerdict extends string> {
   /** Machine-readable verdict; `unknown` when locally unverifiable. */
-  verdict: AxisVerdict
+  verdict: TVerdict
   /** How much trust to place in this verdict, from evidence confidence. */
   confidence: EvidenceConfidence
   /** Ids of the findings/evidence backing the verdict. */
@@ -165,8 +175,8 @@ export interface ReadinessAxis {
 export interface ReadinessProfile {
   /** Per-stage readiness — reuses the existing autonomy envelope verbatim. */
   readiness: AutonomyStageResult[]
-  /** Aggregate capability-risk verdict, from capability + safety evidence. */
-  risk: ReadinessAxis
+  /** Aggregate capability-risk tier, reusing CapabilityRiskTier (+ unknown). */
+  risk: AxisAssessment<RiskVerdict>
   /** Applicable-surface coverage; see CoverageReport below. */
   coverage: CoverageReport
   /** What was verified, not found, or unverifiable locally. */
