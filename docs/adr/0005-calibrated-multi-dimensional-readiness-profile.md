@@ -81,7 +81,7 @@ A report should be able to say:
 
 ```text
 Edit readiness:          ready
-Verification readiness:  not ready
+Verification readiness:  not_yet_ready
 Merge governance:        unknown — external controls not queried
 Capability risk:         high
 Scanner coverage:        78%
@@ -91,6 +91,13 @@ Calibration confidence:  low
 instead of `score: 74`. This is more honest and more operationally useful,
 because those four axes fail independently: a repository can be perfectly
 editable and completely un-verifiable, and one number cannot say so.
+
+The per-stage readiness lines render the machine `AutonomyStatus` vocabulary
+(`ready | not_yet_ready | blocked`) directly. "Merge governance: unknown" is not
+a readiness status — `AutonomyStatus` has no `unknown`; it is an Observability
+statement (the merge controls are `notObservableLocally`, not queried offline),
+surfaced next to the readiness lines because that is what a reader needs to see
+together.
 
 Four concrete rules follow from this decision:
 
@@ -149,15 +156,22 @@ composes the *existing* `autonomyEnvelope` and `dimensions` with the two new
 axes rather than replacing them:
 
 The Risk axis and the readiness axes answer different questions and must not
-share a verdict scale. Readiness is `ready | not_ready`; risk is a tier, and it
-**reuses the existing `CapabilityRiskTier` (`low | medium | high`)** verbatim so
-a repo with only `medium`-risk surfaces (the value the detector emits for
-settings files that *could* define hooks but don't appear to) is represented
-faithfully rather than coerced to `low`/`high`. Both add `unknown` for the
-locally-unverifiable case:
+share a verdict scale.
+
+- **Per-stage readiness reuses the existing `AutonomyStatus`
+  (`ready | not_yet_ready | blocked`)** verbatim — the `readiness` field *is*
+  the existing `AutonomyStageResult[]` (`autonomyEnvelope`), so it must serialize
+  exactly that vocabulary. This ADR introduces **no** new readiness verdict type;
+  an earlier draft's `ready | not_ready | unknown` was wrong because it
+  contradicted the `readinessProfile.readiness === autonomyEnvelope` invariant
+  below.
+- **Risk is a tier** and **reuses the existing `CapabilityRiskTier`
+  (`low | medium | high`)** verbatim, plus `unknown` for the locally-unverifiable
+  case, so a repo with only `medium`-risk surfaces (the value the detector emits
+  for settings files that *could* define hooks but don't appear to) is
+  represented faithfully rather than coerced to `low`/`high`.
 
 ```ts
-export type ReadinessVerdict = 'ready' | 'not_ready' | 'unknown'
 /** CapabilityRiskTier is the existing 'low' | 'medium' | 'high' from types.ts. */
 export type RiskVerdict = CapabilityRiskTier | 'unknown'
 
@@ -305,7 +319,7 @@ ADR 0004's section ordering. Example markdown:
 Repository Agent Readiness Profile
 
 - Edit readiness:         ready
-- Verification readiness: not ready (commands.test.missing)
+- Verification readiness: not_yet_ready (commands.test.missing)
 - Merge governance:       unknown — external controls not queried
 - Capability risk:        high (3 high-blast-radius surfaces)
 - Scanner coverage:       78% (7/9 applicable surfaces assessed)
@@ -321,11 +335,31 @@ Secondary score: 74/100 (experimental, uncalibrated)
   working with identical numbers.
 - **Schema (serialized report fields):** the new `ReadinessFinding.confidence`
   and `ReadinessFinding.scope` fields (both optional) and `readinessProfile` are
-  **additive**. The two optional finding fields default to neutral values and so
-  leave every existing finding's shape and score unchanged; `readinessProfile`
-  is registered as a new `LocalReadinessExperimentalField` alongside `dimensions`
-  and `autonomyEnvelope`; `schemaVersion` stays `local-readiness/v2` because
-  nothing existing changes shape or meaning.
+  **additive, but they do change the strict schemas.** The v2 report and finding
+  schemas (`lib/repo-readiness/core/schemas.ts`) reject unknown keys — a
+  strictness the tests enforce (`__tests__/schemas.test.ts` "rejects unknown
+  keys") — so these new keys must be **added to the strict Zod/JSON schemas in
+  the same change**, and the schema strictness/snapshot tests updated in
+  lockstep. Runtime defaults (`confidence → high`, `scope → package`) mean a
+  finding that omits them is unchanged in *value*, but a report or finding that
+  *emits* them is only valid against the updated schema.
+- **Why `schemaVersion` stays `local-readiness/v2`:** not because "nothing
+  changes" — the strict schema does change — but because this follows the
+  established **additive-within-v2 experimental-field contract** from ADR 0000's
+  rollout plan, exactly as `repositoryEvidence`, `designState`, `dimensions`, and
+  `autonomyEnvelope` were added without a version bump. `readinessProfile` is
+  registered as a new `LocalReadinessExperimentalField` (the top-level opt-in
+  signal that a field is unstable within v2). The trade-off is explicit and
+  inherited from that contract: a consumer pinned to an *older* copy of the v2
+  schema must regenerate it to accept the new keys — that is the accepted cost of
+  an experimental field, and the schema tests are the gate that keeps the shipped
+  schema and the emitted report in agreement.
+- **Finding-level additions are not covered by the top-level registry.**
+  `LocalReadinessExperimentalField` enumerates *report* fields, so it cannot flag
+  `ReadinessFinding.confidence`/`scope`. The rollout must therefore either (a)
+  extend the experimental-field mechanism to cover finding sub-fields, or (b)
+  ship the finding fields only once they are stable. Until one is chosen, these
+  fields ship as optional keys documented here, not silently.
 - **`ScoreWeights` is not a schema field.** It is an internal parameter of
   `calculateScore` (and a future policy-pack input), not part of
   `LocalReadinessReport`, `reportContract.experimentalFields`, or the config
@@ -398,10 +432,15 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
   current `calculateScore(findings)` across all existing fixtures (regression
   lock on the default path).
 - Add JSON Schema tests for `readinessProfile`, `scope`, `CoverageReport`, and
-  `ObservabilityReport`; assert they are registered as experimental fields and
-  that `schemaVersion` is unchanged.
+  `ObservabilityReport`; assert `readinessProfile` is registered as an
+  experimental field and that `schemaVersion` stays `local-readiness/v2`.
+- Assert the updated **strict** report and finding schemas *accept* the new
+  optional keys and still *reject* genuinely unknown keys, so
+  `__tests__/schemas.test.ts` passes rather than tripping on the additions.
 - Assert `readinessProfile.readiness` equals the existing `autonomyEnvelope`
-  (the profile reuses it, not recomputes it).
+  and serializes the `AutonomyStatus` vocabulary (`ready | not_yet_ready |
+  blocked`), with no `not_ready`/`unknown` readiness value anywhere (the profile
+  reuses the envelope, it does not introduce a parallel verdict type).
 - Add fixtures where the axes diverge (editable but not verifiable;
   low-coverage large monorepo; unknown merge governance) and snapshot the
   profile output.
