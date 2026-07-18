@@ -179,6 +179,13 @@ const AUTOMATIC_HOOK_EVENTS = new Set(['SessionStart', 'SessionEnd', 'PreCompact
 // (`in`, `ins`, `inst`, ...); `i` is the one actually in common use.
 const HOOK_INSTALL_COMMAND_PATTERN = /\b(?:npm|yarn|pnpm|bun)\s+(?:install|ci)\b|\b(?:npm|pnpm|bun)\s+i\b/i
 
+// npm/yarn/pnpm/bun all document the same `--ignore-scripts` flag, and it
+// does what the name says: it skips exactly the lifecycle scripts
+// (preinstall/postinstall/prepare) that make this composite risk real. An
+// install command that explicitly disables them is not the branch-controlled
+// code-execution risk this detector exists to catch.
+const IGNORE_SCRIPTS_FLAG_PATTERN = /--ignore-scripts\b/
+
 interface HookCommandEntry {
   event: string
   command: string
@@ -237,6 +244,7 @@ export const detectHookExecutionRisks = (root: string, filePaths: string[]): Hoo
     for (const { event, command } of extractHookCommands(hooksConfig)) {
       if (!AUTOMATIC_HOOK_EVENTS.has(event)) continue
       if (!HOOK_INSTALL_COMMAND_PATTERN.test(command)) continue
+      if (IGNORE_SCRIPTS_FLAG_PATTERN.test(command)) continue
       evidence.push({ path: settingsPath, event, command })
     }
   }

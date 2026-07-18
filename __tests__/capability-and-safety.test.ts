@@ -240,6 +240,16 @@ describe('hook-execution-risk detector', () => {
     }
   })
 
+  test('does not flag an install command that explicitly disables lifecycle scripts (--ignore-scripts)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'bun install --ignore-scripts'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test('also checks .claude/settings.local.json', () => {
     const root = createTempRepo()
     try {

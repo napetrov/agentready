@@ -112,7 +112,7 @@ const PACKAGE_MANAGER_BUILTIN_VERBS: Record<PackageManager, ReadonlySet<string>>
   yarn: new Set([
     'add', 'audit', 'autoclean', 'bin', 'cache', 'check', 'config', 'create', 'dedupe', 'dlx', 'exec',
     'explain', 'generate-lock-entry', 'global', 'help', 'import', 'info', 'init', 'install', 'licenses',
-    'link', 'list', 'login', 'logout', 'node', 'outdated', 'pack', 'patch', 'patch-commit', 'plugin',
+    'link', 'list', 'login', 'logout', 'node', 'npm', 'outdated', 'pack', 'patch', 'patch-commit', 'plugin',
     'policies', 'publish', 'rebuild', 'remove', 'run', 'set', 'tag', 'team', 'unlink', 'unplug', 'up',
     'upgrade', 'upgrade-interactive', 'version', 'versions', 'why', 'workspace', 'workspaces',
   ]),

@@ -202,6 +202,11 @@ describe('detectCommandReferences (units)', () => {
     expect(detect([doc], baseCommands)).toEqual([])
   })
 
+  it('does not flag Yarn Berry\'s "npm" command group (e.g. `yarn npm audit`, `yarn npm publish`)', () => {
+    const doc = write('README.md', 'Run `yarn npm audit` before publishing with `yarn npm publish`.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
   it('flags yarn "i" as a shortcut: yarn has no "i" install alias', () => {
     const doc = write('README.md', 'Quick start: `yarn i` to install dependencies.')
     const evidence = detect([doc], baseCommands)
