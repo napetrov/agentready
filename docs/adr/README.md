@@ -11,6 +11,7 @@ depend on the canonical contract and rollout rules in ADR 0000.
 - [ADR 0002: Classify Document Roles Instead of Requiring Fixed Document Names](0002-document-role-classification-not-fixed-document-names.md)
 - [ADR 0003: Repository Topology and Architecture Signals](0003-repository-topology-and-architecture-signals.md)
 - [ADR 0004: Explainable Design-State Reporting](0004-explainable-design-state-reporting.md)
+- [ADR 0005: Calibrated Multi-Dimensional Readiness Profile](0005-calibrated-multi-dimensional-readiness-profile.md)
 
 Acceptance rule: an ADR is implementation-ready only when its schema changes,
 default severities, rollout phase, and compatibility impact are explicit.
