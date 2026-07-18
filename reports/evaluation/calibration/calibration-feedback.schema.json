@@ -1,0 +1,164 @@
+{
+  "$id": "https://napetrov.github.io/agentready/reports/evaluation/calibration/calibration-feedback.schema.json",
+  "title": "AgentReady calibration feedback record",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Structured record of the evaluation loop described in docs/product/evaluation.md: real repository -> findings -> agent/reviewer run -> false-positive/false-negative notes -> detector, policy, or documentation improvement. Not part of AgentReady's runtime report contract (schemas/*.schema.json, generated from Zod by bin/agentready-emit-schemas.ts) -- this shape is hand-maintained input to the benchmark/backlog process, not scanner output.",
+  "type": "object",
+  "properties": {
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "description": "owner/name of the reviewed repository."
+    },
+    "repositoryUrl": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commit": {
+      "type": "string",
+      "description": "Commit the review was performed against, if known."
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "reviewMethod": {
+      "type": "string",
+      "enum": [
+        "manual-expert-review",
+        "agent-run-comparison",
+        "automated-rescan"
+      ],
+      "description": "How this record's findings were produced. 'manual-expert-review' means a human read the repository directly, independent of any AgentReady scan -- the case this schema exists to capture, per docs/product/evaluation.md's benchmark loop."
+    },
+    "agentreadyScan": {
+      "type": "object",
+      "description": "The AgentReady scan being calibrated against, if one was run.",
+      "properties": {
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minScoreConfigured": {
+          "type": "number"
+        },
+        "gateResult": {
+          "type": "string",
+          "enum": ["pass", "fail"]
+        },
+        "reportPath": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "observedAutonomyEnvelope": {
+      "type": "object",
+      "description": "Optional per-stage autonomy assessment observed during review (see AgentStage in each finding's affectedStage). Keys are free-form stage/activity labels, not required to match affectedStage exactly, since this describes an aggregate judgment rather than a single finding.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ready", "not_yet_ready", "blocked", "unknown"]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": ["status"],
+        "additionalProperties": false
+      }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/findingAssessment"
+      }
+    }
+  },
+  "required": ["repository", "findings"],
+  "additionalProperties": false,
+  "definitions": {
+    "findingAssessment": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "true_positive",
+            "false_negative",
+            "severity_mismatch",
+            "policy_mismatch",
+            "not_observable_locally"
+          ],
+          "description": "true_positive: AgentReady found it with a useful severity. false_negative: AgentReady did not report it at all. severity_mismatch: AgentReady found it but ranked it too low (or too high) for the risk it represents. policy_mismatch: default severity is reasonable, but a stricter operating context (enterprise, autonomous-merge, ...) should treat it differently. not_observable_locally: the repository's local contents cannot prove this either way (e.g. branch protection, required reviews) -- AgentReady's local-first, non-networked scan guarantee means this can only ever be reported as unverified, never inferred."
+        },
+        "agentreadyFindingId": {
+          "type": ["string", "null"],
+          "description": "The existing finding id this compares against (e.g. 'safety.capability.high-risk'), or null for a false_negative/not_observable_locally with no corresponding id yet."
+        },
+        "expectedSeverity": {
+          "type": "string",
+          "enum": ["info", "warning", "error"]
+        },
+        "affectedStage": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "orient",
+              "bootstrap",
+              "navigate",
+              "edit",
+              "verify",
+              "review",
+              "merge",
+              "deploy"
+            ]
+          },
+          "description": "Which agent-autonomy stages this finding affects. See docs/product/evaluation.md."
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "observedFriction": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What an agent (or its reviewer) would actually experience because of this gap."
+        },
+        "recommendedLayer": {
+          "type": "string",
+          "enum": [
+            "deterministic-check",
+            "optional-analysis",
+            "policy-pack",
+            "platform-enrichment",
+            "documentation-only"
+          ],
+          "description": "Which part of the scan/policy/analysis/enrichment pipeline (docs/product/evaluation.md, docs/product/policy-packs.md) should own a fix, if any."
+        },
+        "verificationStatus": {
+          "type": "string",
+          "enum": [
+            "verified-by-agentready-maintainer",
+            "reported-by-reviewer-not-independently-verified"
+          ],
+          "description": "Whether an AgentReady maintainer re-checked this finding against the repository directly, or it is carried as-reported from the source review. Required so a calibration record never silently reads as more verified than it is."
+        }
+      },
+      "required": ["title", "classification", "affectedStage", "observedFriction", "verificationStatus"],
+      "additionalProperties": false
+    }
+  }
+}

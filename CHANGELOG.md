@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Calibration feedback schema (`reports/evaluation/calibration/calibration-feedback.schema.json`)
+  and the first calibration record
+  (`reports/evaluation/calibration/napetrov-AIReady.json`), the "human/agent
+  judgment" half of the evaluation loop in
+  [docs/product/evaluation.md](docs/product/evaluation.md#feedback-classification):
+  every reviewed finding is classified as `true_positive`, `false_negative`,
+  `severity_mismatch`, `policy_mismatch`, or `not_observable_locally`, tagged
+  with the agent-workflow stage(s) it affects, and marked with whether an
+  AgentReady maintainer independently re-verified it. AIReady is a
+  high-readiness repository (extensive agent instructions, sophisticated CI, a
+  passing AgentReady Action gate at a configured minimum score of 80) whose
+  manual review still surfaced several `false_negative`/`severity_mismatch`
+  findings — see
+  [docs/roadmap/v0.4-issue-drafts.md](docs/roadmap/v0.4-issue-drafts.md) for
+  the resulting backlog (package-manager-aware shortcut-script command
+  validation, a composite automatic-hook-executes-repository-code safety
+  check, autonomy-stage metadata, protected-path CODEOWNERS coverage, and the
+  `policyOptions.requirePortableInstructionEntrypoint` policy option).
 - `oss` and `ml-scientific` policy packs (`lib/repo-readiness/checks/policy-packs.ts`),
   joining `default` and `enterprise` as the four built-in `--policy <name>`
   choices on `scan`/`diff` and the GitHub Action's `policy` input. `oss`

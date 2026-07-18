@@ -1,0 +1,99 @@
+{
+  "repository": "napetrov/AIReady",
+  "repositoryUrl": "https://github.com/napetrov/AIReady",
+  "commit": "54ec392ef6582393c9ba720a168681fbf9326c83",
+  "reviewMethod": "manual-expert-review",
+  "agentreadyScan": {
+    "minScoreConfigured": 80,
+    "gateResult": "pass"
+  },
+  "observedAutonomyEnvelope": {
+    "understand-repository": { "status": "ready" },
+    "find-package-and-files": { "status": "ready" },
+    "make-bounded-code-change": { "status": "ready" },
+    "run-targeted-verification": { "status": "ready" },
+    "open-reviewable-pull-request": { "status": "ready" },
+    "merge-without-human-review": { "status": "blocked", "note": "no evidence reviewed to support autonomous merge; recommend human approval gate." },
+    "modify-database-ci-auth-or-agent-hooks-autonomously": { "status": "blocked", "note": "single-owner/no-owner CODEOWNERS coverage on the highest-risk paths." },
+    "deploy-or-use-production-credentials": { "status": "blocked", "note": "not evaluated as an intended agent capability for this repository." }
+  },
+  "findings": [
+    {
+      "title": "README quick-start references a root command that has no corresponding root package.json script",
+      "classification": "false_negative",
+      "agentreadyFindingId": null,
+      "expectedSeverity": "error",
+      "affectedStage": ["bootstrap", "verify"],
+      "evidence": ["README.md quick-start section (pnpm dev)", "package.json scripts (no root \"dev\" script)"],
+      "observedFriction": "An unfamiliar agent following the documented quick-start runs a command the root project does not expose, and has to recover with no signal that the command was ever going to fail.",
+      "recommendedLayer": "deterministic-check",
+      "verificationStatus": "reported-by-reviewer-not-independently-verified"
+    },
+    {
+      "title": "Documented composition of the \"validate\" script (lint + typecheck + test) has drifted from its actual composition (lint + typecheck + knip + test)",
+      "classification": "false_negative",
+      "agentreadyFindingId": null,
+      "expectedSeverity": "warning",
+      "affectedStage": ["bootstrap", "verify"],
+      "evidence": ["docs describing pnpm validate as lint+typecheck+test", "package.json #scripts.validate (also runs knip)"],
+      "observedFriction": "The command itself resolves and runs (so AgentReady's existing commands.reference checks correctly stay silent), but an agent that trusts the documented description of what the command covers may under- or over-estimate what a passing run actually verified.",
+      "recommendedLayer": "optional-analysis",
+      "verificationStatus": "reported-by-reviewer-not-independently-verified"
+    },
+    {
+      "title": "Task playbook describes a stale check/plugin taxonomy and competitor-exclusion list (references check C12 and excludes only C1/C9) against a codebase now at check C17 with a wider exclusion list",
+      "classification": "false_negative",
+      "agentreadyFindingId": null,
+      "expectedSeverity": "warning",
+      "affectedStage": ["orient", "navigate", "verify"],
+      "evidence": ["task playbook doc (\"Add a New Check (C12)\", competitor-exclusion list)", "current implementation (checks through C17)"],
+      "observedFriction": "An agent following the playbook literally would extend or reason about a taxonomy and exclusion list the maintainers already moved past, producing plausible-looking but wrong guidance.",
+      "recommendedLayer": "optional-analysis",
+      "verificationStatus": "reported-by-reviewer-not-independently-verified"
+    },
+    {
+      "title": "Claude Code SessionStart hook automatically runs dependency installation (and a Prisma generate step) sourced from whatever branch is checked out, with no explicit user action",
+      "classification": "severity_mismatch",
+      "agentreadyFindingId": "safety.capability.high-risk",
+      "expectedSeverity": "error",
+      "affectedStage": ["bootstrap"],
+      "evidence": [".claude/settings hooks block (SessionStart)", "hook command: pnpm install --frozen-lockfile; ... prisma generate"],
+      "observedFriction": "A generic 'a high-risk hook exists' finding does not communicate the specific chained risk: checking out an untrusted branch, then an automatic session hook running install, which can execute lifecycle scripts controlled by that same untrusted branch, with no explicit user action in between.",
+      "recommendedLayer": "deterministic-check",
+      "verificationStatus": "reported-by-reviewer-not-independently-verified"
+    },
+    {
+      "title": "CODEOWNERS exists but only covers LLM cassette test fixtures, assigned to a single individual; other high-risk paths (.github/**, .claude/**, auth, migrations) have no dedicated reviewer",
+      "classification": "false_negative",
+      "agentreadyFindingId": "docs.codeowners.coverage-gap",
+      "expectedSeverity": "warning",
+      "affectedStage": ["review", "merge"],
+      "evidence": ["CODEOWNERS (only a cassette-fixture pattern, one owner)"],
+      "observedFriction": "The existing coverage-gap check is activity-derived and generic; it does not know which paths are high-risk by nature (hooks, CI, auth, migrations) versus merely active, and does not flag that the one path that is covered has a single owner with no backup.",
+      "recommendedLayer": "deterministic-check",
+      "verificationStatus": "reported-by-reviewer-not-independently-verified"
+    },
+    {
+      "title": "Agent instructions live only in a vendor-specific entrypoint (CLAUDE.md), with no portable AGENTS.md-style entrypoint for other agents",
+      "classification": "policy_mismatch",
+      "agentreadyFindingId": "instructions.missing",
+      "expectedSeverity": "warning",
+      "affectedStage": ["orient"],
+      "evidence": ["repository root instruction surfaces (CLAUDE.md present, no AGENTS.md)"],
+      "observedFriction": "Default AgentReady behavior is correct here -- any recognized instruction surface should be sufficient, and AgentReady deliberately avoids assuming one filename is universally canonical. For a multi-agent or enterprise rollout, though, a single vendor-specific entrypoint is a real portability gap this repository's default-policy PASS does not surface.",
+      "recommendedLayer": "policy-pack",
+      "verificationStatus": "reported-by-reviewer-not-independently-verified"
+    },
+    {
+      "title": "Default-branch protection, required status checks, required CODEOWNER review, and environment approval rules cannot be confirmed from repository contents alone",
+      "classification": "not_observable_locally",
+      "agentreadyFindingId": null,
+      "expectedSeverity": "info",
+      "affectedStage": ["merge", "deploy"],
+      "evidence": ["no repository-local artifact encodes branch protection or required-check configuration"],
+      "observedFriction": "A repository can look fully governed locally (CODEOWNERS, PR template, CI) while merge and deploy are actually unprotected server-side, or vice versa; AgentReady's local-first, non-networked scan guarantee means this must be reported as unverified rather than silently assumed either way.",
+      "recommendedLayer": "platform-enrichment",
+      "verificationStatus": "reported-by-reviewer-not-independently-verified"
+    }
+  ]
+}
