@@ -34,12 +34,29 @@ export interface LocalReadinessFile {
   source: boolean
 }
 
+/**
+ * The operational scope of a finding, used by calibrated scoring to weight a
+ * root-level break above a leaf-directory nit. Optional and rule-owned; absent
+ * scope defaults to `package` (a neutral 1x weight), so omitting it changes no
+ * existing behavior. See ADR 0005.
+ */
+export type FindingScope = 'root' | 'package' | 'path' | 'advisory'
+
 export interface ReadinessFinding {
   id: string
   title: string
   severity: ReadinessSeverity
   path?: string
   recommendation: string
+  /**
+   * Confidence of the evidence the rule fired on. Rule-owned: rules firing on
+   * determinate structural facts emit `high` (or omit the field, which defaults
+   * to `high`); only genuinely heuristic rules set `medium`/`low`. Consumed by
+   * calibrated scoring weights; a no-op under `DEFAULT_WEIGHTS`. See ADR 0005.
+   */
+  confidence?: EvidenceConfidence
+  /** Operational scope; defaults to `package`. See `FindingScope` and ADR 0005. */
+  scope?: FindingScope
 }
 
 /** The grouping every rule in the catalog is filed under; also the dimension-score axis. */

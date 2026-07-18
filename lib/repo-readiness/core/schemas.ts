@@ -160,12 +160,19 @@ export const instructionActivationSchema = z.enum([
   'unknown',
 ])
 
+export const findingScopeSchema = z.enum(['root', 'package', 'path', 'advisory'])
+
 export const readinessFindingSchema = z.strictObject({
   id: z.string().min(1),
   title: z.string().min(1),
   severity: severitySchema,
   path: z.string().optional(),
   recommendation: z.string().min(1),
+  // Optional, rule-owned calibrated-scoring inputs (ADR 0005). Absent = neutral
+  // (confidence `high`, scope `package`), so a finding that omits them scores
+  // and validates exactly as before.
+  confidence: evidenceConfidenceSchema.optional(),
+  scope: findingScopeSchema.optional(),
 })
 
 export const localReadinessFileSchema = z.strictObject({

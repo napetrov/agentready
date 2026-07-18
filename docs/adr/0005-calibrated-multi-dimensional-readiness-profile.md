@@ -229,6 +229,16 @@ export interface ReadinessProfile {
 }
 ```
 
+**Aggregating per-surface tiers into one verdict.** A repo exposes many
+`CapabilitySurfaceEvidence` entries, each with its own `riskTier`. The axis
+verdict is the **worst tier present**: `high` if any surface is `high`, else
+`medium` if any is `medium`, else `low` (and `low` with empty evidence when there
+are no surfaces at all, per the verified-negative rule above). Worst-tier, not an
+average, because risk is about the most dangerous capability an agent could
+reach — one `high` surface is not diluted by ten `low` ones. `evidenceRefs` for a
+`high` or `medium` verdict lists every surface at that worst tier (the ones
+driving the verdict), so the reference set explains the aggregate.
+
 **Risk-axis references must not require inventing ids.** A `high` risk verdict is
 backed by a real finding (`buildFindings` emits `safety.capability.high-risk:<path>`
 only for `riskTier === 'high'`), but a `medium`/`low` verdict is backed by
@@ -636,6 +646,9 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
   `high` in the profile — never `unknown` — matching the detector's existing
   `riskTier: 'high'` and its `safety.capability.high-risk` finding, so the new
   headline profile does not regress the current high-blast-radius signal.
+- Assert risk aggregation is worst-tier: a repo mixing one `high` surface with
+  several `low`/`medium` ones reports `high` (not an average), and
+  `evidenceRefs` lists exactly the worst-tier surfaces.
 - Assert `coverage` counts fixed `CoverageSurfaceKind` values, not files/records:
   `applicableSurfaces` is stable regardless of how many instances a kind has (a
   monorepo with 40 command ecosystems and one with 2 both count

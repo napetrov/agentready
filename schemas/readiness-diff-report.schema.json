@@ -2064,6 +2064,23 @@
               "recommendation": {
                 "type": "string",
                 "minLength": 1
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "root",
+                  "package",
+                  "path",
+                  "advisory"
+                ]
               }
             },
             "required": [
@@ -4198,6 +4215,23 @@
               "recommendation": {
                 "type": "string",
                 "minLength": 1
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "root",
+                  "package",
+                  "path",
+                  "advisory"
+                ]
               }
             },
             "required": [
@@ -4340,6 +4374,23 @@
           "recommendation": {
             "type": "string",
             "minLength": 1
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "root",
+              "package",
+              "path",
+              "advisory"
+            ]
           }
         },
         "required": [
@@ -4378,6 +4429,23 @@
           "recommendation": {
             "type": "string",
             "minLength": 1
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "root",
+              "package",
+              "path",
+              "advisory"
+            ]
           }
         },
         "required": [
@@ -4416,6 +4484,23 @@
           "recommendation": {
             "type": "string",
             "minLength": 1
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "root",
+              "package",
+              "path",
+              "advisory"
+            ]
           }
         },
         "required": [

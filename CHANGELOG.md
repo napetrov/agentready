@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Calibratable scoring engine (ADR 0005 implementation, phase 1)**: `calculateScore`
+  now accepts an optional `ScoreWeights` table and reads optional, rule-owned
+  `confidence`/`scope` inputs on findings (`lib/repo-readiness/core/scoring.ts`,
+  `lib/repo-readiness/core/types.ts`). Weights default to a deep-frozen
+  `DEFAULT_WEIGHTS` whose all-`1` confidence/scope multipliers reproduce the
+  historical fixed-penalty score byte-for-byte, so `summary.score`, per-category
+  `dimensions[].score`, and all gates are unchanged by default. Injected
+  (non-default) weights are validated (`assertValidWeights`: finite,
+  non-negative, complete) before use, and the score is rounded to an integer so
+  fractional calibrated weights still satisfy the integer score contract. The
+  finding schema gains optional `confidence`/`scope` keys (JSON Schema
+  regenerated). Report-profile axes, coverage taxonomy, and the
+  `experimentalFindingFields` marker remain for later phases.
 - Proposed **ADR 0005: Calibrated Multi-Dimensional Readiness Profile**
   ([docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md](docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md),
   indexed in [docs/adr/README.md](docs/adr/README.md)): records the decision to

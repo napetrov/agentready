@@ -83,6 +83,32 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-18 (ADR 0005 implementation phase 1: calibratable scoring engine)
+- **IMPLEMENTED THE CALIBRATABLE SCORING CORE** from ADR 0005. `calculateScore`
+  (`lib/repo-readiness/core/scoring.ts`) now takes an optional `ScoreWeights`
+  parameter and multiplies each finding's severity penalty by (rule-owned,
+  optional) `confidence` and `scope` factors on `ReadinessFinding`
+  (`lib/repo-readiness/core/types.ts`). The default `DEFAULT_WEIGHTS` is
+  deep-frozen with all-`1` confidence/scope multipliers, so the default score is
+  byte-identical to the pre-ADR fixed-penalty model — verified by a regression
+  test and the unchanged output snapshots. Fractional (calibrated) weights are
+  rounded to an integer so `summary.score` and `dimensions[].score` still satisfy
+  their integer schema; injected non-default weights are validated
+  (`assertValidWeights`) to reject negative/non-finite/incomplete tables that
+  could `NaN` the score or inflate it past a gate. Added optional
+  `confidence`/`scope` to `readinessFindingSchema` and regenerated the published
+  JSON Schemas.
+- **VERIFICATION**: `npm run lint` clean; `npm run agentready:schemas -- --check`
+  reports schemas up to date; `npx jest` 715 pass (10 new in
+  `__tests__/scoring.test.ts`; 15 snapshots unchanged); `npm run build` clean;
+  `agentready scan .` and `npm run agentready:fixtures` pass with integer scores.
+  (`npm run type-check` exits non-zero only on the pre-existing tsconfig
+  `moduleResolution`/`baseUrl` deprecation warnings, unrelated to this change.)
+- **REMAINING PHASES**: `readinessProfile` axes (Readiness/Risk/Coverage/
+  Observability), the `CoverageSurfaceKind` taxonomy, the
+  `experimentalFindingFields` opt-in marker and its emission across scan/diff/
+  portfolio reports, and reporter changes.
+
 ### 2026-07-18 (ADR 0005: calibrated multi-dimensional readiness profile)
 - **PROPOSED ADR 0005** (`docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md`,
   indexed in `docs/adr/README.md`): a `Proposed` architecture decision, no
