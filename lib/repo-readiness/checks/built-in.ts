@@ -503,7 +503,12 @@ export const buildFindings = (
   // names this specific chained risk.
   for (const risk of report.hookExecutionRisks) {
     findings.push({
-      id: `safety.agent-hook.executes-repository-code:${risk.path}:${risk.event}`,
+      // Includes the command, not just path+event: a settings file can
+      // configure more than one automatic-event matcher group with its own
+      // install command (e.g. two SessionStart entries), and `diff` keys
+      // findings by id+path -- an id of just path+event would collide across
+      // those, silently hiding a second install command as a "new finding".
+      id: `safety.agent-hook.executes-repository-code:${risk.path}:${risk.event}:${risk.command}`,
       title: 'Agent session hook automatically executes a dependency-install command',
       severity: warningSeverity,
       path: risk.path,

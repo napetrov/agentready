@@ -349,11 +349,37 @@ describe('scan integration', () => {
       writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'pnpm install --frozen-lockfile'))
 
       const report = scanLocalReadiness(root, { now: fixedNow })
-      const finding = report.findings.find(f => f.id === 'safety.agent-hook.executes-repository-code:.claude/settings.json:SessionStart')
+      const finding = report.findings.find(f => f.id === 'safety.agent-hook.executes-repository-code:.claude/settings.json:SessionStart:pnpm install --frozen-lockfile')
       expect(finding).toMatchObject({ severity: 'warning', path: '.claude/settings.json' })
       expect(finding?.recommendation).toContain('pnpm install --frozen-lockfile')
 
       expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('gives two distinct SessionStart install commands in the same file distinct finding ids', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, 'README.md', '# Demo\n')
+      writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+      const settings = JSON.stringify({
+        hooks: {
+          SessionStart: [
+            { matcher: '', hooks: [{ type: 'command', command: 'npm install' }] },
+            { matcher: '', hooks: [{ type: 'command', command: 'npm run postinstall-check && npm ci' }] },
+          ],
+        },
+      })
+      writeRepoFile(root, '.claude/settings.json', settings)
+
+      const report = scanLocalReadiness(root, { now: fixedNow })
+      const ids = report.findings
+        .filter(f => f.id.startsWith('safety.agent-hook.executes-repository-code:'))
+        .map(f => f.id)
+      expect(ids).toHaveLength(2)
+      expect(new Set(ids).size).toBe(2)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

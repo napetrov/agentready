@@ -197,6 +197,19 @@ describe('detectCommandReferences (units)', () => {
     expect(detect([doc], baseCommands)).toEqual([])
   })
 
+  it.each(['npm', 'pnpm', 'bun'])('does not flag %s\'s "i" install alias', manager => {
+    const doc = write('README.md', `Quick start: \`${manager} i\` to install dependencies.`)
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('flags yarn "i" as a shortcut: yarn has no "i" install alias', () => {
+    const doc = write('README.md', 'Quick start: `yarn i` to install dependencies.')
+    const evidence = detect([doc], baseCommands)
+    expect(evidence).toEqual([
+      { path: doc, reference: 'yarn i', kind: 'shortcut-script', detail: '"yarn i" is not a "yarn" built-in command and no "i" script exists in package.json.' },
+    ])
+  })
+
   it('does not flag a shortcut mentioned only in prose, outside a code span', () => {
     const doc = write('README.md', 'This project is managed with pnpm dev-dependencies in mind.')
     expect(detect([doc], baseCommands)).toEqual([])

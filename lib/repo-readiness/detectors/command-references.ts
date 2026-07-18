@@ -94,11 +94,16 @@ const isWorkspaceQualified = (text: string, matchIndex: number, matchLength: num
 // code, while prose that merely mentions "npm packages" or "the pnpm
 // ecosystem" is not. Together these keep the same "unambiguous only"
 // guarantee the existing checks make, without a separate confidence tier.
+// `i` is npm/pnpm/bun's documented alias for `install` (yarn has no such
+// alias) -- same reasoning as `HOOK_INSTALL_COMMAND_PATTERN` in
+// safety-signals.ts. Without it, a README's `npm i`/`pnpm i`/`bun i` quick-start
+// (a genuinely valid install command) would be misreported as a stale
+// shortcut.
 const PACKAGE_MANAGER_BUILTIN_VERBS: Record<PackageManager, ReadonlySet<string>> = {
   npm: new Set([
     'access', 'adduser', 'audit', 'bugs', 'cache', 'ci', 'completion', 'config', 'dedupe', 'deprecate',
     'diff', 'dist-tag', 'docs', 'doctor', 'edit', 'exec', 'explain', 'explore', 'find-dupes', 'fund',
-    'help', 'hook', 'init', 'install', 'install-ci-test', 'install-test', 'link', 'll', 'login', 'logout',
+    'help', 'hook', 'i', 'init', 'install', 'install-ci-test', 'install-test', 'link', 'll', 'login', 'logout',
     'ls', 'org', 'outdated', 'owner', 'pack', 'ping', 'pkg', 'prefix', 'profile', 'prune', 'publish',
     'query', 'rebuild', 'repo', 'restart', 'root', 'run', 'run-script', 'sbom', 'search', 'set',
     'set-script', 'shrinkwrap', 'star', 'stars', 'star', 'stop', 'team', 'token', 'uninstall', 'unpublish',
@@ -112,13 +117,13 @@ const PACKAGE_MANAGER_BUILTIN_VERBS: Record<PackageManager, ReadonlySet<string>>
     'upgrade', 'upgrade-interactive', 'version', 'versions', 'why', 'workspace', 'workspaces',
   ]),
   pnpm: new Set([
-    'add', 'audit', 'bin', 'create', 'dedupe', 'deploy', 'doctor', 'env', 'exec', 'fetch', 'import',
+    'add', 'audit', 'bin', 'create', 'dedupe', 'deploy', 'doctor', 'env', 'exec', 'fetch', 'i', 'import',
     'init', 'install', 'licenses', 'link', 'list', 'ls', 'outdated', 'pack', 'patch', 'patch-commit',
     'patch-remove', 'prune', 'publish', 'rebuild', 'remove', 'root', 'run', 'self-update', 'server',
     'setup', 'store', 'unlink', 'update', 'why', 'dlx', 'x',
   ]),
   bun: new Set([
-    'add', 'audit', 'bin', 'build', 'create', 'exec', 'info', 'init', 'install', 'link', 'outdated', 'pm',
+    'add', 'audit', 'bin', 'build', 'create', 'exec', 'i', 'info', 'init', 'install', 'link', 'outdated', 'pm',
     'publish', 'remove', 'run', 'uninstall', 'unlink', 'update', 'upgrade', 'x',
   ]),
 }
