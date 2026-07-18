@@ -164,9 +164,15 @@ export interface ReadinessFinding {
 
 ### The readiness profile structure
 
-Add `readinessProfile` to `LocalReadinessReport` as a new experimental field. It
-composes the *existing* `autonomyEnvelope` and `dimensions` with the two new
-axes rather than replacing them:
+Add `readinessProfile` to `LocalReadinessReport` as a new experimental field.
+For per-stage readiness it **embeds** the existing autonomy envelope (its
+`readiness` field *is* `AutonomyStageResult[]`, the same data as top-level
+`autonomyEnvelope`), and it adds the two new axes. It does **not** nest
+`dimensions`: the per-category severity rollup stays a **top-level** field
+(`LocalReadinessReport.dimensions`) as it is today — a single source of truth,
+not duplicated under `readinessProfile.dimensions`. So the profile *sits
+alongside* `dimensions` and *reuses* `autonomyEnvelope`; it does not absorb
+either. None of this replaces the existing fields:
 
 The Risk axis and the readiness axes answer different questions and must not
 share a verdict scale.
@@ -193,8 +199,12 @@ export interface AxisAssessment<TVerdict extends string> {
   verdict: TVerdict
   /** How much trust to place in this verdict, from evidence confidence. */
   confidence: EvidenceConfidence
-  /** Ids of the findings/evidence backing the verdict. */
-  evidenceIds: string[]
+  /**
+   * Stable references to the backing evidence — a finding id when one exists,
+   * otherwise an ADR-0000 derived key for evidence that has no native id (see
+   * the risk-axis note below). May be empty only when `verdict` is `unknown`.
+   */
+  evidenceRefs: string[]
   /** One-line explanation, e.g. "external controls not queried". */
   explanation: string
 }
@@ -211,7 +221,22 @@ export interface ReadinessProfile {
   /** How much the score/weights are backed by real agent outcomes. */
   calibrationConfidence: EvidenceConfidence
 }
+```
 
+**Risk-axis references must not require inventing ids.** A `high` risk verdict is
+backed by a real finding (`buildFindings` emits `safety.capability.high-risk:<path>`
+only for `riskTier === 'high'`), but a `medium`/`low` verdict is backed by
+`CapabilitySurfaceEvidence` entries, and that type has **no `id`** (`kind`,
+`path`, `tool`, `notes`, `riskTier` only). So `evidenceRefs` is a list of stable
+references, not finding ids specifically: when a finding exists, use its id;
+otherwise use the deterministic ADR-0000 derived key for the surface —
+`capability:<normalized-path>:<kind>` — which is reproducible from the evidence
+without a new field. This keeps a `medium`/`low` risk verdict verifiable instead
+of unverifiable-or-fabricated. Adding a native `id` to `CapabilitySurfaceEvidence`
+is a valid alternative but is left to the risk-detector work (the security-scope
+ADR, item 10); this ADR only requires that the reference be stable and derivable.
+
+```ts
 export interface CoverageReport {
   /** Surfaces AgentReady knows how to evaluate and found applicable here. */
   applicableSurfaces: number
