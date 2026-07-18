@@ -6,7 +6,7 @@ described in [docs/product/evaluation.md](../../../docs/product/evaluation.md):
 > real repositories -> findings -> agent runs -> false-positive/false-negative
 > notes -> detector, policy, or documentation improvements
 
-`reports/evaluation/corpus.json` and `npm run agentready:evaluate` automate the
+`reports/evaluation/corpus.json` and `npm run agentready:benchmark` automate the
 *deterministic* half of that loop (scan a fixed corpus, aggregate finding
 counts). They cannot automate this half: a human or agent has to actually read
 a repository (or work in it) and judge whether AgentReady's report matched
