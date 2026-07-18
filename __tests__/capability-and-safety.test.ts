@@ -297,6 +297,68 @@ describe('hook-execution-risk detector', () => {
     }
   })
 
+  test('flags a repeated --ignore-scripts flag using the last (effective) value, not the first', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(
+        root,
+        '.claude/settings.json',
+        claudeSettingsWithHook('SessionStart', 'npm install --ignore-scripts --ignore-scripts=false'),
+      )
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm install --ignore-scripts --ignore-scripts=false' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag when a repeated --ignore-scripts flag\'s last value is the suppressing one', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(
+        root,
+        '.claude/settings.json',
+        claudeSettingsWithHook('SessionStart', 'npm install --ignore-scripts=false --ignore-scripts'),
+      )
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('flags an install command with a global option (attached value) before the subcommand', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm --loglevel=silent install'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm --loglevel=silent install' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag when a global option before install explicitly disables lifecycle scripts', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm --ignore-scripts install'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('still does not match a global option before install when a space-separated flag value is used (known limitation)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm --workspace packages/app install'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test('also checks .claude/settings.local.json', () => {
     const root = createTempRepo()
     try {

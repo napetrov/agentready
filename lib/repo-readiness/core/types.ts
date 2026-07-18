@@ -194,7 +194,11 @@ export interface ProtectedPathCoverageEvidence {
   /** Distinct owner tokens found across matched files (sorted); empty unless `covered`, since a partial owner list for an uncovered path would be misleading. */
   owners: string[]
   /**
-   * `covered` by exactly one non-team owner token, with no documented backup.
+   * `covered`, and at least one individual matched file's own CODEOWNERS
+   * owners are exactly one non-team token — that file's entire review
+   * surface is one person with no documented backup, computed per file
+   * rather than from the pattern's aggregate owner set (so it still fires
+   * when different matched files each have their own distinct solo owner).
    * Cannot verify actual team membership locally — a team owner (`@org/team`)
    * is assumed to have more than one member, a known limitation.
    */

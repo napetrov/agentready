@@ -607,6 +607,34 @@ describe('detectProtectedPathCoverage (units)', () => {
     const result = detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', 'custom/risky.ts'], ['custom/**'])
     expect(result).toEqual([{ pattern: 'custom/**', covered: true, owners: ['@someone'], singleOwnerRisk: true }])
   })
+
+  it('flags single-owner risk per file, not just when the whole glob shares one aggregate owner', () => {
+    // Two different files under the same protected glob, each solely owned
+    // by a different individual: the aggregate owner set has size 2 (so a
+    // union-level check would miss this), but each file individually still
+    // has no documented backup reviewer.
+    write('CODEOWNERS', '/.github/workflows/ci.yml @alice\n/.github/dependabot.yml @bob\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', [
+      'CODEOWNERS',
+      '.github/workflows/ci.yml',
+      '.github/dependabot.yml',
+    ])
+    expect(result).toEqual([
+      { pattern: '.github/**', covered: true, owners: ['@alice', '@bob'], singleOwnerRisk: true },
+    ])
+  })
+
+  it('does not flag single-owner risk when every matched file has a team or multi-owner backup', () => {
+    write('CODEOWNERS', '/.github/workflows/ci.yml @napetrov/platform\n/.github/dependabot.yml @alice @bob\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', [
+      'CODEOWNERS',
+      '.github/workflows/ci.yml',
+      '.github/dependabot.yml',
+    ])
+    expect(result).toEqual([
+      { pattern: '.github/**', covered: true, owners: ['@alice', '@bob', '@napetrov/platform'], singleOwnerRisk: false },
+    ])
+  })
 })
 
 describe('governance protected-path findings (integration)', () => {

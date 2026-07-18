@@ -218,10 +218,15 @@ export const DEFAULT_PROTECTED_PATHS: string[] = [
  * `.github/workflows/*.yml @platform` covering CI but leaving
  * `.github/dependabot.yml` unowned still leaves `.github/**` a real gap).
  * When (and only when) every matched file is covered, `singleOwnerRisk` is
- * true if they all share the same single non-team owner token (that person
- * is the entire review surface for this path, with no documented backup);
- * `owners` is likewise only populated when `covered` is true, since a
- * partial owner list for an uncovered path would be misleading.
+ * true if *any* individual matched file's own CODEOWNERS owners (not the
+ * glob's aggregate owner set) consist of exactly one non-team token -- that
+ * file's entire review surface is one person with no documented backup, even
+ * if a sibling file under the same glob happens to have a different or
+ * broader owner set. Computing this only from the aggregate (e.g. two files
+ * each solely owned by a different individual) would mask exactly the
+ * per-file risk this flag exists to catch. `owners` is likewise only
+ * populated when `covered` is true, since a partial owner list for an
+ * uncovered path would be misleading.
  *
  * Runs even when `codeownersPath` is `undefined` (no CODEOWNERS file at
  * all), treating that as zero effective patterns -- every protected glob
@@ -261,12 +266,14 @@ export const detectProtectedPathCoverage = (
 
     const covered = matchedFiles.every(filePath => isFileCoveredBy(patterns, filePath))
     const owners = new Set<string>()
+    let singleOwnerRisk = false
     if (covered) {
       for (const filePath of matchedFiles) {
-        for (const owner of ownersForFile(patterns, filePath)) owners.add(owner)
+        const fileOwners = ownersForFile(patterns, filePath)
+        for (const owner of fileOwners) owners.add(owner)
+        if (fileOwners.length === 1 && isIndividualOwnerToken(fileOwners[0])) singleOwnerRisk = true
       }
     }
-    const singleOwnerRisk = covered && owners.size === 1 && isIndividualOwnerToken([...owners][0])
 
     results.push({
       pattern: protectedPath,

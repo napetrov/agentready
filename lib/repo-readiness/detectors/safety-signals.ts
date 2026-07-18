@@ -210,7 +210,28 @@ const AUTOMATIC_HOOK_EVENTS = new Set(['SessionStart', 'SessionEnd', 'PreCompact
 // author is at least as likely to write the short form as the long one. Not
 // exhaustive of every npm typo-tolerant install alias (`in`, `ins`, `inst`,
 // ...); `i` is the one actually in common use.
-const HOOK_INSTALL_COMMAND_PATTERN = /\b(?:npm|yarn|pnpm|bun)\s+install\b|\b(?:npm|pnpm)\s+ci\b|\b(?:npm|pnpm|bun)\s+i\b/i
+//
+// All four managers also accept global options *before* the subcommand
+// (`npm --ignore-scripts=false install`, not just `npm install
+// --ignore-scripts=false`), so a manager name immediately followed by
+// `install`/`ci`/`i` is not the only real invocation shape. `GLOBAL_OPTION`
+// matches zero or more self-contained flags (`--foo`, `-f`, `--foo=bar`)
+// between the manager and the subcommand. Deliberately does NOT try to match
+// a whitespace-separated `--flag value` pair (e.g. `--workspace
+// packages/app`): without a table of which flags actually take a value,
+// treating a bare following word as "the flag's value" risks the opposite
+// bug -- swallowing a real subcommand token (`npm --production install`
+// misread as `--production`'s value being the literal word "install", with
+// no subcommand left to match) and turning a real install invocation into a
+// false negative. An attached `=value` has no such ambiguity.
+const GLOBAL_OPTION = '-{1,2}[A-Za-z][\\w-]*(?:=\\S+)?'
+const OPTIONAL_GLOBAL_OPTIONS = `(?:\\s+${GLOBAL_OPTION})*`
+const HOOK_INSTALL_COMMAND_PATTERN = new RegExp(
+  `\\b(?:npm|yarn|pnpm|bun)${OPTIONAL_GLOBAL_OPTIONS}\\s+install\\b` +
+  `|\\b(?:npm|pnpm)${OPTIONAL_GLOBAL_OPTIONS}\\s+ci\\b` +
+  `|\\b(?:npm|pnpm|bun)${OPTIONAL_GLOBAL_OPTIONS}\\s+i\\b`,
+  'i',
+)
 
 // npm/yarn/pnpm/bun all document the same `--ignore-scripts` flag, and it
 // does what the name says: it skips exactly the lifecycle scripts
@@ -221,22 +242,31 @@ const HOOK_INSTALL_COMMAND_PATTERN = /\b(?:npm|yarn|pnpm|bun)\s+install\b|\b(?:n
 // `--no-<flag>` boolean negation), `--ignore-scripts=false`/`=0`, and the
 // space-separated `--ignore-scripts false`/`0` -- so any of them correctly
 // reads as "scripts are NOT ignored" (a real risk, not suppressed) rather
-// than only trusting the bare/`=true` forms.
-const IGNORE_SCRIPTS_FLAG_PATTERN = /--(no-)?ignore-scripts\b(?:[= ]+(true|false|1|0)\b)?/i
+// than only trusting the bare/`=true` forms. `g` so `commandIgnoresLifecycleScripts`
+// can find every occurrence in a segment, not just the first -- a command
+// repeating the flag (e.g. `--ignore-scripts --ignore-scripts=false`) is
+// unusual but valid CLI input, and npm's config resolution takes the last
+// value given, not the first.
+const IGNORE_SCRIPTS_FLAG_PATTERN = /--(no-)?ignore-scripts\b(?:[= ]+(true|false|1|0)\b)?/gi
 
 /**
  * Whether `command` explicitly disables install lifecycle scripts (skipping
  * preinstall/postinstall/prepare), given a `--ignore-scripts` flag in any of
- * its documented forms. An explicit value (`=false`, ` false`, `=0`, ` 0`)
- * always wins over a `--no-` prefix -- that combination isn't real npm usage,
- * but if it appears, trusting the explicit value is the safer read.
+ * its documented forms. Evaluates every occurrence and uses the *last* one --
+ * npm-family CLIs resolve a repeated flag to its last-given value, so an
+ * earlier `--ignore-scripts` overridden by a later `--ignore-scripts=false`
+ * must read as "scripts are NOT ignored" (a real risk), not the reverse. An
+ * explicit value (`=false`, ` false`, `=0`, ` 0`) always wins over a `--no-`
+ * prefix on the same occurrence -- that combination isn't real npm usage, but
+ * if it appears, trusting the explicit value is the safer read.
  */
 const commandIgnoresLifecycleScripts = (command: string): boolean => {
-  const match = command.match(IGNORE_SCRIPTS_FLAG_PATTERN)
-  if (!match) return false
-  const explicitValue = match[2]?.toLowerCase()
+  const matches = [...command.matchAll(IGNORE_SCRIPTS_FLAG_PATTERN)]
+  if (matches.length === 0) return false
+  const last = matches[matches.length - 1]
+  const explicitValue = last[2]?.toLowerCase()
   if (explicitValue !== undefined) return explicitValue === 'true' || explicitValue === '1'
-  return !match[1]
+  return !last[1]
 }
 
 // A hook command is shell text, not a single invocation -- `npm install
