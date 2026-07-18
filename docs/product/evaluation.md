@@ -97,6 +97,7 @@ reviewer looks at should land in exactly one bucket.
 | Classification | Meaning |
 | --- | --- |
 | `true_positive` | AgentReady found the issue and assigned a useful severity. |
+| `false_positive` | AgentReady reported it, but on review it was not actually a problem — a precision failure a maintainer should never have had to look at. |
 | `false_negative` | The issue mattered but AgentReady did not report it. |
 | `severity_mismatch` | AgentReady found it but ranked it too low (or too high). |
 | `policy_mismatch` | Default severity is reasonable, but a stricter operating context (enterprise, autonomous-merge, ...) should treat it differently. |

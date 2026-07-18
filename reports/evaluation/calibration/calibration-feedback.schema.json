@@ -93,12 +93,13 @@
           "type": "string",
           "enum": [
             "true_positive",
+            "false_positive",
             "false_negative",
             "severity_mismatch",
             "policy_mismatch",
             "not_observable_locally"
           ],
-          "description": "true_positive: AgentReady found it with a useful severity. false_negative: AgentReady did not report it at all. severity_mismatch: AgentReady found it but ranked it too low (or too high) for the risk it represents. policy_mismatch: default severity is reasonable, but a stricter operating context (enterprise, autonomous-merge, ...) should treat it differently. not_observable_locally: the repository's local contents cannot prove this either way (e.g. branch protection, required reviews) -- AgentReady's local-first, non-networked scan guarantee means this can only ever be reported as unverified, never inferred."
+          "description": "true_positive: AgentReady found it with a useful severity. false_positive: AgentReady reported it, but on review it was not actually a problem -- a precision failure a maintainer should never have had to look at. false_negative: AgentReady did not report it at all. severity_mismatch: AgentReady correctly found a real issue but ranked it too low (or too high) for the risk it represents. policy_mismatch: default severity is reasonable, but a stricter operating context (enterprise, autonomous-merge, ...) should treat it differently. not_observable_locally: the repository's local contents cannot prove this either way (e.g. branch protection, required reviews) -- AgentReady's local-first, non-networked scan guarantee means this can only ever be reported as unverified, never inferred."
         },
         "agentreadyFindingId": {
           "type": ["string", "null"],
