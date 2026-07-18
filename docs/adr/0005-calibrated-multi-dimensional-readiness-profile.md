@@ -137,11 +137,24 @@ export interface ReadinessFinding {
 }
 ```
 
-- Both fields are **optional**. `confidence` propagates the confidence of the
-  evidence a rule fired on (rules that fire on high-confidence facts may omit
-  it); `scope` is derived deterministically by each rule (a root-scope
-  instruction contradiction is `root`; a large file under `examples/` is
-  `path`).
+- Both fields are **optional and rule-owned**. `scope` is derived
+  deterministically by each rule (a root-scope instruction contradiction is
+  `root`; a large file under `examples/` is `path`).
+- **`confidence` is set by the rule, not read off legacy evidence.** Most
+  built-in detectors' evidence records — `CommandEvidence`, `CiEvidence`,
+  `CapabilitySurfaceEvidence`, `SafetySignalEvidence`, `GovernanceEvidence` in
+  `lib/repo-readiness/core/types.ts` — have **no `confidence` member**; only
+  `EvidenceClaim`-style topology/repository evidence carries one. So a rule
+  cannot simply "propagate the confidence of the evidence it fired on." Each rule
+  instead **owns its confidence**: rules firing on determinate structural facts
+  (a missing `test` script, a dangerous lifecycle hook) legitimately emit `high`
+  (or omit the field, which defaults to `high`); only rules whose signal is
+  genuinely heuristic set `medium`/`low`. This means confidence-aware weighting
+  is intentionally a **no-op for today's structural rules** and only bites once a
+  rule opts in with a sub-`high` confidence — which is correct, because those
+  structural facts *are* high-confidence. Threading `EvidenceConfidence` onto the
+  legacy evidence records is not required by this ADR and is left to whichever
+  rule wants to source confidence from claim-level evidence.
 - **Compatibility:** because both are optional and default to the neutral values
   (`confidence` → `high`, `scope` → `package`) that make every weight multiplier
   `1`, adding them changes no existing finding's behavior and no existing score.
@@ -292,9 +305,20 @@ export const calculateScore = (
     const s = weights.scope[f.scope ?? 'package']
     return total + base * c * s
   }, 0)
-  return Math.max(0, Math.min(100, 100 - penalty))
+  // Round to an integer: calibrated weights can be fractional, but the score
+  // and the per-category `dimensions[].score` are serialized as integers.
+  return Math.max(0, Math.min(100, Math.round(100 - penalty)))
 }
 ```
+
+**Scores stay integers.** Calibrated multipliers may be fractional (e.g. a
+`0.5` low-confidence discount), which would otherwise yield values like `96.5`.
+Both `calculateScore` and the per-category `calculateDimensionScores` (which
+reuses the same penalty model) must round to a nearest integer, because the
+serialized `summary.score` and `dimensions[].score` are integer-typed in the
+strict schema (`readinessDimensionScoreSchema` uses `z.number().int()`). Rounding
+is a no-op on the default path — `DEFAULT_WEIGHTS` multipliers are all `1`, so
+`100 - penalty` is already integer — preserving byte-identical default output.
 
 With `DEFAULT_WEIGHTS` all multipliers are `1`, so **the default score is
 byte-identical to today's**. Once the policy-plane ADR wires weights into
@@ -497,8 +521,14 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
 - Assert `coverage.ratio` is `1` (never `NaN`/`Infinity`/`null`) when
   `applicableSurfaces` is `0`, and stays within `0..1` for all inputs.
 - Assert weighting by confidence/scope only changes the score when non-default
-  weights are supplied, and that low-confidence findings can be discounted by a
-  policy pack without altering the raw finding set.
+  weights are passed **directly** to `calculateScore(findings, weights)` (e.g. a
+  fractional low-confidence discount lowers the penalty) without altering the raw
+  finding set. Do **not** assert policy-pack-driven discounting here — no shipped
+  pack can supply weights until the policy-plane ADR adds `PolicyPack.weights`;
+  that test belongs to that ADR.
+- Assert a fractional weight (e.g. `confidence.low = 0.5`) yields an integer
+  `summary.score` and integer `dimensions[].score` (rounding), so the strict
+  `z.number().int()` dimension schema still validates.
 - Assert `calculateScore` rejects injected weights that are non-finite,
   negative, or incomplete (missing severity/confidence/scope keys), and that
   `DEFAULT_WEIGHTS` is deep-frozen so a caller cannot mutate the shared default.
