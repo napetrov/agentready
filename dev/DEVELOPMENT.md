@@ -83,6 +83,30 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-18 (ADR 0005: calibrated multi-dimensional readiness profile)
+- **PROPOSED ADR 0005** (`docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md`,
+  indexed in `docs/adr/README.md`): a `Proposed` architecture decision, no
+  runtime code change. Rationale: the fixed severity-penalty score
+  (`lib/repo-readiness/core/scoring.ts`) has structural problems weight-tuning
+  can't fix (finding count substitutes for risk; no applicability denominator;
+  confidence/scope/outcome data unused). Records demoting the absolute score to
+  a secondary view behind a four-axis Repository Agent Readiness Profile
+  (Readiness reusing `autonomyEnvelope`; Risk reusing `CapabilityRiskTier`;
+  Coverage with an applicable-surface taxonomy; Observability), plus additive
+  confidence/scope finding inputs, a frozen `DEFAULT_WEIGHTS` that keeps default
+  scores byte-identical, integer rounding for fractional calibrated weights, and
+  an `experimentalFindingFields` opt-in marker carried across scan/diff/portfolio
+  report shapes.
+- **VERIFICATION**: documentation-only change. Hardened over multiple
+  automated-review rounds (Codex + CodeRabbit) against the shipped types —
+  `ReadinessFinding`, `AutonomyStatus`, `CapabilityRiskTier`, the strict
+  `z.number().int()` dimension schema, the `PolicyPack`/gate contract, MCP
+  `riskTier: 'high'`, and finding serialization in diff/portfolio reports — so
+  the ADR's illustrative types match `lib/repo-readiness/core/*` rather than
+  overclaiming. Adjacent review items (policy plane, MCP assurance, security
+  scope, environment dimension, telemetry, enrichers) are mapped to the axis
+  each feeds and deferred to their own ADRs.
+
 ### 2026-07-15 (oss/ml-scientific policy packs, instruction contradictions, CODEOWNERS coverage gaps)
 - **DELIVERED `oss` AND `ml-scientific` POLICY PACKS**: implemented per the
   existing spec in `docs/product/policy-packs.md`, following `enterprise`'s

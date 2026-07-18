@@ -266,11 +266,41 @@ slot for future modes that *start but cannot complete* an assessment (e.g. the
 opt-in sandboxed MCP inspection in item 9, or a platform enricher), not for any
 config AgentReady detects statically.
 
+**The coverage unit is a fixed surface *kind*, not a file or record.** To make
+`ratio` reproducible and comparable across runs — and to avoid re-introducing
+the size bias the axis exists to remove — a "surface" is one member of a closed,
+versioned taxonomy of detector families, **not** a file, command string, rule
+id, or workspace root (those scale with repo size and would make a legible
+monorepo look *worse*-covered). The taxonomy maps one-to-one onto the existing
+evidence groups on `LocalReadinessReport`:
+
+```ts
+export type CoverageSurfaceKind =
+  | 'instruction-surfaces'   // report.instructions
+  | 'command-ecosystems'     // report.commands.ecosystems
+  | 'ci-workflows'           // report.ci
+  | 'capability-surfaces'    // report.capabilities
+  | 'governance'             // report.governance
+  | 'documentation-roles'    // report.docs
+  | 'repository-topology'    // report.repositoryEvidence.topology
+```
+
+- A kind is **applicable** when the repo has ≥1 instance of it (e.g. any
+  recognized command ecosystem makes `command-ecosystems` applicable). Absence
+  makes the kind *not applicable* — it never counts against coverage.
+- A kind is **assessed** when AgentReady produced a determinate evaluation for
+  it (evidence + any findings), and *unassessed* when it was recognized as
+  present but could not be evaluated (parse failure, an over-limit file, a
+  surface deferred to an enricher). Unassessed kinds populate `gaps`.
+- Counts are of **kinds**, so `applicableSurfaces ≤ 7` today; the taxonomy is
+  versioned and grows only by deliberate addition (a new detector family), which
+  is the one thing that legitimately moves the denominator.
+
 ```ts
 export interface CoverageReport {
-  /** Surfaces AgentReady knows how to evaluate and found applicable here. */
+  /** Count of CoverageSurfaceKind values applicable to this repo (>=1 instance). */
   applicableSurfaces: number
-  /** Of those, how many it could actually assess (not blocked/unknown). */
+  /** Of those, how many AgentReady could actually assess (not blocked/unknown). */
   assessedSurfaces: number
   /**
    * assessedSurfaces / applicableSurfaces, always within 0..1.
@@ -280,8 +310,8 @@ export interface CoverageReport {
    * value must never be NaN, Infinity, null, or outside 0..1.
    */
   ratio: number
-  /** Applicable surfaces it could not assess, with why. */
-  gaps: Array<{ surface: string; reason: string }>
+  /** Applicable-but-unassessed kinds, with why. */
+  gaps: Array<{ surface: CoverageSurfaceKind; reason: string }>
 }
 
 export interface ObservabilityReport {
@@ -598,6 +628,10 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
   `high` in the profile — never `unknown` — matching the detector's existing
   `riskTier: 'high'` and its `safety.capability.high-risk` finding, so the new
   headline profile does not regress the current high-blast-radius signal.
+- Assert `coverage` counts fixed `CoverageSurfaceKind` values, not files/records:
+  `applicableSurfaces` is stable regardless of how many instances a kind has (a
+  monorepo with 40 command ecosystems and one with 2 both count
+  `command-ecosystems` once), so a legible repo is never penalized for size.
 - Assert `coverage.ratio` rises when more applicable surfaces are assessed and
   is unaffected by inapplicable surfaces (legibility is not penalized).
 - Assert `coverage.ratio` is `1` (never `NaN`/`Infinity`/`null`) when

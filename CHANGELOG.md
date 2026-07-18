@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Proposed **ADR 0005: Calibrated Multi-Dimensional Readiness Profile**
+  ([docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md](docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md),
+  indexed in [docs/adr/README.md](docs/adr/README.md)): records the decision to
+  demote the experimental absolute score to a secondary view and make a
+  four-axis Repository Agent Readiness Profile (Readiness / Risk / Coverage /
+  Observability) the primary output. Specifies additive, confidence/scope-aware
+  scoring inputs with a frozen `DEFAULT_WEIGHTS` that reproduces today's score
+  byte-for-byte, an `experimentalFindingFields` opt-in marker for the new
+  nested finding keys, and a coverage-surface taxonomy — all as a `Proposed`
+  ADR with no runtime code change.
 - Implemented the full v0.4 backlog from the AIReady calibration record (see
   [docs/roadmap/v0.4-issue-drafts.md](docs/roadmap/v0.4-issue-drafts.md) for
   per-issue detail and deliberate scope deviations):
