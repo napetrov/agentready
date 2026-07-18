@@ -1,6 +1,7 @@
 import type { PolicyResult } from '../core/policy'
 import type { CiEvidence, LocalReadinessReport, ReadinessDiffReport } from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
+import { NOT_VERIFIED_EXTERNAL_CONTROLS } from './not-verified'
 
 const ciCoverageLine = (ci: CiEvidence): string => {
   if (ci.workflowFiles.length === 0) {
@@ -29,6 +30,16 @@ const dimensionsLine = (report: LocalReadinessReport): string =>
     })
     .join(', ')}`
 
+// Compact by design: only calls out stages that are NOT ready, since a
+// terse console summary listing all eight stages at "ready" would bury the
+// signal. A fully-ready report omits the line entirely rather than printing
+// an empty "Autonomy: " prefix.
+const autonomyLine = (report: LocalReadinessReport): string | undefined => {
+  const notReady = (report.autonomyEnvelope ?? []).filter(result => result.status !== 'ready')
+  if (notReady.length === 0) return undefined
+  return `Autonomy: ${notReady.map(result => `${result.stage} (${result.status === 'blocked' ? 'blocked' : 'not yet ready'})`).join(', ')}`
+}
+
 const capabilitiesLine = (report: LocalReadinessReport): string => {
   const highRisk = report.capabilities.filter(surface => surface.riskTier === 'high').length
   const highRiskDetail = highRisk > 0 ? `, ${highRisk} high-risk` : ''
@@ -42,12 +53,15 @@ export function formatScanSummary(report: LocalReadinessReport): string {
     capabilitiesLine(report),
     ciCoverageLine(report.ci),
     dimensionsLine(report),
+    autonomyLine(report),
     `Findings: ${report.findings.length}`,
-  ]
+  ].filter((line): line is string => line !== undefined)
 
   for (const finding of report.findings.slice(0, 10)) {
     lines.push(`- [${finding.severity}] ${finding.title}${finding.path ? ` (${finding.path})` : ''}`)
   }
+
+  lines.push(`Not verified from repository contents: ${NOT_VERIFIED_EXTERNAL_CONTROLS.join(', ')}`)
 
   return lines.join('\n')
 }

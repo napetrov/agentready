@@ -2,6 +2,8 @@ import {
   formatDiffMarkdown,
   formatScanMarkdown,
   formatScanSarif,
+  formatScanSummary,
+  NOT_VERIFIED_EXTERNAL_CONTROLS,
 } from '../lib/repo-readiness/local-readiness'
 import type {
   LocalReadinessReport,
@@ -67,6 +69,62 @@ describe('formatScanMarkdown', () => {
 
     const md = formatScanMarkdown(scanReport([finding({ severity: 'error', path: 'src/a.ts', recommendation: 'Fix it.' })]))
     expect(md).toContain('**ERROR**: Title (src/a.ts). Fix it.')
+  })
+
+  it('renders the autonomy envelope when present', () => {
+    const report = scanReport([finding({ id: 'docs.readme.missing', severity: 'error' })])
+    const withEnvelope: LocalReadinessReport = {
+      ...report,
+      autonomyEnvelope: [
+        { stage: 'orient', status: 'blocked', findingIds: ['docs.readme.missing'] },
+        { stage: 'bootstrap', status: 'ready', findingIds: [] },
+      ],
+    }
+    const md = formatScanMarkdown(withEnvelope)
+    expect(md).toContain('### Autonomy envelope')
+    expect(md).toContain('- orient: ⛔ blocked — docs.readme.missing')
+    expect(md).toContain('- bootstrap: ✅ ready')
+  })
+
+  it('omits the autonomy envelope section when the field is absent', () => {
+    const md = formatScanMarkdown(scanReport([]))
+    expect(md).not.toContain('### Autonomy envelope')
+  })
+
+  it('always lists the fixed set of controls a local scan cannot verify', () => {
+    const md = formatScanMarkdown(scanReport([]))
+    expect(md).toContain('### Not verified from repository contents')
+    for (const control of NOT_VERIFIED_EXTERNAL_CONTROLS) {
+      expect(md).toContain(`- ${control}`)
+    }
+  })
+})
+
+describe('formatScanSummary', () => {
+  it('always includes the fixed set of controls a local scan cannot verify', () => {
+    const summary = formatScanSummary(scanReport([]))
+    for (const control of NOT_VERIFIED_EXTERNAL_CONTROLS) {
+      expect(summary).toContain(control)
+    }
+  })
+
+  it('lists only the not-ready/blocked stages, and omits the line when every stage is ready', () => {
+    const report = scanReport([])
+    const blocked: LocalReadinessReport = {
+      ...report,
+      autonomyEnvelope: [
+        { stage: 'orient', status: 'blocked', findingIds: ['docs.readme.missing'] },
+        { stage: 'bootstrap', status: 'not_yet_ready', findingIds: ['commands.reference.npm-script:x'] },
+        { stage: 'edit', status: 'ready', findingIds: [] },
+      ],
+    }
+    expect(formatScanSummary(blocked)).toContain('Autonomy: orient (blocked), bootstrap (not yet ready)')
+
+    const allReady: LocalReadinessReport = {
+      ...report,
+      autonomyEnvelope: [{ stage: 'orient', status: 'ready', findingIds: [] }],
+    }
+    expect(formatScanSummary(allReady)).not.toContain('Autonomy:')
   })
 })
 

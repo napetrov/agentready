@@ -109,6 +109,10 @@ describe('--policy option', () => {
       path.join(root, '.github', 'workflows', 'ci.yml'),
       'name: CI\njobs:\n  test:\n    steps:\n      - run: npm run lint\n      - run: npm test\n      - run: npm run build\n',
     )
+    // Covers .github/** with a team (not individual) owner so neither
+    // governance.codeowners.protected-path-gap nor .single-owner-risk also
+    // fires, keeping the isolation below intact.
+    writeFileSync(path.join(root, 'CODEOWNERS'), '* @napetrov/maintainers\n')
     // No AGENTS.md: instructions.missing (warning by default) is the only
     // finding, so only the enterprise policy's escalation of it changes
     // gating/score — CI is present so ci.workflow.missing doesn't also fire.

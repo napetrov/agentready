@@ -58,7 +58,11 @@ Four properties back the trust model this scanner asks you to rely on:
 - **Local-first and non-networked.** No external service is contacted and the
   scanned repository's own scripts are never executed (see "What It Scans"
   above). The optional LLM analyze layer is the one exception, and it is
-  off unless explicitly configured.
+  off unless explicitly configured. Every default scan report lists the
+  platform-level controls this guarantee means it cannot see (branch
+  protection, required status checks, environment approval rules, ...) under
+  "Not verified from repository contents," so their absence never reads as
+  "confirmed fine."
 - **The optional LLM layer can run without AgentReady ever holding a
   credential.** If you run AgentReady from inside an agent host (Claude Code,
   Cursor, …), the bundled MCP server lets that host's own model do the
@@ -105,9 +109,10 @@ and `--min-score <0-100>`; the process exits non-zero when a gate trips.
 
 `--policy <name>` applies a team-specific severity policy to gating without
 changing the raw findings or score. Four packs ship today: `default` (a no-op),
-`enterprise` (escalates missing agent instructions and install/deploy/high-risk
-capability safety signals for organization-wide rollout governance), `oss`
-(escalates stale command references and contribution-onboarding gaps for
+`enterprise` (escalates missing/non-portable agent instructions,
+install/deploy/high-risk-capability/automatic-hook-execution safety signals,
+and protected-path CODEOWNERS gaps for organization-wide rollout governance),
+`oss` (escalates stale command references and contribution-onboarding gaps for
 repos that rely on external contributors), and `ml-scientific` (relaxes
 large-fixture and unified-lint-command gates for research/scientific-computing
 repos, where both are routine rather than neglect):
@@ -351,7 +356,11 @@ friction, not just by existing. Two separate evaluation efforts back that up:
   longer implies `pyright` type-check coverage). The public benchmark plan
   comparing readiness findings against real agent task friction is in
   [docs/product/evaluation.md](docs/product/evaluation.md); `npm run
-  agentready:benchmark` automates the scan half of that corpus today.
+  agentready:benchmark` automates the scan half of that corpus today. The
+  human-judgment half — classifying a reviewed repository's findings as
+  `true_positive`/`false_positive`/`false_negative`/`severity_mismatch`/
+  `policy_mismatch`/`not_observable_locally` — is captured as structured data
+  under [`reports/evaluation/calibration/`](reports/evaluation/calibration/).
 
 ### Configuration
 

@@ -2,7 +2,7 @@ import { execFileSync } from 'child_process'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
-import { detectCodeownersCoverageGaps, detectGovernance } from '../lib/repo-readiness/detectors/governance'
+import { detectCodeownersCoverageGaps, detectGovernance, detectProtectedPathCoverage } from '../lib/repo-readiness/detectors/governance'
 import { scanLocalReadiness } from '../lib/repo-readiness/local-readiness'
 
 const runGit = (root: string, args: string[]): void => {
@@ -132,7 +132,17 @@ describe('governance findings (integration)', () => {
     const ids = report.findings.map(f => f.id)
     expect(ids).not.toContain('docs.codeowners.missing')
     expect(ids).not.toContain('docs.pull-request-template.missing')
-    expect(report.governance).toEqual({ codeownersPath: 'CODEOWNERS', pullRequestTemplatePath: '.github/pull_request_template.md' })
+    // The wildcard CODEOWNERS pattern ("* @someone") also covers the scanned
+    // ".github/pull_request_template.md" -- a real match for the
+    // ".github/**" protected path -- by exactly one individual owner with no
+    // documented backup, so `protectedPathCoverage` correctly reports a
+    // single-owner risk here (see the `governance findings (protected paths)`
+    // describe block below for the dedicated coverage of this detector).
+    expect(report.governance).toEqual({
+      codeownersPath: 'CODEOWNERS',
+      pullRequestTemplatePath: '.github/pull_request_template.md',
+      protectedPathCoverage: [{ pattern: '.github/**', covered: true, owners: ['@someone'], singleOwnerRisk: true }],
+    })
   })
 })
 
@@ -508,5 +518,185 @@ describe('docs.codeowners.coverage-gap finding (integration)', () => {
       'docs.codeowners.coverage-gap:src',
     ])
     expect(gapFindings.map(f => f.path).sort()).toEqual(['docs', 'src'])
+  })
+})
+
+describe('detectProtectedPathCoverage (units)', () => {
+  let root: string
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-protected-paths-'))
+  })
+  afterEach(() => rmSync(root, { recursive: true, force: true }))
+
+  const write = (rel: string, content: string): void => {
+    const abs = path.join(root, rel)
+    mkdirSync(path.dirname(abs), { recursive: true })
+    writeFileSync(abs, content)
+  }
+
+  it('flags a protected path as an uncovered gap when there is no CODEOWNERS file at all', () => {
+    // The worst case (zero ownership anywhere) must still be reported, not
+    // silently skipped -- especially since docs.codeowners.missing only
+    // fires for non-trivial (>20 source file) repos, so a small repo with
+    // just a workflow file and no CODEOWNERS would otherwise get no
+    // governance signal about it at all.
+    const result = detectProtectedPathCoverage(root, undefined, ['.github/workflows/ci.yml'])
+    expect(result).toEqual([{ pattern: '.github/**', covered: false, owners: [], singleOwnerRisk: false }])
+  })
+
+  it('is undefined when there is no CODEOWNERS file and no protected path matches a scanned file', () => {
+    expect(detectProtectedPathCoverage(root, undefined, ['src/index.ts'])).toBeUndefined()
+  })
+
+  it('is undefined when no protected-path glob matches a scanned file', () => {
+    write('CODEOWNERS', '* @someone\n')
+    expect(detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', 'src/index.ts'])).toBeUndefined()
+  })
+
+  it('reports a gap when only some files under a protected pattern are covered (one owned file must not mask an uncovered sibling)', () => {
+    write('CODEOWNERS', '/.github/workflows/ @platform\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', [
+      'CODEOWNERS',
+      '.github/workflows/ci.yml',
+      '.github/dependabot.yml',
+    ])
+    expect(result).toEqual([{ pattern: '.github/**', covered: false, owners: [], singleOwnerRisk: false }])
+  })
+
+  it('flags a protected path with no CODEOWNERS coverage at all', () => {
+    write('CODEOWNERS', '/docs/ @doc-owner\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', '.github/workflows/ci.yml'])
+    expect(result).toEqual([{ pattern: '.github/**', covered: false, owners: [], singleOwnerRisk: false }])
+  })
+
+  it('flags a protected path covered by exactly one individual owner as a single-owner risk', () => {
+    write('CODEOWNERS', '/.claude/ @solo-owner\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', '.claude/settings.json'])
+    expect(result).toEqual([{ pattern: '.claude/**', covered: true, owners: ['@solo-owner'], singleOwnerRisk: true }])
+  })
+
+  it('does not flag a protected path covered by a team owner', () => {
+    write('CODEOWNERS', '/.claude/ @napetrov/agent-platform\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', '.claude/settings.json'])
+    expect(result).toEqual([{ pattern: '.claude/**', covered: true, owners: ['@napetrov/agent-platform'], singleOwnerRisk: false }])
+  })
+
+  it('does not flag a protected path covered by more than one individual owner', () => {
+    write('CODEOWNERS', '/.claude/ @alice @bob\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', '.claude/settings.json'])
+    expect(result).toEqual([{ pattern: '.claude/**', covered: true, owners: ['@alice', '@bob'], singleOwnerRisk: false }])
+  })
+
+  it('checks AGENTS.md and CLAUDE.md as exact-path protected patterns', () => {
+    write('CODEOWNERS', '/AGENTS.md @solo-owner\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', 'AGENTS.md', 'CLAUDE.md'])
+    expect(result).toEqual([
+      { pattern: 'AGENTS.md', covered: true, owners: ['@solo-owner'], singleOwnerRisk: true },
+      { pattern: 'CLAUDE.md', covered: false, owners: [], singleOwnerRisk: false },
+    ])
+  })
+
+  it('checks a nested auth/ directory anywhere in the tree via the "**/auth/**" glob', () => {
+    write('CODEOWNERS', '/src/auth/ @solo-owner\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', 'src/auth/login.ts'])
+    expect(result).toEqual([{ pattern: '**/auth/**', covered: true, owners: ['@solo-owner'], singleOwnerRisk: true }])
+  })
+
+  it('honors a custom protected-path list instead of the default', () => {
+    write('CODEOWNERS', '* @someone\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', ['CODEOWNERS', 'custom/risky.ts'], ['custom/**'])
+    expect(result).toEqual([{ pattern: 'custom/**', covered: true, owners: ['@someone'], singleOwnerRisk: true }])
+  })
+
+  it('flags single-owner risk per file, not just when the whole glob shares one aggregate owner', () => {
+    // Two different files under the same protected glob, each solely owned
+    // by a different individual: the aggregate owner set has size 2 (so a
+    // union-level check would miss this), but each file individually still
+    // has no documented backup reviewer.
+    write('CODEOWNERS', '/.github/workflows/ci.yml @alice\n/.github/dependabot.yml @bob\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', [
+      'CODEOWNERS',
+      '.github/workflows/ci.yml',
+      '.github/dependabot.yml',
+    ])
+    expect(result).toEqual([
+      { pattern: '.github/**', covered: true, owners: ['@alice', '@bob'], singleOwnerRisk: true },
+    ])
+  })
+
+  it('does not flag single-owner risk when every matched file has a team or multi-owner backup', () => {
+    write('CODEOWNERS', '/.github/workflows/ci.yml @napetrov/platform\n/.github/dependabot.yml @alice @bob\n')
+    const result = detectProtectedPathCoverage(root, 'CODEOWNERS', [
+      'CODEOWNERS',
+      '.github/workflows/ci.yml',
+      '.github/dependabot.yml',
+    ])
+    expect(result).toEqual([
+      { pattern: '.github/**', covered: true, owners: ['@alice', '@bob', '@napetrov/platform'], singleOwnerRisk: false },
+    ])
+  })
+})
+
+describe('governance protected-path findings (integration)', () => {
+  let root: string
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'agentready-protected-paths-int-'))
+  })
+  afterEach(() => rmSync(root, { recursive: true, force: true }))
+
+  const write = (rel: string, content: string): void => {
+    const abs = path.join(root, rel)
+    mkdirSync(path.dirname(abs), { recursive: true })
+    writeFileSync(abs, content)
+  }
+
+  it('emits an info finding when CODEOWNERS does not cover a protected path', () => {
+    write('README.md', '# demo\n')
+    write('CODEOWNERS', '/docs/ @doc-owner\n')
+    write('.claude/settings.json', '{}\n')
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const gapFinding = report.findings.find(f => f.id === 'governance.codeowners.protected-path-gap:.claude/**')
+    expect(gapFinding).toMatchObject({ severity: 'info', path: '.claude/**' })
+  })
+
+  it('emits an info finding when a protected path is owned by a single individual', () => {
+    write('README.md', '# demo\n')
+    write('CODEOWNERS', '/.claude/ @solo-owner\n')
+    write('.claude/settings.json', '{}\n')
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const riskFinding = report.findings.find(f => f.id === 'governance.codeowners.single-owner-risk:.claude/**')
+    expect(riskFinding).toMatchObject({ severity: 'info', path: '.claude/**' })
+    expect(riskFinding?.recommendation).toContain('@solo-owner')
+  })
+
+  it('emits a protected-path-gap finding for a trivially-sized repo with no CODEOWNERS at all', () => {
+    // docs.codeowners.missing only fires for non-trivial (>20 source file)
+    // repos, so this small repo would otherwise get no governance signal
+    // about its uncovered .github/ workflow at all.
+    write('README.md', '# demo\n')
+    write('.github/workflows/deploy.yml', 'name: deploy\n')
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const ids = report.findings.map(f => f.id)
+    expect(ids).not.toContain('docs.codeowners.missing')
+    expect(ids).toContain('governance.codeowners.protected-path-gap:.github/**')
+  })
+
+  it('emits neither finding when a protected path is team-owned', () => {
+    write('README.md', '# demo\n')
+    write('CODEOWNERS', '/.claude/ @napetrov/agent-platform\n')
+    write('.claude/settings.json', '{}\n')
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const ids = report.findings.map(f => f.id)
+    expect(ids.some(id => id.startsWith('governance.codeowners.protected-path-gap:'))).toBe(false)
+    expect(ids.some(id => id.startsWith('governance.codeowners.single-owner-risk:'))).toBe(false)
+  })
+
+  it('emits no protected-path findings when no protected path exists in the repo', () => {
+    write('README.md', '# demo\n')
+    write('CODEOWNERS', '* @someone\n')
+    const report = scanLocalReadiness(root, { now: new Date('2026-05-30T00:00:00.000Z') })
+    const ids = report.findings.map(f => f.id)
+    expect(ids.some(id => id.startsWith('governance.codeowners.protected-path-gap:'))).toBe(false)
+    expect(ids.some(id => id.startsWith('governance.codeowners.single-owner-risk:'))).toBe(false)
   })
 })

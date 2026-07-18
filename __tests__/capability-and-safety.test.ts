@@ -3,6 +3,7 @@ import { tmpdir } from 'os'
 import path from 'path'
 import {
   detectCapabilitySurfaces,
+  detectHookExecutionRisks,
   detectSafetySignals,
   scanLocalReadiness,
   validateLocalReadinessReportContract,
@@ -196,6 +197,232 @@ describe('safety-signal detector', () => {
   })
 })
 
+const claudeSettingsWithHook = (event: string, command: string): string =>
+  JSON.stringify({ hooks: { [event]: [{ matcher: '', hooks: [{ type: 'command', command }] }] } })
+
+describe('hook-execution-risk detector', () => {
+  test('flags a SessionStart hook that runs a package-manager install command', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'pnpm install --frozen-lockfile && pnpm prisma generate'))
+      const risks = detectHookExecutionRisks(root, ['.claude/settings.json'])
+      // Only the install segment is reported -- "pnpm prisma generate" is a
+      // separate chained command that doesn't match the install pattern.
+      expect(risks).toEqual([
+        {
+          path: '.claude/settings.json',
+          event: 'SessionStart',
+          command: 'pnpm install --frozen-lockfile',
+        },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('evaluates each chained command segment independently: a safe first install does not mask an unsafe second one', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm install --ignore-scripts && pnpm install'))
+      const risks = detectHookExecutionRisks(root, ['.claude/settings.json'])
+      expect(risks).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'pnpm install' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('deduplicates identical (path, event, command) evidence from separate matcher groups', () => {
+    const root = createTempRepo()
+    try {
+      const settings = JSON.stringify({
+        hooks: {
+          SessionStart: [
+            { matcher: '', hooks: [{ type: 'command', command: 'npm install' }] },
+            { matcher: '', hooks: [{ type: 'command', command: 'npm install' }] },
+          ],
+        },
+      })
+      writeRepoFile(root, '.claude/settings.json', settings)
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm install' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('flags npm\'s "i" install alias, not just the full "install" word', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm i'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm i' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag yarn\'s "i" (yarn has no such install alias)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'yarn i'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag an install command that explicitly disables lifecycle scripts (--ignore-scripts)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'bun install --ignore-scripts'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('flags an install command that explicitly negates --ignore-scripts (=false)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm install --ignore-scripts=false'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm install --ignore-scripts=false' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('flags a repeated --ignore-scripts flag using the last (effective) value, not the first', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(
+        root,
+        '.claude/settings.json',
+        claudeSettingsWithHook('SessionStart', 'npm install --ignore-scripts --ignore-scripts=false'),
+      )
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm install --ignore-scripts --ignore-scripts=false' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag when a repeated --ignore-scripts flag\'s last value is the suppressing one', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(
+        root,
+        '.claude/settings.json',
+        claudeSettingsWithHook('SessionStart', 'npm install --ignore-scripts=false --ignore-scripts'),
+      )
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('flags an install command with a global option (attached value) before the subcommand', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm --loglevel=silent install'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([
+        { path: '.claude/settings.json', event: 'SessionStart', command: 'npm --loglevel=silent install' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag when a global option before install explicitly disables lifecycle scripts', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm --ignore-scripts install'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('still does not match a global option before install when a space-separated flag value is used (known limitation)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'npm --workspace packages/app install'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('also checks .claude/settings.local.json', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.local.json', claudeSettingsWithHook('SessionStart', 'npm ci'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.local.json'])).toEqual([
+        { path: '.claude/settings.local.json', event: 'SessionStart', command: 'npm ci' },
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag a hook that requires explicit user invocation (e.g. PreToolUse)', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('PreToolUse', 'pnpm install'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not flag an automatic hook whose command is not an install/lifecycle command', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'echo "session started"'))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('returns nothing when the settings file is absent from the filtered inventory', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'pnpm install'))
+      expect(detectHookExecutionRisks(root, ['README.md'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not throw on an unparsable settings file', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', '{ not valid json')
+      expect(() => detectHookExecutionRisks(root, ['.claude/settings.json'])).not.toThrow()
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('returns nothing when there are no hooks configured', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, '.claude/settings.json', JSON.stringify({ permissions: {} }))
+      expect(detectHookExecutionRisks(root, ['.claude/settings.json'])).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('scan integration', () => {
   test('surfaces capabilities and safety findings in the full report', () => {
     const root = createTempRepo()
@@ -228,6 +455,50 @@ describe('scan integration', () => {
       expect(destructiveFinding?.severity).toBe('warning')
 
       expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('surfaces the composite agent-hook finding when a SessionStart hook runs an install command', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, 'README.md', '# Demo\n')
+      writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+      writeRepoFile(root, '.claude/settings.json', claudeSettingsWithHook('SessionStart', 'pnpm install --frozen-lockfile'))
+
+      const report = scanLocalReadiness(root, { now: fixedNow })
+      const finding = report.findings.find(f => f.id === 'safety.agent-hook.executes-repository-code:.claude/settings.json:SessionStart:pnpm install --frozen-lockfile')
+      expect(finding).toMatchObject({ severity: 'warning', path: '.claude/settings.json' })
+      expect(finding?.recommendation).toContain('pnpm install --frozen-lockfile')
+
+      expect(validateLocalReadinessReportContract(report)).toEqual({ valid: true, errors: [] })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('gives two distinct SessionStart install commands in the same file distinct finding ids', () => {
+    const root = createTempRepo()
+    try {
+      writeRepoFile(root, 'README.md', '# Demo\n')
+      writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
+      const settings = JSON.stringify({
+        hooks: {
+          SessionStart: [
+            { matcher: '', hooks: [{ type: 'command', command: 'npm install' }] },
+            { matcher: '', hooks: [{ type: 'command', command: 'npm run postinstall-check && npm ci' }] },
+          ],
+        },
+      })
+      writeRepoFile(root, '.claude/settings.json', settings)
+
+      const report = scanLocalReadiness(root, { now: fixedNow })
+      const ids = report.findings
+        .filter(f => f.id.startsWith('safety.agent-hook.executes-repository-code:'))
+        .map(f => f.id)
+      expect(ids).toHaveLength(2)
+      expect(new Set(ids).size).toBe(2)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

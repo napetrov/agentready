@@ -67,11 +67,15 @@ Features:
   detector parses workflow steps and classifies install/lint/type-check/test/
   build commands, with `ci.*.not-run` checks that flag commands the repo exposes
   but CI never runs
-- built-in policy packs — **delivered**: `default` (no-op), `enterprise` (four
-  severity escalations), `oss` (four escalations on stale command references
-  and contribution-onboarding gaps), and `ml-scientific` (two de-escalations
-  on large-fixture and unified-lint-command gates) ship as `--policy <name>`
-  on `scan`/`diff` and a `policy` Action input; see
+- built-in policy packs — **delivered**: `default` (no-op), `enterprise` (eight
+  severity escalations: explicit instructions, install/deploy scripts,
+  high-risk capability surfaces, the composite automatic-hook-executes-install
+  finding, a portable (AGENTS.md) instruction entrypoint, and protected-path
+  CODEOWNERS coverage/single-owner risk), `oss` (five escalations on stale
+  command references — including package-manager shortcuts — and
+  contribution-onboarding gaps), and `ml-scientific` (two de-escalations on
+  large-fixture and unified-lint-command gates) ship as `--policy <name>` on
+  `scan`/`diff` and a `policy` Action input; see
   `docs/product/policy-packs.md`. A config-file `policyOptions` shape (tuning
   thresholds without a CLI flag on every invocation) remains a candidate.
 - instruction-file overlap and contradiction checks — **delivered (one
@@ -86,9 +90,15 @@ Features:
 - stale command reference validation — **delivered**: `commands.reference.*`
   checks flag `npm`/`yarn`/`pnpm`/`bun run <script>` (and bare `test`/`start`)
   references in READMEs/instruction files whose script doesn't exist, `make
-  <target>` references with no matching Makefile target, and explicit
-  package-manager mentions that disagree with the detected lockfile. Stale
-  *path* validation (broken links in docs, not command references) remains open.
+  <target>` references with no matching Makefile target, explicit
+  package-manager mentions that disagree with the detected lockfile, and
+  (`commands.reference.shortcut-script`) a code-formatted bare `<manager>
+  <word>` shortcut (e.g. `pnpm dev`) that matches neither a curated
+  per-manager built-in-verb allowlist nor an existing script — gated on the
+  reference appearing inside a Markdown code span (inline or fenced) to keep
+  prose that merely discusses a package manager from being misread as a
+  command. Stale *path* validation (broken links in docs, not command
+  references) remains open.
 - companion-tool ingestion (actionlint, Gitleaks, OSV-Scanner/Trivy, Scorecard)
   with AgentReady as the report hub
 - import graph and boundary checks
@@ -104,9 +114,16 @@ Features:
   only, bounded to the most recent commits, no network calls — that no
   CODEOWNERS pattern appears to cover (`detectCodeownersCoverageGaps` in
   `governance.ts`, approximating CODEOWNERS' gitignore-style patterns via the
-  `ignore` package rather than its full path-rule semantics). Full
-  per-file/blame-based ownership inference remains open (see "git churn and
-  risk signals" above).
+  `ignore` package rather than its full path-rule semantics).
+  `governance.codeowners.protected-path-gap`/`single-owner-risk` (both info,
+  `detectProtectedPathCoverage`) check a fixed set of structurally high-risk
+  paths (`.github/**`, `.claude/**`, `AGENTS.md`, `CLAUDE.md`, `**/auth/**`,
+  `**/migrations/**`, `**/deploy/**`, …) against CODEOWNERS independent of
+  recent activity — a rarely touched but high-risk path never accumulates the
+  commit count the activity-derived check requires — and flag a path owned by
+  exactly one individual with no team/second owner. The `enterprise` policy
+  pack escalates both. Full per-file/blame-based ownership inference remains
+  open (see "git churn and risk signals" above).
 - capability-surface risk tiers — **delivered**: `detectCapabilitySurfaces` now
   classifies every MCP/skill/hook/plugin/LSP surface by blast-radius
   (`report.capabilities[].riskTier`, `low`/`medium`/`high`). MCP configs, hook
@@ -116,6 +133,48 @@ Features:
   `low`. `safety.capability.high-risk` (info) flags each `high`-tier surface,
   and the `enterprise` policy pack escalates it to warning — see
   `docs/product/policy-packs.md`.
+- composite automatic-hook-execution risk — **delivered**:
+  `safety.agent-hook.executes-repository-code` (`detectHookExecutionRisks` in
+  `safety-signals.ts`) flags the specific chained risk neither
+  `safety.install-hook` (package-script hooks only) nor
+  `safety.capability.high-risk` (presence of a hook surface, not what/when it
+  runs) names on its own: an agent-tool hook event that fires automatically
+  (no explicit user action — e.g. Claude Code's `SessionStart`) whose command
+  invokes a package-manager install command. Checking out an untrusted branch
+  and starting a session on it can then run that branch's own install-time
+  lifecycle scripts before anyone reviews them. Default `warning`; the
+  `enterprise` policy pack escalates to `error`.
+- portable instruction entrypoint — **delivered**:
+  `instructions.portable-entrypoint.missing` (info) fires when a repository
+  has *some* recognized agent instruction surface (so `instructions.missing`
+  correctly stays silent — AgentReady still does not assume one filename is
+  universally canonical) but none of them is a portable entrypoint
+  (`AGENTS.md`). Fine for a single-agent workflow; a real gap once more than
+  one coding agent is expected to work in the repository. The `enterprise`
+  policy pack escalates to `warning`. The generic `policyOptions`
+  config-file shape from `docs/product/policy-packs.md` remains a candidate;
+  this ships as a fixed default instead.
+- autonomy envelope — **delivered**: every rule in `checks/catalog.ts` is
+  tagged with `affectedStages` (`AgentStage` = `orient`/`bootstrap`/
+  `navigate`/`edit`/`verify`/`review`/`merge`/`deploy`).
+  `calculateAutonomyEnvelope` derives a per-stage `ready`/`not_yet_ready`/
+  `blocked` status from findings (`report.autonomyEnvelope`, a pure view like
+  `dimensions` — it never changes gating or `summary.score`), so a report can
+  say "ready to edit and open a PR, not yet ready to merge or deploy
+  autonomously" instead of only a single aggregate score. Rendered as a
+  section in `formatScanMarkdown` and a compact not-ready/blocked-only line in
+  `formatScanSummary`.
+- "not verified from repository contents" reporting — **delivered**: every
+  default scan's markdown/console output lists a fixed set of platform-level
+  controls (`NOT_VERIFIED_EXTERNAL_CONTROLS`: branch protection, required
+  status checks, required CODEOWNER review, environment approval rules,
+  production secret scopes, deployment permission boundaries) that a local,
+  non-networked scan cannot observe from repository contents alone — making
+  the gap explicit rather than letting their absence from a report read as
+  "confirmed fine." An opt-in GitHub Action enrichment mode that could
+  eventually answer some of these from inside CI (where a token already
+  exists) remains a candidate, kept strictly separate from the local,
+  non-networked core scan contract.
 - local multi-repo/portfolio batch mode — **delivered**: `agentready batch
   [paths...] [--root <dir>]` scans every given path (plus, with `--root`,
   every immediate non-hidden subdirectory of it — the shape of a platform

@@ -149,6 +149,106 @@ describe('detectCommandReferences (units)', () => {
     expect(detect([doc], makeCommands)).toEqual([])
   })
 
+  it('flags a code-formatted bare shortcut with no matching script and no matching built-in verb', () => {
+    const doc = write('README.md', 'Quick start: run `pnpm dev` to start the app.')
+    const evidence = detect([doc], baseCommands)
+    expect(evidence).toEqual([
+      {
+        path: doc,
+        reference: 'pnpm dev',
+        kind: 'shortcut-script',
+        detail: '"pnpm dev" is not a "pnpm" built-in command and no "dev" script exists in package.json.',
+      },
+    ])
+  })
+
+  it('does not flag a yarn/pnpm/bun shortcut when the script actually exists (they fall back to running it)', () => {
+    const doc = write('README.md', 'Quick start: run `pnpm dev` to start the app.')
+    const withDevScript: CommandEvidence = { ...baseCommands, scripts: [...baseCommands.scripts, 'dev'] }
+    expect(detect([doc], withDevScript)).toEqual([])
+  })
+
+  it('flags an npm bare shortcut even when the script exists: npm has no bare-script fallback', () => {
+    const doc = write('README.md', 'Quick start: run `npm dev` to start the app.')
+    const withDevScript: CommandEvidence = { ...baseCommands, scripts: [...baseCommands.scripts, 'dev'] }
+    expect(detect([doc], withDevScript)).toEqual([
+      {
+        path: doc,
+        reference: 'npm dev',
+        kind: 'shortcut-script',
+        detail: 'npm has no bare-script shortcut for "dev" (only test/start/stop/restart/t/tst run this way) -- use "npm run dev" instead.',
+      },
+    ])
+  })
+
+  it('does not flag npm\'s own stop/restart bare commands', () => {
+    const doc = write('README.md', 'Run `npm stop` or `npm restart` as needed.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('does not flag npm\'s "t"/"tst" test aliases', () => {
+    const doc = write('README.md', 'Run `npm t` or `npm tst` to run tests.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it.each([
+    ['npm', 'audit'],
+    ['npm', 'ci'],
+    ['yarn', 'why'],
+    ['pnpm', 'add'],
+    ['bun', 'upgrade'],
+  ])('does not flag a real %s built-in verb (%s)', (manager, verb) => {
+    const doc = write('README.md', `Run \`${manager} ${verb}\` first.`)
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it.each(['npm', 'pnpm', 'bun'])('does not flag %s\'s "i" install alias', manager => {
+    const doc = write('README.md', `Quick start: \`${manager} i\` to install dependencies.`)
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('does not flag npm\'s "create" scaffold command (e.g. `npm create vite@latest`)', () => {
+    const doc = write('README.md', 'Scaffold with `npm create vite@latest`.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('does not flag Yarn Berry\'s "npm" command group (e.g. `yarn npm audit`, `yarn npm publish`)', () => {
+    const doc = write('README.md', 'Run `yarn npm audit` before publishing with `yarn npm publish`.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('flags yarn "i" as a shortcut: yarn has no "i" install alias', () => {
+    const doc = write('README.md', 'Quick start: `yarn i` to install dependencies.')
+    const evidence = detect([doc], baseCommands)
+    expect(evidence).toEqual([
+      { path: doc, reference: 'yarn i', kind: 'shortcut-script', detail: '"yarn i" is not a "yarn" built-in command and no "i" script exists in package.json.' },
+    ])
+  })
+
+  it('does not flag a shortcut mentioned only in prose, outside a code span', () => {
+    const doc = write('README.md', 'This project is managed with pnpm dev-dependencies in mind.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('does not double-report a "<pm> run <script>" reference under the shortcut-script kind', () => {
+    const doc = write('README.md', 'Run `npm run buld` before committing.')
+    const evidence = detect([doc], baseCommands)
+    expect(evidence).toEqual([
+      { path: doc, reference: 'npm run buld', kind: 'npm-script', detail: 'No "buld" script in package.json.' },
+    ])
+  })
+
+  it('does not flag a workspace-qualified shortcut', () => {
+    const doc = write('README.md', 'Run `pnpm dev --workspace packages/app` from the repo root.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('flags a shortcut inside a fenced code block', () => {
+    const doc = write('README.md', ['Quick start:', '', '```bash', 'pnpm install', 'pnpm dev', '```'].join('\n'))
+    const evidence = detect([doc], baseCommands)
+    expect(evidence.map(item => item.reference)).toEqual(['pnpm dev'])
+  })
+
   it('flags a package-manager mismatch when an actual lockfile contradicts it', () => {
     const doc = write('AGENTS.md', 'Run `pnpm install` to set up dependencies.')
     // baseCommands.packageManager is npm; package-lock.json is a real lockfile.

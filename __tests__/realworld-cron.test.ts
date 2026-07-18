@@ -105,6 +105,7 @@ describe('real-world cron classification', () => {
     instructions: [],
     capabilities: [],
     safetySignals: [],
+    hookExecutionRisks: [],
     repositoryEvidence: {
       roots: [],
       boundaries: [],
@@ -133,6 +134,7 @@ describe('real-world cron classification', () => {
       ambiguities: [],
     },
     dimensions: [],
+    autonomyEnvelope: [],
     reportContract: {
       schemaVersion: 'local-readiness/v2',
       experimentalFields: ['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'],

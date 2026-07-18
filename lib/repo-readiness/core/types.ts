@@ -58,6 +58,29 @@ export interface ReadinessDimensionScore {
   bySeverity: Record<ReadinessSeverity, number>
 }
 
+/**
+ * A point in an AI coding agent's workflow a finding can affect. Powers the
+ * autonomy envelope (`AutonomyStageResult`): the same repository can be
+ * "ready" for an agent to understand and edit it while still "blocked" for
+ * merging or deploying autonomously, which a single aggregate score cannot
+ * communicate on its own.
+ */
+export type AgentStage = 'orient' | 'bootstrap' | 'navigate' | 'edit' | 'verify' | 'review' | 'merge' | 'deploy'
+
+export type AutonomyStatus = 'ready' | 'not_yet_ready' | 'blocked'
+
+/**
+ * One stage's autonomy assessment: `blocked` when an error-severity finding
+ * affects this stage, `not_yet_ready` when only warning-severity findings do,
+ * `ready` otherwise (info-only or no affecting findings at all).
+ */
+export interface AutonomyStageResult {
+  stage: AgentStage
+  status: AutonomyStatus
+  /** Ids of the findings driving a non-`ready` status; empty when `ready`. */
+  findingIds: string[]
+}
+
 export type EvidenceConfidence = 'low' | 'medium' | 'high'
 
 export type EvidenceSourceKind = 'file' | 'manifest' | 'workflow' | 'config' | 'inference'
@@ -116,7 +139,7 @@ export interface CommandEvidence {
  * A kind of command reference an instruction file or README can make that is
  * checkable against detected command evidence.
  */
-export type CommandReferenceKind = 'npm-script' | 'make-target' | 'package-manager-mismatch'
+export type CommandReferenceKind = 'npm-script' | 'make-target' | 'package-manager-mismatch' | 'shortcut-script'
 
 /**
  * A command mentioned in a doc/instruction file that does not match the
@@ -157,11 +180,38 @@ export interface InstructionContradictionEvidence {
 }
 
 /**
+ * CODEOWNERS coverage for one structurally high-risk path (see
+ * `DEFAULT_PROTECTED_PATHS` in `detectors/governance.ts`), independent of
+ * recent commit activity — a rarely touched but high-risk path (e.g. a
+ * deploy script) may never accumulate the commit count
+ * `uncoveredActiveDirectories` requires.
+ */
+export interface ProtectedPathCoverageEvidence {
+  /** The protected-path glob that matched at least one file the scan tracks. */
+  pattern: string
+  /** Whether *every* file the scan tracks under this pattern has a CODEOWNERS owner — one owned file cannot mask an uncovered sibling. */
+  covered: boolean
+  /** Distinct owner tokens found across matched files (sorted); empty unless `covered`, since a partial owner list for an uncovered path would be misleading. */
+  owners: string[]
+  /**
+   * `covered`, and at least one individual matched file's own CODEOWNERS
+   * owners are exactly one non-team token — that file's entire review
+   * surface is one person with no documented backup, computed per file
+   * rather than from the pattern's aggregate owner set (so it still fires
+   * when different matched files each have their own distinct solo owner).
+   * Cannot verify actual team membership locally — a team owner (`@org/team`)
+   * is assumed to have more than one member, a known limitation.
+   */
+  singleOwnerRisk: boolean
+}
+
+/**
  * Review-routing surfaces: whether the repo tells a reviewer (human or agent)
  * who owns a change and what evidence a PR description should contain. The
  * two path fields are presence checks (does the file exist, at a path GitHub
- * recognizes). `uncoveredActiveDirectories` is the one field derived from
- * local git history rather than presence alone — see its own doc comment.
+ * recognizes). `uncoveredActiveDirectories`/`protectedPathCoverage` are
+ * derived from CODEOWNERS' actual pattern semantics rather than presence
+ * alone — see their own doc comments.
  */
 export interface GovernanceEvidence {
   /** Path to CODEOWNERS, if found at a GitHub-recognized location (root, .github/, or docs/). */
@@ -178,6 +228,13 @@ export interface GovernanceEvidence {
    * repository, and at least one uncovered directory was found.
    */
   uncoveredActiveDirectories?: string[]
+  /**
+   * Coverage of a fixed set of structurally high-risk paths (see
+   * `DEFAULT_PROTECTED_PATHS`), regardless of recent activity. Present only
+   * when CODEOWNERS exists and at least one protected-path glob matched a
+   * file the scan tracks.
+   */
+  protectedPathCoverage?: ProtectedPathCoverageEvidence[]
 }
 
 /** A class of verification command an agent can run to validate its work. */
@@ -280,6 +337,23 @@ export interface SafetySignalEvidence {
   script: string
   command: string
   notes: string[]
+}
+
+/**
+ * A composite risk `safety.install-hook`/`safety.capability.high-risk` each
+ * report only half of: an agent-tool hook event that fires automatically (no
+ * explicit user action, e.g. Claude Code's `SessionStart`) whose command
+ * invokes a package-manager install/lifecycle command. Checking out an
+ * untrusted branch and then starting a session on it can run that branch's
+ * own install-time lifecycle scripts before anyone reviews them.
+ */
+export interface HookExecutionRiskEvidence {
+  /** Repo-relative path of the settings file the hook is configured in. */
+  path: string
+  /** The hook event name (e.g. `SessionStart`). */
+  event: string
+  /** The hook's command, which matched an install/lifecycle command pattern. */
+  command: string
 }
 
 export type DocumentRole =
@@ -449,7 +523,13 @@ export interface LocalReadinessReportContract {
   experimentalFields: LocalReadinessExperimentalField[]
 }
 
-export type LocalReadinessExperimentalField = 'repositoryEvidence' | 'designState' | 'dimensions' | 'instructionContradictions'
+export type LocalReadinessExperimentalField =
+  | 'repositoryEvidence'
+  | 'designState'
+  | 'dimensions'
+  | 'instructionContradictions'
+  | 'hookExecutionRisks'
+  | 'autonomyEnvelope'
 
 export interface LocalReadinessReport {
   root: string
@@ -480,10 +560,13 @@ export interface LocalReadinessReport {
   instructions: InstructionSurfaceEvidence[]
   capabilities: CapabilitySurfaceEvidence[]
   safetySignals: SafetySignalEvidence[]
+  hookExecutionRisks: HookExecutionRiskEvidence[]
   repositoryEvidence: RepositoryEvidence
   designState: DesignStateSummary
   /** Per-category rollups of `summary.score`'s severity-penalty model. See `ReadinessDimensionScore`. */
   dimensions: ReadinessDimensionScore[]
+  /** Per-agent-workflow-stage readiness, derived from findings and each rule's `RuleDoc.affectedStages`. See `AutonomyStageResult`. */
+  autonomyEnvelope: AutonomyStageResult[]
   reportContract: LocalReadinessReportContract
   findings: ReadinessFinding[]
   files: LocalReadinessFile[]

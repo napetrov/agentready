@@ -25,6 +25,7 @@ const writeReadyRepo = (root: string): void => {
   writeRepoFile(root, 'AGENTS.md', 'Run npm test.\n')
   writeRepoFile(root, '.github/workflows/ci.yml', 'name: CI\n')
   writeRepoFile(root, '.github/pull_request_template.md', '## What changed\n')
+  writeRepoFile(root, 'CODEOWNERS', '* @napetrov/maintainers\n')
   writeRepoFile(
     root,
     'package.json',

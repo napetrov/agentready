@@ -2,7 +2,7 @@ import { execFileSync } from 'child_process'
 import { closeSync, existsSync, lstatSync, openSync, readSync } from 'fs'
 import path from 'path'
 import ignore from 'ignore'
-import type { GovernanceEvidence } from '../core/types'
+import type { GovernanceEvidence, ProtectedPathCoverageEvidence } from '../core/types'
 
 // GitHub recognizes CODEOWNERS at .github/, the repo root, or docs/ (in that
 // order -- .github/ first, not root), and honors exactly one of them when
@@ -140,6 +140,152 @@ const recentlyChangedFilesByCommit = (root: string): string[][] => {
   }
 }
 
+interface CodeownersPattern {
+  matcher: ReturnType<typeof ignore>
+  /** Owner tokens for this pattern; empty means an intentional ownerless override (see below). */
+  owners: string[]
+}
+
+/**
+ * Parses already comment-stripped, non-empty CODEOWNERS lines into ordered
+ * single-pattern matchers, applying the same GitHub syntax rules
+ * `detectCodeownersCoverageGaps` documents in detail below (no "!" negation,
+ * no "[ ]" character ranges, every trailing token must be a plausible owner
+ * or the whole line is invalid and skipped, case-sensitive matching, "last
+ * matching pattern wins"). Shared by `detectCodeownersCoverageGaps` (git-
+ * history-derived directory coverage) and `detectProtectedPathCoverage`
+ * (fixed high-risk path coverage) so both apply CODEOWNERS' real semantics
+ * identically rather than each approximating it slightly differently.
+ */
+const parseCodeownersPatterns = (contentLines: string[]): CodeownersPattern[] =>
+  contentLines
+    .map(line => line.split(/\s+/))
+    .filter(tokens => !tokens[0].startsWith('!') && !/[[\]]/.test(tokens[0]))
+    .filter(tokens => tokens.length === 1 || tokens.slice(1).every(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
+    .map(tokens => ({
+      matcher: ignore({ ignorecase: false }).add(tokens[0]),
+      owners: tokens.slice(1),
+    }))
+
+/** The owner tokens of the *last* pattern matching `filePath` ("last match wins"), or `[]` if none/unowned. */
+const ownersForFile = (patterns: CodeownersPattern[], filePath: string): string[] => {
+  let owners: string[] = []
+  for (const { matcher, owners: patternOwners } of patterns) {
+    if (matcher.ignores(filePath)) owners = patternOwners
+  }
+  return owners
+}
+
+const isFileCoveredBy = (patterns: CodeownersPattern[], filePath: string): boolean =>
+  ownersForFile(patterns, filePath).length > 0
+
+// A GitHub team owner (`@org/team`) is assumed to have more than one member
+// -- this detector has no way to verify actual team membership locally, a
+// known limitation documented on `ProtectedPathCoverageEvidence` -- while a
+// bare `@user` or email is a single named individual with no built-in backup.
+const isIndividualOwnerToken = (owner: string): boolean => !owner.startsWith('@') || !owner.includes('/')
+
+/**
+ * Default protected-path globs for `detectProtectedPathCoverage`: paths whose
+ * blast radius (agent/CI configuration, auth, migrations, deploy/infra,
+ * prompts, recorded-interaction fixtures) makes "does *anyone* review changes
+ * here" matter independent of how often the path actually changes -- unlike
+ * `detectCodeownersCoverageGaps`' git-activity-derived signal, a rarely
+ * touched but high-risk path never accumulates the commit count that check
+ * requires.
+ */
+export const DEFAULT_PROTECTED_PATHS: string[] = [
+  '.github/**',
+  '.claude/**',
+  'AGENTS.md',
+  'CLAUDE.md',
+  '**/auth/**',
+  '**/security/**',
+  '**/migrations/**',
+  '**/schema.*',
+  '**/deploy/**',
+  '**/infra/**',
+  '**/prompts/**',
+  '**/fixtures/*cassette*',
+]
+
+/**
+ * Checks a fixed set of structurally high-risk paths (see
+ * `DEFAULT_PROTECTED_PATHS`) against CODEOWNERS, independent of recent commit
+ * activity. `covered` requires *every* file the scan tracks under a matched
+ * protected glob to have an effective CODEOWNERS owner -- a single owned
+ * file must not mask a genuinely uncovered sibling under the same glob (e.g.
+ * `.github/workflows/*.yml @platform` covering CI but leaving
+ * `.github/dependabot.yml` unowned still leaves `.github/**` a real gap).
+ * When (and only when) every matched file is covered, `singleOwnerRisk` is
+ * true if *any* individual matched file's own CODEOWNERS owners (not the
+ * glob's aggregate owner set) consist of exactly one non-team token -- that
+ * file's entire review surface is one person with no documented backup, even
+ * if a sibling file under the same glob happens to have a different or
+ * broader owner set. Computing this only from the aggregate (e.g. two files
+ * each solely owned by a different individual) would mask exactly the
+ * per-file risk this flag exists to catch. `owners` is likewise only
+ * populated when `covered` is true, since a partial owner list for an
+ * uncovered path would be misleading.
+ *
+ * Runs even when `codeownersPath` is `undefined` (no CODEOWNERS file at
+ * all), treating that as zero effective patterns -- every protected glob
+ * that matches a tracked file reports as an uncovered gap. Deliberately NOT
+ * folded into "nothing to check" the way `detectCodeownersCoverageGaps`
+ * treats a missing CODEOWNERS: `docs.codeowners.missing` only fires for
+ * non-trivial repos (>20 source files), so a small repo with e.g. only a
+ * `.github/workflows/deploy.yml` and no CODEOWNERS would otherwise get no
+ * governance signal at all about that specific high-risk, uncovered path.
+ * Only a CODEOWNERS file that exists but can't safely be read (a symlink,
+ * per `readBounded`) still aborts the whole check -- that is a "can't
+ * verify" case, not a "verified there is no owner" one.
+ */
+export const detectProtectedPathCoverage = (
+  root: string,
+  codeownersPath: string | undefined,
+  scannedFilePaths: string[],
+  protectedPaths: string[] = DEFAULT_PROTECTED_PATHS,
+): ProtectedPathCoverageEvidence[] | undefined => {
+  let patterns: CodeownersPattern[] = []
+  if (codeownersPath) {
+    const codeownersText = readBounded(path.join(root, codeownersPath), MAX_CODEOWNERS_BYTES)
+    if (codeownersText === undefined) return undefined
+
+    const contentLines = codeownersText
+      .split('\n')
+      .map(line => line.split('#')[0].trim())
+      .filter(line => line.length > 0)
+    patterns = parseCodeownersPatterns(contentLines)
+  }
+
+  const results: ProtectedPathCoverageEvidence[] = []
+  for (const protectedPath of protectedPaths) {
+    const matcher = ignore({ ignorecase: false }).add(protectedPath)
+    const matchedFiles = scannedFilePaths.filter(filePath => matcher.ignores(filePath))
+    if (matchedFiles.length === 0) continue
+
+    const covered = matchedFiles.every(filePath => isFileCoveredBy(patterns, filePath))
+    const owners = new Set<string>()
+    let singleOwnerRisk = false
+    if (covered) {
+      for (const filePath of matchedFiles) {
+        const fileOwners = ownersForFile(patterns, filePath)
+        for (const owner of fileOwners) owners.add(owner)
+        if (fileOwners.length === 1 && isIndividualOwnerToken(fileOwners[0])) singleOwnerRisk = true
+      }
+    }
+
+    results.push({
+      pattern: protectedPath,
+      covered,
+      owners: [...owners].sort(),
+      singleOwnerRisk,
+    })
+  }
+
+  return results.length > 0 ? results : undefined
+}
+
 /**
  * Compares CODEOWNERS' path patterns against which top-level directories
  * actually see sustained recent commit activity, using local git history
@@ -235,22 +381,8 @@ export const detectCodeownersCoverageGaps = (
   // a line like "/src/ @user1 TODO" is invalid syntax as a whole, so
   // `@user1` is not applied either; every trailing token must be a plausible
   // owner, not just one of them.
-  const orderedPatterns = contentLines
-    .map(line => line.split(/\s+/))
-    .filter(tokens => !tokens[0].startsWith('!') && !/[[\]]/.test(tokens[0]))
-    .filter(tokens => tokens.length === 1 || tokens.slice(1).every(token => CODEOWNERS_OWNER_TOKEN_PATTERN.test(token)))
-    .map(tokens => ({
-      matcher: ignore({ ignorecase: false }).add(tokens[0]),
-      hasOwner: tokens.length > 1,
-    }))
-
-  const isFileCovered = (filePath: string): boolean => {
-    let covered = false
-    for (const { matcher, hasOwner } of orderedPatterns) {
-      if (matcher.ignores(filePath)) covered = hasOwner
-    }
-    return covered
-  }
+  const orderedPatterns = parseCodeownersPatterns(contentLines)
+  const isFileCovered = (filePath: string): boolean => isFileCoveredBy(orderedPatterns, filePath)
 
   const commits = recentlyChangedFilesByCommit(root)
   if (commits.length === 0) return undefined

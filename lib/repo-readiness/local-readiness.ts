@@ -10,8 +10,11 @@
 // This module re-exports the stable surface so existing imports keep working.
 
 export type {
+  AgentStage,
   ArchitectureBoundaryEvidence,
   ArchitectureBoundaryRole,
+  AutonomyStageResult,
+  AutonomyStatus,
   CapabilityKind,
   CapabilityRiskTier,
   CapabilitySurfaceEvidence,
@@ -42,6 +45,7 @@ export type {
   EvidenceSourceKind,
   GeneratedPressureEvidence,
   GovernanceEvidence,
+  HookExecutionRiskEvidence,
   InstructionContradictionEvidence,
   InstructionContradictionKind,
   LocalReadinessConfig,
@@ -53,6 +57,7 @@ export type {
   PortfolioRepoResult,
   PortfolioScanOptions,
   PortfolioSummary,
+  ProtectedPathCoverageEvidence,
   RepositoryEvidence,
   RepositoryRootEvidence,
   RepositoryRootKind,
@@ -104,8 +109,10 @@ export { adjustFindings, applyPolicy, POLICY_NAMES } from './core/policy'
 export type { PolicyName, PolicyPack, PolicyResult, PolicySeverityAdjustment } from './core/policy'
 
 export {
+  AGENT_STAGES,
   RULE_CATALOG,
   RULE_CATEGORIES,
+  calculateAutonomyEnvelope,
   calculateDimensionScores,
   formatRuleDoc,
   getRuleDoc,
@@ -117,6 +124,8 @@ export type { RuleDoc } from './checks/catalog'
 export { DEFAULT_POLICY, ENTERPRISE_POLICY, ML_SCIENTIFIC_POLICY, OSS_POLICY, POLICY_PACKS, resolvePolicyPack } from './checks/policy-packs'
 
 export {
+  agentStageSchema,
+  autonomyStageResultListSchema,
   localReadinessConfigSchema,
   localReadinessReportSchema,
   portfolioReportSchema,
@@ -127,6 +136,7 @@ export {
 
 export { formatDiffSummary, formatPolicySummary, formatScanSummary } from './reporters/console'
 export { formatDiffMarkdown, formatScanMarkdown } from './reporters/markdown'
+export { NOT_VERIFIED_EXTERNAL_CONTROLS } from './reporters/not-verified'
 export { formatPortfolioMarkdown, formatPortfolioSummary } from './reporters/portfolio'
 export { formatScanSarif } from './reporters/sarif'
 export type { SarifLog, SarifOptions } from './reporters/sarif'

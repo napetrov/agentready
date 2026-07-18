@@ -9,6 +9,8 @@ import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 import { z } from 'zod'
 import {
+  agentStageSchema,
+  autonomyStageResultListSchema,
   localReadinessConfigSchema,
   localReadinessReportSchema,
   portfolioReportSchema,
@@ -91,6 +93,16 @@ const dimensionCategoryOverride = (ctx: { zodSchema: unknown; jsonSchema: Record
   }))
 }
 
+// Same pigeonhole trick as `dimensionCategoryOverride`, for `AGENT_STAGES`
+// instead of `RULE_CATEGORIES` -- mirrors the runtime Zod `.refine()`
+// uniqueness check in `autonomyStageResultListSchema`.
+const autonomyStageOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }): void => {
+  if (!isSchema(ctx.zodSchema, autonomyStageResultListSchema)) return
+  ctx.jsonSchema.allOf = agentStageSchema.options.map(stage => ({
+    contains: { properties: { stage: { const: stage } } },
+  }))
+}
+
 // draft-07 tuple validation is `items: [schema1, schema2, ...]` with no
 // implied length bound — an array with fewer or extra elements still passes
 // unless `minItems`/`maxItems` are set explicitly. `z.toJSONSchema` does not
@@ -117,6 +129,7 @@ const tupleLengthOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<strin
 
 const combinedOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }): void => {
   dimensionCategoryOverride(ctx)
+  autonomyStageOverride(ctx)
   tupleLengthOverride(ctx)
 }
 

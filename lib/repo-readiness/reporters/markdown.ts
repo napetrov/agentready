@@ -1,4 +1,5 @@
 import type {
+  AutonomyStageResult,
   CiEvidence,
   DesignStateInsight,
   LocalReadinessReport,
@@ -7,6 +8,7 @@ import type {
   ReadinessFinding,
 } from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
+import { NOT_VERIFIED_EXTERNAL_CONTROLS } from './not-verified'
 
 // Summarizes which verification commands CI actually runs, parsed from the
 // workflow steps. Helps a reader see at a glance whether the objective gate
@@ -76,6 +78,25 @@ const markdownDimensions = (dimensions: ReadinessDimensionScore[] | undefined): 
   ]
 }
 
+const AUTONOMY_STATUS_LABEL: Record<AutonomyStageResult['status'], string> = {
+  ready: '✅ ready',
+  not_yet_ready: '⚠️ not yet ready',
+  blocked: '⛔ blocked',
+}
+
+const markdownAutonomyEnvelope = (autonomyEnvelope: AutonomyStageResult[] | undefined): string[] => {
+  if (!autonomyEnvelope || autonomyEnvelope.length === 0) return []
+  return [
+    '',
+    '### Autonomy envelope',
+    'What level of agent autonomy this repository is ready for, derived from findings (not a separate score):',
+    ...autonomyEnvelope.map(result => {
+      const detail = result.findingIds.length > 0 ? ` — ${result.findingIds.join(', ')}` : ''
+      return `- ${result.stage}: ${AUTONOMY_STATUS_LABEL[result.status]}${detail}`
+    }),
+  ]
+}
+
 const markdownInsights = (title: string, insights: DesignStateInsight[]): string[] => {
   if (insights.length === 0) return []
   return [
@@ -100,6 +121,7 @@ export function formatScanMarkdown(report: LocalReadinessReport): string {
     ciCoverageLine(report.ci),
     `Findings: ${report.findings.length}`,
     ...markdownDimensions(report.dimensions),
+    ...markdownAutonomyEnvelope(report.autonomyEnvelope),
     ...markdownTopology(report),
     ...markdownDocumentRoles(report),
     ...markdownInsights('Design-state strengths', report.designState?.strengths ?? []),
@@ -108,6 +130,10 @@ export function formatScanMarkdown(report: LocalReadinessReport): string {
     '',
     '### Findings',
     ...markdownFindingList(report.findings),
+    '',
+    '### Not verified from repository contents',
+    'AgentReady scans repository contents only, with no network calls — these platform-level controls cannot be confirmed or denied from a local scan:',
+    ...NOT_VERIFIED_EXTERNAL_CONTROLS.map(item => `- ${item}`),
   ].join('\n')
 }
 

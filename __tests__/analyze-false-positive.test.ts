@@ -33,6 +33,9 @@ describe('false-positive analyzer', () => {
     writeFileSync(path.join(root, 'README.md'), '# Demo\n')
     writeFileSync(path.join(root, 'AGENTS.md'), 'Run npm test.\n')
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'jest', lint: 'eslint .' } }))
+    // Covers AGENTS.md so governance.codeowners.protected-path-gap (which
+    // carries a `path`) doesn't also fire.
+    writeFileSync(path.join(root, 'CODEOWNERS'), '* @napetrov/maintainers\n')
     const report = scanLocalReadiness(root)
     // This repo yields only repo-level findings (e.g. ci.workflow.missing), none
     // of which carry a path, so there is nothing for the analyzer to triage.

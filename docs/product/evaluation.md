@@ -88,6 +88,40 @@ The near-term goal is not a single universal score. The goal is a credible loop:
 real repos → findings → agent runs → false-positive/false-negative notes →
 detector, policy, or documentation improvements.
 
+## Feedback classification
+
+The tracked-summary table above is enough for a public overview, but turning a
+review into reusable calibration data needs a stricter shape: every finding a
+reviewer looks at should land in exactly one bucket.
+
+| Classification | Meaning |
+| --- | --- |
+| `true_positive` | AgentReady found the issue and assigned a useful severity. |
+| `false_positive` | AgentReady reported it, but on review it was not actually a problem — a precision failure a maintainer should never have had to look at. |
+| `false_negative` | The issue mattered but AgentReady did not report it. |
+| `severity_mismatch` | AgentReady found it but ranked it too low (or too high). |
+| `policy_mismatch` | Default severity is reasonable, but a stricter operating context (enterprise, autonomous-merge, ...) should treat it differently. |
+| `not_observable_locally` | The repository's local contents cannot prove this either way (e.g. branch protection, required reviews) — AgentReady's local-first, non-networked scan guarantee means this can only be reported as unverified, never inferred. |
+
+These records live in `reports/evaluation/calibration/`, one file per reviewed
+repository, validated against
+[`calibration-feedback.schema.json`](../../reports/evaluation/calibration/calibration-feedback.schema.json).
+Each finding also carries an `affectedStage` (which point in an agent's
+workflow it affects — `orient`, `bootstrap`, `navigate`, `edit`, `verify`,
+`review`, `merge`, `deploy`) and a `verificationStatus` (whether an AgentReady
+maintainer independently re-checked it, or it is carried as-reported from the
+source review), so a record never silently reads as more verified than it is.
+See [`reports/evaluation/calibration/README.md`](../../reports/evaluation/calibration/README.md)
+for the full format and the first record
+([`napetrov-AIReady.json`](../../reports/evaluation/calibration/napetrov-AIReady.json)):
+a high-readiness repository (extensive agent instructions, sophisticated CI, a
+passing AgentReady Action gate at a configured minimum score of 80) whose
+manual review still surfaced several `false_negative` and `severity_mismatch`
+findings. That gap between an already-high score and a deeper expert review is
+exactly the calibration signal this loop exists to capture — see
+[docs/roadmap/v0.4-issue-drafts.md](../roadmap/v0.4-issue-drafts.md) for the
+backlog it motivates.
+
 ## First milestone
 
 `npm run agentready:benchmark` generates `reports/evaluation/README.md` with

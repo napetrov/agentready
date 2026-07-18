@@ -180,7 +180,8 @@
                 "enum": [
                   "npm-script",
                   "make-target",
-                  "package-manager-mismatch"
+                  "package-manager-mismatch",
+                  "shortcut-script"
                 ]
               },
               "detail": {
@@ -245,6 +246,36 @@
               "type": "array",
               "items": {
                 "type": "string"
+              }
+            },
+            "protectedPathCoverage": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pattern": {
+                    "type": "string"
+                  },
+                  "covered": {
+                    "type": "boolean"
+                  },
+                  "owners": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "singleOwnerRisk": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "pattern",
+                  "covered",
+                  "owners",
+                  "singleOwnerRisk"
+                ],
+                "additionalProperties": false
               }
             }
           },
@@ -526,6 +557,29 @@
               "script",
               "command",
               "notes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "hookExecutionRisks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "event": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "event",
+              "command"
             ],
             "additionalProperties": false
           }
@@ -1829,6 +1883,123 @@
             }
           ]
         },
+        "autonomyEnvelope": {
+          "minItems": 8,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stage": {
+                "type": "string",
+                "enum": [
+                  "orient",
+                  "bootstrap",
+                  "navigate",
+                  "edit",
+                  "verify",
+                  "review",
+                  "merge",
+                  "deploy"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ready",
+                  "not_yet_ready",
+                  "blocked"
+                ]
+              },
+              "findingIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "stage",
+              "status",
+              "findingIds"
+            ],
+            "additionalProperties": false
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "orient"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "bootstrap"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "navigate"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "edit"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "verify"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "review"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "merge"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "deploy"
+                  }
+                }
+              }
+            }
+          ]
+        },
         "reportContract": {
           "type": "object",
           "properties": {
@@ -1844,7 +2015,9 @@
                   "repositoryEvidence",
                   "designState",
                   "dimensions",
-                  "instructionContradictions"
+                  "instructionContradictions",
+                  "hookExecutionRisks",
+                  "autonomyEnvelope"
                 ]
               }
             }
@@ -1954,9 +2127,11 @@
         "instructions",
         "capabilities",
         "safetySignals",
+        "hookExecutionRisks",
         "repositoryEvidence",
         "designState",
         "dimensions",
+        "autonomyEnvelope",
         "reportContract",
         "findings",
         "files"

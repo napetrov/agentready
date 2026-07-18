@@ -74,16 +74,39 @@ describe('ENTERPRISE_POLICY', () => {
     expect(adjustedFindings[0].severity).toBe('error')
     expect(severityAdjustments).toEqual([]) // "to" already equals current severity, so no-op
   })
+
+  it('escalates instructions.portable-entrypoint.missing to warning', () => {
+    const { adjustedFindings } = adjustFindings([finding('instructions.portable-entrypoint.missing', 'info')], ENTERPRISE_POLICY)
+    expect(adjustedFindings[0].severity).toBe('warning')
+  })
+
+  it('escalates safety.agent-hook.executes-repository-code to error', () => {
+    const { adjustedFindings } = adjustFindings(
+      [finding('safety.agent-hook.executes-repository-code:.claude/settings.json:SessionStart', 'warning')],
+      ENTERPRISE_POLICY,
+    )
+    expect(adjustedFindings[0].severity).toBe('error')
+  })
+
+  it('escalates governance.codeowners.protected-path-gap and single-owner-risk to warning', () => {
+    const findings = [
+      finding('governance.codeowners.protected-path-gap:.claude/**', 'info'),
+      finding('governance.codeowners.single-owner-risk:AGENTS.md', 'info'),
+    ]
+    const { adjustedFindings } = adjustFindings(findings, ENTERPRISE_POLICY)
+    expect(adjustedFindings.map(f => f.severity)).toEqual(['warning', 'warning'])
+  })
 })
 
 describe('OSS_POLICY', () => {
-  it('escalates the two stale command-reference kinds to error', () => {
+  it('escalates the three stale command-reference kinds to error', () => {
     const findings = [
       finding('commands.reference.npm-script:AGENTS.md:npm run buld', 'warning'),
       finding('commands.reference.make-target:AGENTS.md:make tets', 'warning'),
+      finding('commands.reference.shortcut-script:README.md:pnpm dev', 'warning'),
     ]
     const { adjustedFindings } = adjustFindings(findings, OSS_POLICY)
-    expect(adjustedFindings.map(f => f.severity)).toEqual(['error', 'error'])
+    expect(adjustedFindings.map(f => f.severity)).toEqual(['error', 'error', 'error'])
   })
 
   it('escalates docs.developer.thin and a missing PR template to warning', () => {

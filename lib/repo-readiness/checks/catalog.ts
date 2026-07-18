@@ -1,5 +1,12 @@
 import { calculateScore } from '../core/scoring'
-import type { ReadinessDimensionScore, ReadinessFinding, ReadinessRuleCategory, ReadinessSeverity } from '../core/types'
+import type {
+  AgentStage,
+  AutonomyStageResult,
+  ReadinessDimensionScore,
+  ReadinessFinding,
+  ReadinessRuleCategory,
+  ReadinessSeverity,
+} from '../core/types'
 
 /**
  * Human-facing documentation for a single readiness rule. The deterministic
@@ -26,6 +33,8 @@ export interface RuleDoc {
   remediation: string[]
   /** Supporting references (specs, docs). */
   references: string[]
+  /** Which points in an agent's workflow this rule affects. Powers `calculateAutonomyEnvelope`. */
+  affectedStages: AgentStage[]
 }
 
 const DOCS = 'docs/product/features.md'
@@ -44,6 +53,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Cover: what the project does, how to install/build, how to run tests, and the common entrypoints an agent should touch.',
     ],
     references: [DOCS],
+    affectedStages: ['orient'],
   },
   'docs.developer.thin': {
     id: 'docs.developer.thin',
@@ -57,6 +67,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Describe module boundaries, data flow, and where changes usually belong, and link it from the README.',
     ],
     references: [DOCS],
+    affectedStages: ['orient', 'navigate'],
   },
   'commands.test.missing': {
     id: 'commands.test.missing',
@@ -70,6 +81,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Make it runnable from a clean checkout.',
     ],
     references: [DOCS],
+    affectedStages: ['bootstrap', 'verify'],
   },
   'commands.lint.missing': {
     id: 'commands.lint.missing',
@@ -83,6 +95,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Run it in CI so the signal is enforced.',
     ],
     references: [DOCS],
+    affectedStages: ['verify'],
   },
   'commands.typecheck.missing': {
     id: 'commands.typecheck.missing',
@@ -96,6 +109,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Run it in CI.',
     ],
     references: [DOCS],
+    affectedStages: ['verify'],
   },
   'commands.reference.npm-script': {
     id: 'commands.reference.npm-script',
@@ -109,6 +123,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If the command is intentionally illustrative (not meant to be copy-pasted), say so nearby.',
     ],
     references: [DOCS],
+    affectedStages: ['bootstrap', 'verify'],
   },
   'commands.reference.make-target': {
     id: 'commands.reference.make-target',
@@ -122,6 +137,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If the command is intentionally illustrative, say so nearby.',
     ],
     references: [DOCS],
+    affectedStages: ['bootstrap', 'verify'],
   },
   'commands.reference.package-manager-mismatch': {
     id: 'commands.reference.package-manager-mismatch',
@@ -135,6 +151,21 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If multiple package managers are genuinely supported, say so explicitly.',
     ],
     references: [DOCS],
+    affectedStages: ['bootstrap'],
+  },
+  'commands.reference.shortcut-script': {
+    id: 'commands.reference.shortcut-script',
+    title: 'Instruction/README references a package-manager shortcut for a script that does not exist',
+    category: 'commands',
+    defaultSeverity: 'warning',
+    rationale:
+      'A code-formatted `<manager> <word>` shortcut (e.g. `pnpm dev`) sends an agent down the same dead end as `npm run buld` — it just skips the "run" keyword. For yarn/pnpm/bun (which do fall back to running an arbitrary matching script without "run"), this is flagged when the word matches neither a curated per-manager built-in-verb allowlist nor a real script. npm has no such fallback at all — only test/start/stop/restart run this way — so for npm this is flagged whenever the word isn\'t one of those or a real npm CLI command, regardless of whether a matching script exists; the reference must also be shown as Markdown code (inline `` ` `` span or a fenced block), to keep prose that merely discusses a package manager (e.g. "the pnpm ecosystem") from being misread as a command.',
+    remediation: [
+      'Add the missing script to package.json, or fix the reference to an existing one.',
+      'If the shortcut is intentionally illustrative, say so nearby.',
+    ],
+    references: [DOCS],
+    affectedStages: ['bootstrap', 'verify'],
   },
   'instructions.contradiction.package-manager': {
     id: 'instructions.contradiction.package-manager',
@@ -148,6 +179,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If both package managers are genuinely supported (e.g. a mixed workspace), say so explicitly in both files.',
     ],
     references: [DOCS, AGENTS_MD],
+    affectedStages: ['orient', 'bootstrap'],
   },
   'docs.codeowners.missing': {
     id: 'docs.codeowners.missing',
@@ -161,6 +193,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Map at least the main source directories to a reviewer or team.',
     ],
     references: [DOCS, 'https://docs.github.com/articles/about-code-owners'],
+    affectedStages: ['review', 'merge'],
   },
   'docs.pull-request-template.missing': {
     id: 'docs.pull-request-template.missing',
@@ -174,6 +207,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Include a short checklist: what changed, why, and how it was verified.',
     ],
     references: [DOCS, 'https://docs.github.com/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository'],
+    affectedStages: ['review'],
   },
   'docs.codeowners.coverage-gap': {
     id: 'docs.codeowners.coverage-gap',
@@ -187,6 +221,35 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If a directory is intentionally unowned (e.g. generated output, vendored code), consider a comment in CODEOWNERS explaining why.',
     ],
     references: [DOCS, 'https://docs.github.com/articles/about-code-owners'],
+    affectedStages: ['review', 'merge'],
+  },
+  'governance.codeowners.protected-path-gap': {
+    id: 'governance.codeowners.protected-path-gap',
+    title: 'CODEOWNERS does not cover a structurally high-risk path',
+    category: 'docs',
+    defaultSeverity: 'info',
+    rationale:
+      'Some paths (agent/CI configuration, auth, migrations, deploy/infra, prompts, recorded-interaction fixtures) are risky by nature, not just by how often they change — a rarely touched deploy script can matter more than a frequently-edited README. `docs.codeowners.coverage-gap` only flags directories with sustained recent commit activity, which can miss exactly these paths. This check compares a fixed set of protected-path globs against CODEOWNERS instead, independent of activity.',
+    remediation: [
+      'Add a CODEOWNERS pattern covering the listed path.',
+      'If a path is intentionally unowned, consider a comment in CODEOWNERS explaining why.',
+    ],
+    references: [DOCS, 'https://docs.github.com/articles/about-code-owners'],
+    affectedStages: ['review', 'merge'],
+  },
+  'governance.codeowners.single-owner-risk': {
+    id: 'governance.codeowners.single-owner-risk',
+    title: 'CODEOWNERS routes a high-risk path to a single individual with no backup',
+    category: 'docs',
+    defaultSeverity: 'info',
+    rationale:
+      'A high-risk path (agent/CI configuration, auth, migrations, deploy/infra, ...) owned by exactly one named individual, rather than a team or multiple owners, means review of that path depends entirely on one person\'s availability. AgentReady cannot verify actual team membership locally, so a team owner (@org/team) is always treated as adequately covered.',
+    remediation: [
+      'Add a team or a second individual as an additional owner for the listed path.',
+      'If a single named owner is intentional (e.g. a dedicated maintainer), document why.',
+    ],
+    references: [DOCS, 'https://docs.github.com/articles/about-code-owners'],
+    affectedStages: ['review', 'merge'],
   },
   'ci.workflow.missing': {
     id: 'ci.workflow.missing',
@@ -200,6 +263,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'For GitHub, add a workflow under .github/workflows/.',
     ],
     references: [DOCS, 'https://docs.github.com/actions'],
+    affectedStages: ['verify', 'merge'],
   },
   'ci.test.not-run': {
     id: 'ci.test.not-run',
@@ -213,6 +277,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If CI runs tests through a composite or marketplace action AgentReady does not recognize, this may be a false positive — file the action so it can be classified.',
     ],
     references: [DOCS, 'https://docs.github.com/actions'],
+    affectedStages: ['verify'],
   },
   'ci.lint.not-run': {
     id: 'ci.lint.not-run',
@@ -226,6 +291,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If CI lints through an action AgentReady does not recognize, this may be a false positive.',
     ],
     references: [DOCS, 'https://docs.github.com/actions'],
+    affectedStages: ['verify'],
   },
   'ci.typecheck.not-run': {
     id: 'ci.typecheck.not-run',
@@ -239,6 +305,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If CI type-checks through an action AgentReady does not recognize, this may be a false positive.',
     ],
     references: [DOCS, 'https://docs.github.com/actions'],
+    affectedStages: ['verify'],
   },
   'ci.build.not-run': {
     id: 'ci.build.not-run',
@@ -252,6 +319,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If CI builds through an action AgentReady does not recognize, this may be a false positive.',
     ],
     references: [DOCS, 'https://docs.github.com/actions'],
+    affectedStages: ['verify'],
   },
   'instructions.missing': {
     id: 'instructions.missing',
@@ -265,6 +333,21 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Include repo conventions, the canonical validation commands, and any constraints.',
     ],
     references: [DOCS, AGENTS_MD],
+    affectedStages: ['orient', 'navigate'],
+  },
+  'instructions.portable-entrypoint.missing': {
+    id: 'instructions.portable-entrypoint.missing',
+    title: 'Agent instructions are not exposed through a portable entrypoint',
+    category: 'instructions',
+    defaultSeverity: 'info',
+    rationale:
+      'Any recognized instruction surface satisfies `instructions.missing` — AgentReady deliberately does not assume one filename is universally canonical, so this stays informational by default. A repository that centers exclusively on a vendor-specific surface (e.g. only CLAUDE.md, no AGENTS.md) works fine for a single coding agent, but becomes a real portability gap once more than one agent tool is expected to work in the repository.',
+    remediation: [
+      'Add AGENTS.md (https://agents.md/) alongside any tool-specific instruction file.',
+      'Keep tool-specific files as thin pointers to AGENTS.md where practical, so conventions live in one place.',
+    ],
+    references: [DOCS, AGENTS_MD],
+    affectedStages: ['orient'],
   },
   'instructions.local-private': {
     id: 'instructions.local-private',
@@ -278,6 +361,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If intentional, document why in the file itself.',
     ],
     references: [AGENTS_MD],
+    affectedStages: ['orient'],
   },
   'files.large': {
     id: 'files.large',
@@ -291,6 +375,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If intentional, add the path to AgentReady ignorePaths so it is not penalized.',
     ],
     references: [DOCS],
+    affectedStages: ['navigate', 'edit'],
   },
   'files.minified': {
     id: 'files.minified',
@@ -304,6 +389,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'If the minified file must be committed, set allowMinifiedFiles or ignore it in AgentReady policy.',
     ],
     references: [DOCS],
+    affectedStages: ['navigate', 'edit'],
   },
   'safety.install-hook': {
     id: 'safety.install-hook',
@@ -317,6 +403,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Prefer explicit, reviewable build steps over implicit install hooks where possible.',
     ],
     references: ['https://docs.npmjs.com/cli/using-npm/scripts'],
+    affectedStages: ['bootstrap'],
   },
   'safety.destructive': {
     id: 'safety.destructive',
@@ -330,6 +417,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Gate genuinely destructive operations behind explicit, reviewed steps.',
     ],
     references: [DOCS],
+    affectedStages: ['edit', 'verify'],
   },
   'safety.network-exec': {
     id: 'safety.network-exec',
@@ -343,6 +431,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Document whether agents may run the script.',
     ],
     references: [DOCS],
+    affectedStages: ['bootstrap', 'edit'],
   },
   'safety.deploy': {
     id: 'safety.deploy',
@@ -356,6 +445,21 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Keep them out of default verification commands an agent might run.',
     ],
     references: [DOCS],
+    affectedStages: ['deploy'],
+  },
+  'safety.agent-hook.executes-repository-code': {
+    id: 'safety.agent-hook.executes-repository-code',
+    title: 'Agent session hook automatically executes a dependency-install command',
+    category: 'safety',
+    defaultSeverity: 'warning',
+    rationale:
+      'Neither an install-lifecycle package script nor "a hook surface exists" names the specific chained risk: an agent-tool hook event that fires automatically (no explicit user action -- e.g. Claude Code\'s SessionStart) whose command runs a package-manager install. An agent that checks out an untrusted branch and starts a session on it can trigger that branch\'s own install-time lifecycle scripts (preinstall/postinstall/prepare) before anyone reviews them.',
+    remediation: [
+      'Move the install step behind an explicit, reviewed action instead of an automatic session hook.',
+      'If the hook must stay automatic, document that it executes whatever install-time scripts the checked-out branch defines, and restrict which branches/sessions can trigger it.',
+    ],
+    references: [DOCS],
+    affectedStages: ['bootstrap'],
   },
   'safety.capability.high-risk': {
     id: 'safety.capability.high-risk',
@@ -369,6 +473,7 @@ export const RULE_CATALOG: Record<string, RuleDoc> = {
       'Route high-risk capability surfaces through an approval workflow (e.g. the enterprise policy pack) rather than trusting presence alone.',
     ],
     references: [DOCS, 'https://modelcontextprotocol.io/'],
+    affectedStages: ['edit', 'merge'],
   },
 }
 
@@ -401,6 +506,33 @@ export const calculateDimensionScores = (findings: ReadinessFinding[]): Readines
       findingCount: categoryFindings.length,
       bySeverity,
     }
+  })
+
+/** Every agent-workflow stage, in the order a repository is normally worked through. */
+export const AGENT_STAGES: AgentStage[] = ['orient', 'bootstrap', 'navigate', 'edit', 'verify', 'review', 'merge', 'deploy']
+
+/**
+ * Derives per-stage autonomy readiness from findings and each rule's
+ * `RuleDoc.affectedStages` — a single aggregate score cannot communicate that
+ * a repository is ready for an agent to understand/edit/verify while still
+ * unready for autonomous merge or deploy, but a per-stage view can. A stage
+ * is `blocked` when an error-severity finding affects it, `not_yet_ready`
+ * when only warning-severity findings do, and `ready` otherwise (info-only
+ * or no affecting findings). Purely a view over `findings`, like
+ * `calculateDimensionScores`; it never changes gating or `summary.score`.
+ */
+export const calculateAutonomyEnvelope = (findings: ReadinessFinding[]): AutonomyStageResult[] =>
+  AGENT_STAGES.map(stage => {
+    const stageFindings = findings.filter(finding => getRuleDoc(finding.id)?.affectedStages.includes(stage))
+    const blocking = stageFindings.filter(finding => finding.severity === 'error')
+    const cautionary = stageFindings.filter(finding => finding.severity === 'warning')
+    if (blocking.length > 0) {
+      return { stage, status: 'blocked' as const, findingIds: blocking.map(finding => finding.id) }
+    }
+    if (cautionary.length > 0) {
+      return { stage, status: 'not_yet_ready' as const, findingIds: cautionary.map(finding => finding.id) }
+    }
+    return { stage, status: 'ready' as const, findingIds: [] }
   })
 
 /** Sorted list of documented rule ids. */

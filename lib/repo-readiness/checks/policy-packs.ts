@@ -65,6 +65,26 @@ const ENTERPRISE_ESCALATIONS: Escalation[] = [
     to: 'warning',
     reason: 'Enterprise governance requires high blast-radius capability surfaces (MCP servers, hooks, plugins) to be visible enough to gate on, not just informational.',
   },
+  {
+    ruleKey: 'instructions.portable-entrypoint.missing',
+    to: 'warning',
+    reason: 'Enterprise/multi-agent rollout needs conventions discoverable through a portable entrypoint (AGENTS.md), not only a single vendor-specific instruction surface.',
+  },
+  {
+    ruleKey: 'safety.agent-hook.executes-repository-code',
+    to: 'error',
+    reason: 'Enterprise governance treats an automatic hook that can execute an untrusted branch\'s own install-time lifecycle scripts as a blocking risk, not one to notice after the fact.',
+  },
+  {
+    ruleKey: 'governance.codeowners.protected-path-gap',
+    to: 'warning',
+    reason: 'Enterprise rollout requires review routing for structurally high-risk paths (agent/CI config, auth, migrations, deploy/infra) to be visible enough to gate on, independent of how often they change.',
+  },
+  {
+    ruleKey: 'governance.codeowners.single-owner-risk',
+    to: 'warning',
+    reason: 'Enterprise rollout requires a documented backup reviewer for structurally high-risk paths, not review that depends on a single person\'s availability.',
+  },
 ]
 
 /** Optimized for organization-wide agent rollout and governance. */
@@ -94,6 +114,11 @@ const OSS_ESCALATIONS: Escalation[] = [
     ruleKey: 'commands.reference.make-target',
     to: 'error',
     reason: 'A stale documented make target wastes an external contributor\'s turn with no teammate nearby to correct it.',
+  },
+  {
+    ruleKey: 'commands.reference.shortcut-script',
+    to: 'error',
+    reason: 'A stale documented shortcut command wastes an external contributor\'s turn with no teammate nearby to correct it.',
   },
   {
     ruleKey: 'docs.pull-request-template.missing',
