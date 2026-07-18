@@ -235,9 +235,30 @@ Replace the hard-coded constant with an injectable weight table that *defaults
 to today's values*, and let it read confidence and scope:
 
 `ScoreWeights` is an **internal parameter of `calculateScore`**, not a
-serialized report field (see Compatibility impact). Because a policy pack can
-inject one at runtime, the contract must be defensive: the default is immutable,
-and injected weights are validated before use.
+serialized report field (see Compatibility impact). Because a policy pack is the
+intended future source of a non-default weight table, the contract must be
+defensive: the default is immutable, and injected weights are validated before
+use.
+
+**Weight injection is not available in the delivered policy contract and this
+ADR does not add it.** Today `PolicyPack.adjust` returns only a per-finding
+severity change, and `applyPolicy` recomputes `calculateScore(adjustedFindings)`
+with no weights argument (`lib/repo-readiness/core/policy.ts`); the diff gate
+does the same (`lib/repo-readiness/core/gate.ts`). Letting a pack (e.g.
+`ml-scientific` discounting low-confidence/advisory findings) supply weights is a
+**contract change owned by the policy-plane ADR (item 8)**, not something to
+treat as already wired. When that ADR lands it must, at minimum:
+
+- add an optional `weights?: ScoreWeights` (or a `weights()` accessor) to
+  `PolicyPack`;
+- thread it through `applyPolicy` into the `calculateScore(adjustedFindings,
+  pack.weights)` call and through the diff gate's score recomputation;
+- run the same `assertValidWeights` validation on the pack-supplied table.
+
+Until then, this ADR only makes `calculateScore` *accept* a validated weight
+argument (defaulting to the frozen `DEFAULT_WEIGHTS`); the sole caller is the
+core scorer, and every shipped pack continues to affect the score exclusively
+through severity adjustment.
 
 ```ts
 export interface ScoreWeights {
@@ -276,12 +297,13 @@ export const calculateScore = (
 ```
 
 With `DEFAULT_WEIGHTS` all multipliers are `1`, so **the default score is
-byte-identical to today's**. A policy pack or a future calibrated profile can
-supply non-default multipliers (e.g. discount low-confidence findings, discount
-`advisory`-scope findings) without touching the core — but only weights that
-pass `assertValidWeights` (finite, non-negative, complete), so an injected pack
-can never produce a `NaN` score or a negative penalty that inflates the score
-past an existing gate.
+byte-identical to today's**. Once the policy-plane ADR wires weights into
+`PolicyPack` (above), a pack or a calibrated profile can supply non-default
+multipliers (e.g. discount low-confidence findings, discount `advisory`-scope
+findings) — but only weights that pass `assertValidWeights` (finite,
+non-negative, complete), so an injected pack can never produce a `NaN` score or a
+negative penalty that inflates the score past an existing gate. This ADR delivers
+the validated *parameter*; it does not itself give any pack a way to set it.
 
 ### Where calibrated weights come from (relationship to the benchmark)
 
@@ -354,12 +376,31 @@ Secondary score: 74/100 (experimental, uncalibrated)
   schema must regenerate it to accept the new keys — that is the accepted cost of
   an experimental field, and the schema tests are the gate that keeps the shipped
   schema and the emitted report in agreement.
-- **Finding-level additions are not covered by the top-level registry.**
+- **Finding-level additions get their own opt-in marker (decision: option a).**
   `LocalReadinessExperimentalField` enumerates *report* fields, so it cannot flag
-  `ReadinessFinding.confidence`/`scope`. The rollout must therefore either (a)
-  extend the experimental-field mechanism to cover finding sub-fields, or (b)
-  ship the finding fields only once they are stable. Until one is chosen, these
-  fields ship as optional keys documented here, not silently.
+  `ReadinessFinding.confidence`/`scope`. This ADR **chooses to extend the
+  contract** rather than ship unmarked nested keys or prematurely call them
+  stable: add an `experimentalFindingFields: string[]` companion to
+  `experimentalFields` on `reportContract`:
+
+  ```ts
+  export interface LocalReadinessReportContract {
+    schemaVersion: 'local-readiness/v2'
+    experimentalFields: LocalReadinessExperimentalField[]
+    /** Nested finding-level experimental keys, e.g. 'confidence', 'scope'. */
+    experimentalFindingFields?: LocalReadinessExperimentalFindingField[]
+  }
+
+  export type LocalReadinessExperimentalFindingField = 'confidence' | 'scope'
+  ```
+
+  This gives the nested keys the same explicit opt-in signal top-level fields
+  have, keeps `schemaVersion` at v2 (the addition is itself optional and
+  additive), and means a consumer can detect that `findings[].confidence`/`scope`
+  are unstable without inspecting individual findings. The alternative — option
+  (b), keeping the fields internal until stable — was rejected because the
+  profile's explainability goal wants per-finding confidence/scope *visible* so a
+  reader can see why a finding was weighted; hiding them defeats that.
 - **`ScoreWeights` is not a schema field.** It is an internal parameter of
   `calculateScore` (and a future policy-pack input), not part of
   `LocalReadinessReport`, `reportContract.experimentalFields`, or the config
@@ -437,6 +478,13 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
 - Assert the updated **strict** report and finding schemas *accept* the new
   optional keys and still *reject* genuinely unknown keys, so
   `__tests__/schemas.test.ts` passes rather than tripping on the additions.
+- Assert that when a report emits `findings[].confidence`/`scope`,
+  `reportContract.experimentalFindingFields` advertises those keys, so the
+  nested experimental fields are never emitted without their opt-in marker.
+- Assert `calculateScore` still takes only the frozen `DEFAULT_WEIGHTS` from any
+  shipped policy pack (no pack supplies a weight table until the policy-plane
+  ADR adds `PolicyPack.weights`), so every current pack affects the score
+  through severity adjustment alone.
 - Assert `readinessProfile.readiness` equals the existing `autonomyEnvelope`
   and serializes the `AutonomyStatus` vocabulary (`ready | not_yet_ready |
   blocked`), with no `not_ready`/`unknown` readiness value anywhere (the profile
