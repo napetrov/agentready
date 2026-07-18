@@ -202,7 +202,11 @@ export interface AxisAssessment<TVerdict extends string> {
   /**
    * Stable references to the backing evidence — a finding id when one exists,
    * otherwise an ADR-0000 derived key for evidence that has no native id (see
-   * the risk-axis note below). May be empty only when `verdict` is `unknown`.
+   * the risk-axis note below). May be empty in two cases: `verdict` is
+   * `unknown` (nothing to reference because it could not be assessed), or the
+   * verdict is a *verified negative* whose evidence is the absence of any
+   * backing object (e.g. `low` risk because no capability surfaces exist). In
+   * the verified-negative case `explanation` must state the confirmed absence.
    */
   evidenceRefs: string[]
   /** One-line explanation, e.g. "external controls not queried". */
@@ -235,6 +239,17 @@ without a new field. This keeps a `medium`/`low` risk verdict verifiable instead
 of unverifiable-or-fabricated. Adding a native `id` to `CapabilitySurfaceEvidence`
 is a valid alternative but is left to the risk-detector work (the security-scope
 ADR, item 10); this ADR only requires that the reference be stable and derivable.
+
+**No capability surfaces is a verified `low`, not `unknown`.** When
+`detectCapabilitySurfaces` returns `[]` (a common, locally-verified "nothing
+exposed" case), the risk axis is `{ verdict: 'low', confidence: 'high',
+evidenceRefs: [], explanation: 'no capability surfaces detected' }`. This is
+distinct from `unknown`, which is reserved for what the local scan genuinely
+*cannot* determine (e.g. a config that references an MCP server whose real tool
+set is not knowable offline). Empty `evidenceRefs` here is correct — the
+confirmed *absence* of surfaces is the evidence, carried in `explanation` — so a
+no-capability repo is never mislabeled `unknown` and never needs a fabricated
+reference.
 
 ```ts
 export interface CoverageReport {
@@ -541,6 +556,11 @@ which is a feature, not a bug, because it stops the profile from overclaiming.
 - Add fixtures where the axes diverge (editable but not verifiable;
   low-coverage large monorepo; unknown merge governance) and snapshot the
   profile output.
+- Assert a repo with no capability surfaces yields
+  `risk = { verdict: 'low', confidence: 'high', evidenceRefs: [] }` with an
+  absence `explanation`, and is **not** reported as `unknown`; assert a
+  `medium`/`low` verdict backed by real surfaces populates `evidenceRefs` with
+  derivable `capability:<path>:<kind>` keys.
 - Assert `coverage.ratio` rises when more applicable surfaces are assessed and
   is unaffected by inapplicable surfaces (legibility is not penalized).
 - Assert `coverage.ratio` is `1` (never `NaN`/`Infinity`/`null`) when
