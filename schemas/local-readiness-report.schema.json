@@ -1997,6 +1997,266 @@
         }
       ]
     },
+    "readinessProfile": {
+      "type": "object",
+      "properties": {
+        "readiness": {
+          "minItems": 8,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stage": {
+                "type": "string",
+                "enum": [
+                  "orient",
+                  "bootstrap",
+                  "navigate",
+                  "edit",
+                  "verify",
+                  "review",
+                  "merge",
+                  "deploy"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ready",
+                  "not_yet_ready",
+                  "blocked"
+                ]
+              },
+              "findingIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "stage",
+              "status",
+              "findingIds"
+            ],
+            "additionalProperties": false
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "orient"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "bootstrap"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "navigate"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "edit"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "verify"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "review"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "merge"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "properties": {
+                  "stage": {
+                    "const": "deploy"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "risk": {
+          "type": "object",
+          "properties": {
+            "verdict": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "unknown"
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "explanation": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "verdict",
+            "confidence",
+            "evidenceRefs",
+            "explanation"
+          ],
+          "additionalProperties": false
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "applicableSurfaces": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "assessedSurfaces": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "ratio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "gaps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "surface": {
+                    "type": "string",
+                    "enum": [
+                      "instruction-surfaces",
+                      "command-ecosystems",
+                      "ci-workflows",
+                      "capability-surfaces",
+                      "governance",
+                      "documentation-roles",
+                      "repository-topology"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "surface",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "applicableSurfaces",
+            "assessedSurfaces",
+            "ratio",
+            "gaps"
+          ],
+          "additionalProperties": false
+        },
+        "observability": {
+          "type": "object",
+          "properties": {
+            "verifiedLocally": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notFound": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notObservableLocally": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "verifiedLocally",
+            "notFound",
+            "notObservableLocally"
+          ],
+          "additionalProperties": false
+        },
+        "calibrationConfidence": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      },
+      "required": [
+        "readiness",
+        "risk",
+        "coverage",
+        "observability",
+        "calibrationConfidence"
+      ],
+      "additionalProperties": false
+    },
     "reportContract": {
       "type": "object",
       "properties": {
@@ -2014,7 +2274,18 @@
               "dimensions",
               "instructionContradictions",
               "hookExecutionRisks",
-              "autonomyEnvelope"
+              "autonomyEnvelope",
+              "readinessProfile"
+            ]
+          }
+        },
+        "experimentalFindingFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "confidence",
+              "scope"
             ]
           }
         }
@@ -2146,6 +2417,7 @@
     "designState",
     "dimensions",
     "autonomyEnvelope",
+    "readinessProfile",
     "reportContract",
     "findings",
     "files"

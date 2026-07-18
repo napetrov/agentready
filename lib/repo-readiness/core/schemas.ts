@@ -457,6 +457,40 @@ export const instructionSurfaceSchema = z.strictObject({
   notes: z.array(z.string()),
 })
 
+export const coverageSurfaceKindSchema = z.enum([
+  'instruction-surfaces',
+  'command-ecosystems',
+  'ci-workflows',
+  'capability-surfaces',
+  'governance',
+  'documentation-roles',
+  'repository-topology',
+])
+
+export const riskVerdictSchema = z.enum(['low', 'medium', 'high', 'unknown'])
+
+export const readinessProfileSchema = z.strictObject({
+  readiness: autonomyStageResultListSchema,
+  risk: z.strictObject({
+    verdict: riskVerdictSchema,
+    confidence: evidenceConfidenceSchema,
+    evidenceRefs: z.array(z.string()),
+    explanation: z.string(),
+  }),
+  coverage: z.strictObject({
+    applicableSurfaces: z.number().int().min(0),
+    assessedSurfaces: z.number().int().min(0),
+    ratio: z.number().min(0).max(1),
+    gaps: z.array(z.strictObject({ surface: coverageSurfaceKindSchema, reason: z.string() })),
+  }),
+  observability: z.strictObject({
+    verifiedLocally: z.array(z.string()),
+    notFound: z.array(z.string()),
+    notObservableLocally: z.array(z.string()),
+  }),
+  calibrationConfidence: evidenceConfidenceSchema,
+})
+
 export const localReadinessReportSchema = z.strictObject({
   root: z.string(),
   generatedAt: z.string(),
@@ -491,6 +525,7 @@ export const localReadinessReportSchema = z.strictObject({
   designState: designStateSummarySchema,
   dimensions: readinessDimensionScoreListSchema,
   autonomyEnvelope: autonomyStageResultListSchema,
+  readinessProfile: readinessProfileSchema,
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
     experimentalFields: z.array(z.enum([
@@ -500,7 +535,9 @@ export const localReadinessReportSchema = z.strictObject({
       'instructionContradictions',
       'hookExecutionRisks',
       'autonomyEnvelope',
+      'readinessProfile',
     ])),
+    experimentalFindingFields: z.array(z.enum(['confidence', 'scope'])).optional(),
   }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),

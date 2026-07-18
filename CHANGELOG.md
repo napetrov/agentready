@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Repository Agent Readiness Profile (ADR 0005 implementation, phase 2)**: every
+  scan report now carries a `readinessProfile`
+  (`lib/repo-readiness/core/readiness-profile.ts`) — the multi-axis view that
+  demotes the single score to a secondary signal. It separates **readiness**
+  (per-stage, reusing the existing autonomy envelope verbatim), **risk**
+  (aggregate capability-risk verdict — worst tier present, so one `high` surface
+  is never diluted by many `low` ones; `low` with empty refs when no surfaces
+  exist; an MCP config stays `high`), **coverage** (a fixed `CoverageSurfaceKind`
+  taxonomy counted by kind, not by file, so a legible monorepo isn't penalized
+  for size), and **observability** (verified-locally / not-found /
+  not-observable-locally, the last reusing the external-controls list).
+  `calibrationConfidence` is `low` until real agent-outcome data exists.
+  Registered as the `readinessProfile` experimental field. Also adds an
+  `experimentalFindingFields` marker to `reportContract` that advertises nested
+  `findings[].confidence`/`scope` keys whenever a rule emits them (omitted
+  otherwise), so consumers can detect/strip the unstable keys. JSON Schemas
+  regenerated; action bundle rebuilt.
 - **Calibratable scoring engine (ADR 0005 implementation, phase 1)**: `calculateScore`
   now accepts an optional `ScoreWeights` table and reads optional, rule-owned
   `confidence`/`scope` inputs on findings (`lib/repo-readiness/core/scoring.ts`,

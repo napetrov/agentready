@@ -83,6 +83,37 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-18 (ADR 0005 implementation phase 2: Repository Agent Readiness Profile)
+- **ADDED THE `readinessProfile` REPORT AXIS.** New
+  `lib/repo-readiness/core/readiness-profile.ts` computes a `ReadinessProfile`
+  (`calculateReadinessProfile`) from the assembled report and the scan engine
+  attaches it, registered as the `readinessProfile` experimental field. Four
+  axes: `readiness` reuses the already-computed `autonomyEnvelope` verbatim (so
+  the two are equal by construction); `risk` aggregates capability surfaces to
+  the worst tier present (one `high` is never diluted by many `low`; no surfaces
+  → verified `low` with empty refs, never `unknown`; MCP configs stay `high`),
+  referencing the `safety.capability.high-risk:<path>` finding for high surfaces
+  and the derived `capability:<path>:<kind>` key otherwise; `coverage` counts a
+  fixed `CoverageSurfaceKind` taxonomy by kind, not by file/record; and
+  `observability` splits verified-locally / not-found / not-observable-locally
+  (reusing `NOT_VERIFIED_EXTERNAL_CONTROLS`). `calibrationConfidence` is `low`.
+- **ADDED THE `experimentalFindingFields` MARKER** to `reportContract`
+  (addressing a Codex review point): the scan engine advertises nested
+  `findings[].confidence`/`scope` keys whenever a rule populates them, so
+  consumers of `local-readiness/v2` can detect and strip the unstable nested
+  keys. No built-in rule emits them yet, so it is normally omitted.
+- **VERIFICATION**: `npm run type-check` clean (excluding the pre-existing
+  tsconfig deprecation warnings); `npm run lint` clean;
+  `npm run agentready:schemas -- --check` up to date; `npx jest` 727 pass (12 new
+  in `__tests__/readiness-profile.test.ts`; output snapshots updated for the
+  additive `readinessProfile` field); `npm run build:action` regenerated the
+  action bundle; `agentready:action-smoke`, `agentready:pack-smoke`,
+  `agentready:eval`, and a self-scan all pass (self-scan: score 85, risk low,
+  coverage 5/5).
+- **REMAINING PHASES**: human-facing reporter sections (console/markdown profile
+  block); populating finding-level `confidence`/`scope` from rules; and the
+  diff/portfolio finding-field advertisement once rules emit those keys.
+
 ### 2026-07-18 (ADR 0005 implementation phase 1: calibratable scoring engine)
 - **IMPLEMENTED THE CALIBRATABLE SCORING CORE** from ADR 0005. `calculateScore`
   (`lib/repo-readiness/core/scoring.ts`) now takes an optional `ScoreWeights`

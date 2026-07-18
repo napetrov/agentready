@@ -82,6 +82,7 @@ describe('local readiness', () => {
         'instructionContradictions',
         'hookExecutionRisks',
         'autonomyEnvelope',
+        'readinessProfile',
       ],
     })
     expect(report.repositoryEvidence?.documentSurfaces).toEqual(expect.arrayContaining([

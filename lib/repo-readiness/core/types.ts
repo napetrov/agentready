@@ -538,7 +538,17 @@ export interface DesignStateSummary {
 export interface LocalReadinessReportContract {
   schemaVersion: 'local-readiness/v2'
   experimentalFields: LocalReadinessExperimentalField[]
+  /**
+   * Nested, finding-level experimental keys present in this report's
+   * `findings[]`. The top-level `experimentalFields` registry cannot flag keys
+   * inside findings, so this companion advertises them: a consumer can detect
+   * (and strip) unstable `findings[].confidence`/`scope` without inspecting each
+   * finding. Omitted when no finding carries such a key. See ADR 0005.
+   */
+  experimentalFindingFields?: LocalReadinessExperimentalFindingField[]
 }
+
+export type LocalReadinessExperimentalFindingField = 'confidence' | 'scope'
 
 export type LocalReadinessExperimentalField =
   | 'repositoryEvidence'
@@ -547,6 +557,79 @@ export type LocalReadinessExperimentalField =
   | 'instructionContradictions'
   | 'hookExecutionRisks'
   | 'autonomyEnvelope'
+  | 'readinessProfile'
+
+/**
+ * A closed, versioned taxonomy of surface *kinds* AgentReady can evaluate,
+ * mapped one-to-one onto the report's evidence groups. Coverage counts kinds,
+ * not files or records, so a legible monorepo is not penalized for size. See
+ * ADR 0005.
+ */
+export type CoverageSurfaceKind =
+  | 'instruction-surfaces'
+  | 'command-ecosystems'
+  | 'ci-workflows'
+  | 'capability-surfaces'
+  | 'governance'
+  | 'documentation-roles'
+  | 'repository-topology'
+
+/**
+ * Aggregate capability-risk verdict: the existing `CapabilityRiskTier`
+ * (`low | medium | high`) plus `unknown` for a surface that cannot be assigned
+ * a tier at all. Statically path-detected surfaces always get a concrete tier
+ * (unverifiable tool *scope* is deliberately `high`, never `unknown`); `unknown`
+ * is a forward-looking slot for future modes that start-but-cannot-complete an
+ * assessment. See ADR 0005.
+ */
+export type RiskVerdict = CapabilityRiskTier | 'unknown'
+
+/**
+ * One profile axis's verdict, its confidence, the stable references backing it,
+ * and a one-line explanation. `evidenceRefs` are finding ids where a finding
+ * exists, otherwise ADR-0000 derived keys; the list may be empty only when the
+ * verdict is `unknown` or a verified negative (e.g. `low` risk with no
+ * capability surfaces). See ADR 0005.
+ */
+export interface AxisAssessment<TVerdict extends string> {
+  verdict: TVerdict
+  confidence: EvidenceConfidence
+  evidenceRefs: string[]
+  explanation: string
+}
+
+/** Applicable-surface coverage; the ratio is `assessedSurfaces / applicableSurfaces`, defined as `1` when no surfaces are applicable. See ADR 0005. */
+export interface CoverageReport {
+  applicableSurfaces: number
+  assessedSurfaces: number
+  ratio: number
+  gaps: Array<{ surface: CoverageSurfaceKind; reason: string }>
+}
+
+/** What the local scan verified, found absent, or cannot observe offline. See ADR 0005. */
+export interface ObservabilityReport {
+  verifiedLocally: string[]
+  notFound: string[]
+  notObservableLocally: string[]
+}
+
+/**
+ * The Repository Agent Readiness Profile: the primary, multi-axis view over a
+ * scan, separating four questions a single score conflates — can an agent do
+ * the work (`readiness`, reusing the autonomy envelope), how dangerous are the
+ * exposed capabilities (`risk`), what fraction of applicable surfaces the
+ * scanner understood (`coverage`), and what is verifiable locally
+ * (`observability`). See ADR 0005.
+ */
+export interface ReadinessProfile {
+  /** Per-stage readiness — the same data as top-level `autonomyEnvelope`. */
+  readiness: AutonomyStageResult[]
+  risk: AxisAssessment<RiskVerdict>
+  coverage: CoverageReport
+  observability: ObservabilityReport
+  /** How much the score/weights are backed by real agent outcomes; `low` until benchmark outcome data exists. */
+  calibrationConfidence: EvidenceConfidence
+}
 
 export interface LocalReadinessReport {
   root: string
@@ -584,6 +667,8 @@ export interface LocalReadinessReport {
   dimensions: ReadinessDimensionScore[]
   /** Per-agent-workflow-stage readiness, derived from findings and each rule's `RuleDoc.affectedStages`. See `AutonomyStageResult`. */
   autonomyEnvelope: AutonomyStageResult[]
+  /** The multi-axis Repository Agent Readiness Profile (readiness/risk/coverage/observability). See `ReadinessProfile`. */
+  readinessProfile: ReadinessProfile
   reportContract: LocalReadinessReportContract
   findings: ReadinessFinding[]
   files: LocalReadinessFile[]

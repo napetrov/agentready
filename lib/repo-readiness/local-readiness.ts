@@ -48,10 +48,12 @@ export type {
   HookExecutionRiskEvidence,
   InstructionContradictionEvidence,
   InstructionContradictionKind,
+  CoverageSurfaceKind,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
   LocalReadinessReportContract,
+  ReadinessProfile,
   PackageManager,
   PortfolioReport,
   PortfolioRepoResult,
@@ -122,6 +124,7 @@ export {
 export type { RuleDoc } from './checks/catalog'
 export { DEFAULT_WEIGHTS, assertValidWeights, calculateScore } from './core/scoring'
 export type { ScoreWeights } from './core/scoring'
+export { calculateReadinessProfile } from './core/readiness-profile'
 
 export { DEFAULT_POLICY, ENTERPRISE_POLICY, ML_SCIENTIFIC_POLICY, OSS_POLICY, POLICY_PACKS, resolvePolicyPack } from './checks/policy-packs'
 
