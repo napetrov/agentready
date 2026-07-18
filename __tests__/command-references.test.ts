@@ -176,13 +176,18 @@ describe('detectCommandReferences (units)', () => {
         path: doc,
         reference: 'npm dev',
         kind: 'shortcut-script',
-        detail: 'npm has no bare-script shortcut for "dev" (only test/start/stop/restart run this way) -- use "npm run dev" instead.',
+        detail: 'npm has no bare-script shortcut for "dev" (only test/start/stop/restart/t/tst run this way) -- use "npm run dev" instead.',
       },
     ])
   })
 
   it('does not flag npm\'s own stop/restart bare commands', () => {
     const doc = write('README.md', 'Run `npm stop` or `npm restart` as needed.')
+    expect(detect([doc], baseCommands)).toEqual([])
+  })
+
+  it('does not flag npm\'s "t"/"tst" test aliases', () => {
+    const doc = write('README.md', 'Run `npm t` or `npm tst` to run tests.')
     expect(detect([doc], baseCommands)).toEqual([])
   })
 

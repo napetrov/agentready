@@ -106,8 +106,8 @@ const PACKAGE_MANAGER_BUILTIN_VERBS: Record<PackageManager, ReadonlySet<string>>
     'help', 'hook', 'i', 'init', 'install', 'install-ci-test', 'install-test', 'link', 'll', 'login', 'logout',
     'ls', 'org', 'outdated', 'owner', 'pack', 'ping', 'pkg', 'prefix', 'profile', 'prune', 'publish',
     'query', 'rebuild', 'repo', 'restart', 'root', 'run', 'run-script', 'sbom', 'search', 'set',
-    'set-script', 'shrinkwrap', 'star', 'stars', 'star', 'stop', 'team', 'token', 'uninstall', 'unpublish',
-    'unstar', 'update', 'version', 'view', 'whoami',
+    'set-script', 'shrinkwrap', 'star', 'stars', 'star', 'stop', 't', 'team', 'token', 'tst', 'uninstall',
+    'unpublish', 'unstar', 'update', 'version', 'view', 'whoami',
   ]),
   yarn: new Set([
     'add', 'audit', 'autoclean', 'bin', 'cache', 'check', 'config', 'create', 'dedupe', 'dlx', 'exec',
@@ -167,9 +167,10 @@ const findMissingShortcuts = (text: string, docPath: string, scripts: Set<string
     if (isWorkspaceQualified(text, match.index, reference.length)) continue
 
     // npm, unlike yarn/pnpm/bun, has no general "run any script by name
-    // without `run`" fallback -- only test/start/stop/restart are npm's own
-    // built-in commands that happen to run the like-named script (already
-    // excluded above via SHORTCUT_EXCLUDED_VERBS/PACKAGE_MANAGER_BUILTIN_VERBS).
+    // without `run`" fallback -- only test/start/stop/restart (and test's
+    // own `t`/`tst` aliases) are npm's own built-in commands that happen to
+    // run the like-named script (already excluded above via
+    // SHORTCUT_EXCLUDED_VERBS/PACKAGE_MANAGER_BUILTIN_VERBS).
     // Any other bare `npm <word>` errors with "Unknown command" even when a
     // matching script exists in package.json -- npm just suggests `npm run
     // <word>` instead of running it. So for npm this is flagged regardless of
@@ -183,7 +184,7 @@ const findMissingShortcuts = (text: string, docPath: string, scripts: Set<string
       reference: reference.trim(),
       kind: 'shortcut-script',
       detail: manager === 'npm'
-        ? `npm has no bare-script shortcut for "${verb}" (only test/start/stop/restart run this way) -- use "npm run ${verb}" instead.`
+        ? `npm has no bare-script shortcut for "${verb}" (only test/start/stop/restart/t/tst run this way) -- use "npm run ${verb}" instead.`
         : `"${manager} ${verb}" is not a "${manager}" built-in command and no "${verb}" script exists in package.json.`,
     })
   }
