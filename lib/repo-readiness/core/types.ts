@@ -608,8 +608,11 @@ export interface CoverageReport {
 
 /** What the local scan verified, found absent, or cannot observe offline. See ADR 0005. */
 export interface ObservabilityReport {
-  verifiedLocally: string[]
-  notFound: string[]
+  /** Surface kinds confirmed present and assessed locally. */
+  verifiedLocally: CoverageSurfaceKind[]
+  /** Surface kinds recognized by the taxonomy but absent from this repo. */
+  notFound: CoverageSurfaceKind[]
+  /** Platform controls that cannot be confirmed offline (free-text; see `NOT_VERIFIED_EXTERNAL_CONTROLS`). */
   notObservableLocally: string[]
 }
 

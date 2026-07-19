@@ -47,8 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-negative, complete) before use, and the score is rounded to an integer so
   fractional calibrated weights still satisfy the integer score contract. The
   finding schema gains optional `confidence`/`scope` keys (JSON Schema
-  regenerated). Report-profile axes, coverage taxonomy, and the
-  `experimentalFindingFields` marker remain for later phases.
+  regenerated). The report-profile axes, coverage taxonomy, and
+  `experimentalFindingFields` marker built on this foundation are described in the
+  phase-2 and phase-3 entries above.
 - Proposed **ADR 0005: Calibrated Multi-Dimensional Readiness Profile**
   ([docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md](docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md),
   indexed in [docs/adr/README.md](docs/adr/README.md)): records the decision to

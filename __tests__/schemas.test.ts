@@ -57,6 +57,21 @@ describe('report schema strictness', () => {
     expect(localReadinessReportSchema.safeParse({ ...report, surprise: true }).success).toBe(false)
   })
 
+  it('enforces coverage cross-field invariants', () => {
+    const report = validReport()
+    const withCoverage = (coverage: Record<string, unknown>) => ({
+      ...report,
+      readinessProfile: { ...report.readinessProfile, coverage: { ...report.readinessProfile.coverage, ...coverage } },
+    })
+    // assessed must not exceed applicable.
+    expect(localReadinessReportSchema.safeParse(withCoverage({ applicableSurfaces: 1, assessedSurfaces: 2, ratio: 1 })).success).toBe(false)
+    // ratio must equal the derived value.
+    expect(localReadinessReportSchema.safeParse(withCoverage({ applicableSurfaces: 4, assessedSurfaces: 2, ratio: 1 })).success).toBe(false)
+    // ratio must be 1 when nothing is applicable.
+    expect(localReadinessReportSchema.safeParse(withCoverage({ applicableSurfaces: 0, assessedSurfaces: 0, ratio: 0 })).success).toBe(false)
+    expect(localReadinessReportSchema.safeParse(withCoverage({ applicableSurfaces: 0, assessedSurfaces: 0, ratio: 1 })).success).toBe(true)
+  })
+
   it('rejects a dimensions array of the wrong length', () => {
     const report = validReport()
     expect(localReadinessReportSchema.safeParse({ ...report, dimensions: [] }).success).toBe(false)

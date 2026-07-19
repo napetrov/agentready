@@ -477,15 +477,28 @@ export const readinessProfileSchema = z.strictObject({
     evidenceRefs: z.array(z.string()),
     explanation: z.string(),
   }),
-  coverage: z.strictObject({
-    applicableSurfaces: z.number().int().min(0),
-    assessedSurfaces: z.number().int().min(0),
-    ratio: z.number().min(0).max(1),
-    gaps: z.array(z.strictObject({ surface: coverageSurfaceKindSchema, reason: z.string() })),
-  }),
+  coverage: z
+    .strictObject({
+      applicableSurfaces: z.number().int().min(0),
+      assessedSurfaces: z.number().int().min(0),
+      ratio: z.number().min(0).max(1),
+      gaps: z.array(z.strictObject({ surface: coverageSurfaceKindSchema, reason: z.string() })),
+    })
+    // Cross-field invariants: you cannot assess more surfaces than are
+    // applicable, and `ratio` is the derived value (1 when nothing applies).
+    .refine(coverage => coverage.assessedSurfaces <= coverage.applicableSurfaces, {
+      error: 'coverage.assessedSurfaces must not exceed coverage.applicableSurfaces',
+    })
+    .refine(
+      coverage => {
+        const expected = coverage.applicableSurfaces === 0 ? 1 : coverage.assessedSurfaces / coverage.applicableSurfaces
+        return Math.abs(coverage.ratio - expected) < 1e-9
+      },
+      { error: 'coverage.ratio must equal assessedSurfaces / applicableSurfaces (1 when applicableSurfaces is 0)' },
+    ),
   observability: z.strictObject({
-    verifiedLocally: z.array(z.string()),
-    notFound: z.array(z.string()),
+    verifiedLocally: z.array(coverageSurfaceKindSchema),
+    notFound: z.array(coverageSurfaceKindSchema),
     notObservableLocally: z.array(z.string()),
   }),
   calibrationConfidence: evidenceConfidenceSchema,

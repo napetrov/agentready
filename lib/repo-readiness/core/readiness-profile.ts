@@ -1,4 +1,4 @@
-import { NOT_VERIFIED_EXTERNAL_CONTROLS } from '../reporters/not-verified'
+import { NOT_VERIFIED_EXTERNAL_CONTROLS } from './not-verified'
 import type {
   AxisAssessment,
   CapabilitySurfaceEvidence,

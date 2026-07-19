@@ -2228,13 +2228,31 @@
                 "verifiedLocally": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                      "instruction-surfaces",
+                      "command-ecosystems",
+                      "ci-workflows",
+                      "capability-surfaces",
+                      "governance",
+                      "documentation-roles",
+                      "repository-topology"
+                    ]
                   }
                 },
                 "notFound": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                      "instruction-surfaces",
+                      "command-ecosystems",
+                      "ci-workflows",
+                      "capability-surfaces",
+                      "governance",
+                      "documentation-roles",
+                      "repository-topology"
+                    ]
                   }
                 },
                 "notObservableLocally": {
@@ -4651,13 +4669,31 @@
                 "verifiedLocally": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                      "instruction-surfaces",
+                      "command-ecosystems",
+                      "ci-workflows",
+                      "capability-surfaces",
+                      "governance",
+                      "documentation-roles",
+                      "repository-topology"
+                    ]
                   }
                 },
                 "notFound": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                      "instruction-surfaces",
+                      "command-ecosystems",
+                      "ci-workflows",
+                      "capability-surfaces",
+                      "governance",
+                      "documentation-roles",
+                      "repository-topology"
+                    ]
                   }
                 },
                 "notObservableLocally": {

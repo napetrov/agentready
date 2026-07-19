@@ -141,7 +141,7 @@ export {
 
 export { formatDiffSummary, formatPolicySummary, formatScanSummary } from './reporters/console'
 export { formatDiffMarkdown, formatScanMarkdown } from './reporters/markdown'
-export { NOT_VERIFIED_EXTERNAL_CONTROLS } from './reporters/not-verified'
+export { NOT_VERIFIED_EXTERNAL_CONTROLS } from './core/not-verified'
 export { formatPortfolioMarkdown, formatPortfolioSummary } from './reporters/portfolio'
 export { formatScanSarif } from './reporters/sarif'
 export type { SarifLog, SarifOptions } from './reporters/sarif'

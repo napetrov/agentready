@@ -8,7 +8,7 @@ import type {
   ReadinessFinding,
 } from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
-import { NOT_VERIFIED_EXTERNAL_CONTROLS } from './not-verified'
+import { NOT_VERIFIED_EXTERNAL_CONTROLS } from '../core/not-verified'
 
 // Summarizes which verification commands CI actually runs, parsed from the
 // workflow steps. Helps a reader see at a glance whether the objective gate

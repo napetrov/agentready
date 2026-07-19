@@ -1,7 +1,7 @@
 import type { PolicyResult } from '../core/policy'
 import type { CiEvidence, LocalReadinessReport, ReadinessDiffReport } from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
-import { NOT_VERIFIED_EXTERNAL_CONTROLS } from './not-verified'
+import { NOT_VERIFIED_EXTERNAL_CONTROLS } from '../core/not-verified'
 
 const ciCoverageLine = (ci: CiEvidence): string => {
   if (ci.workflowFiles.length === 0) {

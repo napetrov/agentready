@@ -83,6 +83,23 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-18 (ADR 0005 review hardening)
+- **LAYERING**: moved `NOT_VERIFIED_EXTERNAL_CONTROLS` from
+  `reporters/not-verified.ts` to `core/not-verified.ts` so `core` no longer
+  imports from the `reporters` layer (`core/readiness-profile.ts` and both
+  reporters now import from core).
+- **CONTRACT TIGHTENING**: `ObservabilityReport.verifiedLocally`/`notFound` are
+  now `CoverageSurfaceKind[]` (enum-constrained in the Zod + JSON schemas) rather
+  than free strings; added cross-field `.refine()` invariants to the coverage
+  schema (`assessedSurfaces <= applicableSurfaces`, and `ratio` equals the
+  derived value / `1` when nothing applies), with a rejecting-cases test in
+  `__tests__/schemas.test.ts`.
+- **DOCS**: fixed the ADR coverage example to stay within the seven-kind
+  taxonomy bound (`5/7`, was `7/9`) and removed a now-contradictory "later
+  phases" note from the phase-1 CHANGELOG entry.
+- Verified: type-check + lint clean, 731 tests pass, schema `--check` up to date,
+  action bundle rebuilt, action-smoke passes.
+
 ### 2026-07-18 (ADR 0005 implementation phase 3: profile-led reporters)
 - **MADE THE PROFILE THE HEADLINE OUTPUT.** `formatScanSummary`
   (`lib/repo-readiness/reporters/console.ts`) and `formatScanMarkdown`

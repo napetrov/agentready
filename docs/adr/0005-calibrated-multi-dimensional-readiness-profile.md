@@ -471,7 +471,7 @@ Repository Agent Readiness Profile
 - Verification readiness: not_yet_ready (commands.test.missing)
 - Merge governance:       unknown — external controls not queried
 - Capability risk:        high (3 high-blast-radius surfaces)
-- Scanner coverage:       78% (7/9 applicable surfaces assessed)
+- Scanner coverage:       71% (5/7 applicable surfaces assessed)
 - Calibration confidence: low
 
 Secondary score: 74/100 (experimental, uncalibrated)
