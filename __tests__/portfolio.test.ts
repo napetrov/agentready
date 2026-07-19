@@ -2,6 +2,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import {
+  buildPortfolioRepoResult,
   evaluatePortfolioGate,
   formatPortfolioMarkdown,
   formatPortfolioSummary,
@@ -9,6 +10,7 @@ import {
   scanPortfolio,
   validatePortfolioReportContract,
 } from '../lib/repo-readiness/local-readiness'
+import type { LocalReadinessReport } from '../lib/repo-readiness/local-readiness'
 
 const fixedNow = new Date('2026-06-01T00:00:00.000Z')
 
@@ -154,6 +156,37 @@ describe('scanPortfolio', () => {
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
+  })
+})
+
+describe('buildPortfolioRepoResult', () => {
+  const reportWith = (findings: LocalReadinessReport['findings']): LocalReadinessReport =>
+    ({ summary: { score: 80 }, findings }) as LocalReadinessReport
+
+  it('omits experimentalFindingFields when no top finding carries confidence/scope', () => {
+    const report = reportWith([{ id: 'f1', title: 'f1', severity: 'warning', recommendation: 'fix' }])
+    const result = buildPortfolioRepoResult('repo', report, 5)
+    expect(result.experimentalFindingFields).toBeUndefined()
+  })
+
+  it('advertises confidence/scope when a top finding carries them', () => {
+    const report = reportWith([
+      { id: 'f1', title: 'f1', severity: 'warning', recommendation: 'fix', confidence: 'low', scope: 'advisory' },
+    ])
+    const result = buildPortfolioRepoResult('repo', report, 5)
+    expect(result.experimentalFindingFields).toEqual(['confidence', 'scope'])
+  })
+
+  it('does not advertise a field only present on a finding excluded from topFindings', () => {
+    // The info-severity finding carries `confidence`, but `worstFindings` drops
+    // info findings before this result is built — advertising here would claim
+    // a key that `topFindings` never actually serializes.
+    const report = reportWith([
+      { id: 'info1', title: 'info1', severity: 'info', recommendation: 'fix', confidence: 'low' },
+      { id: 'warn1', title: 'warn1', severity: 'warning', recommendation: 'fix' },
+    ])
+    const result = buildPortfolioRepoResult('repo', report, 5)
+    expect(result.experimentalFindingFields).toBeUndefined()
   })
 })
 

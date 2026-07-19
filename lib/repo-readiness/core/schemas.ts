@@ -162,6 +162,11 @@ export const instructionActivationSchema = z.enum([
 
 export const findingScopeSchema = z.enum(['root', 'package', 'path', 'advisory'])
 
+// Shared by every report shape that advertises nested finding-level
+// experimental keys (the scan report's `reportContract` and each portfolio
+// repo result). See ADR 0005.
+export const experimentalFindingFieldSchema = z.enum(['confidence', 'scope'])
+
 export const readinessFindingSchema = z.strictObject({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -565,7 +570,7 @@ export const localReadinessReportSchema = z.strictObject({
       'autonomyEnvelope',
       'readinessProfile',
     ])),
-    experimentalFindingFields: z.array(z.enum(['confidence', 'scope'])).optional(),
+    experimentalFindingFields: z.array(experimentalFindingFieldSchema).optional(),
   }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),
@@ -608,6 +613,7 @@ export const portfolioRepoResultSchema = z.discriminatedUnion('ok', [
     findingCount: z.number().int().min(0),
     bySeverity: severityCountsSchema,
     topFindings: z.array(readinessFindingSchema),
+    experimentalFindingFields: z.array(experimentalFindingFieldSchema).optional(),
   }),
   z.strictObject({
     path: z.string(),

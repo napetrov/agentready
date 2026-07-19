@@ -111,6 +111,16 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "experimentalFindingFields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "confidence",
+                    "scope"
+                  ]
+                }
               }
             },
             "required": [

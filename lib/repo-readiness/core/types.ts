@@ -677,6 +677,15 @@ export interface LocalReadinessReport {
   files: LocalReadinessFile[]
 }
 
+/**
+ * `newFindings`/`regressions` are sourced from `headReport.findings` and
+ * `resolvedFindings` from `baseReport.findings` (see `diffLocalReadiness`), so
+ * `headReport.reportContract.experimentalFindingFields` /
+ * `baseReport.reportContract.experimentalFindingFields` are the advertisement
+ * for the nested `confidence`/`scope` keys on these arrays — this report shape
+ * satisfies the ADR 0005 advertise-or-strip requirement through the embedded
+ * full reports rather than a separate top-level marker.
+ */
 export interface ReadinessDiffReport {
   base: string
   head: string
@@ -736,6 +745,13 @@ export type PortfolioRepoResult =
       bySeverity: Record<ReadinessSeverity, number>
       /** Warning/error findings, worst-severity-first, capped for a bounded summary. */
       topFindings: ReadinessFinding[]
+      /**
+       * Nested finding-level experimental keys present in `topFindings`, the
+       * same advertise-or-strip contract `LocalReadinessReportContract` gives
+       * the scan report. Omitted when no top finding carries `confidence`/
+       * `scope`. See ADR 0005.
+       */
+      experimentalFindingFields?: LocalReadinessExperimentalFindingField[]
     }
   | {
       path: string
