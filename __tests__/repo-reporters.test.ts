@@ -40,6 +40,48 @@ const scanReport = (findings: ReadinessFinding[]): LocalReadinessReport =>
     findings,
   }) as unknown as LocalReadinessReport
 
+const withProfile = (
+  report: LocalReadinessReport,
+  overrides: Partial<LocalReadinessReport['readinessProfile']> = {},
+): LocalReadinessReport => ({
+  ...report,
+  readinessProfile: {
+    readiness: [],
+    risk: { verdict: 'high', confidence: 'high', evidenceRefs: ['safety.capability.high-risk:.mcp.json'], explanation: '1 high-blast-radius capability surface' },
+    coverage: { applicableSurfaces: 4, assessedSurfaces: 3, ratio: 0.75, gaps: [] },
+    observability: { verifiedLocally: [], notFound: [], notObservableLocally: [] },
+    calibrationConfidence: 'low',
+    ...overrides,
+  },
+})
+
+describe('readiness profile in reporters', () => {
+  it('leads the console summary with the profile and labels the score secondary', () => {
+    const summary = formatScanSummary(withProfile(scanReport([])))
+    expect(summary).toContain('Repository Agent Readiness Profile')
+    expect(summary).toContain('Capability risk: high (1 high-blast-radius capability surface)')
+    expect(summary).toContain('Scanner coverage: 75% (3/4 applicable surfaces assessed)')
+    expect(summary).toContain('Calibration confidence: low')
+    expect(summary).toMatch(/AgentReady score: 60\/100 \(secondary/)
+    // The profile heading appears before the score line.
+    expect(summary.indexOf('Repository Agent Readiness Profile')).toBeLessThan(summary.indexOf('AgentReady score:'))
+  })
+
+  it('leads the markdown report with the profile section and a secondary score', () => {
+    const md = formatScanMarkdown(withProfile(scanReport([])))
+    expect(md).toContain('### Repository Agent Readiness Profile')
+    expect(md).toContain('- **Capability risk:** high — 1 high-blast-radius capability surface')
+    expect(md).toContain('- **Scanner coverage:** 75% (3/4 applicable surfaces assessed)')
+    expect(md).toContain('Score (secondary, experimental): **60/100**')
+    expect(md.indexOf('### Repository Agent Readiness Profile')).toBeLessThan(md.indexOf('Score (secondary'))
+  })
+
+  it('omits the profile block when the report has no readinessProfile', () => {
+    expect(formatScanSummary(scanReport([]))).not.toContain('Repository Agent Readiness Profile')
+    expect(formatScanMarkdown(scanReport([]))).not.toContain('### Repository Agent Readiness Profile')
+  })
+})
+
 describe('formatScanSarif', () => {
   it('maps every severity to a SARIF level and emits locations only for path-bearing findings', () => {
     const sarif = formatScanSarif(

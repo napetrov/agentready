@@ -46,9 +46,27 @@ const capabilitiesLine = (report: LocalReadinessReport): string => {
   return `Capabilities: ${report.capabilities.length}${highRiskDetail}, safety signals: ${report.safetySignals.length}`
 }
 
+// The Repository Agent Readiness Profile leads the summary (ADR 0005): the four
+// axes are the primary signal and the single score is demoted to a secondary
+// line below. Returns [] when the field is absent (e.g. legacy/synthetic
+// reports), matching the defensive rendering of `dimensions`/`autonomyEnvelope`.
+// Per-stage readiness is shown by `autonomyLine`, so it is not repeated here.
+const profileLines = (report: LocalReadinessReport): string[] => {
+  const profile = report.readinessProfile
+  if (!profile) return []
+  const coveragePct = Math.round(profile.coverage.ratio * 100)
+  return [
+    'Repository Agent Readiness Profile',
+    `Capability risk: ${profile.risk.verdict} (${profile.risk.explanation})`,
+    `Scanner coverage: ${coveragePct}% (${profile.coverage.assessedSurfaces}/${profile.coverage.applicableSurfaces} applicable surfaces assessed)`,
+    `Calibration confidence: ${profile.calibrationConfidence}`,
+  ]
+}
+
 export function formatScanSummary(report: LocalReadinessReport): string {
   const lines = [
-    `AgentReady score: ${report.summary.score}/100`,
+    ...profileLines(report),
+    `AgentReady score: ${report.summary.score}/100 (secondary; the profile above is the primary signal)`,
     `Files: ${report.summary.totalFiles} (${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs)`,
     capabilitiesLine(report),
     ciCoverageLine(report.ci),

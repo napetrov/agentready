@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Reports lead with the readiness profile (ADR 0005 implementation, phase 3)**:
+  the console and markdown scan reports now open with a **Repository Agent
+  Readiness Profile** block (capability risk, scanner coverage, calibration
+  confidence; per-stage readiness via the existing autonomy-envelope section),
+  and the single 0–100 score is demoted to a clearly labeled secondary line —
+  delivering the ADR's core "the profile is the product, the score is a
+  secondary view" decision in the human-facing output. JSON output is unchanged
+  (the profile has been present since phase 2); the profile block is omitted for
+  reports without a `readinessProfile`.
+
 ### Added
 - **Repository Agent Readiness Profile (ADR 0005 implementation, phase 2)**: every
   scan report now carries a `readinessProfile`

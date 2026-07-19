@@ -1730,7 +1730,11 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
 `;
 
 exports[`scan output snapshots bad-repo console summary 1`] = `
-"AgentReady score: 34/100
+"Repository Agent Readiness Profile
+Capability risk: low (no capability surfaces detected)
+Scanner coverage: 100% (2/2 applicable surfaces assessed)
+Calibration confidence: low
+AgentReady score: 34/100 (secondary; the profile above is the primary signal)
 Files: 2 (1 source, 0 tests, 0 docs)
 Capabilities: 0, safety signals: 0
 CI: no workflows detected
@@ -1750,7 +1754,14 @@ Not verified from repository contents: Default-branch protection, Required statu
 exports[`scan output snapshots bad-repo markdown 1`] = `
 "## AgentReady scan
 
-Score: **34/100**
+### Repository Agent Readiness Profile
+The primary, multi-axis readiness view; the single score below is a secondary, experimental signal.
+- **Capability risk:** low — no capability surfaces detected
+- **Scanner coverage:** 100% (2/2 applicable surfaces assessed)
+- **Calibration confidence:** low
+- **Per-stage readiness:** see the Autonomy envelope section below.
+
+Score (secondary, experimental): **34/100**
 Files: 2 total, 1 source, 0 tests, 0 docs
 Capabilities: 0; safety signals: 0
 CI: no workflows detected
@@ -2981,7 +2992,11 @@ exports[`scan output snapshots good-repo compact json 1`] = `
 `;
 
 exports[`scan output snapshots good-repo console summary 1`] = `
-"AgentReady score: 100/100
+"Repository Agent Readiness Profile
+Capability risk: low (no capability surfaces detected)
+Scanner coverage: 100% (6/6 applicable surfaces assessed)
+Calibration confidence: low
+AgentReady score: 100/100 (secondary; the profile above is the primary signal)
 Files: 9 (1 source, 1 tests, 4 docs)
 Capabilities: 0, safety signals: 0
 CI: 1 workflow (runs install, lint, type-check, test, build)
@@ -2993,7 +3008,14 @@ Not verified from repository contents: Default-branch protection, Required statu
 exports[`scan output snapshots good-repo markdown 1`] = `
 "## AgentReady scan
 
-Score: **100/100**
+### Repository Agent Readiness Profile
+The primary, multi-axis readiness view; the single score below is a secondary, experimental signal.
+- **Capability risk:** low — no capability surfaces detected
+- **Scanner coverage:** 100% (6/6 applicable surfaces assessed)
+- **Calibration confidence:** low
+- **Per-stage readiness:** see the Autonomy envelope section below.
+
+Score (secondary, experimental): **100/100**
 Files: 9 total, 1 source, 1 tests, 4 docs
 Capabilities: 0; safety signals: 0
 CI: 1 workflow — runs install, lint, type-check, test, build

@@ -83,6 +83,29 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-18 (ADR 0005 implementation phase 3: profile-led reporters)
+- **MADE THE PROFILE THE HEADLINE OUTPUT.** `formatScanSummary`
+  (`lib/repo-readiness/reporters/console.ts`) and `formatScanMarkdown`
+  (`lib/repo-readiness/reporters/markdown.ts`) now open with a Repository Agent
+  Readiness Profile block — capability-risk verdict, scanner-coverage percentage
+  (assessed/applicable), and calibration confidence — with per-stage readiness
+  covered by the existing autonomy-envelope rendering. The single 0–100 score is
+  relabeled as a secondary signal below the profile. This delivers the ADR's core
+  human-facing decision ("demote the score"). Rendering is defensive: reports
+  without a `readinessProfile` (legacy/synthetic) omit the block, matching the
+  existing `dimensions`/`autonomyEnvelope` pattern.
+- **VERIFICATION**: `npm run type-check` clean (excluding pre-existing tsconfig
+  deprecation warnings); `npm run lint` clean; `npx jest` 730 pass (3 new
+  reporter assertions in `__tests__/repo-reporters.test.ts`; 4 output snapshots
+  updated for the additive profile block + secondary-score relabel);
+  `agentready:schemas -- --check` up to date (no schema change this phase);
+  `npm run build:action` rebuilt the bundle; `agentready:action-smoke` and a live
+  `scan .` show the profile leading the output (risk low, coverage 5/5, score 85
+  secondary). The `AgentReady score: N/100` substring and the compact `Autonomy:`
+  line are preserved, keeping `cli.test.ts`/`repo-reporters.test.ts` green.
+- **REMAINING PHASES**: rules populating finding-level `confidence`/`scope`; and
+  the diff/portfolio finding-field advertisement once rules emit those keys.
+
 ### 2026-07-18 (ADR 0005 implementation phase 2: Repository Agent Readiness Profile)
 - **ADDED THE `readinessProfile` REPORT AXIS.** New
   `lib/repo-readiness/core/readiness-profile.ts` computes a `ReadinessProfile`
