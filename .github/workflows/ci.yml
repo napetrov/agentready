@@ -62,7 +62,7 @@ jobs:
         # other actions in this workflow; bump alongside Dependabot updates. v4 is
         # the current major (it runs on the Node 24 runtime, matching this
         # Action's own node24 runtime).
-        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a
         # Skip for pull requests from forks: GitHub downgrades the token to
         # read-only there, so `security-events: write` is unavailable and the
         # upload would fail. `continue-on-error` keeps the job green for any
