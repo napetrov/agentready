@@ -70,6 +70,8 @@ describe('report schema strictness', () => {
     // ratio must be 1 when nothing is applicable.
     expect(localReadinessReportSchema.safeParse(withCoverage({ applicableSurfaces: 0, assessedSurfaces: 0, ratio: 0 })).success).toBe(false)
     expect(localReadinessReportSchema.safeParse(withCoverage({ applicableSurfaces: 0, assessedSurfaces: 0, ratio: 1 })).success).toBe(true)
+    // counts cannot exceed the seven-kind taxonomy size.
+    expect(localReadinessReportSchema.safeParse(withCoverage({ applicableSurfaces: 100, assessedSurfaces: 100, ratio: 1 })).success).toBe(false)
   })
 
   it('rejects a dimensions array of the wrong length', () => {

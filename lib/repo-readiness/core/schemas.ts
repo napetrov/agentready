@@ -479,8 +479,10 @@ export const readinessProfileSchema = z.strictObject({
   }),
   coverage: z
     .strictObject({
-      applicableSurfaces: z.number().int().min(0),
-      assessedSurfaces: z.number().int().min(0),
+      // Counts of distinct CoverageSurfaceKind values, so both are bounded by
+      // the taxonomy size (kept in sync via `.options.length`).
+      applicableSurfaces: z.number().int().min(0).max(coverageSurfaceKindSchema.options.length),
+      assessedSurfaces: z.number().int().min(0).max(coverageSurfaceKindSchema.options.length),
       ratio: z.number().min(0).max(1),
       gaps: z.array(z.strictObject({ surface: coverageSurfaceKindSchema, reason: z.string() })),
     })

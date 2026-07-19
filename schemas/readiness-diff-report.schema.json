@@ -2173,12 +2173,12 @@
                 "applicableSurfaces": {
                   "type": "integer",
                   "minimum": 0,
-                  "maximum": 9007199254740991
+                  "maximum": 7
                 },
                 "assessedSurfaces": {
                   "type": "integer",
                   "minimum": 0,
-                  "maximum": 9007199254740991
+                  "maximum": 7
                 },
                 "ratio": {
                   "type": "number",
@@ -4614,12 +4614,12 @@
                 "applicableSurfaces": {
                   "type": "integer",
                   "minimum": 0,
-                  "maximum": 9007199254740991
+                  "maximum": 7
                 },
                 "assessedSurfaces": {
                   "type": "integer",
                   "minimum": 0,
-                  "maximum": 9007199254740991
+                  "maximum": 7
                 },
                 "ratio": {
                   "type": "number",
