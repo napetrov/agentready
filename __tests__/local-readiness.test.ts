@@ -1063,6 +1063,15 @@ describe('local readiness', () => {
     expect(validateReadinessDiffReportContract(report)).toEqual({ valid: true, errors: [] })
     expect(formatDiffMarkdown(report)).toContain('## AgentReady PR readiness')
     expect(formatDiffMarkdown(report)).toContain('New regressions')
+
+    // ADR 0005: newFindings/regressions come from headReport.findings and
+    // resolvedFindings from baseReport.findings, so each embedded report's own
+    // `reportContract.experimentalFindingFields` is the advertise-or-strip
+    // marker for confidence/scope on these arrays — no built-in rule sets a
+    // non-default value yet, so both stay omitted.
+    expect(report.headReport.reportContract.experimentalFindingFields).toBeUndefined()
+    expect(report.baseReport.reportContract.experimentalFindingFields).toBeUndefined()
+    expect(report.regressions.every(finding => finding.confidence === undefined && finding.scope === undefined)).toBe(true)
   })
 
   test('diff treats a same-path severity escalation (binary→text large file) as a regression', () => {

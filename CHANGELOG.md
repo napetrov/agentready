@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Portfolio results now advertise nested finding-experimental keys (ADR 0005
+  compliance fix)**: `PortfolioRepoResult` (`ok: true`) gains an optional
+  `experimentalFindingFields`, computed from `topFindings` the same way the
+  scan report's `reportContract` is computed from `findings`. Previously a
+  `batch --format json` result could have silently emitted `topFindings[].confidence`/
+  `scope` with no adjacent marker once a rule opted into non-default values —
+  harmless today (no built-in rule sets them yet) but a latent violation of the
+  ADR's "never emitted unadvertised" invariant. The shared computation is
+  extracted to `lib/repo-readiness/core/experimental-finding-fields.ts` and used
+  by both the scan report and the portfolio path. The diff report already
+  satisfied this via its embedded `baseReport`/`headReport` contracts; that is
+  now documented on `ReadinessDiffReport` and locked in by a test.
+
 ### Changed
 - **Reports lead with the readiness profile (ADR 0005 implementation, phase 3)**:
   the console and markdown scan reports now open with a **Repository Agent

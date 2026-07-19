@@ -83,6 +83,35 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-19 (ADR 0005 compliance fix: portfolio finding-field advertisement)
+- **CLOSED A LATENT GAP** against the ADR's own verification checklist: "any
+  report shape that serializes findings carrying `confidence`/`scope` must
+  advertise them the same way." The scan report did (via `reportContract`) and
+  the diff report did structurally (via its embedded `baseReport`/`headReport`
+  contracts), but `PortfolioReport`'s `topFindings` neither advertised nor
+  stripped — harmless only because no built-in rule sets a non-default
+  `confidence`/`scope` yet, so the keys never actually appeared.
+- Extracted the advertise-computation shared by both call sites into
+  `core/experimental-finding-fields.ts` (`computeExperimentalFindingFields`),
+  used it in `scan-engine.ts` (replacing the old inline logic, unchanged
+  behavior) and in a new `portfolio.ts` helper, `buildPortfolioRepoResult`,
+  which now populates `PortfolioRepoResult.experimentalFindingFields` from
+  `topFindings` specifically (not the full finding set, so it never advertises
+  a key that was filtered out by the info-severity/cap logic before
+  serialization).
+- Added the Zod/JSON-Schema field (`portfolioRepoResultSchema`, a shared
+  `experimentalFindingFieldSchema` now reused by both the report and portfolio
+  contracts), regenerated `schemas/portfolio-report.schema.json`, and rebuilt
+  the action bundle.
+- Added tests: a dedicated unit-test file for the shared helper; three
+  `buildPortfolioRepoResult` cases (omit/advertise/advertise-only-what's-in-
+  topFindings); a diff-report test locking in that `headReport`/`baseReport`
+  contracts are the advertisement mechanism for `newFindings`/`resolvedFindings`/
+  `regressions`; and a doc comment on `ReadinessDiffReport` explaining why no
+  separate top-level marker is needed there.
+- Verified: type-check + lint clean, 741 tests pass (8 new), schema `--check`
+  up to date, action bundle rebuilt.
+
 ### 2026-07-18 (ADR 0005 review hardening, round 3: real coverage gaps)
 - **COVERAGE NOW REFLECTS PARSE STATE.** Codex found that an unparseable (or
   no-jobs) CI workflow still counted `ci-workflows` as fully assessed — 100%

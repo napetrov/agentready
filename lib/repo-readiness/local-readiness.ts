@@ -85,7 +85,9 @@ export {
   scanLocalReadiness,
 } from './core/scan-engine'
 
-export { resolvePortfolioTargets, scanPortfolio } from './core/portfolio'
+export { buildPortfolioRepoResult, resolvePortfolioTargets, scanPortfolio } from './core/portfolio'
+
+export { computeExperimentalFindingFields } from './core/experimental-finding-fields'
 
 export {
   validateLocalReadinessReportContract,

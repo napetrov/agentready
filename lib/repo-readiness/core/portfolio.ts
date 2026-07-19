@@ -1,7 +1,9 @@
 import { readdirSync } from 'fs'
 import path from 'path'
+import { computeExperimentalFindingFields } from './experimental-finding-fields'
 import { scanLocalReadiness } from './scan-engine'
 import type {
+  LocalReadinessReport,
   PortfolioRepoResult,
   PortfolioReport,
   PortfolioScanOptions,
@@ -23,6 +25,33 @@ const worstFindings = (findings: ReadinessFinding[], limit: number): ReadinessFi
     .filter(finding => finding.severity !== 'info')
     .sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || a.id.localeCompare(b.id))
     .slice(0, limit)
+
+/**
+ * Builds one repo's successful portfolio result from its full scan report.
+ * `experimentalFindingFields` mirrors `topFindings` (not `report.findings`),
+ * so it advertises exactly the nested keys this result actually serializes —
+ * the same advertise-or-strip contract the scan report's `reportContract`
+ * gives top-level findings. See ADR 0005.
+ */
+export const buildPortfolioRepoResult = (
+  target: string,
+  report: LocalReadinessReport,
+  limit: number,
+): Extract<PortfolioRepoResult, { ok: true }> => {
+  const bySeverity = emptySeverityCounts()
+  for (const finding of report.findings) bySeverity[finding.severity] += 1
+  const topFindings = worstFindings(report.findings, limit)
+  const experimentalFindingFields = computeExperimentalFindingFields(topFindings)
+  return {
+    path: target,
+    ok: true,
+    score: report.summary.score,
+    findingCount: report.findings.length,
+    bySeverity,
+    topFindings,
+    ...(experimentalFindingFields.length > 0 ? { experimentalFindingFields } : {}),
+  }
+}
 
 /**
  * Resolves the repository paths a batch scan should cover: explicit `paths`,
@@ -70,16 +99,7 @@ export const scanPortfolio = (targets: string[], options: PortfolioScanOptions =
         configPath: options.configPath,
         config: options.config,
       })
-      const bySeverity = emptySeverityCounts()
-      for (const finding of report.findings) bySeverity[finding.severity] += 1
-      return {
-        path: target,
-        ok: true,
-        score: report.summary.score,
-        findingCount: report.findings.length,
-        bySeverity,
-        topFindings: worstFindings(report.findings, limit),
-      }
+      return buildPortfolioRepoResult(target, report, limit)
     } catch (error) {
       return { path: target, ok: false, error: error instanceof Error ? error.message : String(error) }
     }
