@@ -7,7 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Reports lead with the readiness profile (ADR 0005 implementation, phase 3)**:
+  the console and markdown scan reports now open with a **Repository Agent
+  Readiness Profile** block (capability risk, scanner coverage, calibration
+  confidence; per-stage readiness via the existing autonomy-envelope section),
+  and the single 0–100 score is demoted to a clearly labeled secondary line —
+  delivering the ADR's core "the profile is the product, the score is a
+  secondary view" decision in the human-facing output. JSON output is unchanged
+  (the profile has been present since phase 2); the profile block is omitted for
+  reports without a `readinessProfile`.
+
 ### Added
+- **Repository Agent Readiness Profile (ADR 0005 implementation, phase 2)**: every
+  scan report now carries a `readinessProfile`
+  (`lib/repo-readiness/core/readiness-profile.ts`) — the multi-axis view that
+  demotes the single score to a secondary signal. It separates **readiness**
+  (per-stage, reusing the existing autonomy envelope verbatim), **risk**
+  (aggregate capability-risk verdict — worst tier present, so one `high` surface
+  is never diluted by many `low` ones; `low` with empty refs when no surfaces
+  exist; an MCP config stays `high`), **coverage** (a fixed `CoverageSurfaceKind`
+  taxonomy counted by kind, not by file, so a legible monorepo isn't penalized
+  for size), and **observability** (verified-locally / not-found /
+  not-observable-locally, the last reusing the external-controls list).
+  `calibrationConfidence` is `low` until real agent-outcome data exists.
+  Registered as the `readinessProfile` experimental field. Also adds an
+  `experimentalFindingFields` marker to `reportContract` that advertises nested
+  `findings[].confidence`/`scope` keys whenever a rule emits them (omitted
+  otherwise), so consumers can detect/strip the unstable keys. JSON Schemas
+  regenerated; action bundle rebuilt.
+- **Calibratable scoring engine (ADR 0005 implementation, phase 1)**: `calculateScore`
+  now accepts an optional `ScoreWeights` table and reads optional, rule-owned
+  `confidence`/`scope` inputs on findings (`lib/repo-readiness/core/scoring.ts`,
+  `lib/repo-readiness/core/types.ts`). Weights default to a deep-frozen
+  `DEFAULT_WEIGHTS` whose all-`1` confidence/scope multipliers reproduce the
+  historical fixed-penalty score byte-for-byte, so `summary.score`, per-category
+  `dimensions[].score`, and all gates are unchanged by default. Injected
+  (non-default) weights are validated (`assertValidWeights`: finite,
+  non-negative, complete) before use, and the score is rounded to an integer so
+  fractional calibrated weights still satisfy the integer score contract. The
+  finding schema gains optional `confidence`/`scope` keys (JSON Schema
+  regenerated). The report-profile axes, coverage taxonomy, and
+  `experimentalFindingFields` marker built on this foundation are described in the
+  phase-2 and phase-3 entries above.
+- Proposed **ADR 0005: Calibrated Multi-Dimensional Readiness Profile**
+  ([docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md](docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md),
+  indexed in [docs/adr/README.md](docs/adr/README.md)): records the decision to
+  demote the experimental absolute score to a secondary view and make a
+  four-axis Repository Agent Readiness Profile (Readiness / Risk / Coverage /
+  Observability) the primary output. Specifies additive, confidence/scope-aware
+  scoring inputs with a frozen `DEFAULT_WEIGHTS` that reproduces today's score
+  byte-for-byte, an `experimentalFindingFields` opt-in marker for the new
+  nested finding keys, and a coverage-surface taxonomy — all as a `Proposed`
+  ADR with no runtime code change.
 - Implemented the full v0.4 backlog from the AIReady calibration record (see
   [docs/roadmap/v0.4-issue-drafts.md](docs/roadmap/v0.4-issue-drafts.md) for
   per-issue detail and deliberate scope deviations):

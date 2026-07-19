@@ -160,12 +160,19 @@ export const instructionActivationSchema = z.enum([
   'unknown',
 ])
 
+export const findingScopeSchema = z.enum(['root', 'package', 'path', 'advisory'])
+
 export const readinessFindingSchema = z.strictObject({
   id: z.string().min(1),
   title: z.string().min(1),
   severity: severitySchema,
   path: z.string().optional(),
   recommendation: z.string().min(1),
+  // Optional, rule-owned calibrated-scoring inputs (ADR 0005). Absent = neutral
+  // (confidence `high`, scope `package`), so a finding that omits them scores
+  // and validates exactly as before.
+  confidence: evidenceConfidenceSchema.optional(),
+  scope: findingScopeSchema.optional(),
 })
 
 export const localReadinessFileSchema = z.strictObject({
@@ -450,6 +457,68 @@ export const instructionSurfaceSchema = z.strictObject({
   notes: z.array(z.string()),
 })
 
+export const coverageSurfaceKindSchema = z.enum([
+  'instruction-surfaces',
+  'command-ecosystems',
+  'ci-workflows',
+  'capability-surfaces',
+  'governance',
+  'documentation-roles',
+  'repository-topology',
+])
+
+export const riskVerdictSchema = z.enum(['low', 'medium', 'high', 'unknown'])
+
+/**
+ * The maximum number of coverage surfaces, i.e. the size of the
+ * `CoverageSurfaceKind` taxonomy. Exported so the JSON Schema generator can
+ * enumerate the valid cross-field coverage combinations (see
+ * `bin/agentready-emit-schemas.ts`).
+ */
+export const COVERAGE_SURFACE_KIND_COUNT = coverageSurfaceKindSchema.options.length
+
+export const coverageReportSchema = z
+  .strictObject({
+    // Counts of distinct CoverageSurfaceKind values, so both are bounded by
+    // the taxonomy size (kept in sync via `.options.length`).
+    applicableSurfaces: z.number().int().min(0).max(COVERAGE_SURFACE_KIND_COUNT),
+    assessedSurfaces: z.number().int().min(0).max(COVERAGE_SURFACE_KIND_COUNT),
+    ratio: z.number().min(0).max(1),
+    gaps: z.array(z.strictObject({ surface: coverageSurfaceKindSchema, reason: z.string() })),
+  })
+  // Cross-field invariants: you cannot assess more surfaces than are
+  // applicable, and `ratio` is the derived value (1 when nothing applies).
+  // These are also enumerated into the published JSON Schema by the generator's
+  // `coverageInvariantOverride`, so external draft-07 consumers reject the same
+  // impossible combinations this runtime schema does.
+  .refine(coverage => coverage.assessedSurfaces <= coverage.applicableSurfaces, {
+    error: 'coverage.assessedSurfaces must not exceed coverage.applicableSurfaces',
+  })
+  .refine(
+    coverage => {
+      const expected = coverage.applicableSurfaces === 0 ? 1 : coverage.assessedSurfaces / coverage.applicableSurfaces
+      return Math.abs(coverage.ratio - expected) < 1e-9
+    },
+    { error: 'coverage.ratio must equal assessedSurfaces / applicableSurfaces (1 when applicableSurfaces is 0)' },
+  )
+
+export const readinessProfileSchema = z.strictObject({
+  readiness: autonomyStageResultListSchema,
+  risk: z.strictObject({
+    verdict: riskVerdictSchema,
+    confidence: evidenceConfidenceSchema,
+    evidenceRefs: z.array(z.string()),
+    explanation: z.string(),
+  }),
+  coverage: coverageReportSchema,
+  observability: z.strictObject({
+    verifiedLocally: z.array(coverageSurfaceKindSchema),
+    notFound: z.array(coverageSurfaceKindSchema),
+    notObservableLocally: z.array(z.string()),
+  }),
+  calibrationConfidence: evidenceConfidenceSchema,
+})
+
 export const localReadinessReportSchema = z.strictObject({
   root: z.string(),
   generatedAt: z.string(),
@@ -484,6 +553,7 @@ export const localReadinessReportSchema = z.strictObject({
   designState: designStateSummarySchema,
   dimensions: readinessDimensionScoreListSchema,
   autonomyEnvelope: autonomyStageResultListSchema,
+  readinessProfile: readinessProfileSchema,
   reportContract: z.strictObject({
     schemaVersion: z.literal('local-readiness/v2'),
     experimentalFields: z.array(z.enum([
@@ -493,7 +563,9 @@ export const localReadinessReportSchema = z.strictObject({
       'instructionContradictions',
       'hookExecutionRisks',
       'autonomyEnvelope',
+      'readinessProfile',
     ])),
+    experimentalFindingFields: z.array(z.enum(['confidence', 'scope'])).optional(),
   }),
   findings: z.array(readinessFindingSchema),
   files: z.array(localReadinessFileSchema),

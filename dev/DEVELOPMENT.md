@@ -83,6 +83,158 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-18 (ADR 0005 review hardening, round 3: real coverage gaps)
+- **COVERAGE NOW REFLECTS PARSE STATE.** Codex found that an unparseable (or
+  no-jobs) CI workflow still counted `ci-workflows` as fully assessed — 100%
+  coverage and `verifiedLocally` the scan did not earn, since `parseWorkflow`
+  degrades such a workflow to `{ jobs: [] }`. Added `coverageGaps()` to
+  `core/readiness-profile.ts`: a `ci-workflows` surface with any jobless workflow
+  is recorded as a coverage gap, excluded from `assessedSurfaces` (so `ratio`
+  drops below 1) and from `observability.verifiedLocally`. This is the first real
+  "recognized but unassessed" case, so coverage is no longer always 100%. Added a
+  unit test and updated the diff snapshot (its fixture writes a `name: CI`-only
+  workflow, which now correctly shows a gap).
+- Verified: type-check + lint clean, 733 tests pass, schema `--check` up to date,
+  action bundle rebuilt, action-smoke passes.
+
+### 2026-07-18 (ADR 0005 review hardening, round 2)
+- **PUBLISHED-SCHEMA COVERAGE INVARIANT**: the coverage cross-field `.refine()`
+  checks did not serialize into the draft-07 JSON Schemas, so external consumers
+  could accept coverage the runtime rejects. Extracted `coverageReportSchema` as
+  a named export and added a `coverageInvariantOverride` to
+  `bin/agentready-emit-schemas.ts` that enumerates the 36 valid
+  `(applicableSurfaces, assessedSurfaces, ratio)` combinations into `anyOf` —
+  same override mechanism the dimensions/autonomy pigeonhole checks use.
+  Regenerated all report schemas (scan/augmented/diff base+head). Added a
+  structural test asserting the emitted enumeration is exactly the valid set
+  (and excludes impossible combos like `4/2` with ratio 1).
+- **DOCSTRINGS**: converted the function-lead `//` comments on the new
+  profile/scoring/reporter helpers to `/** */` docstrings and filled gaps, so
+  each function in the changed source files carries a docstring.
+- Verified: type-check + lint clean, 732 tests pass, schema `--check` up to date,
+  action bundle rebuilt, action-smoke passes.
+
+### 2026-07-18 (ADR 0005 review hardening)
+- **LAYERING**: moved `NOT_VERIFIED_EXTERNAL_CONTROLS` from
+  `reporters/not-verified.ts` to `core/not-verified.ts` so `core` no longer
+  imports from the `reporters` layer (`core/readiness-profile.ts` and both
+  reporters now import from core).
+- **CONTRACT TIGHTENING**: `ObservabilityReport.verifiedLocally`/`notFound` are
+  now `CoverageSurfaceKind[]` (enum-constrained in the Zod + JSON schemas) rather
+  than free strings; added cross-field `.refine()` invariants to the coverage
+  schema (`assessedSurfaces <= applicableSurfaces`, and `ratio` equals the
+  derived value / `1` when nothing applies), with a rejecting-cases test in
+  `__tests__/schemas.test.ts`.
+- **DOCS**: fixed the ADR coverage example to stay within the seven-kind
+  taxonomy bound (`5/7`, was `7/9`) and removed a now-contradictory "later
+  phases" note from the phase-1 CHANGELOG entry.
+- Verified: type-check + lint clean, 731 tests pass, schema `--check` up to date,
+  action bundle rebuilt, action-smoke passes.
+
+### 2026-07-18 (ADR 0005 implementation phase 3: profile-led reporters)
+- **MADE THE PROFILE THE HEADLINE OUTPUT.** `formatScanSummary`
+  (`lib/repo-readiness/reporters/console.ts`) and `formatScanMarkdown`
+  (`lib/repo-readiness/reporters/markdown.ts`) now open with a Repository Agent
+  Readiness Profile block — capability-risk verdict, scanner-coverage percentage
+  (assessed/applicable), and calibration confidence — with per-stage readiness
+  covered by the existing autonomy-envelope rendering. The single 0–100 score is
+  relabeled as a secondary signal below the profile. This delivers the ADR's core
+  human-facing decision ("demote the score"). Rendering is defensive: reports
+  without a `readinessProfile` (legacy/synthetic) omit the block, matching the
+  existing `dimensions`/`autonomyEnvelope` pattern.
+- **VERIFICATION**: `npm run type-check` clean (excluding pre-existing tsconfig
+  deprecation warnings); `npm run lint` clean; `npx jest` 730 pass (3 new
+  reporter assertions in `__tests__/repo-reporters.test.ts`; 4 output snapshots
+  updated for the additive profile block + secondary-score relabel);
+  `agentready:schemas -- --check` up to date (no schema change this phase);
+  `npm run build:action` rebuilt the bundle; `agentready:action-smoke` and a live
+  `scan .` show the profile leading the output (risk low, coverage 5/5, score 85
+  secondary). The `AgentReady score: N/100` substring and the compact `Autonomy:`
+  line are preserved, keeping `cli.test.ts`/`repo-reporters.test.ts` green.
+- **REMAINING PHASES**: rules populating finding-level `confidence`/`scope`; and
+  the diff/portfolio finding-field advertisement once rules emit those keys.
+
+### 2026-07-18 (ADR 0005 implementation phase 2: Repository Agent Readiness Profile)
+- **ADDED THE `readinessProfile` REPORT AXIS.** New
+  `lib/repo-readiness/core/readiness-profile.ts` computes a `ReadinessProfile`
+  (`calculateReadinessProfile`) from the assembled report and the scan engine
+  attaches it, registered as the `readinessProfile` experimental field. Four
+  axes: `readiness` reuses the already-computed `autonomyEnvelope` verbatim (so
+  the two are equal by construction); `risk` aggregates capability surfaces to
+  the worst tier present (one `high` is never diluted by many `low`; no surfaces
+  → verified `low` with empty refs, never `unknown`; MCP configs stay `high`),
+  referencing the `safety.capability.high-risk:<path>` finding for high surfaces
+  and the derived `capability:<path>:<kind>` key otherwise; `coverage` counts a
+  fixed `CoverageSurfaceKind` taxonomy by kind, not by file/record; and
+  `observability` splits verified-locally / not-found / not-observable-locally
+  (reusing `NOT_VERIFIED_EXTERNAL_CONTROLS`). `calibrationConfidence` is `low`.
+- **ADDED THE `experimentalFindingFields` MARKER** to `reportContract`
+  (addressing a Codex review point): the scan engine advertises nested
+  `findings[].confidence`/`scope` keys whenever a rule populates them, so
+  consumers of `local-readiness/v2` can detect and strip the unstable nested
+  keys. No built-in rule emits them yet, so it is normally omitted.
+- **VERIFICATION**: `npm run type-check` clean (excluding the pre-existing
+  tsconfig deprecation warnings); `npm run lint` clean;
+  `npm run agentready:schemas -- --check` up to date; `npx jest` 727 pass (12 new
+  in `__tests__/readiness-profile.test.ts`; output snapshots updated for the
+  additive `readinessProfile` field); `npm run build:action` regenerated the
+  action bundle; `agentready:action-smoke`, `agentready:pack-smoke`,
+  `agentready:eval`, and a self-scan all pass (self-scan: score 85, risk low,
+  coverage 5/5).
+- **REMAINING PHASES**: human-facing reporter sections (console/markdown profile
+  block); populating finding-level `confidence`/`scope` from rules; and the
+  diff/portfolio finding-field advertisement once rules emit those keys.
+
+### 2026-07-18 (ADR 0005 implementation phase 1: calibratable scoring engine)
+- **IMPLEMENTED THE CALIBRATABLE SCORING CORE** from ADR 0005. `calculateScore`
+  (`lib/repo-readiness/core/scoring.ts`) now takes an optional `ScoreWeights`
+  parameter and multiplies each finding's severity penalty by (rule-owned,
+  optional) `confidence` and `scope` factors on `ReadinessFinding`
+  (`lib/repo-readiness/core/types.ts`). The default `DEFAULT_WEIGHTS` is
+  deep-frozen with all-`1` confidence/scope multipliers, so the default score is
+  byte-identical to the pre-ADR fixed-penalty model — verified by a regression
+  test and the unchanged output snapshots. Fractional (calibrated) weights are
+  rounded to an integer so `summary.score` and `dimensions[].score` still satisfy
+  their integer schema; injected non-default weights are validated
+  (`assertValidWeights`) to reject negative/non-finite/incomplete tables that
+  could `NaN` the score or inflate it past a gate. Added optional
+  `confidence`/`scope` to `readinessFindingSchema` and regenerated the published
+  JSON Schemas.
+- **VERIFICATION**: `npm run lint` clean; `npm run agentready:schemas -- --check`
+  reports schemas up to date; `npx jest` 715 pass (10 new in
+  `__tests__/scoring.test.ts`; 15 snapshots unchanged); `npm run build` clean;
+  `agentready scan .` and `npm run agentready:fixtures` pass with integer scores.
+  (`npm run type-check` exits non-zero only on the pre-existing tsconfig
+  `moduleResolution`/`baseUrl` deprecation warnings, unrelated to this change.)
+- **REMAINING PHASES**: `readinessProfile` axes (Readiness/Risk/Coverage/
+  Observability), the `CoverageSurfaceKind` taxonomy, the
+  `experimentalFindingFields` opt-in marker and its emission across scan/diff/
+  portfolio reports, and reporter changes.
+
+### 2026-07-18 (ADR 0005: calibrated multi-dimensional readiness profile)
+- **PROPOSED ADR 0005** (`docs/adr/0005-calibrated-multi-dimensional-readiness-profile.md`,
+  indexed in `docs/adr/README.md`): a `Proposed` architecture decision, no
+  runtime code change. Rationale: the fixed severity-penalty score
+  (`lib/repo-readiness/core/scoring.ts`) has structural problems weight-tuning
+  can't fix (finding count substitutes for risk; no applicability denominator;
+  confidence/scope/outcome data unused). Records demoting the absolute score to
+  a secondary view behind a four-axis Repository Agent Readiness Profile
+  (Readiness reusing `autonomyEnvelope`; Risk reusing `CapabilityRiskTier`;
+  Coverage with an applicable-surface taxonomy; Observability), plus additive
+  confidence/scope finding inputs, a frozen `DEFAULT_WEIGHTS` that keeps default
+  scores byte-identical, integer rounding for fractional calibrated weights, and
+  an `experimentalFindingFields` opt-in marker carried across scan/diff/portfolio
+  report shapes.
+- **VERIFICATION**: documentation-only change. Hardened over multiple
+  automated-review rounds (Codex + CodeRabbit) against the shipped types —
+  `ReadinessFinding`, `AutonomyStatus`, `CapabilityRiskTier`, the strict
+  `z.number().int()` dimension schema, the `PolicyPack`/gate contract, MCP
+  `riskTier: 'high'`, and finding serialization in diff/portfolio reports — so
+  the ADR's illustrative types match `lib/repo-readiness/core/*` rather than
+  overclaiming. Adjacent review items (policy plane, MCP assurance, security
+  scope, environment dimension, telemetry, enrichers) are mapped to the axis
+  each feeds and deferred to their own ADRs.
+
 ### 2026-07-15 (oss/ml-scientific policy packs, instruction contradictions, CODEOWNERS coverage gaps)
 - **DELIVERED `oss` AND `ml-scientific` POLICY PACKS**: implemented per the
   existing spec in `docs/product/policy-packs.md`, following `enterprise`'s

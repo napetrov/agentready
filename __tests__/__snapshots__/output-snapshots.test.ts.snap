@@ -499,7 +499,8 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "dimensions",
         "instructionContradictions",
         "hookExecutionRisks",
-        "autonomyEnvelope"
+        "autonomyEnvelope",
+        "readinessProfile"
       ]
     },
     "findings": [
@@ -523,7 +524,89 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "path": "AGENTS.md",
         "recommendation": "Add a CODEOWNERS pattern covering \\"AGENTS.md\\" — this path is treated as high-risk (agent/CI config, auth, migrations, deploy, ...) regardless of how often it changes."
       }
-    ]
+    ],
+    "readinessProfile": {
+      "readiness": [
+        {
+          "stage": "orient",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "bootstrap",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "navigate",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "edit",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "verify",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "review",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "merge",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "deploy",
+          "status": "ready",
+          "findingIds": []
+        }
+      ],
+      "risk": {
+        "verdict": "low",
+        "confidence": "high",
+        "evidenceRefs": [],
+        "explanation": "no capability surfaces detected"
+      },
+      "coverage": {
+        "applicableSurfaces": 5,
+        "assessedSurfaces": 4,
+        "ratio": 0.8,
+        "gaps": [
+          {
+            "surface": "ci-workflows",
+            "reason": "1 workflow file with no recognized jobs"
+          }
+        ]
+      },
+      "observability": {
+        "verifiedLocally": [
+          "instruction-surfaces",
+          "command-ecosystems",
+          "documentation-roles",
+          "repository-topology"
+        ],
+        "notFound": [
+          "capability-surfaces",
+          "governance"
+        ],
+        "notObservableLocally": [
+          "Default-branch protection",
+          "Required status checks",
+          "Required CODEOWNER review",
+          "Environment approval rules",
+          "Production secret scopes",
+          "Deployment permission boundaries"
+        ]
+      },
+      "calibrationConfidence": "low"
+    }
   },
   "headReport": {
     "root": "<WORKTREE>",
@@ -921,7 +1004,8 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "dimensions",
         "instructionContradictions",
         "hookExecutionRisks",
-        "autonomyEnvelope"
+        "autonomyEnvelope",
+        "readinessProfile"
       ]
     },
     "findings": [
@@ -951,7 +1035,91 @@ exports[`diff output snapshots summary and markdown for a regression between two
         "path": "AGENTS.md",
         "recommendation": "Add a CODEOWNERS pattern covering \\"AGENTS.md\\" — this path is treated as high-risk (agent/CI config, auth, migrations, deploy, ...) regardless of how often it changes."
       }
-    ]
+    ],
+    "readinessProfile": {
+      "readiness": [
+        {
+          "stage": "orient",
+          "status": "blocked",
+          "findingIds": [
+            "docs.readme.missing"
+          ]
+        },
+        {
+          "stage": "bootstrap",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "navigate",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "edit",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "verify",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "review",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "merge",
+          "status": "ready",
+          "findingIds": []
+        },
+        {
+          "stage": "deploy",
+          "status": "ready",
+          "findingIds": []
+        }
+      ],
+      "risk": {
+        "verdict": "low",
+        "confidence": "high",
+        "evidenceRefs": [],
+        "explanation": "no capability surfaces detected"
+      },
+      "coverage": {
+        "applicableSurfaces": 5,
+        "assessedSurfaces": 4,
+        "ratio": 0.8,
+        "gaps": [
+          {
+            "surface": "ci-workflows",
+            "reason": "1 workflow file with no recognized jobs"
+          }
+        ]
+      },
+      "observability": {
+        "verifiedLocally": [
+          "instruction-surfaces",
+          "command-ecosystems",
+          "documentation-roles",
+          "repository-topology"
+        ],
+        "notFound": [
+          "capability-surfaces",
+          "governance"
+        ],
+        "notObservableLocally": [
+          "Default-branch protection",
+          "Required status checks",
+          "Required CODEOWNER review",
+          "Environment approval rules",
+          "Production secret scopes",
+          "Deployment permission boundaries"
+        ]
+      },
+      "calibrationConfidence": "low"
+    }
   },
   "summary": {
     "scoreDelta": -18,
@@ -1430,7 +1598,8 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
       "dimensions",
       "instructionContradictions",
       "hookExecutionRisks",
-      "autonomyEnvelope"
+      "autonomyEnvelope",
+      "readinessProfile"
     ]
   },
   "findings": [
@@ -1476,12 +1645,104 @@ exports[`scan output snapshots bad-repo compact json 1`] = `
       "severity": "warning",
       "recommendation": "Add AGENTS.md or the relevant agent-specific instruction file with repo conventions and validation commands."
     }
-  ]
+  ],
+  "readinessProfile": {
+    "readiness": [
+      {
+        "stage": "orient",
+        "status": "blocked",
+        "findingIds": [
+          "docs.readme.missing"
+        ]
+      },
+      {
+        "stage": "bootstrap",
+        "status": "blocked",
+        "findingIds": [
+          "commands.test.missing"
+        ]
+      },
+      {
+        "stage": "navigate",
+        "status": "not_yet_ready",
+        "findingIds": [
+          "instructions.missing"
+        ]
+      },
+      {
+        "stage": "edit",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "verify",
+        "status": "blocked",
+        "findingIds": [
+          "commands.test.missing"
+        ]
+      },
+      {
+        "stage": "review",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "merge",
+        "status": "not_yet_ready",
+        "findingIds": [
+          "ci.workflow.missing"
+        ]
+      },
+      {
+        "stage": "deploy",
+        "status": "ready",
+        "findingIds": []
+      }
+    ],
+    "risk": {
+      "verdict": "low",
+      "confidence": "high",
+      "evidenceRefs": [],
+      "explanation": "no capability surfaces detected"
+    },
+    "coverage": {
+      "applicableSurfaces": 2,
+      "assessedSurfaces": 2,
+      "ratio": 1,
+      "gaps": []
+    },
+    "observability": {
+      "verifiedLocally": [
+        "command-ecosystems",
+        "repository-topology"
+      ],
+      "notFound": [
+        "instruction-surfaces",
+        "ci-workflows",
+        "capability-surfaces",
+        "governance",
+        "documentation-roles"
+      ],
+      "notObservableLocally": [
+        "Default-branch protection",
+        "Required status checks",
+        "Required CODEOWNER review",
+        "Environment approval rules",
+        "Production secret scopes",
+        "Deployment permission boundaries"
+      ]
+    },
+    "calibrationConfidence": "low"
+  }
 }"
 `;
 
 exports[`scan output snapshots bad-repo console summary 1`] = `
-"AgentReady score: 34/100
+"Repository Agent Readiness Profile
+Capability risk: low (no capability surfaces detected)
+Scanner coverage: 100% (2/2 applicable surfaces assessed)
+Calibration confidence: low
+AgentReady score: 34/100 (secondary; the profile above is the primary signal)
 Files: 2 (1 source, 0 tests, 0 docs)
 Capabilities: 0, safety signals: 0
 CI: no workflows detected
@@ -1501,7 +1762,14 @@ Not verified from repository contents: Default-branch protection, Required statu
 exports[`scan output snapshots bad-repo markdown 1`] = `
 "## AgentReady scan
 
-Score: **34/100**
+### Repository Agent Readiness Profile
+The primary, multi-axis readiness view; the single score below is a secondary, experimental signal.
+- **Capability risk:** low — no capability surfaces detected
+- **Scanner coverage:** 100% (2/2 applicable surfaces assessed)
+- **Calibration confidence:** low
+- **Per-stage readiness:** see the Autonomy envelope section below.
+
+Score (secondary, experimental): **34/100**
 Files: 2 total, 1 source, 0 tests, 0 docs
 Capabilities: 0; safety signals: 0
 CI: no workflows detected
@@ -2645,15 +2913,98 @@ exports[`scan output snapshots good-repo compact json 1`] = `
       "dimensions",
       "instructionContradictions",
       "hookExecutionRisks",
-      "autonomyEnvelope"
+      "autonomyEnvelope",
+      "readinessProfile"
     ]
   },
-  "findings": []
+  "findings": [],
+  "readinessProfile": {
+    "readiness": [
+      {
+        "stage": "orient",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "bootstrap",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "navigate",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "edit",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "verify",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "review",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "merge",
+        "status": "ready",
+        "findingIds": []
+      },
+      {
+        "stage": "deploy",
+        "status": "ready",
+        "findingIds": []
+      }
+    ],
+    "risk": {
+      "verdict": "low",
+      "confidence": "high",
+      "evidenceRefs": [],
+      "explanation": "no capability surfaces detected"
+    },
+    "coverage": {
+      "applicableSurfaces": 6,
+      "assessedSurfaces": 6,
+      "ratio": 1,
+      "gaps": []
+    },
+    "observability": {
+      "verifiedLocally": [
+        "instruction-surfaces",
+        "command-ecosystems",
+        "ci-workflows",
+        "governance",
+        "documentation-roles",
+        "repository-topology"
+      ],
+      "notFound": [
+        "capability-surfaces"
+      ],
+      "notObservableLocally": [
+        "Default-branch protection",
+        "Required status checks",
+        "Required CODEOWNER review",
+        "Environment approval rules",
+        "Production secret scopes",
+        "Deployment permission boundaries"
+      ]
+    },
+    "calibrationConfidence": "low"
+  }
 }"
 `;
 
 exports[`scan output snapshots good-repo console summary 1`] = `
-"AgentReady score: 100/100
+"Repository Agent Readiness Profile
+Capability risk: low (no capability surfaces detected)
+Scanner coverage: 100% (6/6 applicable surfaces assessed)
+Calibration confidence: low
+AgentReady score: 100/100 (secondary; the profile above is the primary signal)
 Files: 9 (1 source, 1 tests, 4 docs)
 Capabilities: 0, safety signals: 0
 CI: 1 workflow (runs install, lint, type-check, test, build)
@@ -2665,7 +3016,14 @@ Not verified from repository contents: Default-branch protection, Required statu
 exports[`scan output snapshots good-repo markdown 1`] = `
 "## AgentReady scan
 
-Score: **100/100**
+### Repository Agent Readiness Profile
+The primary, multi-axis readiness view; the single score below is a secondary, experimental signal.
+- **Capability risk:** low — no capability surfaces detected
+- **Scanner coverage:** 100% (6/6 applicable surfaces assessed)
+- **Calibration confidence:** low
+- **Per-stage readiness:** see the Autonomy envelope section below.
+
+Score (secondary, experimental): **100/100**
 Files: 9 total, 1 source, 1 tests, 4 docs
 Capabilities: 0; safety signals: 0
 CI: 1 workflow — runs install, lint, type-check, test, build

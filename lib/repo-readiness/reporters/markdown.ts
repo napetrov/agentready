@@ -8,7 +8,7 @@ import type {
   ReadinessFinding,
 } from '../core/types'
 import { ciRunLabels } from '../detectors/ci-workflows'
-import { NOT_VERIFIED_EXTERNAL_CONTROLS } from './not-verified'
+import { NOT_VERIFIED_EXTERNAL_CONTROLS } from '../core/not-verified'
 
 // Summarizes which verification commands CI actually runs, parsed from the
 // workflow steps. Helps a reader see at a glance whether the objective gate
@@ -97,6 +97,28 @@ const markdownAutonomyEnvelope = (autonomyEnvelope: AutonomyStageResult[] | unde
   ]
 }
 
+/**
+ * Renders the Repository Agent Readiness Profile section that leads the report
+ * (ADR 0005): the four axes are the primary signal and the single score is a
+ * secondary line. Returns [] when the field is absent, matching the other
+ * defensively-rendered sections. Per-stage readiness is rendered by the Autonomy
+ * envelope section, so it is referenced rather than duplicated here.
+ */
+const markdownReadinessProfile = (report: LocalReadinessReport): string[] => {
+  const profile = report.readinessProfile
+  if (!profile) return []
+  const coveragePct = Math.round(profile.coverage.ratio * 100)
+  return [
+    '',
+    '### Repository Agent Readiness Profile',
+    'The primary, multi-axis readiness view; the single score below is a secondary, experimental signal.',
+    `- **Capability risk:** ${profile.risk.verdict} — ${profile.risk.explanation}`,
+    `- **Scanner coverage:** ${coveragePct}% (${profile.coverage.assessedSurfaces}/${profile.coverage.applicableSurfaces} applicable surfaces assessed)`,
+    `- **Calibration confidence:** ${profile.calibrationConfidence}`,
+    '- **Per-stage readiness:** see the Autonomy envelope section below.',
+  ]
+}
+
 const markdownInsights = (title: string, insights: DesignStateInsight[]): string[] => {
   if (insights.length === 0) return []
   return [
@@ -114,8 +136,9 @@ export function formatScanMarkdown(report: LocalReadinessReport): string {
   const highRiskDetail = highRiskCapabilities > 0 ? ` (${highRiskCapabilities} high-risk)` : ''
   return [
     '## AgentReady scan',
+    ...markdownReadinessProfile(report),
     '',
-    `Score: **${report.summary.score}/100**`,
+    `Score (secondary, experimental): **${report.summary.score}/100**`,
     `Files: ${report.summary.totalFiles} total, ${report.summary.sourceFiles} source, ${report.summary.testFiles} tests, ${report.summary.documentationFiles} docs`,
     `Capabilities: ${report.capabilities.length}${highRiskDetail}; safety signals: ${report.safetySignals.length}`,
     ciCoverageLine(report.ci),

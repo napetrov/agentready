@@ -48,10 +48,12 @@ export type {
   HookExecutionRiskEvidence,
   InstructionContradictionEvidence,
   InstructionContradictionKind,
+  CoverageSurfaceKind,
   LocalReadinessConfig,
   LocalReadinessFile,
   LocalReadinessReport,
   LocalReadinessReportContract,
+  ReadinessProfile,
   PackageManager,
   PortfolioReport,
   PortfolioRepoResult,
@@ -120,12 +122,17 @@ export {
   ruleKeyFor,
 } from './checks/catalog'
 export type { RuleDoc } from './checks/catalog'
+export { DEFAULT_WEIGHTS, assertValidWeights, calculateScore } from './core/scoring'
+export type { ScoreWeights } from './core/scoring'
+export { calculateReadinessProfile } from './core/readiness-profile'
 
 export { DEFAULT_POLICY, ENTERPRISE_POLICY, ML_SCIENTIFIC_POLICY, OSS_POLICY, POLICY_PACKS, resolvePolicyPack } from './checks/policy-packs'
 
 export {
+  COVERAGE_SURFACE_KIND_COUNT,
   agentStageSchema,
   autonomyStageResultListSchema,
+  coverageReportSchema,
   localReadinessConfigSchema,
   localReadinessReportSchema,
   portfolioReportSchema,
@@ -136,7 +143,7 @@ export {
 
 export { formatDiffSummary, formatPolicySummary, formatScanSummary } from './reporters/console'
 export { formatDiffMarkdown, formatScanMarkdown } from './reporters/markdown'
-export { NOT_VERIFIED_EXTERNAL_CONTROLS } from './reporters/not-verified'
+export { NOT_VERIFIED_EXTERNAL_CONTROLS } from './core/not-verified'
 export { formatPortfolioMarkdown, formatPortfolioSummary } from './reporters/portfolio'
 export { formatScanSarif } from './reporters/sarif'
 export type { SarifLog, SarifOptions } from './reporters/sarif'

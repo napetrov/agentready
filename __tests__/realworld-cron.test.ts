@@ -135,6 +135,13 @@ describe('real-world cron classification', () => {
     },
     dimensions: [],
     autonomyEnvelope: [],
+    readinessProfile: {
+      readiness: [],
+      risk: { verdict: 'low', confidence: 'high', evidenceRefs: [], explanation: 'no capability surfaces detected' },
+      coverage: { applicableSurfaces: 0, assessedSurfaces: 0, ratio: 1, gaps: [] },
+      observability: { verifiedLocally: [], notFound: [], notObservableLocally: [] },
+      calibrationConfidence: 'low',
+    },
     reportContract: {
       schemaVersion: 'local-readiness/v2',
       experimentalFields: ['repositoryEvidence', 'designState', 'dimensions', 'instructionContradictions'],

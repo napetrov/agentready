@@ -18,11 +18,13 @@ import {
 } from '../detectors/instruction-surface'
 import { loadConfig } from './config'
 import { withWorktree } from './git'
+import { calculateReadinessProfile } from './readiness-profile'
 import { calculateScore } from './scoring'
 import type {
   CompactLocalReadinessReport,
   CompactReadinessDiffReport,
   DiffOptions,
+  LocalReadinessExperimentalFindingField,
   LocalReadinessReport,
   ReadinessDiffReport,
   ReadinessFinding,
@@ -116,7 +118,18 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
   )
   const designState = buildDesignState(repositoryEvidence, findings, partialReport.safetySignals)
 
-  return {
+  // Advertise nested finding-level experimental keys whenever a rule actually
+  // populates them, so consumers can detect/strip the unstable keys (ADR 0005).
+  // No built-in rule emits these yet, so this is normally omitted.
+  const experimentalFindingFields: LocalReadinessExperimentalFindingField[] = []
+  if (findings.some(finding => finding.confidence !== undefined)) {
+    experimentalFindingFields.push('confidence')
+  }
+  if (findings.some(finding => finding.scope !== undefined)) {
+    experimentalFindingFields.push('scope')
+  }
+
+  const reportWithoutProfile: Omit<LocalReadinessReport, 'readinessProfile'> = {
     ...partialReport,
     summary: {
       score: calculateScore(findings),
@@ -143,9 +156,16 @@ export function scanLocalReadiness(root: string, options: ScanOptions = {}): Loc
         'instructionContradictions',
         'hookExecutionRisks',
         'autonomyEnvelope',
+        'readinessProfile',
       ],
+      ...(experimentalFindingFields.length > 0 ? { experimentalFindingFields } : {}),
     },
     findings,
+  }
+
+  return {
+    ...reportWithoutProfile,
+    readinessProfile: calculateReadinessProfile(reportWithoutProfile),
   }
 }
 

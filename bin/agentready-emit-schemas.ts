@@ -9,8 +9,10 @@ import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 import { z } from 'zod'
 import {
+  COVERAGE_SURFACE_KIND_COUNT,
   agentStageSchema,
   autonomyStageResultListSchema,
+  coverageReportSchema,
   localReadinessConfigSchema,
   localReadinessReportSchema,
   portfolioReportSchema,
@@ -127,10 +129,35 @@ const tupleLengthOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<strin
   ctx.jsonSchema.maxItems = length
 }
 
+// The coverage cross-field invariants (`assessedSurfaces <= applicableSurfaces`
+// and `ratio` = the derived value) are Zod `.refine()` checks that draft-07
+// cannot express as keywords. But the domain is small and bounded — both counts
+// are integers in `0..COVERAGE_SURFACE_KIND_COUNT` — so every valid
+// `(applicable, assessed, ratio)` combination can be enumerated into an `anyOf`,
+// giving external JSON Schema consumers the same rejection the runtime schema
+// applies. Mirrors the intent of the dimensions/autonomy overrides above.
+const coverageInvariantOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }): void => {
+  if (!isSchema(ctx.zodSchema, coverageReportSchema)) return
+  const branches: Array<Record<string, unknown>> = []
+  for (let applicable = 0; applicable <= COVERAGE_SURFACE_KIND_COUNT; applicable += 1) {
+    for (let assessed = 0; assessed <= applicable; assessed += 1) {
+      branches.push({
+        properties: {
+          applicableSurfaces: { const: applicable },
+          assessedSurfaces: { const: assessed },
+          ratio: { const: applicable === 0 ? 1 : assessed / applicable },
+        },
+      })
+    }
+  }
+  ctx.jsonSchema.anyOf = branches
+}
+
 const combinedOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }): void => {
   dimensionCategoryOverride(ctx)
   autonomyStageOverride(ctx)
   tupleLengthOverride(ctx)
+  coverageInvariantOverride(ctx)
 }
 
 const render = (entry: SchemaEntry): string => {

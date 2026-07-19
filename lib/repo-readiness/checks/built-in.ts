@@ -10,7 +10,14 @@ import type {
 
 type EvidenceForChecks = Omit<
   LocalReadinessReport,
-  'findings' | 'summary' | 'repositoryEvidence' | 'designState' | 'dimensions' | 'autonomyEnvelope' | 'reportContract'
+  | 'findings'
+  | 'summary'
+  | 'repositoryEvidence'
+  | 'designState'
+  | 'dimensions'
+  | 'autonomyEnvelope'
+  | 'readinessProfile'
+  | 'reportContract'
 >
 
 // A `docs/` or `doc/` directory anywhere in the tree (matched together with the
