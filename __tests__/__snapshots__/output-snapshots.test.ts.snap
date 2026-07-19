@@ -576,15 +576,19 @@ exports[`diff output snapshots summary and markdown for a regression between two
       },
       "coverage": {
         "applicableSurfaces": 5,
-        "assessedSurfaces": 5,
-        "ratio": 1,
-        "gaps": []
+        "assessedSurfaces": 4,
+        "ratio": 0.8,
+        "gaps": [
+          {
+            "surface": "ci-workflows",
+            "reason": "1 workflow file with no recognized jobs"
+          }
+        ]
       },
       "observability": {
         "verifiedLocally": [
           "instruction-surfaces",
           "command-ecosystems",
-          "ci-workflows",
           "documentation-roles",
           "repository-topology"
         ],
@@ -1085,15 +1089,19 @@ exports[`diff output snapshots summary and markdown for a regression between two
       },
       "coverage": {
         "applicableSurfaces": 5,
-        "assessedSurfaces": 5,
-        "ratio": 1,
-        "gaps": []
+        "assessedSurfaces": 4,
+        "ratio": 0.8,
+        "gaps": [
+          {
+            "surface": "ci-workflows",
+            "reason": "1 workflow file with no recognized jobs"
+          }
+        ]
       },
       "observability": {
         "verifiedLocally": [
           "instruction-surfaces",
           "command-ecosystems",
-          "ci-workflows",
           "documentation-roles",
           "repository-topology"
         ],

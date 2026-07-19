@@ -83,6 +83,20 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-18 (ADR 0005 review hardening, round 3: real coverage gaps)
+- **COVERAGE NOW REFLECTS PARSE STATE.** Codex found that an unparseable (or
+  no-jobs) CI workflow still counted `ci-workflows` as fully assessed — 100%
+  coverage and `verifiedLocally` the scan did not earn, since `parseWorkflow`
+  degrades such a workflow to `{ jobs: [] }`. Added `coverageGaps()` to
+  `core/readiness-profile.ts`: a `ci-workflows` surface with any jobless workflow
+  is recorded as a coverage gap, excluded from `assessedSurfaces` (so `ratio`
+  drops below 1) and from `observability.verifiedLocally`. This is the first real
+  "recognized but unassessed" case, so coverage is no longer always 100%. Added a
+  unit test and updated the diff snapshot (its fixture writes a `name: CI`-only
+  workflow, which now correctly shows a gap).
+- Verified: type-check + lint clean, 733 tests pass, schema `--check` up to date,
+  action bundle rebuilt, action-smoke passes.
+
 ### 2026-07-18 (ADR 0005 review hardening, round 2)
 - **PUBLISHED-SCHEMA COVERAGE INVARIANT**: the coverage cross-field `.refine()`
   checks did not serialize into the draft-07 JSON Schemas, so external consumers

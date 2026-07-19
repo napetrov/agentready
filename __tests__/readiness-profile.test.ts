@@ -86,6 +86,27 @@ describe('calculateReadinessProfile coverage axis', () => {
     expect(profile.coverage.ratio).toBeLessThanOrEqual(1)
   })
 
+  it('records an unparsed workflow as a coverage gap, not full coverage', () => {
+    const report = base()
+    const withUnparsedCi = {
+      ...report,
+      ci: {
+        ...report.ci,
+        workflowFiles: ['.github/workflows/ci.yml'],
+        // A workflow that fails to parse (or has no jobs) yields `{ jobs: [] }`.
+        workflows: [{ file: '.github/workflows/ci.yml', jobs: [] }],
+      },
+    }
+    const profile = calculateReadinessProfile(withUnparsedCi)
+    expect(profile.coverage.gaps).toEqual([
+      { surface: 'ci-workflows', reason: '1 workflow file with no recognized jobs' },
+    ])
+    expect(profile.coverage.assessedSurfaces).toBeLessThan(profile.coverage.applicableSurfaces)
+    expect(profile.coverage.ratio).toBeLessThan(1)
+    // An unassessed CI surface must not be reported as verified locally.
+    expect(profile.observability.verifiedLocally).not.toContain('ci-workflows')
+  })
+
   it('is ratio 1 with no applicable surfaces', () => {
     // Strip every surface source so nothing is applicable.
     const stripped = {

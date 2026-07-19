@@ -99,35 +99,66 @@ const applicableKinds = (report: ProfileInput): CoverageSurfaceKind[] => {
 }
 
 /**
- * Builds the coverage axis from the applicable surface kinds. Every applicable
- * surface a deterministic local scan recognizes is also assessed today — the
- * "recognized but unassessed" states (parse failure, over-limit file,
- * enricher-deferred) do not exist in the local pipeline yet, so `gaps` is empty
- * and the ratio is 1 whenever anything is applicable. Those states arrive with
- * the enricher/inspect phases (ADR 0005 items 9/13).
+ * Applicable surface kinds AgentReady recognized but could not fully assess,
+ * with why. Today the only such case is CI: a workflow file that fails to parse
+ * (or has no jobs section) yields `{ jobs: [] }`, so the scanner got no CI
+ * verification signal from it. Counting those as assessed would report 100%
+ * coverage (and `verifiedLocally` for CI) the scan did not earn, so they are
+ * recorded as gaps instead. Other kinds have no partial-understanding failure
+ * mode in the local pipeline yet.
  */
-const buildCoverage = (applicable: CoverageSurfaceKind[]): CoverageReport => {
+const coverageGaps = (
+  report: ProfileInput,
+  applicable: CoverageSurfaceKind[],
+): CoverageReport['gaps'] => {
+  const gaps: CoverageReport['gaps'] = []
+  if (applicable.includes('ci-workflows')) {
+    const unassessed = report.ci.workflows.filter(workflow => workflow.jobs.length === 0).length
+    if (unassessed > 0) {
+      gaps.push({
+        surface: 'ci-workflows',
+        reason: `${unassessed} workflow file${unassessed === 1 ? '' : 's'} with no recognized jobs`,
+      })
+    }
+  }
+  return gaps
+}
+
+/**
+ * Builds the coverage axis: applicable surface kinds minus the gaps that were
+ * recognized but not fully assessed. `ratio` is `assessedSurfaces /
+ * applicableSurfaces`, defined as 1 when nothing is applicable (vacuously
+ * complete), and drops below 1 when a gap is present.
+ */
+const buildCoverage = (applicable: CoverageSurfaceKind[], gaps: CoverageReport['gaps']): CoverageReport => {
+  const gapped = new Set(gaps.map(gap => gap.surface))
   const applicableSurfaces = applicable.length
-  const assessedSurfaces = applicable.length
+  const assessedSurfaces = applicable.filter(kind => !gapped.has(kind)).length
   return {
     applicableSurfaces,
     assessedSurfaces,
-    // Defined as 1 when nothing is applicable (vacuously complete), never NaN.
     ratio: applicableSurfaces === 0 ? 1 : assessedSurfaces / applicableSurfaces,
-    gaps: [],
+    gaps,
   }
 }
 
 /**
- * Builds the observability axis: applicable surface kinds are verified locally,
- * the rest of the taxonomy is not found, and platform controls that cannot be
- * confirmed offline are listed as not observable locally.
+ * Builds the observability axis: applicable-and-assessed surface kinds are
+ * verified locally, the rest of the taxonomy is not found, and platform controls
+ * that cannot be confirmed offline are listed as not observable locally. A
+ * recognized-but-unassessed kind (a coverage gap) is deliberately *not* verified.
  */
-const buildObservability = (applicable: CoverageSurfaceKind[]): ObservabilityReport => ({
-  verifiedLocally: applicable,
-  notFound: SURFACE_KINDS.filter(kind => !applicable.includes(kind)),
-  notObservableLocally: [...NOT_VERIFIED_EXTERNAL_CONTROLS],
-})
+const buildObservability = (
+  applicable: CoverageSurfaceKind[],
+  gaps: CoverageReport['gaps'],
+): ObservabilityReport => {
+  const gapped = new Set(gaps.map(gap => gap.surface))
+  return {
+    verifiedLocally: applicable.filter(kind => !gapped.has(kind)),
+    notFound: SURFACE_KINDS.filter(kind => !applicable.includes(kind)),
+    notObservableLocally: [...NOT_VERIFIED_EXTERNAL_CONTROLS],
+  }
+}
 
 /**
  * Builds the Repository Agent Readiness Profile from an assembled report. The
@@ -138,11 +169,12 @@ const buildObservability = (applicable: CoverageSurfaceKind[]): ObservabilityRep
  */
 export const calculateReadinessProfile = (report: ProfileInput): ReadinessProfile => {
   const applicable = applicableKinds(report)
+  const gaps = coverageGaps(report, applicable)
   return {
     readiness: report.autonomyEnvelope,
     risk: buildRisk(report.capabilities),
-    coverage: buildCoverage(applicable),
-    observability: buildObservability(applicable),
+    coverage: buildCoverage(applicable, gaps),
+    observability: buildObservability(applicable, gaps),
     calibrationConfidence: 'low',
   }
 }
