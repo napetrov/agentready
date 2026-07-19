@@ -32,6 +32,7 @@ const SEVERITY_KEYS: ReadinessSeverity[] = ['error', 'warning', 'info']
 const CONFIDENCE_KEYS: EvidenceConfidence[] = ['low', 'medium', 'high']
 const SCOPE_KEYS: FindingScope[] = ['root', 'package', 'path', 'advisory']
 
+/** Asserts one weight group has a finite, non-negative number for every required key. */
 const assertGroup = <K extends string>(group: Record<K, number>, keys: K[], label: string): void => {
   for (const key of keys) {
     const value = group[key]

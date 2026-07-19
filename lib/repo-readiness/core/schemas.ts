@@ -469,6 +469,39 @@ export const coverageSurfaceKindSchema = z.enum([
 
 export const riskVerdictSchema = z.enum(['low', 'medium', 'high', 'unknown'])
 
+/**
+ * The maximum number of coverage surfaces, i.e. the size of the
+ * `CoverageSurfaceKind` taxonomy. Exported so the JSON Schema generator can
+ * enumerate the valid cross-field coverage combinations (see
+ * `bin/agentready-emit-schemas.ts`).
+ */
+export const COVERAGE_SURFACE_KIND_COUNT = coverageSurfaceKindSchema.options.length
+
+export const coverageReportSchema = z
+  .strictObject({
+    // Counts of distinct CoverageSurfaceKind values, so both are bounded by
+    // the taxonomy size (kept in sync via `.options.length`).
+    applicableSurfaces: z.number().int().min(0).max(COVERAGE_SURFACE_KIND_COUNT),
+    assessedSurfaces: z.number().int().min(0).max(COVERAGE_SURFACE_KIND_COUNT),
+    ratio: z.number().min(0).max(1),
+    gaps: z.array(z.strictObject({ surface: coverageSurfaceKindSchema, reason: z.string() })),
+  })
+  // Cross-field invariants: you cannot assess more surfaces than are
+  // applicable, and `ratio` is the derived value (1 when nothing applies).
+  // These are also enumerated into the published JSON Schema by the generator's
+  // `coverageInvariantOverride`, so external draft-07 consumers reject the same
+  // impossible combinations this runtime schema does.
+  .refine(coverage => coverage.assessedSurfaces <= coverage.applicableSurfaces, {
+    error: 'coverage.assessedSurfaces must not exceed coverage.applicableSurfaces',
+  })
+  .refine(
+    coverage => {
+      const expected = coverage.applicableSurfaces === 0 ? 1 : coverage.assessedSurfaces / coverage.applicableSurfaces
+      return Math.abs(coverage.ratio - expected) < 1e-9
+    },
+    { error: 'coverage.ratio must equal assessedSurfaces / applicableSurfaces (1 when applicableSurfaces is 0)' },
+  )
+
 export const readinessProfileSchema = z.strictObject({
   readiness: autonomyStageResultListSchema,
   risk: z.strictObject({
@@ -477,27 +510,7 @@ export const readinessProfileSchema = z.strictObject({
     evidenceRefs: z.array(z.string()),
     explanation: z.string(),
   }),
-  coverage: z
-    .strictObject({
-      // Counts of distinct CoverageSurfaceKind values, so both are bounded by
-      // the taxonomy size (kept in sync via `.options.length`).
-      applicableSurfaces: z.number().int().min(0).max(coverageSurfaceKindSchema.options.length),
-      assessedSurfaces: z.number().int().min(0).max(coverageSurfaceKindSchema.options.length),
-      ratio: z.number().min(0).max(1),
-      gaps: z.array(z.strictObject({ surface: coverageSurfaceKindSchema, reason: z.string() })),
-    })
-    // Cross-field invariants: you cannot assess more surfaces than are
-    // applicable, and `ratio` is the derived value (1 when nothing applies).
-    .refine(coverage => coverage.assessedSurfaces <= coverage.applicableSurfaces, {
-      error: 'coverage.assessedSurfaces must not exceed coverage.applicableSurfaces',
-    })
-    .refine(
-      coverage => {
-        const expected = coverage.applicableSurfaces === 0 ? 1 : coverage.assessedSurfaces / coverage.applicableSurfaces
-        return Math.abs(coverage.ratio - expected) < 1e-9
-      },
-      { error: 'coverage.ratio must equal assessedSurfaces / applicableSurfaces (1 when applicableSurfaces is 0)' },
-    ),
+  coverage: coverageReportSchema,
   observability: z.strictObject({
     verifiedLocally: z.array(coverageSurfaceKindSchema),
     notFound: z.array(coverageSurfaceKindSchema),

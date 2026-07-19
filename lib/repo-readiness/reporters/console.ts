@@ -46,11 +46,14 @@ const capabilitiesLine = (report: LocalReadinessReport): string => {
   return `Capabilities: ${report.capabilities.length}${highRiskDetail}, safety signals: ${report.safetySignals.length}`
 }
 
-// The Repository Agent Readiness Profile leads the summary (ADR 0005): the four
-// axes are the primary signal and the single score is demoted to a secondary
-// line below. Returns [] when the field is absent (e.g. legacy/synthetic
-// reports), matching the defensive rendering of `dimensions`/`autonomyEnvelope`.
-// Per-stage readiness is shown by `autonomyLine`, so it is not repeated here.
+/**
+ * Renders the Repository Agent Readiness Profile lines that lead the summary
+ * (ADR 0005): the four axes are the primary signal and the single score is
+ * demoted to a secondary line below. Returns [] when the field is absent (e.g.
+ * legacy/synthetic reports), matching the defensive rendering of
+ * `dimensions`/`autonomyEnvelope`. Per-stage readiness is shown by
+ * `autonomyLine`, so it is not repeated here.
+ */
 const profileLines = (report: LocalReadinessReport): string[] => {
   const profile = report.readinessProfile
   if (!profile) return []

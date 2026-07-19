@@ -97,11 +97,13 @@ const markdownAutonomyEnvelope = (autonomyEnvelope: AutonomyStageResult[] | unde
   ]
 }
 
-// The Repository Agent Readiness Profile leads the report (ADR 0005): the four
-// axes are the primary signal and the single score is a secondary line. Returns
-// [] when the field is absent, matching the other defensively-rendered sections.
-// Per-stage readiness is rendered by the Autonomy envelope section, so it is
-// referenced rather than duplicated here.
+/**
+ * Renders the Repository Agent Readiness Profile section that leads the report
+ * (ADR 0005): the four axes are the primary signal and the single score is a
+ * secondary line. Returns [] when the field is absent, matching the other
+ * defensively-rendered sections. Per-stage readiness is rendered by the Autonomy
+ * envelope section, so it is referenced rather than duplicated here.
+ */
 const markdownReadinessProfile = (report: LocalReadinessReport): string[] => {
   const profile = report.readinessProfile
   if (!profile) return []

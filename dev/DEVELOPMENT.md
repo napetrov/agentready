@@ -83,6 +83,23 @@ detection (Gradle/Maven, .NET, additional Python tooling).
 
 ## Agent Progress Log
 
+### 2026-07-18 (ADR 0005 review hardening, round 2)
+- **PUBLISHED-SCHEMA COVERAGE INVARIANT**: the coverage cross-field `.refine()`
+  checks did not serialize into the draft-07 JSON Schemas, so external consumers
+  could accept coverage the runtime rejects. Extracted `coverageReportSchema` as
+  a named export and added a `coverageInvariantOverride` to
+  `bin/agentready-emit-schemas.ts` that enumerates the 36 valid
+  `(applicableSurfaces, assessedSurfaces, ratio)` combinations into `anyOf` —
+  same override mechanism the dimensions/autonomy pigeonhole checks use.
+  Regenerated all report schemas (scan/augmented/diff base+head). Added a
+  structural test asserting the emitted enumeration is exactly the valid set
+  (and excludes impossible combos like `4/2` with ratio 1).
+- **DOCSTRINGS**: converted the function-lead `//` comments on the new
+  profile/scoring/reporter helpers to `/** */` docstrings and filled gaps, so
+  each function in the changed source files carries a docstring.
+- Verified: type-check + lint clean, 732 tests pass, schema `--check` up to date,
+  action bundle rebuilt, action-smoke passes.
+
 ### 2026-07-18 (ADR 0005 review hardening)
 - **LAYERING**: moved `NOT_VERIFIED_EXTERNAL_CONTROLS` from
   `reporters/not-verified.ts` to `core/not-verified.ts` so `core` no longer

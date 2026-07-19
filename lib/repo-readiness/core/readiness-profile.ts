@@ -30,14 +30,23 @@ const worstTier = (tiers: CapabilityRiskTier[]): CapabilityRiskTier => {
 }
 
 // A `high` surface always has a matching `safety.capability.high-risk:<path>`
-// finding, so reference that stable id; `medium`/`low` surfaces have no finding
-// (and `CapabilitySurfaceEvidence` has no native id), so reference the
-// deterministic ADR-0000 derived key. Either way the ref is reproducible.
+/**
+ * Builds a stable evidence reference for a capability surface. A `high` surface
+ * always has a matching `safety.capability.high-risk:<path>` finding, so
+ * reference that stable id; `medium`/`low` surfaces have no finding (and
+ * `CapabilitySurfaceEvidence` has no native id), so reference the deterministic
+ * ADR-0000 derived key. Either way the ref is reproducible.
+ */
 const capabilityRef = (surface: CapabilitySurfaceEvidence): string =>
   surface.riskTier === 'high'
     ? `safety.capability.high-risk:${surface.path}`
     : `capability:${surface.path}:${surface.kind}`
 
+/**
+ * Builds the risk axis: the worst-tier verdict across the repo's capability
+ * surfaces, the surfaces driving it as `evidenceRefs`, and a one-line
+ * explanation. No surfaces is a verified `low` with empty refs, never `unknown`.
+ */
 const buildRisk = (capabilities: CapabilitySurfaceEvidence[]): AxisAssessment<RiskVerdict> => {
   if (capabilities.length === 0) {
     return {
@@ -89,12 +98,15 @@ const applicableKinds = (report: ProfileInput): CoverageSurfaceKind[] => {
   return SURFACE_KINDS.filter(kind => present.has(kind))
 }
 
+/**
+ * Builds the coverage axis from the applicable surface kinds. Every applicable
+ * surface a deterministic local scan recognizes is also assessed today — the
+ * "recognized but unassessed" states (parse failure, over-limit file,
+ * enricher-deferred) do not exist in the local pipeline yet, so `gaps` is empty
+ * and the ratio is 1 whenever anything is applicable. Those states arrive with
+ * the enricher/inspect phases (ADR 0005 items 9/13).
+ */
 const buildCoverage = (applicable: CoverageSurfaceKind[]): CoverageReport => {
-  // Every applicable surface a deterministic local scan recognizes is also
-  // assessed today — the "recognized but unassessed" states (parse failure,
-  // over-limit file, enricher-deferred) do not exist in the local pipeline yet,
-  // so `gaps` is empty and the ratio is 1 whenever anything is applicable. Those
-  // states arrive with the enricher/inspect phases (ADR 0005 items 9/13).
   const applicableSurfaces = applicable.length
   const assessedSurfaces = applicable.length
   return {
@@ -106,6 +118,11 @@ const buildCoverage = (applicable: CoverageSurfaceKind[]): CoverageReport => {
   }
 }
 
+/**
+ * Builds the observability axis: applicable surface kinds are verified locally,
+ * the rest of the taxonomy is not found, and platform controls that cannot be
+ * confirmed offline are listed as not observable locally.
+ */
 const buildObservability = (applicable: CoverageSurfaceKind[]): ObservabilityReport => ({
   verifiedLocally: applicable,
   notFound: SURFACE_KINDS.filter(kind => !applicable.includes(kind)),

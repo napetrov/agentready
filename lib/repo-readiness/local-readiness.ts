@@ -129,8 +129,10 @@ export { calculateReadinessProfile } from './core/readiness-profile'
 export { DEFAULT_POLICY, ENTERPRISE_POLICY, ML_SCIENTIFIC_POLICY, OSS_POLICY, POLICY_PACKS, resolvePolicyPack } from './checks/policy-packs'
 
 export {
+  COVERAGE_SURFACE_KIND_COUNT,
   agentStageSchema,
   autonomyStageResultListSchema,
+  coverageReportSchema,
   localReadinessConfigSchema,
   localReadinessReportSchema,
   portfolioReportSchema,

@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { z } from 'zod'
 import {
+  COVERAGE_SURFACE_KIND_COUNT,
   localReadinessConfigSchema,
   localReadinessReportSchema,
   readinessRuleCategorySchema,
@@ -160,5 +161,33 @@ describe('JSON Schema generation', () => {
       const categories = dimensionsContainsClauses(schema.properties[side].properties.dimensions)
       expect(categories.sort()).toEqual([...readinessRuleCategorySchema.options].sort())
     }
+  })
+
+  // The coverage cross-field invariant (assessed <= applicable, and ratio =
+  // the derived value) is a runtime `.refine()` that draft-07 can't express as
+  // a keyword, so the generator enumerates the valid combinations into `anyOf`.
+  // Assert the committed schema's enumeration is exactly the valid set — so an
+  // external draft-07 consumer rejects the same impossible coverage the runtime
+  // Zod schema does, rather than accepting what
+  // `validateLocalReadinessReportContract` rejects.
+  it('published coverage schema enumerates exactly the valid cross-field combinations', () => {
+    const schema = JSON.parse(readFileSync(path.join(repoRoot, 'schemas', 'local-readiness-report.schema.json'), 'utf8'))
+    const coverage = schema.properties.readinessProfile.properties.coverage
+    const branches = coverage.anyOf as Array<{ properties: Record<string, { const: number }> }>
+    const emitted = branches
+      .map(branch => [branch.properties.applicableSurfaces.const, branch.properties.assessedSurfaces.const, branch.properties.ratio.const].join(':'))
+      .sort()
+    const expected: string[] = []
+    for (let a = 0; a <= COVERAGE_SURFACE_KIND_COUNT; a += 1) {
+      for (let s = 0; s <= a; s += 1) {
+        // Mirror the generator: counts range over 0..taxonomy size, ratio is the
+        // derived value (1 when nothing is applicable).
+        expected.push([a, s, a === 0 ? 1 : s / a].join(':'))
+      }
+    }
+    expect(emitted).toEqual(expected.sort())
+    // Codex's example (ratio 1 with 2/4 assessed) must NOT be an allowed combo.
+    expect(emitted).not.toContain('4:2:1')
+    expect(emitted).toContain('4:2:0.5')
   })
 })

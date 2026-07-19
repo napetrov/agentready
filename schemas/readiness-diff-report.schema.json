@@ -2220,7 +2220,477 @@
                 "ratio",
                 "gaps"
               ],
-              "additionalProperties": false
+              "additionalProperties": false,
+              "anyOf": [
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 0
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 1
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 1
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 2
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 2
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.5
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 2
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 3
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 3
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.3333333333333333
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 3
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.6666666666666666
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 3
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.25
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.5
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 0.75
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 4
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.2
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.4
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 0.6
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 4
+                    },
+                    "ratio": {
+                      "const": 0.8
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 5
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.16666666666666666
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.3333333333333333
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 0.5
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 4
+                    },
+                    "ratio": {
+                      "const": 0.6666666666666666
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 5
+                    },
+                    "ratio": {
+                      "const": 0.8333333333333334
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 6
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.14285714285714285
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.2857142857142857
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 0.42857142857142855
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 4
+                    },
+                    "ratio": {
+                      "const": 0.5714285714285714
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 5
+                    },
+                    "ratio": {
+                      "const": 0.7142857142857143
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 6
+                    },
+                    "ratio": {
+                      "const": 0.8571428571428571
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 7
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                }
+              ]
             },
             "observability": {
               "type": "object",
@@ -4661,7 +5131,477 @@
                 "ratio",
                 "gaps"
               ],
-              "additionalProperties": false
+              "additionalProperties": false,
+              "anyOf": [
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 0
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 1
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 1
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 2
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 2
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.5
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 2
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 3
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 3
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.3333333333333333
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 3
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.6666666666666666
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 3
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.25
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.5
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 0.75
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 4
+                    },
+                    "assessedSurfaces": {
+                      "const": 4
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.2
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.4
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 0.6
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 4
+                    },
+                    "ratio": {
+                      "const": 0.8
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 5
+                    },
+                    "assessedSurfaces": {
+                      "const": 5
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.16666666666666666
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.3333333333333333
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 0.5
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 4
+                    },
+                    "ratio": {
+                      "const": 0.6666666666666666
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 5
+                    },
+                    "ratio": {
+                      "const": 0.8333333333333334
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 6
+                    },
+                    "assessedSurfaces": {
+                      "const": 6
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 0
+                    },
+                    "ratio": {
+                      "const": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 1
+                    },
+                    "ratio": {
+                      "const": 0.14285714285714285
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 2
+                    },
+                    "ratio": {
+                      "const": 0.2857142857142857
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 3
+                    },
+                    "ratio": {
+                      "const": 0.42857142857142855
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 4
+                    },
+                    "ratio": {
+                      "const": 0.5714285714285714
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 5
+                    },
+                    "ratio": {
+                      "const": 0.7142857142857143
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 6
+                    },
+                    "ratio": {
+                      "const": 0.8571428571428571
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "applicableSurfaces": {
+                      "const": 7
+                    },
+                    "assessedSurfaces": {
+                      "const": 7
+                    },
+                    "ratio": {
+                      "const": 1
+                    }
+                  }
+                }
+              ]
             },
             "observability": {
               "type": "object",
